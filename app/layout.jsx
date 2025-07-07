@@ -1,4 +1,3 @@
-
 export const metadata = {
   title: 'Koval Deep AI',
   description: 'Freediving assistant powered by OpenAI',
