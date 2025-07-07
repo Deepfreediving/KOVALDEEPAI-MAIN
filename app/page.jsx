@@ -8,8 +8,7 @@ export default function Home() {
   src="/logo.jpg"
   alt="Deep Freediving Logo"
   className="mx-auto mb-4"
-  style={{ height: '80px', width: 'auto', objectFit: 'contain' }}
-/>
+  style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
         <h1 className="text-3xl font-bold mb-2">Welcome to Koval Deep AI</h1>
         <p className="text-lg mb-6">Your personalized freediving assistant is ready to chat.</p>
         <Chat />
