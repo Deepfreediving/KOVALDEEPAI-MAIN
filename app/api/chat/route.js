@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import OpenAI from 'openai'; // ✅ REQUIRED
 
 export const runtime = 'edge'; // optional: if you want edge runtime
 const openai = new OpenAI({
