@@ -10,3 +10,7 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 301aed9 (💡 WIP: Local changes before rebase)
