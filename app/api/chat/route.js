@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 console.log("✅ API KEY:", process.env.OPENAI_API_KEY);
 console.log("✅ ASSISTANT ID:", process.env.ASSISTANT_ID);
 
-export const runtime = 'edge'; // optional
+export const runtime = 'node'; // optional
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req) {
