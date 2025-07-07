@@ -1,45 +1,38 @@
-import OpenAI from 'openai';
-
-console.log("✅ API KEY:", process.env.OPENAI_API_KEY);
-console.log("✅ ASSISTANT ID:", process.env.ASSISTANT_ID);
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(req) {
-  const { message } = await req.json();
+  try {
+    const { message } = await req.json();
 
-  // Create a new thread
-  const thread = await openai.beta.threads.create();
+    const thread = await openai.beta.threads.create();
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: message,
+    });
 
-  // Add user message to the thread
-  await openai.beta.threads.messages.create(thread.id, {
-    role: 'user',
-    content: message,
-  });
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: process.env.ASSISTANT_ID,
+    });
 
-  // Run the assistant on the thread
-  const run = await openai.beta.threads.runs.create(thread.id, {
-    assistant_id: process.env.ASSISTANT_ID,
-  });
+    let status;
+    do {
+      await new Promise((r) => setTimeout(r, 1000));
+      const updatedRun = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      status = updatedRun.status;
+    } while (status !== 'completed');
 
-  // Wait for run to complete (polling every 1s)
-  let status;
-  do {
-    await new Promise((r) => setTimeout(r, 1000));
-    const updatedRun = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    status = updatedRun.status;
-  } while (status !== 'completed');
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const assistantReply = messages.data
+      .reverse()
+      .find((msg) => msg.role === 'assistant')?.content[0]?.text?.value;
 
-  // Get the latest messages
-  const messages = await openai.beta.threads.messages.list(thread.id);
+    return Response.json({
+      choices: [{ message: { role: 'assistant', content: assistantReply || 'No response received.' } }],
+    });
 
-  const assistantReply = messages.data
-    .reverse()
-    .find((msg) => msg.role === 'assistant')?.content[0]?.text?.value;
-
-  return Response.json({
-    choices: [{ message: { role: 'assistant', content: assistantReply || 'No response received.' } }],
-  });
+  } catch (err) {
+    console.error('❌ Assistant Error:', err);
+    return new Response(
+      JSON.stringify({ error: 'Assistant failed. Check console for details.' }),
+      { status: 500 }
+    );
+  }
 }
