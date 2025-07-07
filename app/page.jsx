@@ -4,7 +4,12 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
       <div className="bg-white text-black p-6 rounded-2xl shadow-lg max-w-xl w-full text-center">
-        <img src="/logo.jpg" alt="Deep Freediving Logo" className="h-5 w-auto mb-4 mx-auto" /
+       <img
+  src="/logo.jpg"
+  alt="Deep Freediving Logo"
+  className="mx-auto mb-4"
+  style={{ height: '80px', width: 'auto', objectFit: 'contain' }}
+/>
         <h1 className="text-3xl font-bold mb-2">Welcome to Koval Deep AI</h1>
         <p className="text-lg mb-6">Your personalized freediving assistant is ready to chat.</p>
         <Chat />
