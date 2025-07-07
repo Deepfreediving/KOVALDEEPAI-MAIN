@@ -1,17 +1,11 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-
 console.log("✅ API KEY:", process.env.OPENAI_API_KEY);
 console.log("✅ ASSISTANT ID:", process.env.ASSISTANT_ID);
 
-//... rest of code
+export const runtime = 'edge'; // optional
 
-export const runtime = 'edge'; // optional: if you want edge runtime
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
