@@ -1,5 +1,8 @@
 import OpenAI from 'openai';
 
+console.log("✅ API KEY:", process.env.OPENAI_API_KEY);
+console.log("✅ ASSISTANT ID:", process.env.ASSISTANT_ID);
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
