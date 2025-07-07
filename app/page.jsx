@@ -5,7 +5,7 @@ export default function Home() {
     const script = document.createElement('script');
     script.src = 'https://widget.customgpt.ai/index.js';
     script.type = 'module';
-    script.setAttribute('data-chatbot-id', 'your-chatbot-id'); // Replace this if you're using CustomGPT
+    script.setAttribute('data-chatbot-id', 'asst_1a1DbHbHuT42Q3uZWaG81m8b'); // Replace this if you're using CustomGPT
     document.body.appendChild(script);
   }, []);
 
