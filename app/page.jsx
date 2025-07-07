@@ -5,7 +5,7 @@ export default function Home() {
     <main className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
       <div className="bg-white text-black p-6 rounded-2xl shadow-lg max-w-xl w-full text-center">
         <img
-          src="/deeplogo.jpg"
+          src="/logo.jpg"
           alt="Deep Freediving Logo"
           className="h-24 w-auto mx-auto mb-4"
         />
