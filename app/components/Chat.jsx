@@ -16,9 +16,10 @@ export default function Chat() {
     setLoading(true);
 
     const res = await fetch('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message: input }),
-    });
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' }, // ✅ add this
+  body: JSON.stringify({ message: input }),
+});
 
     const data = await res.json();
     const reply = data?.choices?.[0]?.message || {
