@@ -1,7 +1,10 @@
-import OpenAI from 'openai'; // ✅ This is required!
-
+import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai'; // ✅ Must be here
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 
 console.log("✅ API KEY:", process.env.OPENAI_API_KEY);
 console.log("✅ ASSISTANT ID:", process.env.ASSISTANT_ID);
@@ -64,6 +67,7 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error('❌ Assistant Error:', error);
+    console.error('❌ Vercel Error:', error);
     return NextResponse.json({
       choices: [{
         message: {
