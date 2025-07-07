@@ -1,5 +1,12 @@
+import OpenAI from 'openai'; // ✅ This is required!
+
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai'; // ✅ REQUIRED
+import OpenAI from 'openai'; // ✅ Must be here
+
+console.log("✅ API KEY:", process.env.OPENAI_API_KEY);
+console.log("✅ ASSISTANT ID:", process.env.ASSISTANT_ID);
+
+//... rest of code
 
 export const runtime = 'edge'; // optional: if you want edge runtime
 const openai = new OpenAI({
