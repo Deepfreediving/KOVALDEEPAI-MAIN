@@ -1,52 +1,59 @@
-// app/api/chat/route.js
-import OpenAI from 'openai';
+import { OpenAI } from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(req) {
   try {
-    const { message, thread_id } = await req.json();
+    const body = await req.json();
+    const { message, thread_id } = body;
 
-    if (!thread_id || !thread_id.startsWith('thread')) {
-      return new Response(JSON.stringify({ error: 'Invalid thread_id' }), {
-        status: 400,
-      });
+    // 🔒 Safety checks
+    if (!message || typeof message !== 'string' || !message.trim().length) {
+      return Response.json({ error: "Invalid or empty message." }, { status: 400 });
     }
 
+    if (!thread_id) {
+      return Response.json({ error: "Missing thread_id." }, { status: 400 });
+    }
+
+    // 🔁 Send message to assistant
     await openai.beta.threads.messages.create(thread_id, {
-      role: 'user',
+      role: "user",
       content: message,
     });
 
+    // 🤖 Run the assistant
     const run = await openai.beta.threads.runs.create(thread_id, {
-      assistant_id: process.env.OPENAI_ASSISTANT_ID,
+      assistant_id: process.env.ASSISTANT_ID,
     });
 
-    let completedRun;
-    const start = Date.now();
-    while (Date.now() - start < 10000) {
-      const check = await openai.beta.threads.runs.retrieve(thread_id, run.id);
-      if (check.status === 'completed') {
-        completedRun = check;
-        break;
+    // ⏳ Poll for completion
+    let completed = false;
+    let runStatus = null;
+
+    while (!completed) {
+      runStatus = await openai.beta.threads.runs.retrieve(thread_id, run.id);
+      if (runStatus.status === "completed") {
+        completed = true;
+      } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
+        return Response.json({ error: `Run failed with status: ${runStatus.status}` }, { status: 500 });
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
 
-    if (!completedRun) {
-      return new Response(JSON.stringify({ error: 'Run timed out' }), {
-        status: 500,
-      });
+    // 🧠 Get assistant's reply
+    const messages = await openai.beta.threads.messages.list(thread_id);
+    const lastMessage = messages.data.find((m) => m.role === "assistant");
+
+    if (!lastMessage) {
+      return Response.json({ error: "No assistant response found." }, { status: 500 });
     }
 
-    const messages = await openai.beta.threads.messages.list(thread_id);
-    const last = messages.data.find((m) => m.role === 'assistant');
-
-    return Response.json({ assistantResponse: last?.content[0]?.text?.value || '' });
+    return Response.json({ assistantResponse: lastMessage.content[0].text.value });
   } catch (err) {
-    console.error('❌ Assistant Error:', err);
-    return new Response(JSON.stringify({ error: 'Assistant error' }), {
-      status: 500,
-    });
+    console.error("❌ Assistant Error:", err);
+    return Response.json({ error: "Server error occurred." }, { status: 500 });
   }
 }
