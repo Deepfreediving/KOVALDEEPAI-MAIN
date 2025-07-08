@@ -53,13 +53,13 @@ export default function Chat() {
   };
 
   return (
-    <div className="bg-black bg-opacity-80 min-h-screen text-white p-4">
+    <div className="bg-black bg-opacity-90 min-h-screen text-white p-4">
       <div className="max-w-2xl mx-auto">
         <h2 className="text-center text-2xl font-bold mb-4">Koval Deep AI</h2>
 
         <div
           ref={chatBoxRef}
-          className="border border-gray-700 rounded-lg p-4 h-96 overflow-y-auto bg-gray-900"
+          className="border border-gray-700 rounded-lg p-4 h-96 overflow-y-auto bg-gray-800"
         >
           {messages.map((msg, i) => (
             <div
@@ -82,7 +82,7 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             placeholder="Type your question..."
-            className="flex-1 p-3 rounded-md text-black"
+            className="flex-1 p-3 rounded-md text-black text-lg"
           />
           <button
             onClick={sendMessage}
