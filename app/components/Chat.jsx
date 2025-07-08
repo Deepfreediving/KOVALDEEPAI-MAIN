@@ -9,7 +9,6 @@ export default function Chat() {
   const [error, setError] = useState(null);
   const chatBoxRef = useRef(null);
 
-  // Create thread on mount
   useEffect(() => {
     const createThread = async () => {
       try {
@@ -23,7 +22,6 @@ export default function Chat() {
     createThread();
   }, []);
 
-  // Scroll to bottom when messages update
   useEffect(() => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
@@ -50,7 +48,7 @@ export default function Chat() {
 
       const data = await res.json();
 
-      const assistantReply = data?.choices?.[0]?.message?.content;
+      const assistantReply = data?.assistantResponse || data?.choices?.[0]?.message?.content;
 
       if (!assistantReply) {
         setError('⚠️ Assistant did not return a message.');
@@ -65,9 +63,9 @@ export default function Chat() {
   };
 
   return (
-    <div className="min-h-screen bg-black bg-opacity-90 text-white flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen w-full bg-black bg-opacity-90 text-white flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-3xl flex flex-col gap-4">
-        <h2 className="text-center text-3xl font-bold">Koval Deep AI</h2>
+        <h2 className="text-center text-3xl font-bold mb-2">Koval Deep AI</h2>
 
         <div
           ref={chatBoxRef}
