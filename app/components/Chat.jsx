@@ -56,43 +56,47 @@ export default function Chat() {
   };
 
   return (
-<div className="text-white bg-opacity-70"> 
-  <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
-      <h2>Koval Deep AI</h2>
+    <div className="text-white bg-opacity-70">
+      <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+        <h2>Koval Deep AI</h2>
 
-      <div style={{ border: '1px solid #ccc', minHeight: '200px', padding: '1rem', marginBottom: '1rem' }}>
-        {messages.map((msg, i) => (
-  <p key={i} className={msg.role === 'user' ? 'text-blue-300' : 'text-green-300'}>
-    <strong>{msg.role}:</strong> {msg.content}
-  </p>
-))}
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+        <div
+          style={{
+            border: '1px solid #ccc',
+            minHeight: '200px',
+            padding: '1rem',
+            marginBottom: '1rem',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            borderRadius: '10px',
+          }}
+        >
+          {messages.map((msg, i) => (
+            <p
+              key={i}
+              className={msg.role === 'user' ? 'text-blue-300' : 'text-green-300'}
+            >
+              <strong>{msg.role}:</strong> {msg.content}
+            </p>
+          ))}
+          {error && <p style={{ color: 'red' }}>{error}</p>}
+        </div>
+
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') sendMessage();
+          }}
+          placeholder="Type your question..."
+          className="w-full p-2 mb-2 text-black rounded"
+        />
+        <button
+          onClick={sendMessage}
+          className="bg-white text-black px-4 py-2 rounded"
+        >
+          Send
+        </button>
       </div>
-
-     <input
-  value={input}
-  onChange={(e) => setInput(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") sendMessage();
-  }}
-  placeholder="Type your question..."
-/>
-      <input
-  value={input}
-  onChange={(e) => setInput(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") sendMessage();
-  }}
-  placeholder="Type your question..."
-  className="w-full p-2 mb-2 text-black rounded"
-/>
-<button
-  onClick={sendMessage}
-  className="bg-white text-black px-4 py-2 rounded"
->
-  Send
-</button>
-
     </div>
   );
 }
