@@ -23,7 +23,8 @@ export default function Chat() {
   }, []);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+  if (!input.trim() || !threadId) return; // ⬅️ Don't send if no thread
+
 
     const userMsg = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMsg]);
