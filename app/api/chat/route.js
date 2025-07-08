@@ -1,45 +1,52 @@
-import OpenAI from "openai";
+// app/api/chat/route.js
+import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req) {
   try {
-    const { messages } = await req.json();
+    const { message, thread_id } = await req.json();
 
-    // Step 1: Create a thread
-    const thread = await openai.beta.threads.create();
+    if (!thread_id || !thread_id.startsWith('thread')) {
+      return new Response(JSON.stringify({ error: 'Invalid thread_id' }), {
+        status: 400,
+      });
+    }
 
-    // Step 2: Add the user's message to the thread
-    await openai.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: messages[messages.length - 1].content,
+    await openai.beta.threads.messages.create(thread_id, {
+      role: 'user',
+      content: message,
     });
 
-    // Step 3: Run the assistant on the thread
-    const run = await openai.beta.threads.runs.create(thread.id, {
+    const run = await openai.beta.threads.runs.create(thread_id, {
       assistant_id: process.env.OPENAI_ASSISTANT_ID,
     });
 
-    // Step 4: Wait for the run to complete
-    let runStatus;
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    } while (runStatus.status !== "completed");
+    let completedRun;
+    const start = Date.now();
+    while (Date.now() - start < 10000) {
+      const check = await openai.beta.threads.runs.retrieve(thread_id, run.id);
+      if (check.status === 'completed') {
+        completedRun = check;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
 
-    // Step 5: Retrieve the messages
-    const threadMessages = await openai.beta.threads.messages.list(thread.id);
+    if (!completedRun) {
+      return new Response(JSON.stringify({ error: 'Run timed out' }), {
+        status: 500,
+      });
+    }
 
-    return new Response(
-      JSON.stringify({
-        response: threadMessages.data[0].content[0].text.value,
-      }),
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Assistant Error:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    const messages = await openai.beta.threads.messages.list(thread_id);
+    const last = messages.data.find((m) => m.role === 'assistant');
+
+    return Response.json({ assistantResponse: last?.content[0]?.text?.value || '' });
+  } catch (err) {
+    console.error('❌ Assistant Error:', err);
+    return new Response(JSON.stringify({ error: 'Assistant error' }), {
+      status: 500,
+    });
   }
 }

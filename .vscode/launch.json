@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "type": "chrome",
+            "name": "https://kovaldeepai.vercel.app/",
+            "request": "launch",
+            "url": "https://kovaldeepai.vercel.app/"
+        }
+    ]
+}
