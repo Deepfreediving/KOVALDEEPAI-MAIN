@@ -17,18 +17,17 @@ export default function Chat() {
         const data = await res.json();
         setThreadId(data.thread_id);
       } catch {
-        setError('❌ Failed to create assistant thread.');
+        setError('❌ Failed to create thread.');
       }
     };
     createThread();
   }, []);
 
-  // Scroll to bottom when new message arrives
+  // Scroll to bottom when messages update
   useEffect(() => {
-    chatBoxRef.current?.scrollTo({
-      top: chatBoxRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
+    if (chatBoxRef.current) {
+      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const sendMessage = async () => {
@@ -51,56 +50,55 @@ export default function Chat() {
 
       const data = await res.json();
 
-      if (data.error) {
-        setError(data.error);
+      const assistantReply = data?.choices?.[0]?.message?.content;
+
+      if (!assistantReply) {
+        setError('⚠️ Assistant did not return a message.');
         return;
       }
 
-      const assistantMsg = {
-        role: 'assistant',
-        content: data.assistantResponse,
-      };
+      const assistantMsg = { role: 'assistant', content: assistantReply };
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch {
-      setError('❌ Network error while sending message.');
+    } catch (err) {
+      setError('❌ Error sending message.');
     }
   };
 
   return (
-    <div className="bg-black bg-opacity-90 min-h-screen text-white p-4">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-center text-3xl font-semibold mb-6">Koval Deep AI</h1>
+    <div className="min-h-screen bg-black bg-opacity-90 text-white flex flex-col justify-center items-center p-4">
+      <div className="w-full max-w-3xl flex flex-col gap-4">
+        <h2 className="text-center text-3xl font-bold">Koval Deep AI</h2>
 
         <div
           ref={chatBoxRef}
-          className="border border-gray-700 rounded-xl p-4 h-[500px] overflow-y-auto bg-gray-800 shadow-inner"
+          className="bg-gray-800 border border-gray-600 rounded-lg p-4 h-[500px] overflow-y-auto shadow-inner"
         >
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`mb-4 p-3 rounded-lg whitespace-pre-wrap ${
+              className={`mb-3 p-3 rounded-lg whitespace-pre-wrap ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white text-right ml-auto max-w-[80%]'
-                  : 'bg-green-700 text-white text-left mr-auto max-w-[80%]'
+                  ? 'bg-blue-600 text-white text-right'
+                  : 'bg-green-700 text-white text-left'
               }`}
             >
               <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> {msg.content}
             </div>
           ))}
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-400">{error}</p>}
         </div>
 
-        <div className="mt-6 flex gap-2">
+        <div className="flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Ask a freediving question..."
-            className="flex-1 p-4 rounded-lg text-black text-lg shadow-md focus:outline-none"
+            placeholder="Type your question..."
+            className="flex-1 p-3 rounded-md text-black text-lg"
           />
           <button
             onClick={sendMessage}
-            className="bg-white text-black px-6 py-2 rounded-lg font-semibold shadow-md hover:bg-gray-200"
+            className="bg-white text-black px-4 py-2 rounded-md font-semibold"
           >
             Send
           </button>
