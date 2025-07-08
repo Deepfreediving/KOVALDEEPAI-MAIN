@@ -62,31 +62,33 @@ export default function Chat() {
 
   return (
     <div
-      className="min-h-screen w-full bg-black text-white bg-cover bg-center bg-fixed"
+      className="min-h-screen bg-cover bg-center text-white p-6"
       style={{
         backgroundImage: `url('/background.jpg')`,
+        backgroundColor: '#000000',
       }}
     >
-      <div className="max-w-3xl mx-auto p-6 bg-black bg-opacity-80 rounded-lg shadow-lg min-h-screen flex flex-col justify-between">
-        <h1 className="text-4xl font-bold text-center mb-6">Koval Deep AI</h1>
+      <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg">
+        <h1 className="text-3xl font-bold text-center mb-6">Koval Deep AI</h1>
 
         <div
           ref={chatBoxRef}
-          className="flex-1 overflow-y-auto border border-gray-700 rounded-md p-4 bg-gray-900"
+          className="h-96 overflow-y-auto border border-gray-600 p-4 rounded-lg bg-gray-900"
         >
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`mb-4 p-3 rounded-lg ${
+              className={`mb-3 p-3 rounded-lg ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-right'
-                  : 'bg-green-700 text-left'
+                  ? 'bg-blue-700 text-right'
+                  : 'bg-green-800 text-left'
               }`}
             >
-              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> {msg.content}
+              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>{' '}
+              {msg.content}
             </div>
           ))}
-          {error && <p className="text-red-400 mt-2">{error}</p>}
+          {error && <p className="text-red-400">{error}</p>}
         </div>
 
         <div className="mt-4 flex flex-col sm:flex-row gap-3">
@@ -95,11 +97,11 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             placeholder="Type your question..."
-            className="flex-1 p-4 rounded-md text-black text-lg resize-none h-28"
+            className="flex-1 p-3 rounded-md text-black text-lg resize-none h-20"
           />
           <button
             onClick={sendMessage}
-            className="bg-white text-black px-6 py-3 rounded-md font-semibold"
+            className="bg-white text-black px-6 py-2 rounded-md font-semibold"
           >
             Send
           </button>
