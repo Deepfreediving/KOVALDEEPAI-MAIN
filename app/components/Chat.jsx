@@ -66,13 +66,14 @@ export default function Chat() {
         {error && <p style={{ color: 'red' }}>{error}</p>}
       </div>
 
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type your question..."
-        style={{ width: '80%', marginRight: '1rem' }}
-      />
+     <input
+  value={input}
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") handleSend();
+  }}
+  placeholder="Type your question..."
+/>
       <button onClick={sendMessage}>Send</button>
     </div>
   );
