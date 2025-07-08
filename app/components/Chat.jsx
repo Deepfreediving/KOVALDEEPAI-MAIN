@@ -1,34 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export default function Chat() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null);
   const [error, setError] = useState(null);
+  const chatBoxRef = useRef(null);
 
-  // ✅ Create thread on mount
   useEffect(() => {
     const createThread = async () => {
       try {
         const res = await fetch('/api/create-thread', { method: 'POST' });
         const data = await res.json();
         setThreadId(data.thread_id);
-      } catch (err) {
-        setError('Failed to create thread.');
+      } catch {
+        setError('❌ Failed to create thread.');
       }
     };
-
     createThread();
   }, []);
 
-  // ✅ Send message
   const sendMessage = async () => {
     if (!input.trim()) return;
 
     const userMsg = { role: 'user', content: input };
-    setMessages([...messages, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
 
     try {
@@ -39,63 +37,60 @@ export default function Chat() {
       });
 
       const data = await res.json();
-
       if (data.error) {
         setError(data.error);
         return;
       }
 
-      const assistantMsg = {
-        role: 'assistant',
-        content: data.assistantResponse,
-      };
+      const assistantMsg = { role: 'assistant', content: data.assistantResponse };
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err) {
-      setError('Error sending message.');
+      setTimeout(() => {
+        chatBoxRef.current?.scrollTo(0, chatBoxRef.current.scrollHeight);
+      }, 100);
+    } catch {
+      setError('❌ Error sending message.');
     }
   };
 
   return (
-    <div className="text-white bg-opacity-70">
-      <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
-        <h2>Koval Deep AI</h2>
+    <div className="bg-black bg-opacity-80 min-h-screen text-white p-4">
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-center text-2xl font-bold mb-4">Koval Deep AI</h2>
 
         <div
-          style={{
-            border: '1px solid #ccc',
-            minHeight: '200px',
-            padding: '1rem',
-            marginBottom: '1rem',
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            borderRadius: '10px',
-          }}
+          ref={chatBoxRef}
+          className="border border-gray-700 rounded-lg p-4 h-96 overflow-y-auto bg-gray-900"
         >
           {messages.map((msg, i) => (
-            <p
+            <div
               key={i}
-              className={msg.role === 'user' ? 'text-blue-300' : 'text-green-300'}
+              className={`mb-3 p-3 rounded-lg ${
+                msg.role === 'user'
+                  ? 'bg-blue-600 text-white text-right'
+                  : 'bg-green-700 text-white text-left'
+              }`}
             >
-              <strong>{msg.role}:</strong> {msg.content}
-            </p>
+              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> {msg.content}
+            </div>
           ))}
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+          {error && <p className="text-red-500">{error}</p>}
         </div>
 
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') sendMessage();
-          }}
-          placeholder="Type your question..."
-          className="w-full p-2 mb-2 text-black rounded"
-        />
-        <button
-          onClick={sendMessage}
-          className="bg-white text-black px-4 py-2 rounded"
-        >
-          Send
-        </button>
+        <div className="mt-4 flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Type your question..."
+            className="flex-1 p-3 rounded-md text-black"
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-white text-black px-4 py-2 rounded-md"
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
