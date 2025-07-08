@@ -56,7 +56,8 @@ export default function Chat() {
   };
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+<div className="text-white bg-opacity-70"> 
+  <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
       <h2>Koval Deep AI</h2>
 
       <div style={{ border: '1px solid #ccc', minHeight: '200px', padding: '1rem', marginBottom: '1rem' }}>
