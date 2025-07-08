@@ -3,8 +3,8 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    appDir: true, // ✅ enables the `/app` directory
+    // appDir: true, // Remove or comment this out
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

@@ -1,107 +1,143 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown'; // Ensure this is correctly installed
 
-export default function Page() {
+export default function Chat() {
+  const [username, setUsername] = useState('');
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content:
+        'Hi! How can I assist you today? Let me know your certification level, PBs, warm-up routine, and training frequency so I can help you best.',
+    }
+  ]);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [threadId, setThreadId] = useState(null);
-  const [error, setError] = useState(null);
-  const chatBoxRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
+  // Load and save messages and username in localStorage
   useEffect(() => {
-    const createThread = async () => {
-      try {
-        const res = await fetch('/api/create-thread', { method: 'POST' });
-        const data = await res.json();
-        if (data?.thread_id) {
-          setThreadId(data.thread_id);
-        } else {
-          setError('❌ Failed to load thread ID.');
-        }
-      } catch {
-        setError('❌ Failed to create thread.');
-      }
-    };
-    createThread();
+    const storedUser = localStorage.getItem('kovalUser');
+    if (storedUser) setUsername(storedUser);
+
+    const savedMessages = localStorage.getItem('kovalChatHistory');
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
   }, []);
 
-  const sendMessage = async () => {
-    if (!input.trim() || !threadId) {
-      setError('Assistant is still loading...');
-      return;
-    }
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    localStorage.setItem('kovalChatHistory', JSON.stringify(messages));
+  }, [messages]);
 
-    const userMsg = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMsg]);
+  // Handle sending messages
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMessage = { role: 'user', content: input };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
-    setError(null);
+    setLoading(true);
 
     try {
-      const res = await fetch('/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, thread_id: threadId }),
+        body: JSON.stringify({ messages: updatedMessages }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
+      const assistantMessage = data?.assistantMessage || {
+        role: 'assistant',
+        content: 'Oops, something went wrong. Try again.',
+      };
 
-      if (data?.assistantResponse) {
-        const assistantMsg = {
-          role: 'assistant',
-          content: data.assistantResponse,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      } else {
-        setError('❌ Assistant returned no response.');
-      }
-    } catch (err) {
-      setError('❌ Error sending message.');
+      setMessages([...updatedMessages, assistantMessage]);
+    } catch (error) {
+      console.error('Error:', error);
+      setMessages([
+        ...updatedMessages,
+        { role: 'assistant', content: 'Sorry, an error occurred.' },
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Render the chat UI
   return (
-    <div
-      className="min-h-screen bg-cover bg-center text-white p-6"
-      style={{
-        backgroundImage: `url('/background.jpg')`,
-        backgroundColor: '#000000',
-      }}
-    >
-      <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg">
-        <h1 className="text-3xl font-bold text-center mb-6">Koval Deep AI</h1>
-
+    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
         <div
-          ref={chatBoxRef}
-          className="h-96 overflow-y-auto border border-gray-600 p-4 rounded-lg bg-gray-900"
+          style={{
+            border: '1px solid #ccc',
+            borderRadius: '8px',
+            padding: '15px',
+            height: '500px',
+            overflowY: 'scroll',
+            backgroundColor: '#f9f9f9',
+            marginBottom: '10px',
+          }}
         >
-          {messages.map((msg, i) => (
+          {messages.map((msg, idx) => (
             <div
-              key={i}
-              className={`mb-3 p-3 rounded-lg ${
-                msg.role === 'user'
-                  ? 'bg-blue-700 text-right'
-                  : 'bg-green-800 text-left'
-              }`}
+              key={idx}
+              style={{
+                textAlign: msg.role === 'user' ? 'right' : 'left',
+                backgroundColor: msg.role === 'user' ? '#d9f2ff' : '#eaeaea',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                marginBottom: '10px',
+              }}
             >
-              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>{' '}
-              {msg.content}
+              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
             </div>
           ))}
-          {error && <p className="text-red-400">{error}</p>}
+
+          {loading && (
+            <div style={{ textAlign: 'left', backgroundColor: '#eaeaea', padding: '8px 12px', borderRadius: '10px' }}>
+              <strong>Assistant:</strong> <em>Typing...</em>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row gap-3">
+        <div style={{ display: 'flex', gap: '10px' }}>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Type your question..."
-            className="flex-1 p-3 rounded-md text-black text-lg resize-none h-20"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Ask something..."
+            style={{
+              flexGrow: 1,
+              padding: '10px',
+              fontSize: '16px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              resize: 'none',
+              height: '60px',
+            }}
           />
           <button
-            onClick={sendMessage}
-            className="bg-white text-black px-6 py-2 rounded-md font-semibold"
+            onClick={handleSend}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+            }}
           >
             Send
           </button>

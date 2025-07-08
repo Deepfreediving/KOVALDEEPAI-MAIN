@@ -1,54 +1,50 @@
-import { OpenAI } from "openai";
+import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const body = await req.json();
-    const { message, thread_id } = body;
+    // Parse the request body to get the messages array
+    const { messages } = await request.json();
 
-    if (!message || typeof message !== 'string' || !message.trim().length) {
-      return Response.json({ error: "Invalid message." }, { status: 400 });
+    // Check if the messages array exists and is formatted correctly
+    if (!messages || !Array.isArray(messages)) {
+      console.error('❌ Invalid messages array.');
+      return new Response(
+        JSON.stringify({ error: 'Invalid messages array.' }),
+        { status: 400 }
+      );
     }
 
-    if (!thread_id) {
-      return Response.json({ error: "Missing thread_id." }, { status: 400 });
-    }
+    // Log the messages for debugging
+    console.log('Received messages:', messages);
 
-    await openai.beta.threads.messages.create(thread_id, {
-      role: "user",
-      content: message,
+    // Send the messages to OpenAI for processing
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages,
     });
 
-    const run = await openai.beta.threads.runs.create(thread_id, {
-      assistant_id: process.env.ASSISTANT_ID,
-    });
+    const reply = response.choices?.[0]?.message?.content || 'Oops, something went wrong. Try again.';
 
-    let completed = false;
-    let runStatus = null;
-
-    while (!completed) {
-      runStatus = await openai.beta.threads.runs.retrieve(thread_id, run.id);
-      if (runStatus.status === "completed") {
-        completed = true;
-      } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
-        return Response.json({ error: `Run failed: ${runStatus.status}` }, { status: 500 });
+    return new Response(
+      JSON.stringify({
+        assistantMessage: {
+          role: 'assistant',
+          content: reply,
+        },
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' },
       }
-      await new Promise((res) => setTimeout(res, 1000));
-    }
-
-    const messages = await openai.beta.threads.messages.list(thread_id);
-    const assistantMessage = messages.data.find((msg) => msg.role === "assistant");
-
-    if (!assistantMessage) {
-      return Response.json({ error: "No assistant response found." }, { status: 500 });
-    }
-
-    return Response.json({ assistantResponse: assistantMessage.content[0].text.value });
-  } catch (err) {
-    console.error("❌ API Chat Route Error:", err);
-    return Response.json({ error: "Internal server error." }, { status: 500 });
+    );
+  } catch (error) {
+    console.error('API Error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Something went wrong.' }),
+      { status: 500 }
+    );
   }
 }
