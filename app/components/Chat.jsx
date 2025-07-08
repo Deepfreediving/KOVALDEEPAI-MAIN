@@ -1,40 +1,79 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 
 export default function Chat() {
-  const [threadId, setThreadId] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [threadId, setThreadId] = useState(null);
+  const [error, setError] = useState(null);
 
-  // 🧠 Create a thread when component mounts
+  // ✅ Create thread on mount
   useEffect(() => {
     const createThread = async () => {
-      const res = await fetch('/api/create-thread', { method: 'POST' });
-      const data = await res.json();
-      setThreadId(data.thread_id);
+      try {
+        const res = await fetch('/api/create-thread', { method: 'POST' });
+        const data = await res.json();
+        setThreadId(data.thread_id);
+      } catch (err) {
+        setError('Failed to create thread.');
+      }
     };
 
     createThread();
   }, []);
 
+  // ✅ Send message
   const sendMessage = async () => {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message: input, thread_id: threadId }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    if (!input.trim()) return;
 
-    const data = await res.json();
-    setMessages((prev) => [...prev, { role: 'user', content: input }, data.assistantResponse]);
+    const userMsg = { role: 'user', content: input };
+    setMessages([...messages, userMsg]);
     setInput('');
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input, thread_id: threadId }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+
+      const assistantMsg = {
+        role: 'assistant',
+        content: data.assistantResponse,
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      setError('Error sending message.');
+    }
   };
 
   return (
-    <>
-      <div>{/* message render here */}</div>
-      <input value={input} onChange={(e) => setInput(e.target.value)} />
+    <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+      <h2>Koval Deep AI</h2>
+
+      <div style={{ border: '1px solid #ccc', minHeight: '200px', padding: '1rem', marginBottom: '1rem' }}>
+        {messages.map((msg, i) => (
+          <p key={i}><strong>{msg.role}:</strong> {msg.content}</p>
+        ))}
+        {error && <p style={{ color: 'red' }}>{error}</p>}
+      </div>
+
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Type your question..."
+        style={{ width: '80%', marginRight: '1rem' }}
+      />
       <button onClick={sendMessage}>Send</button>
-    </>
+    </div>
   );
 }
