@@ -23,35 +23,39 @@ export default function Chat() {
   }, []);
 
   const sendMessage = async () => {
-  if (!input.trim() || !threadId) return; // ⬅️ Don't send if no thread
+  if (!input.trim() || !threadId) {
+    setError('Assistant is still loading...');
+    return;
+  }
 
+  const userMsg = { role: 'user', content: input };
+  setMessages([...messages, userMsg]);
+  setInput('');
+  setError(null); // clear previous errors
 
-    const userMsg = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: input, thread_id: threadId }),
+    });
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, thread_id: threadId }),
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-        return;
-      }
-
-      const assistantMsg = { role: 'assistant', content: data.assistantResponse };
-      setMessages((prev) => [...prev, assistantMsg]);
-      setTimeout(() => {
-        chatBoxRef.current?.scrollTo(0, chatBoxRef.current.scrollHeight);
-      }, 100);
-    } catch {
-      setError('❌ Error sending message.');
+    if (data.error) {
+      setError(data.error);
+      return;
     }
-  };
+
+    const assistantMsg = {
+      role: 'assistant',
+      content: data.assistantResponse,
+    };
+    setMessages((prev) => [...prev, assistantMsg]);
+  } catch (err) {
+    setError('Error sending message.');
+  }
+};
 
   return (
     <div className="bg-black bg-opacity-90 min-h-screen text-white p-4">
