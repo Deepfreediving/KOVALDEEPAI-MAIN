@@ -14,19 +14,17 @@ export default function Chat() {
       try {
         const res = await fetch('/api/create-thread', { method: 'POST' });
         const data = await res.json();
-        setThreadId(data.thread_id);
+        if (data?.thread_id) {
+          setThreadId(data.thread_id);
+        } else {
+          setError('❌ Failed to load thread ID.');
+        }
       } catch {
         setError('❌ Failed to create thread.');
       }
     };
     createThread();
   }, []);
-
-  useEffect(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-    }
-  }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim() || !threadId) {
@@ -48,55 +46,61 @@ export default function Chat() {
 
       const data = await res.json();
 
-      const assistantReply = data?.assistantResponse || data?.choices?.[0]?.message?.content;
-
-      if (!assistantReply) {
-        setError('⚠️ Assistant did not return a message.');
-        return;
+      if (data?.assistantResponse) {
+        const assistantMsg = {
+          role: 'assistant',
+          content: data.assistantResponse,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      } else {
+        setError('❌ Assistant returned no response.');
       }
-
-      const assistantMsg = { role: 'assistant', content: assistantReply };
-      setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
       setError('❌ Error sending message.');
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-black bg-opacity-90 text-white flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-3xl flex flex-col gap-4">
-        <h2 className="text-center text-3xl font-bold mb-2">Koval Deep AI</h2>
+    <div
+      className="min-h-screen bg-cover bg-center bg-black text-white p-6"
+      style={{
+        backgroundImage: `url('/background.jpg')`,
+      }}
+    >
+      <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg">
+        <h1 className="text-3xl font-bold text-center mb-6">Koval Deep AI</h1>
 
         <div
           ref={chatBoxRef}
-          className="bg-gray-800 border border-gray-600 rounded-lg p-4 h-[500px] overflow-y-auto shadow-inner"
+          className="h-96 overflow-y-auto border border-gray-600 p-4 rounded-lg bg-gray-900"
         >
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`mb-3 p-3 rounded-lg whitespace-pre-wrap ${
+              className={`mb-3 p-3 rounded-lg ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white text-right'
-                  : 'bg-green-700 text-white text-left'
+                  ? 'bg-blue-700 text-right'
+                  : 'bg-green-800 text-left'
               }`}
             >
-              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> {msg.content}
+              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>{' '}
+              {msg.content}
             </div>
           ))}
           {error && <p className="text-red-400">{error}</p>}
         </div>
 
-        <div className="flex gap-2">
-          <input
+        <div className="mt-4 flex flex-col sm:flex-row gap-3">
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             placeholder="Type your question..."
-            className="flex-1 p-3 rounded-md text-black text-lg"
+            className="flex-1 p-3 rounded-md text-black text-lg resize-none h-20"
           />
           <button
             onClick={sendMessage}
-            className="bg-white text-black px-4 py-2 rounded-md font-semibold"
+            className="bg-white text-black px-6 py-2 rounded-md font-semibold"
           >
             Send
           </button>
