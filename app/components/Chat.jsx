@@ -62,8 +62,10 @@ export default function Chat() {
 
       <div style={{ border: '1px solid #ccc', minHeight: '200px', padding: '1rem', marginBottom: '1rem' }}>
         {messages.map((msg, i) => (
-          <p key={i}><strong>{msg.role}:</strong> {msg.content}</p>
-        ))}
+  <p key={i} className={msg.role === 'user' ? 'text-blue-300' : 'text-green-300'}>
+    <strong>{msg.role}:</strong> {msg.content}
+  </p>
+))}
         {error && <p style={{ color: 'red' }}>{error}</p>}
       </div>
 
@@ -71,11 +73,26 @@ export default function Chat() {
   value={input}
   onChange={(e) => setInput(e.target.value)}
   onKeyDown={(e) => {
-    if (e.key === "Enter") handleSend();
+    if (e.key === "Enter") sendMessage();
   }}
   placeholder="Type your question..."
 />
-      <button onClick={sendMessage}>Send</button>
+      <input
+  value={input}
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") sendMessage();
+  }}
+  placeholder="Type your question..."
+  className="w-full p-2 mb-2 text-black rounded"
+/>
+<button
+  onClick={sendMessage}
+  className="bg-white text-black px-4 py-2 rounded"
+>
+  Send
+</button>
+
     </div>
   );
 }
