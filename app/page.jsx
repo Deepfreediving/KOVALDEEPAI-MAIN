@@ -4,13 +4,13 @@ import Chat from './components/Chat';
 export default function Home() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-cover bg-center bg-black text-white" style={{ backgroundImage: "url('/background.jpg')" }}>
-     <p style={{ color: 'red', textAlign: 'center' }}>IF YOU SEE THIS, RENDER IS WORKING</p>
+     <p style={{ color: 'red', textAlign: 'center' }}>KOVAL DEEP AI</p>
       <div className="bg-white text-black p-10 rounded-2xl shadow-2xl w-full max-w-3xl">
         <img
           src="/deeplogo.jpg"
           alt="Deep Freediving Logo"
-          width={100}
-          height={100}
+          width={150}
+          height={150}
           style={{ display: 'block', margin: '0 auto', height: 'auto' }}
         />
         <h1 className="text-4xl font-bold text-center mt-4 mb-2">Welcome to Koval Deep AI</h1>
