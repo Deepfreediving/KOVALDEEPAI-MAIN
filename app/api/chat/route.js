@@ -1,36 +1,35 @@
-import { NextResponse } from 'next/server'; // Import NextResponse
-import getConfig from 'next/config';
-import OpenAI from 'openai';
+import { OpenAI } from 'openai';
 
-// Access serverRuntimeConfig for private keys
-const { serverRuntimeConfig } = getConfig();
-
-// Initialize OpenAI client with the API Key
 const openai = new OpenAI({
-  apiKey: serverRuntimeConfig.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Function to handle the POST request
-export async function POST(request) {
+export async function POST(req) {
+  const { message, thread_id } = await req.json();
+  
+  if (!message || !thread_id) {
+    return new Response(JSON.stringify({ error: 'Message or thread_id missing.' }), { status: 400 });
+  }
+
   try {
-    // Access the API key from serverRuntimeConfig
-    const openaiApiKey = serverRuntimeConfig.OPENAI_API_KEY;
+    // Create a new thread and message
+    const thread = await openai.chat.createThread({ thread_id });
+    const userMessage = await openai.chat.addMessage(thread.id, {
+      role: 'user',
+      content: message,
+    });
 
-    // Log the API Key for debugging purposes (remove for production)
-    console.log('OPENAI_API_KEY:', openaiApiKey);
+    // Fetch assistant response
+    const assistantResponse = await openai.chat.getResponse(thread.id);
 
-    // Example: Use the OPENAI_API_KEY for OpenAI request (uncomment below for functionality)
-    // const response = await openai.chat.completions.create({
-    //   model: 'gpt-4',
-    //   messages: [{ role: 'user', content: 'Hello!' }],
-    // });
-
-    // For now, just returning a test response
-    return NextResponse.json({ message: 'API response here' });
-
+    return new Response(
+      JSON.stringify({ assistantResponse: assistantResponse.text }),
+      { status: 200 }
+    );
   } catch (error) {
-    // Handle any errors
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
+    );
   }
 }
