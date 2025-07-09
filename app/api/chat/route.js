@@ -1,35 +1,43 @@
-import { OpenAI } from 'openai';
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client with API Key
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req) {
-  const { message, thread_id } = await req.json();
-  
-  if (!message || !thread_id) {
-    return new Response(JSON.stringify({ error: 'Message or thread_id missing.' }), { status: 400 });
-  }
-
   try {
-    // Create a new thread and message
-    const thread = await openai.chat.createThread({ thread_id });
-    const userMessage = await openai.chat.addMessage(thread.id, {
-      role: 'user',
-      content: message,
+    const { message, thread_id } = await req.json();
+
+    if (!message || !thread_id) {
+      return NextResponse.json(
+        { error: 'Message or thread_id missing.' },
+        { status: 400 }
+      );
+    }
+
+    // Assuming you need both message and thread_id for the API call
+    const assistantResponse = await openai.chat.completions.create({
+      model: 'gpt-4', // Make sure to choose the correct model
+      messages: [{ role: 'user', content: message }],
+      threadId: thread_id, // Ensure the thread_id is correctly used here
     });
 
-    // Fetch assistant response
-    const assistantResponse = await openai.chat.getResponse(thread.id);
+    // Check the response structure from OpenAI, adjust accordingly
+    const responseText = assistantResponse.choices?.[0]?.message?.content || 'No response text available';
 
-    return new Response(
-      JSON.stringify({ assistantResponse: assistantResponse.text }),
-      { status: 200 }
-    );
+    return NextResponse.json({
+      assistantResponse: responseText,
+    });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
+    // Error in OpenAI API call
+    console.error('Error in OpenAI API call:', error);
+    return NextResponse.json(
+      { error: 'Failed to get response from OpenAI.' },
       { status: 500 }
     );
   }
 }
+
+export const config = {
+  runtime: 'edge', // Ensure you have the correct runtime setup for Vercel
+};
