@@ -98,7 +98,20 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen bg-cover bg-center text-white p-6" style={{ backgroundImage: `url('/background.jpg')`, backgroundColor: '#000000' }}>
+    <div
+      className="min-h-screen bg-cover bg-center text-white p-6"
+      style={{
+        backgroundImage: `url('/background.jpg')`,
+        backgroundSize: 'cover',  // Ensures the background image covers the screen without stretching
+        backgroundPosition: 'center',
+        backgroundColor: '#000000',
+      }}
+    >
+      {/* Logo Section */}
+      <div className="absolute top-4 left-4 z-10">
+        <img src="/logo.png" alt="Logo" className="w-16 h-auto" />
+      </div>
+
       <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg">
         <h1 className="text-3xl font-bold text-center mb-6">Koval Deep AI</h1>
 
@@ -113,7 +126,10 @@ export default function Chat() {
                 msg.role === 'user' ? 'bg-blue-700 text-right' : 'bg-green-800 text-left'
               }`}
             >
-              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>
+              <div className="mt-1">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
             </div>
           ))}
           {loading && (
