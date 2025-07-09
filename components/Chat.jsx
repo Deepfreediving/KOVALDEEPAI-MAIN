@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 export default function Chat() {
@@ -12,7 +12,7 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [threadId, setThreadId] = useState(''); // Store thread ID for each conversation
   const messagesEndRef = useRef(null);
 
   // Use useEffect to handle client-side localStorage operations
@@ -23,6 +23,16 @@ export default function Chat() {
     const savedMessages = localStorage.getItem('kovalChatHistory');
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
+    }
+
+    // Optionally, generate or fetch the threadId for new conversations
+    const storedThreadId = localStorage.getItem('kovalThreadId');
+    if (!storedThreadId) {
+      const newThreadId = 'thread-' + Date.now(); // You can generate your own thread ID or pull from an API
+      setThreadId(newThreadId);
+      localStorage.setItem('kovalThreadId', newThreadId);
+    } else {
+      setThreadId(storedThreadId);
     }
   }, []);
 
@@ -65,7 +75,7 @@ export default function Chat() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages })
+        body: JSON.stringify({ message: input, thread_id: threadId })
       });
 
       const data = await response.json();
