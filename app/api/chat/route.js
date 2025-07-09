@@ -40,5 +40,7 @@ export async function POST(req) {
 }
 
 export const config = {
-  runtime: 'edge', // Ensure you have the correct runtime setup for Vercel
+  runtime: 'nodejs', // Change from 'edge' to 'nodejs'
 };
+
+
