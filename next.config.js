@@ -1,4 +1,3 @@
-// next.config.js
 module.exports = {
   serverRuntimeConfig: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
