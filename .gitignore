@@ -1,2 +1,3 @@
 # Ignore the SWC binary build file
 node_modules/next/next-swc-fallback/@next/swc-darwin-arm64/next-swc.darwin-arm64.node
+node_modules
