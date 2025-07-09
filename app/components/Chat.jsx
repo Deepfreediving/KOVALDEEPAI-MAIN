@@ -1,73 +1,104 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 export default function Chat() {
-  const [input, setInput] = useState('');
+  const [username, setUsername] = useState('');
   const [messages, setMessages] = useState([]);
-  const [threadId, setThreadId] = useState(null);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [threadId, setThreadId] = useState(null); // Store thread ID
   const [error, setError] = useState(null);
   const chatBoxRef = useRef(null);
 
+  // Use useEffect to handle client-side localStorage operations
   useEffect(() => {
-    const createThread = async () => {
-      try {
-        const res = await fetch('/api/create-thread', { method: 'POST' });
-        const data = await res.json();
-        if (data?.thread_id) {
-          setThreadId(data.thread_id);
-        } else {
-          setError('❌ Failed to load thread ID.');
-        }
-      } catch {
-        setError('❌ Failed to create thread.');
-      }
-    };
-    createThread();
+    const storedUser = localStorage.getItem('kovalUser');
+    if (storedUser) setUsername(storedUser);
+
+    const savedMessages = localStorage.getItem('kovalChatHistory');
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+
+    // Fetch or generate thread ID
+    const storedThreadId = localStorage.getItem('kovalThreadId');
+    if (!storedThreadId) {
+      const newThreadId = 'thread-' + Date.now();
+      setThreadId(newThreadId);
+      localStorage.setItem('kovalThreadId', newThreadId);
+    } else {
+      setThreadId(storedThreadId);
+    }
   }, []);
 
-  const sendMessage = async () => {
+  // Auto-scroll and store messages in localStorage
+  useEffect(() => {
+    chatBoxRef.current?.scrollIntoView({ behavior: 'smooth' });
+    localStorage.setItem('kovalChatHistory', JSON.stringify(messages));
+  }, [messages]);
+
+  const handleSend = async () => {
     if (!input.trim() || !threadId) {
       setError('Assistant is still loading...');
       return;
     }
 
-    const userMsg = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMsg]);
+    const userMessage = { role: 'user', content: input };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setError(null);
+    setLoading(true);
 
     try {
-      const res = await fetch('/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input, thread_id: threadId }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
+      const assistantMessage = data?.assistantMessage ?? {
+        role: 'assistant',
+        content: 'Hmm, something went wrong. Try again.'
+      };
 
-      if (data?.assistantResponse) {
-        const assistantMsg = {
-          role: 'assistant',
-          content: data.assistantResponse,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      } else {
-        setError('❌ Assistant returned no response.');
-      }
-    } catch (err) {
-      setError('❌ Error sending message.');
+      setMessages([...updatedMessages, assistantMessage]);
+    } catch (error) {
+      console.error('API call failed:', error);
+      setMessages([
+        ...updatedMessages,
+        { role: 'assistant', content: 'Sorry, an error occurred.' }
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Ask for username if missing
+  if (!username) {
+    return (
+      <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+        <h2>Welcome to Koval Deep AI</h2>
+        <p>Please enter your name or email to begin:</p>
+        <input
+          style={{ padding: '10px', width: '300px', fontSize: '16px' }}
+          placeholder="Your name or email"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+              localStorage.setItem('kovalUser', e.target.value.trim());
+              setUsername(e.target.value.trim());
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="min-h-screen bg-cover bg-center text-white p-6"
-      style={{
-        backgroundImage: `url('/background.jpg')`,
-        backgroundColor: '#000000',
-      }}
-    >
+    <div className="min-h-screen bg-cover bg-center text-white p-6" style={{ backgroundImage: `url('/background.jpg')`, backgroundColor: '#000000' }}>
       <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg">
         <h1 className="text-3xl font-bold text-center mb-6">Koval Deep AI</h1>
 
@@ -79,15 +110,17 @@ export default function Chat() {
             <div
               key={i}
               className={`mb-3 p-3 rounded-lg ${
-                msg.role === 'user'
-                  ? 'bg-blue-700 text-right'
-                  : 'bg-green-800 text-left'
+                msg.role === 'user' ? 'bg-blue-700 text-right' : 'bg-green-800 text-left'
               }`}
             >
-              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>{' '}
-              {msg.content}
+              <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong> <ReactMarkdown>{msg.content}</ReactMarkdown>
             </div>
           ))}
+          {loading && (
+            <div className="bg-green-800 text-left p-3 rounded-lg">
+              <strong>Assistant:</strong> <em>Typing...</em>
+            </div>
+          )}
           {error && <p className="text-red-400">{error}</p>}
         </div>
 
@@ -95,12 +128,12 @@ export default function Chat() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Type your question..."
             className="flex-1 p-3 rounded-md text-black text-lg resize-none h-20"
           />
           <button
-            onClick={sendMessage}
+            onClick={handleSend}
             className="bg-white text-black px-6 py-2 rounded-md font-semibold"
           >
             Send

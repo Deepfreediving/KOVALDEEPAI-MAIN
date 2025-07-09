@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",  
+    "paths": {
+      "@components/*": ["app/components/*"]  
+    }
+  },
+  "include": [
+    "app/**/*",  
+    "next.config.js",  
+    "vercel.json"
+  ],
+  "exclude": [
+    "node_modules",  
+    ".next"
+  ]
+}
