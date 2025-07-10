@@ -6,5 +6,8 @@ node_modules/
 .env.local
 .next/
 .vercel
+.env
+.env.production
+.DS_Store
 # Ignore swap files
 *.swp
