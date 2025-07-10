@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import index from './pineconeInit'; // Import the Pinecone index
+import index from '../pineconeInit';
 
 export async function POST(req) {
   try {
