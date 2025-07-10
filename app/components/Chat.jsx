@@ -99,20 +99,46 @@ export default function Chat() {
 
   return (
     <div
-      className="min-h-screen bg-cover bg-center text-white p-6"
+      className="relative min-h-screen bg-cover bg-center text-white p-6"
       style={{
-        backgroundImage: `url('/background.jpg')`,
-        backgroundSize: 'cover',  // Ensures the background image covers the screen without stretching
-        backgroundPosition: 'center',
-        backgroundColor: '#000000',
+        backgroundImage: `url('/background.jpg')`, // Corrected background image
+        backgroundSize: 'cover',  // Ensure background image covers the entire screen
+        backgroundPosition: 'center',  // Center the background image
+        backgroundRepeat: 'no-repeat',  // Prevent background image from repeating
+        backgroundColor: '#000000',  // Fallback color
+        height: '100vh',  // Full viewport height
+        margin: '0',
+        zIndex: '0',      // Set background behind all other elements
       }}
     >
-      {/* Logo Section */}
-      <div className="absolute top-4 left-4 z-10">
-        <img src="/logo.png" alt="Logo" className="w-16 h-auto" />
+      {/* Logo */}
+      <div
+        className="absolute top-4 left-4 z-20"
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          zIndex: '10',  // Ensure logo appears in front of the background
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', // Add a transparent background to help with visibility
+          padding: '5px',
+        }}
+      >
+        <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-32" />
       </div>
 
-      <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg">
+      {/* Header Text */}
+      <div
+        className="absolute top-4 left-32 z-30 text-white text-3xl font-bold"
+        style={{
+          zIndex: '15',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', // Background for text to make it stand out
+          padding: '5px',
+        }}
+      >
+        Koval Deep AI
+      </div>
+
+      <div className="max-w-2xl mx-auto bg-black bg-opacity-70 rounded-xl p-6 shadow-lg mt-20">
         <h1 className="text-3xl font-bold text-center mb-6">Koval Deep AI</h1>
 
         <div
@@ -127,7 +153,7 @@ export default function Chat() {
               }`}
             >
               <strong>{msg.role === 'user' ? 'You' : 'Assistant'}:</strong>
-              <div className="mt-1">
+              <div className="whitespace-pre-line">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             </div>
