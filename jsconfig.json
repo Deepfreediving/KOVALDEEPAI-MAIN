@@ -1,17 +1,18 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",  
+    "baseUrl": ".",  // Base directory for resolving modules
     "paths": {
-      "@components/*": ["app/components/*"]  
+      "@lib/*": ["app/lib/*"],  // Correctly map the alias to the right directory
+      "@/*": ["app/*"]
     }
   },
   "include": [
-    "app/**/*",  
-    "next.config.js",  
+    "app/**/*",
+    "next.config.js",
     "vercel.json"
   ],
   "exclude": [
-    "node_modules",  
+    "node_modules",
     ".next"
   ]
 }

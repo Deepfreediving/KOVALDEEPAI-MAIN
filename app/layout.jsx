@@ -1,13 +1,13 @@
+// app/layout.jsx
 export const metadata = {
-  title: 'Koval Deep AI',
-  description: 'Freediving assistant powered by OpenAI',
+  title: "Koval Deep AI",
+  description: "Your freediving training assistant",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-black text-white">{children}</body>
     </html>
   );
 }
-
