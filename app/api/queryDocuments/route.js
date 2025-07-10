@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PineconeClient } from '@pinecone-database/pinecone';
-
-// Initialize Pinecone client
-const pinecone = new PineconeClient();
-pinecone.init({
-  apiKey: process.env.PINECONE_API_KEY || '',
-  environment: process.env.PINECONE_ENVIRONMENT || 'us-west1-gcp', // Replace with correct environment
-});
+import index from './pineconeInit'; // Import the Pinecone index
 
 export async function POST(req) {
   try {
@@ -20,10 +13,9 @@ export async function POST(req) {
     }
 
     // Query Pinecone to find the most relevant documents
-    const index = pinecone.Index(indexName);
     const result = await index.query({
       vector,
-      topK: 10,
+      topK: 10, // Number of similar items you want to retrieve
     });
 
     return NextResponse.json({ matches: result.matches || [] });

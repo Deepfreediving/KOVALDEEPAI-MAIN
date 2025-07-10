@@ -1,0 +1,73 @@
+3. Pressure Changes:
+
+Lung Volume Changes:
+
+As a freediver descends, the increasing pressure compresses the lungs, decreasing their volume. Dalton's Law of Partial Pressures is a key concept in freediving physiology. It explains how the pressure exerted by a mixture of gases is the sum of the individual pressures of each gas. This is crucial for understanding how gases behave at depth and how they affect a freediver's body.
+
+Here's a breakdown of how Dalton's Law applies to freediving:
+
+Total Pressure vs. Partial Pressure:
+
+At any depth, the total pressure is the sum of the partial pressures of each gas in the mixture. For example, in air, the total pressure is the sum of the partial pressures of nitrogen, oxygen, and other gases. Daltons’s Law
+
+Partial Pressure and Solubility:
+
+As a diver descends, the total pressure increases, and so does the partial pressure of each gas in the mixture. This increase in partial pressure affects how much of each gas dissolves into the bloodstream .
+
+Changes in partial pressures can have significant physiological effects. For example, increased partial pressure of nitrogen can lead to , while increased partial pressure of oxygen can lead to  at higher depths.
+
+Understanding Dalton's Law helps freedivers predict the behavior of gases at depth, manage their gas intake, and avoid potential hazards like narcosis or toxicity. It also plays a role in understanding  and .
+
+If a diver is breathing air at 10 meters (2 atmospheres of pressure), the partial pressure of oxygen, which is normally around 0.21 atm at the surface, will be roughly 0.42 atm at 10 meters (2 x 0.21)
+
+Pressure Equalization:
+
+Divers need to equalize the pressure in their ears and sinuses to prevent injury (barotrauma).
+
+Boyle's Law is fundamental to understanding freediving physiology because it describes the relationship between pressure and volume of a gas, which directly impacts a diver's body at different depths. As a diver descends, the surrounding pressure increases, causing the air in the lungs and other air spaces (like the ears and sinuses) to compress, decreasing in volume. Conversely, as the diver ascends, the pressure decreases, causing the air to expand. This expansion can lead to serious injuries like  if not managed properly through controlled breathing and equalization techniques.
+
+Here's a breakdown of how Boyle's Law applies to freediving:
+
+Pressure and Volume:
+
+Boyle's Law states that at a constant temperature, the pressure and volume of a gas are inversely proportional. This means that as pressure increases, volume decreases, and vice versa.
+
+Lung Compression:
+
+As a freediver descends, the increasing pressure causes the air in their lungs to compress. This means the lungs take up less space at depth.
+
+The compression of air also affects other air spaces in the body, like the ears and sinuses. Freedivers must equalize these spaces to prevent pain and injury from the pressure difference.
+
+During ascent, the pressure decreases, causing the air in the lungs and other air spaces to expand. If a diver holds their breath during ascent, the expanding air can cause lung damage.
+
+Understanding Boyle's Law is crucial for freedivers to manage the effects of pressure and avoid injuries like  (pressure-related injuries).
+
+The most important take away from Boyles law is when you equalize your ears, sinuses and mask at depth you can breath the air back in as it re-expands when your turn around and head back to the surface. Even if you have a noseclip on you can still breath in.
+
+Archimedes' principle is fundamental to understanding buoyancy in freediving. It states that the upward buoyant force on an object submerged in a fluid equals the weight of the fluid displaced by the object. This principle dictates whether a freediver will sink, float, or be neutrally buoyant.In freediving, the diver's body volume and the air in their lungs displace water, creating a buoyant force. Changes in lung volume due to pressure changes at depth directly affect buoyancy.
+
+Here's how Archimedes' principle applies to freediving:
+
+Buoyancy and Lung Volume:
+
+As a freediver descends, the pressure increases, and the volume of air in their lungs decreases due to . This reduction in lung volume means less water is displaced, reducing the buoyant force.
+
+Positive, Negative, and Neutral Buoyancy:
+
+Positive buoyancy: If the buoyant force is greater than the diver's weight, the diver will float upwards.
+
+Negative buoyancy: If the buoyant force is less than the diver's weight, the diver will sink.
+
+Neutral buoyancy: When the buoyant force equals the diver's weight, the diver will neither sink nor float.
+
+Freedivers generally aim for neutral buoyancy at depth to conserve energy and for positive buoyancy at the surface for safety.
+
+Proper weighting is crucial in freediving. Divers need to be weighted so that they can achieve neutral buoyancy at a desired depth while also being positively buoyant on the surface, particularly in the first 10 meters where shallow water blackouts are more common
+
+At greater depths, the increased partial pressure of nitrogen can lead to nitrogen narcosis, a state of intoxication.
+
+Cardiovascular Effects: Freediving can lead to dramatic changes in blood pressure and heart rate.
+
+Blood Volume Changes: Blood volume can redistribute towards the core during a dive.
+
+Squeeze: Lung squeeze, or , can occur during descent due to pressure changes. Trachea squeeze is caused by lifting head up on the way down beyond 20m, improper equalization and mouthfilling technique. Trachea squeezes are more common than lung squeeze because you need to dive beyond RV depths to get a lung squeeze or to be extremely tense in the core where the lungs cannot compress. Bronchi squeeze can be due to forcing an equalization at depth around 40-50m doing Valsalva maneuver, pulling too hard off the bottom, tension in the core.
