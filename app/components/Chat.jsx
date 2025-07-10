@@ -19,16 +19,18 @@ export default function Chat() {
       // Create new thread on server-side if not found in localStorage
       const createThread = async () => {
         try {
-          const response = await fetch('/api/chat', { method: 'POST' });
+          const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.thread_id) {
             setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
             localStorage.setItem('kovalThreadId', data.thread_id);
           } else {
             console.error("Thread creation failed: No thread_id returned.");
+            setError("Failed to create thread.");
           }
         } catch (err) {
           console.error('[Thread Creation Error]', err);
+          setError('Failed to create thread.');
         }
       };
 
@@ -55,7 +57,7 @@ export default function Chat() {
 
   const sendMessage = async () => {
     if (!input.trim() || !threadId) {
-      setError('Please wait, assistant is still loading...');
+      setError('Assistant is still loading...');
       return;
     }
 
@@ -69,7 +71,10 @@ export default function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, thread_id: threadId }),
+        body: JSON.stringify({
+          message: input,  // User input
+          thread_id: threadId  // Valid thread ID
+        }),
       });
 
       const data = await res.json();
@@ -84,6 +89,7 @@ export default function Chat() {
         setError('❌ Assistant returned no response.');
       }
     } catch (err) {
+      console.error('Error sending message:', err);  // Log error to console
       setError('❌ Error sending message.');
     } finally {
       setLoading(false);
