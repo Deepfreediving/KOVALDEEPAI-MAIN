@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/" }
   ],
   "builds": [
     {
@@ -10,11 +11,11 @@
     }
   ],
   "env": {
-    "PINECONE_API_KEY": "@pinecone_api_key",
-    "PINECONE_INDEX": "@pinecone_index",
-    "PINECONE_HOST": "@pinecone_host",
-    "PINECONE_ENVIRONMENT": "@pinecone_environment",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "OPENAI_ASSISTANT_ID": "@openai_assistant_id"
+    "PINECONE_API_KEY": "@pinecone_api_key",  // Vercel secret name for Pinecone API key
+    "PINECONE_INDEX": "koval-deep-ai",  // The Pinecone index you're using
+    "PINECONE_HOST": "@pinecone_host",  // Vercel secret for Pinecone host
+    "PINECONE_REGION": "@pinecone_region",  // Vercel secret for Pinecone region (us-east-1)
+    "OPENAI_API_KEY": "@openai_api_key",  // Vercel secret for OpenAI API key
+    "OPENAI_ASSISTANT_ID": "@openai_assistant_id"  // Vercel secret for OpenAI Assistant ID
   }
 }
