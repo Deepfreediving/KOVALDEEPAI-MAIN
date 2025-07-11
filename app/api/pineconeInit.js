@@ -1,18 +1,32 @@
 import { Pinecone } from '@pinecone-database/pinecone';
-import dotenv from 'dotenv';
 
-// Initialize dotenv to load environment variables
-dotenv.config();
+// If running locally, load environment variables
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();  // Only use dotenv in development mode
+}
+
+// Validate required environment variables
+const { PINECONE_API_KEY, PINECONE_HOST, PINECONE_INDEX } = process.env;
+
+if (!PINECONE_API_KEY) {
+  throw new Error('Pinecone API key (PINECONE_API_KEY) is not configured.');
+}
+
+if (!PINECONE_HOST) {
+  throw new Error('Pinecone host (PINECONE_HOST) is not configured.');
+}
+
+if (!PINECONE_INDEX) {
+  throw new Error('Pinecone index (PINECONE_INDEX) is not configured.');
+}
 
 // Create and configure Pinecone client
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY,
-  controllerHostUrl: process.env.PINECONE_HOST,  // Correct property to set the host
-  fetchApi: undefined, // Optional: Set your fetch API if needed (or leave undefined)
-  additionalHeaders: {},  // Optional: Set any additional headers if needed
+  apiKey: PINECONE_API_KEY,
+  controllerHostUrl: PINECONE_HOST,
 });
 
-// Set up the index you are working with
-const index = pinecone.index('koval-deep-ai'); // Ensure this is the correct index name
+// Set up the index you're working with
+const index = pinecone.index(PINECONE_INDEX);
 
 export default index;
