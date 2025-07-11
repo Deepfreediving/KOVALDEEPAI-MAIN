@@ -1,47 +1,19 @@
 {
   "pages": {
-    "/_not-found/page": [
-      "static/chunks/webpack-c0fabd87f68781dd.js",
-      "static/chunks/4bd1b696-2581ea8f93aa337b.js",
-      "static/chunks/684-5b4fb39b2edeffff.js",
-      "static/chunks/main-app-8bc2edefdd0c4565.js",
-      "static/chunks/app/_not-found/page-a34d8364e4ec1493.js"
-    ],
     "/layout": [
-      "static/chunks/webpack-c0fabd87f68781dd.js",
-      "static/chunks/4bd1b696-2581ea8f93aa337b.js",
-      "static/chunks/684-5b4fb39b2edeffff.js",
-      "static/chunks/main-app-8bc2edefdd0c4565.js",
-      "static/chunks/app/layout-f3c0d7409ede849a.js"
-    ],
-    "/api/create-thread/route": [
-      "static/chunks/webpack-c0fabd87f68781dd.js",
-      "static/chunks/4bd1b696-2581ea8f93aa337b.js",
-      "static/chunks/684-5b4fb39b2edeffff.js",
-      "static/chunks/main-app-8bc2edefdd0c4565.js",
-      "static/chunks/app/api/create-thread/route-40b8b6191296453b.js"
-    ],
-    "/api/chat/route": [
-      "static/chunks/webpack-c0fabd87f68781dd.js",
-      "static/chunks/4bd1b696-2581ea8f93aa337b.js",
-      "static/chunks/684-5b4fb39b2edeffff.js",
-      "static/chunks/main-app-8bc2edefdd0c4565.js",
-      "static/chunks/app/api/chat/route-1700cbdb256a552c.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/layout.js"
     ],
     "/page": [
-      "static/chunks/webpack-c0fabd87f68781dd.js",
-      "static/chunks/4bd1b696-2581ea8f93aa337b.js",
-      "static/chunks/684-5b4fb39b2edeffff.js",
-      "static/chunks/main-app-8bc2edefdd0c4565.js",
-      "static/chunks/411-fc03c515ca4eb0e1.js",
-      "static/chunks/app/page-598aed10b756e26b.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
     ],
-    "/api/queryDocuments/route": [
-      "static/chunks/webpack-c0fabd87f68781dd.js",
-      "static/chunks/4bd1b696-2581ea8f93aa337b.js",
-      "static/chunks/684-5b4fb39b2edeffff.js",
-      "static/chunks/main-app-8bc2edefdd0c4565.js",
-      "static/chunks/app/api/queryDocuments/route-fce4f7381ccfae44.js"
+    "/api/chat/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/chat/route.js"
     ]
   }
 }
