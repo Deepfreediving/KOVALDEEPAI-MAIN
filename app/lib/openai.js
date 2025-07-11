@@ -1,10 +1,10 @@
 // /lib/openai.js or /services/openai.js
 
-import { Configuration, OpenAIApi } from "openai";
+import { Configuration, OpenAIApi } from "openai";  // Corrected the import
 
 // Initialize OpenAI configuration
 const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,  // Make sure OPENAI_API_KEY is set in your environment variables
+  apiKey: process.env.OPENAI_API_KEY,  // Ensure OPENAI_API_KEY is set in your environment variables
 });
 
 const openai = new OpenAIApi(configuration);
