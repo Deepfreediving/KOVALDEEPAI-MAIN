@@ -10,11 +10,12 @@
       "config": { "distDir": "app" }
     }
   ],
-"env": {
+ "env": {
   "PINECONE_API_KEY": "@pineconeapikey",
   "PINECONE_INDEX": "koval-deep-ai",
   "PINECONE_HOST": "@pinecone_host",
   "PINECONE_REGION": "@pinecone_region",
   "OPENAI_API_KEY": "@openai_api_key",
   "OPENAI_ASSISTANT_ID": "@openai_assistant_id"
+ }
 }
