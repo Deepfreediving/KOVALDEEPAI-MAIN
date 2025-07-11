@@ -10,23 +10,35 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const indexName = process.env.PINECONE_INDEX;
-const environment = process.env.PINECONE_ENVIRONMENT;
-const index = pinecone.index(indexName, environment);
+const index = pinecone.index(indexName);
 
 async function queryIndex() {
   const queryVector = new Array(1024).fill(0.015); // Close to doc-1 and doc-2
+  return index.query({
+    vector: queryVector,
+    topK: 2,
+    includeMetadata: true,
+  });
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const { queryVector } = req.body || {};
+  const vector = Array.isArray(queryVector) ? queryVector : new Array(1024).fill(0.015);
 
   try {
     const result = await index.query({
-      vector: queryVector,
+      vector,
       topK: 2,
       includeMetadata: true,
     });
 
-    console.log('🔍 Query Result:', JSON.stringify(result, null, 2));
+    res.status(200).json(result);
   } catch (err) {
     console.error('❌ Query failed:', err);
+    res.status(500).json({ error: 'Failed to query index' });
   }
 }
-
-queryIndex();

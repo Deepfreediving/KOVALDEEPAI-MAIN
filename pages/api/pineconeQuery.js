@@ -1,4 +1,3 @@
-// app/api/pineconeQuery.js
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
@@ -14,13 +13,7 @@ const pinecone = new Pinecone({
 });
 
 const indexName = 'koval-deep-ai';
-const pineconeHost = process.env.PINECONE_HOST;
-
-if (!pineconeHost) {
-  throw new Error('❌ PINECONE_HOST is not defined in .env.local');
-}
-
-const index = pinecone.Index(indexName); // ✅ Pinecone v1 method
+const index = pinecone.Index(indexName);
 
 async function getQueryEmbedding(query) {
   const response = await openai.embeddings.create({
@@ -32,31 +25,28 @@ async function getQueryEmbedding(query) {
 
 async function queryPinecone(query) {
   const embedding = await getQueryEmbedding(query);
-
-  try {
-    const result = await index.query({
-      topK: 3,
-      vector: embedding,
-      includeMetadata: true,
-    });
-
-    console.log('🔍 Query results:');
-    result.matches.forEach((match, i) => {
-      console.log(`\nResult #${i + 1}`);
-      console.log(`Score: ${match.score}`);
-      console.log(`Metadata:`, match.metadata);
-    });
-
-    return result;
-  } catch (err) {
-    console.error('❌ Error querying Pinecone:', err);
-    throw err;
-  }
+  return index.query({
+    topK: 3,
+    vector: embedding,
+    includeMetadata: true,
+  });
 }
 
-// Example usage
-const userQuery = 'How do I take a mouthfill in deep freediving?';
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-queryPinecone(userQuery).catch((err) => {
-  console.error('❌ Query failed:', err);
-});
+  const { query } = req.body;
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Query is required' });
+  }
+
+  try {
+    const result = await queryPinecone(query);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('❌ Error querying Pinecone:', err);
+    res.status(500).json({ error: 'Failed to query Pinecone' });
+  }
+}

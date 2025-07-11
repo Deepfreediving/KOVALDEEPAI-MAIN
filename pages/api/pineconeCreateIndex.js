@@ -14,7 +14,6 @@ const indexName = 'koval-deep-ai'; // Your created index
 export async function POST(req) {
   try {
     const { vector } = await req.json();
-
     if (!vector) {
       return NextResponse.json({ error: 'Vector missing' }, { status: 400 });
     }
