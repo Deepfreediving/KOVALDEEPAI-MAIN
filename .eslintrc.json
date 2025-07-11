@@ -1,23 +1,29 @@
 {
-    "env": {
-        "browser": true,
-        "es2021": true,
-        "node": true
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": [
+    "plugin:react/recommended",
+    "standard",
+    "next/core-web-vitals"
+  ],
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
     },
-    "extends": [
-        "plugin:react/recommended",
-        "standard"
-    ],
-    "parserOptions": {
-        "ecmaFeatures": {
-            "jsx": true
-        },
-        "ecmaVersion": 15,
-        "sourceType": "module"
-    },
-    "plugins": [
-        "react"
-    ],
-    "rules": {
-    }
+    "ecmaVersion": 15,
+    "sourceType": "module"
+  },
+  "plugins": [
+    "react",
+    "next"
+  ],
+  "rules": {
+    // Add or modify specific rules here, if needed
+    "react/react-in-jsx-scope": "off",  // Next.js automatically imports React
+    "next/no-page-custom-font": "off",  // Optional rule you can enable/disable as per your preference
+    "next/no-img-element": "off"  // Optional rule to enable/disable handling for <img> tags
+  }
 }

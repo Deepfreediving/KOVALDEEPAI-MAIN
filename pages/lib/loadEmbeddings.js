@@ -1,24 +1,28 @@
-// loadEmbeddings.js in the app/lib directory
 const path = require('path');
 const fs = require('fs');
-const getAllTxtFiles = require('./getAllTxtFiles'); // Adjust the path as needed
-const getEmbedding = require('./getEmbedding');     // Adjust the path as needed
-const index = require('./index');                   // Adjust the path as needed
+const getAllTxtFiles = require('./getAllTxtFiles'); // Ensure the path to getAllTxtFiles is correct
+const { getEmbedding } = require('./getEmbedding'); // Ensure the correct import from getEmbedding.js
+const { index } = require('./index'); // Ensure the correct import from index.js
 
 async function loadDocuments() {
-  const dataFolder = path.join(process.cwd(), 'data'); // Ensure the data folder is correct
+  const dataFolder = path.join(process.cwd(), 'data'); // Adjust path to your 'data' directory
   const files = getAllTxtFiles(dataFolder);  // Get all .txt files
 
   const embedded = [];
 
   for (const file of files) {
-    const text = fs.readFileSync(file.fullPath, 'utf-8'); // Read file content
-    const embedding = await getEmbedding(text);         // Get embedding for the text
-    embedded.push({
-      id: file.relativePath,
-      values: embedding,
-      metadata: { text },
-    });
+    try {
+      const text = fs.readFileSync(file.fullPath, 'utf-8'); // Read file content
+      const embedding = await getEmbedding(text);         // Get embedding for the text
+
+      embedded.push({
+        id: file.relativePath,
+        values: embedding,
+        metadata: { text },
+      });
+    } catch (err) {
+      console.error(`Error processing file ${file.relativePath}:`, err);
+    }
   }
 
   console.log('📦 Prepared vectors for upsert:', embedded);
@@ -29,9 +33,13 @@ async function loadDocuments() {
     return;
   }
 
-  // Upsert to Pinecone
-  const result = await index.upsert({ records: embedded });  // Pinecone v1 SDK
-  console.log('✅ Upsert complete:', result);
+  // Upsert to Pinecone (v1 SDK)
+  try {
+    const result = await index.upsert({ records: embedded });
+    console.log('✅ Upsert complete:', result);
+  } catch (error) {
+    console.error('❌ Error during Pinecone upsert:', error);
+  }
 }
 
 module.exports = { loadDocuments };
