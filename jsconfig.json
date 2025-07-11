@@ -2,16 +2,16 @@
   "compilerOptions": {
     "baseUrl": ".",  // Base directory for resolving modules
     "paths": {
-      "@lib/*": ["app/lib/*"],  // Correctly map the alias to the right directory
-      "@components/*": ["app/components/*"],
-      "@pages/*": ["app/pages/*"],
-      "@styles/*": ["app/styles/*"],
-      "@/*": ["app/*"]
+      "@lib/*": ["pages/lib/*"],  // Correctly map the alias to the right directory
+      "@components/*": ["pages/components/*"],
+      "@pages/*": ["pages/pages/*"],
+      "@styles/*": ["pages/styles/*"],
+      "@/*": ["pages/*"]
     },
     "jsx": "react-jsx"  // Optional, if using JSX with React
   },
   "include": [
-    "app/**/*",
+    "pages/**/*",
     "pages/**/*",  // Include pages
     "components/**/*",  // Include components
     "next.config.js",
