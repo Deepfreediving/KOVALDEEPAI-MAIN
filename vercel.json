@@ -11,11 +11,11 @@
     }
   ],
   "env": {
-    "PINECONE_API_KEY": "@pineconeapikey",  
-    "PINECONE_INDEX": "koval-deep-ai",
-    "PINECONE_HOST": "@pinecone_host",
-    "PINECONE_REGION": "@pinecone_region",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "OPENAI_ASSISTANT_ID": "@openai_assistant_id"
+    "PINECONE_API_KEY": "PINECONE_API_KEY",  
+    "PINECONE_INDEX": "PINECONE_INDEX",
+    "PINECONE_HOST": "PINECONE_HOST",
+    "PINECONE_REGION": "PINECONE_REGION",
+    "OPENAI_API_KEY": "PENAI_API_KEY",
+    "OPENAI_ASSISTANT_ID": "OPENAI_ASSISTANT_ID"
   }
 }
