@@ -1,5 +1,5 @@
 import { openai } from '@lib/openai';
-import { NextResponse } from 'next/server'; // Import NextResponse
+import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
@@ -9,24 +9,16 @@ export async function POST(req) {
     // If no valid thread_id is passed, create a new thread
     if (!validThreadId) {
       const thread = await openai.beta.threads.create();
-      validThreadId = thread.id;
-      console.log(`Created new thread with ID: ${validThreadId}`); // Log for debugging
-
-      // Check if the thread creation was successful
-      if (!validThreadId) {
-        console.log('Thread creation failed, no validThreadId returned');
-        return new NextResponse(JSON.stringify({ error: 'Thread creation failed' }), { status: 500 });
+      if (thread && thread.id) {
+        validThreadId = thread.id;
+        console.log(`Created new thread with ID: ${validThreadId}`);
+      } else {
+        console.error("Thread creation failed");
+        return new NextResponse(JSON.stringify({ error: "Thread creation failed" }), { status: 500 });
       }
     }
 
-    // Log thread ID being used
-    console.log('Using thread ID:', validThreadId);
-
-    // Check if thread exists or was created
-    if (!validThreadId) {
-      console.log('Thread ID is invalid or not found');
-      return new NextResponse(JSON.stringify({ error: 'Invalid thread ID' }), { status: 404 });
-    }
+    console.log('Using thread ID:', validThreadId);  // Ensure thread ID is valid
 
     // Send the user message to the thread
     const messageResponse = await openai.beta.threads.messages.create(validThreadId, {
@@ -44,16 +36,14 @@ export async function POST(req) {
     let status = run.status;
     let runResult = run;
 
-    console.log('Polling run status...');
-    while (status !== 'completed' && status !== 'failed' && status !== 'cancelled') {
+    while (!['completed', 'failed', 'cancelled'].includes(status)) {
       await new Promise((res) => setTimeout(res, 1000));
       runResult = await openai.beta.threads.runs.retrieve(validThreadId, run.id);
       status = runResult.status;
-      console.log(`Current status: ${status}`);  // Log the current status during polling
     }
 
     if (status !== 'completed') {
-      console.log(`Run failed with status: ${status}`);  // Log if run fails
+      console.log(`Run failed with status: ${status}`);
       return new NextResponse(JSON.stringify({ error: `Run ${status}` }), { status: 500 });
     }
 

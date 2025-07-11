@@ -1,5 +1,27 @@
 {
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/" }
-  ]
+  ],
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "app" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/app/$1"
+    }
+  ],
+  "env": {
+    "PINECONE_API_KEY": "@pinecone_api_key",
+    "PINECONE_INDEX": "@pinecone_index",
+    "PINECONE_HOST": "@pinecone_host",
+    "PINECONE_ENVIRONMENT": "@pinecone_environment",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "OPENAI_ASSISTANT_ID": "@openai_assistant_id"
+  }
 }
