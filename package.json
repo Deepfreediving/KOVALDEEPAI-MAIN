@@ -1,8 +1,22 @@
 {
+  "name": "koval-deep-ai",
+  "version": "1.0.0",
+  "description": "Koval Deep AI - A Next.js application with Pinecone and OpenAI integration",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "engines": {
+    "node": ">=14.x"
+  },
+  "license": "MIT",
   "dependencies": {
-    "@pinecone-database/pinecone": "^2.0.0",  // Pinecone client
-    "axios": "^0.21.1",  // Axios for HTTP requests
-    "next": "^12.0.0",  // Ensure Next.js version is correct
-    "dotenv": "^10.0.0"  // For local environment variables (if needed)
+    "@next/bundle-analyzer": "^15.3.5",
+    "@pinecone-database/pinecone": "^2.0.0",
+    "axios": "^1.10.0",
+    "dotenv": "^10.0.0",
+    "next": "^15.3.5",
+    "react-markdown": "^10.1.0"
   }
 }
