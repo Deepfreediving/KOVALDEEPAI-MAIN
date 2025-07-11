@@ -1,7 +1,4 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/create-thread/route": "app/api/create-thread/route.js",
   "/api/chat/route": "app/api/chat/route.js",
-  "/page": "app/page.js",
-  "/api/queryDocuments/route": "app/api/queryDocuments/route.js"
+  "/page": "app/page.js"
 }
