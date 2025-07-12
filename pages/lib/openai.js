@@ -15,7 +15,7 @@ const openaiApi = axios.create({
 // Function to create a new thread (or conversation) for the assistant
 export const createThread = async () => {
   try {
-    // In development, return hardcoded data
+    // If in development, return hardcoded data for testing purposes
     if (process.env.NODE_ENV === 'development') {
       console.log("Test Mode: Using hardcoded data for thread creation.");
       
@@ -27,22 +27,22 @@ export const createThread = async () => {
       };
     }
 
-    // In production, create the thread via the OpenAI API (this may require adjustment based on OpenAI's API)
+    // In production, create the thread via the OpenAI API
     const response = await openaiApi.post('/threads', {
-      model: process.env.OPENAI_MODEL, // Replace with actual OpenAI model if needed
+      model: process.env.OPENAI_MODEL, // Ensure this is set correctly in your environment
     });
     
-    return response.data;
+    return response.data;  // Assuming the response contains the thread ID in the 'id' field
   } catch (error) {
     console.error("Error creating thread:", error.response?.data || error.message);
-    throw error;
+    throw error; // Rethrow the error for proper handling
   }
 };
 
 // Function to send a message to the assistant
 export const createMessage = async (threadId, message) => {
   try {
-    // In development, return a hardcoded response
+    // If in development, return a hardcoded response for testing purposes
     if (process.env.NODE_ENV === 'development') {
       console.log("Test Mode: Using hardcoded data for message response.");
       
@@ -68,13 +68,13 @@ export const createMessage = async (threadId, message) => {
       content: message, // The message content
     });
 
-    return response.data;
+    return response.data; // Return the real response from the API
   } catch (error) {
-    // Improved error handling
+    // Improved error handling for both the API response and the general message
     console.error("Error sending message:", error.response?.data || error.message);
     throw new Error('Error sending message: ' + (error.message || error.response?.data));
   }
 };
 
-// Export axios instance for any other uses
+// Export axios instance for any other uses (if needed)
 export default openaiApi;
