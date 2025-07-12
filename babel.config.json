@@ -3,7 +3,7 @@
     [
       "next/babel",
       {
-        "reactRuntime": "automatic"
+        "reactRuntime": "automatic"  // React 17+ JSX Transform
       }
     ]
   ]
