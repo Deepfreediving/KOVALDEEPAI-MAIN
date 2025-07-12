@@ -1,6 +1,5 @@
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
+import path from 'path';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const nextConfig = async () => {
   // Ensure environment variables are set securely
@@ -11,7 +10,6 @@ const nextConfig = async () => {
     throw new Error('Missing OPENAI_ASSISTANT_ID environment variable');
   }
 
-  // Return configuration dynamically, allowing async operations if necessary
   return {
     // Server-side configuration, only available on the server
     serverRuntimeConfig: {
@@ -61,4 +59,4 @@ const nextConfig = async () => {
 };
 
 // Export the configuration with bundle analyzer
-module.exports = withBundleAnalyzer(nextConfig);
+export default withBundleAnalyzer(nextConfig);

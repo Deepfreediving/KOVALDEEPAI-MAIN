@@ -15,21 +15,25 @@ const openaiApi = axios.create({
 // Function to create a new thread (or conversation) for the assistant
 export const createThread = async () => {
   try {
-    // Simulate hardcoded data for thread creation
-    const response = {
-      data: {
+    // In development, return hardcoded data
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Test Mode: Using hardcoded data for thread creation.");
+      
+      return {
         threadId: 'test-thread-id-12345',
         model: process.env.OPENAI_MODEL,
         status: 'success',
         message: 'Thread created successfully'
-      }
-    };
+      };
+    }
+
+    // In production, create the thread via the OpenAI API (this may require adjustment based on OpenAI's API)
+    const response = await openaiApi.post('/threads', {
+      model: process.env.OPENAI_MODEL, // Replace with actual OpenAI model if needed
+    });
     
-    // Return the hardcoded response data
-    console.log('Thread Created:', response.data);
     return response.data;
   } catch (error) {
-    // If the error is from the API response, log detailed response data
     console.error("Error creating thread:", error.response?.data || error.message);
     throw error;
   }
@@ -38,40 +42,36 @@ export const createThread = async () => {
 // Function to send a message to the assistant
 export const createMessage = async (threadId, message) => {
   try {
-    // Test with hardcoded data if no actual request is made
+    // In development, return a hardcoded response
     if (process.env.NODE_ENV === 'development') {
       console.log("Test Mode: Using hardcoded data for message response.");
       
-      const hardcodedResponse = {
-        role: 'assistant',
-        content: 'This is a simulated assistant response for testing purposes.',
-        threadId: threadId,
+      return { 
+        choices: [{
+          message: {
+            role: 'assistant',
+            content: 'This is a simulated assistant response for testing purposes.',
+            threadId: threadId,
+          }
+        }] 
       };
-      
-      // Return hardcoded data in place of actual API response
-      return { choices: [{ message: hardcodedResponse }] };
     }
 
-    // Check if threadId or message is missing
+    // Ensure threadId and message are provided
     if (!threadId || !message) {
       throw new Error("Missing required parameters: threadId or message");
     }
 
+    // In production, send the message to the OpenAI API
     const response = await openaiApi.post(`/threads/${threadId}/messages`, {
-      role: 'user', // User's message
-      content: message, // The actual message content
+      role: 'user', // User's message role
+      content: message, // The message content
     });
 
     return response.data;
   } catch (error) {
     // Improved error handling
-    if (error.response) {
-      // If the error is from the API response, log detailed response data
-      console.error("Error sending message:", error.response.data);
-    } else {
-      // If no response, log the error message
-      console.error("Error sending message:", error.message);
-    }
+    console.error("Error sending message:", error.response?.data || error.message);
     throw new Error('Error sending message: ' + (error.message || error.response?.data));
   }
 };
