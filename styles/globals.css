@@ -1,3 +1,11 @@
+/* global.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Add your global CSS styles here */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif; /* You can customize this to your preferred font */
+}
