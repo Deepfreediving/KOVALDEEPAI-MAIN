@@ -12,14 +12,6 @@ const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const indexName = process.env.PINECONE_INDEX;
 const index = pinecone.index(indexName);
 
-async function queryIndex() {
-  const queryVector = new Array(1024).fill(0.015); // Close to doc-1 and doc-2
-  return index.query({
-    vector: queryVector,
-    topK: 2,
-    includeMetadata: true,
-  });
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

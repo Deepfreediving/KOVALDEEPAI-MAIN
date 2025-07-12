@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from "react";
-import ReactMarkdown from "react-markdown";
+import "react-markdown";
 
 export default function ChatPage() {
   const [input, setInput] = useState("");
@@ -59,7 +59,11 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmedInput, thread_id: threadId }),
+        body: JSON.stringify({
+          message: trimmedInput,
+          thread_id: threadId,
+          username: username, // Send the username to the backend
+        }),
       });
 
       const data = await res.json();
@@ -86,6 +90,7 @@ export default function ChatPage() {
         <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
           <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
           <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
+          {username && <span className="text-white text-sm">Hello, {username}!</span>} {/* Displaying the username */}
         </div>
 
         {/* Messages Section */}

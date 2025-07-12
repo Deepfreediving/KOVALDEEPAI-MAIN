@@ -1,9 +1,13 @@
-import OpenAI from 'openai';
-import { Pinecone } from '@pinecone-database/pinecone';
+import { OpenAI } from 'openai';
+import { PineconeClient } from '@pinecone-database/pinecone';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Initialize Pinecone client
+const pinecone = new PineconeClient();
+const index = pinecone.Index('your-index-name');  // Replace with your actual Pinecone index name
 
 export async function semanticSearch(index, query) {
   if (!index || !query || typeof query !== 'string' || query.trim() === '') {
