@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-// import ReactMarkdown from 'react-markdown';  // Remove this line if not used
 
 export default function Chat() {
   const [username, setUsername] = useState('');
@@ -15,7 +14,6 @@ export default function Chat() {
   useEffect(() => {
     const storedThreadId = localStorage.getItem('kovalThreadId');
     if (!storedThreadId) {
-      // Create new thread on server-side if not found in localStorage
       const createThread = async () => {
         try {
           const response = await fetch('/api/create-thread', { method: 'POST' });
@@ -38,7 +36,7 @@ export default function Chat() {
     // Retrieve or create username on mount
     const storedUser = localStorage.getItem('kovalUser');
     if (!storedUser) {
-      const newUser = 'Guest' + Math.floor(Math.random() * 1000);
+      const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username if none exists
       localStorage.setItem('kovalUser', newUser);
       setUsername(newUser);
     } else {
@@ -46,11 +44,12 @@ export default function Chat() {
     }
   }, []);
 
-  // Scroll to bottom on new message
+  // Scroll to bottom of chat when new message is added
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Function to handle message submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedInput = input.trim();
@@ -58,7 +57,7 @@ export default function Chat() {
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    setMessages(updatedMessages); // Add the user message to the state
     setInput('');
     setLoading(true);
 
@@ -79,7 +78,7 @@ export default function Chat() {
         content: '⚠️ Something went wrong. Please try again.',
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]); // Add assistant's response
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -97,7 +96,7 @@ export default function Chat() {
         <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
           <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
           <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
-          {username && <span className="text-white text-sm">Hello, {username}!</span>} {/* Displaying the username */}
+          {username && <span className="text-white text-sm">Hello, {username}!</span>}
         </div>
 
         {/* Messages Section */}
@@ -134,7 +133,7 @@ export default function Chat() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSubmit(e);
+                handleSubmit(e); // Handle submit on Enter key press
               }
             }}
           />

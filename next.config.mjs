@@ -1,7 +1,7 @@
+// next.config.mjs
+
 const nextConfig = {
   reactStrictMode: true, // Enables React's Strict Mode for development
-  swcMinify: true,       // Use the new SWC minifier instead of Terser
-
   webpack(config, { isServer }) {
     if (isServer) {
       // Additional server-side webpack configurations, if necessary
@@ -10,7 +10,7 @@ const nextConfig = {
   },
 
   images: {
-    domains: ['example.com'],  // Add allowed domains for image optimization
+    domains: ['example.com'],  // Replace with actual domains for image optimization
   },
 
   serverRuntimeConfig: {
