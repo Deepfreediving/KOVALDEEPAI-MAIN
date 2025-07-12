@@ -1,0 +1,8 @@
+# Ignore the .next folder (build artifacts)
+.next/
+
+# Ignore node_modules (dependencies)
+node_modules/
+
+# Ignore any log files
+*.log

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+// import ReactMarkdown from 'react-markdown';  // Remove this line if not used
 
 export default function Chat() {
   const [username, setUsername] = useState('');

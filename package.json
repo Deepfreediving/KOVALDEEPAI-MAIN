@@ -12,7 +12,7 @@
     "node": ">=14.x"
   },
   "license": "MIT",
-  "type": "module",  
+  "type": "module",
   "dependencies": {
     "@next/bundle-analyzer": "^15.3.5",
     "@pinecone-database/pinecone": "^2.2.2",
@@ -21,8 +21,8 @@
     "dotenv": "^10.0.0",
     "next": "^13.x.x",
     "openai": "^5.9.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {

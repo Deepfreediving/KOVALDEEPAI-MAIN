@@ -28,7 +28,6 @@ export default [
       'next/no-img-element': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'react/prop-types': 'off',
-      'react/jsx-uses-react': 'off',
     },
   },
 ];
