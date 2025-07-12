@@ -14,7 +14,7 @@
     "pages/**/*",
     "pages/**/*",  // Include pages
     "components/**/*",  // Include components
-    "next.config.js",
+    "next.config.mjs",
     "vercel.json"
   ],
   "exclude": [
