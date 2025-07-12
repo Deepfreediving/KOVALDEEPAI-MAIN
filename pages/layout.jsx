@@ -1,5 +1,5 @@
 // pages/layout.jsx
-import { metadata } from '../metadata'; // Adjust path accordingly
+import { metadata } from '../lib/metadata';
 
 export default function RootLayout({ children }) {
   return (
