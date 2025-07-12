@@ -1,9 +1,8 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 
-// Initialize Pinecone client with environment variables
+// Initialize Pinecone client with the API key only (environment is automatically picked up)
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,  // Pinecone API key from environment
-  controllerHostUrl: process.env.PINECONE_HOST,  // Pinecone host URL
 });
 
 // Set up the Pinecone index
