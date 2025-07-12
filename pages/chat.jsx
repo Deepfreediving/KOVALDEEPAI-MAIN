@@ -22,7 +22,7 @@ export default function Chat() {
             setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
             localStorage.setItem('kovalThreadId', data.thread_id);
           } else {
-            console.error("Thread creation failed: No thread_id returned.");
+            console.error('Thread creation failed: No thread_id returned.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
