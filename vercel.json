@@ -6,7 +6,7 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/next"  // Ensure Vercel uses the correct Next.js build
+      "use": "@vercel/next" 
     }
   ],
   "env": {

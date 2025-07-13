@@ -18,11 +18,11 @@ export default function Chat() {
         try {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
-          if (data.thread_id) {
-            setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
-            localStorage.setItem('kovalThreadId', data.thread_id);
+          if (data.threadId) {
+            setThreadId(data.threadId); // Save the new threadId in state and localStorage
+            localStorage.setItem('kovalThreadId', data.threadId);
           } else {
-            console.error('Thread creation failed: No thread_id returned.');
+            console.error('Thread creation failed: No threadId returned.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
@@ -67,7 +67,7 @@ export default function Chat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmedInput,
-          thread_id: threadId,
+          threadId: threadId, // Ensure that threadId is sent
           username: username, // Send the username to the backend
         }),
       });
