@@ -1,24 +1,23 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",  // Base directory for resolving modules
+    "baseUrl": ".",  // Root directory
     "paths": {
-      "@lib/*": ["lib/*"],  // Correctly map the alias to the lib directory
+      "@lib/*": ["lib/*"],  // Correct mapping of the alias to lib
       "@components/*": ["pages/components/*"],
-      "@pages/*": ["pages/*"],  // Correct the path to refer to the 'pages' directory directly
+      "@pages/*": ["pages/pages/*"],
       "@styles/*": ["pages/styles/*"],
       "@/*": ["pages/*"]
     },
-    "jsx": "react-jsx"  // Optional, if using JSX with React
+    "jsx": "react-jsx"  // JSX support for React
   },
   "include": [
     "pages/**/*",  // Include pages
     "components/**/*",  // Include components
-    "lib/**/*",  // Make sure 'lib' folder is included
-    "next.config.mjs",  // Include the Next.js config file
-    "vercel.json"  // Include the Vercel config file
+    "next.config.mjs",
+    "vercel.json"
   ],
   "exclude": [
     "node_modules",
-    ".next"  // Exclude the Next.js build output
+    ".next"
   ]
 }
