@@ -1,25 +1,30 @@
 import { OpenAI } from 'openai';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 
+// Initialize OpenAI API
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Initialize Pinecone client
-const pinecone = new PineconeClient();
-const index = pinecone.Index('your-index-name');  // Replace with your actual Pinecone index name
+const pinecone = new Pinecone();
+const index = pinecone.Index(process.env.PINECONE_INDEX);  // Use your actual Pinecone index name from environment variables
 
-export async function semanticSearch(index, query) {
-  if (!index || !query || typeof query !== 'string' || query.trim() === '') {
-    throw new Error('Invalid index or query.');
+// Semantic search function
+export async function semanticSearch(query) {
+  if (!query || typeof query !== 'string' || query.trim() === '') {
+    throw new Error('Invalid query.');
   }
 
+  // Create the embedding for the query using OpenAI
   const embeddingResponse = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: query,
   });
 
   const queryEmbedding = embeddingResponse.data[0].embedding;
+
+  // Query Pinecone for similar vectors
   const pineconeResponse = await index.query({
     vector: queryEmbedding,
     topK: 5,
@@ -29,6 +34,7 @@ export async function semanticSearch(index, query) {
   return pineconeResponse.matches;
 }
 
+// API handler to process requests
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -40,20 +46,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query,
-    });
-
-    const queryEmbedding = embeddingResponse.data[0].embedding;
-
-    const pineconeResponse = await index.query({
-      vector: queryEmbedding,
-      topK: 5,
-      includeMetadata: true,
-    });
-
-    res.status(200).json(pineconeResponse.matches);
+    // Perform semantic search
+    const results = await semanticSearch(query);
+    res.status(200).json(results);  // Return the results from Pinecone
   } catch (error) {
     console.error("Error in semanticSearch:", error);
     res.status(500).json({ error: 'Failed to perform semantic search.' });

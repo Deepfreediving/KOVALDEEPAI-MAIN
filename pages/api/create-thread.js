@@ -1,19 +1,27 @@
-import { openaiApi } from '@lib/openai';  // Assuming @lib/openai exports an axios instance configured for OpenAI
+import openaiApi, { createThread } from '@lib/openai';  // Importing axios and createThread function
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
-      const response = await openaiApi.post('/threads', {
-        model: process.env.OPENAI_MODEL,
-      });
+      // Call the createThread function from @lib/openai
+      const data = await createThread();
 
-      const threadId = response.data.id;  // Assuming the API returns an ID for the thread
-      res.status(200).json({ threadId });
+      // Ensure that threadId is returned in the response
+      if (!data || !data.threadId) {
+        throw new Error('Thread ID is missing in the response.');
+      }
+
+      // Return the threadId to the client
+      res.status(200).json({ threadId: data.threadId });
     } catch (error) {
-      console.error('Error creating thread:', error);
+      // Log the error message for debugging
+      console.error('Error creating thread:', error.message || error);
+
+      // Return an error response with status 500 if something went wrong
       res.status(500).json({ error: 'Failed to create thread' });
     }
   } else {
+    // Return a 405 error if the method is not POST
     res.status(405).json({ error: 'Method Not Allowed' });
   }
 }

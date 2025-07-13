@@ -5,9 +5,9 @@ export default function CreateThread() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleCreateThread = async () => {
+  const handleCreateThreadSubmit = async () => {
     setLoading(true);
-    setError(null);
+    setError(null);  // Reset error before making a request
 
     try {
       const response = await fetch('/api/create-thread', {
@@ -19,18 +19,18 @@ export default function CreateThread() {
       }
 
       const data = await response.json();
-      setThreadId(data.threadId);
+      setThreadId(data.threadId);  // Set the thread ID once the thread is created successfully
     } catch (err) {
-      setError(err.message);
+      setError('Error: ' + (err.message || 'An unknown error occurred'));  // Display a more user-friendly error message
     } finally {
-      setLoading(false);
+      setLoading(false);  // Reset loading state after the operation
     }
   };
 
   return (
     <div>
       <h1>Create a New Thread</h1>
-      <button onClick={handleCreateThread} disabled={loading}>
+      <button onClick={handleCreateThreadSubmit} disabled={loading}>
         {loading ? 'Creating...' : 'Create Thread'}
       </button>
 

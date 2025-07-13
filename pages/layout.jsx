@@ -1,4 +1,4 @@
-import { metadata } from '../lib/metadata';  // Correct import
+import { metadata } from '../lib/metadata';  // Ensure path is correct
 
 export default function RootLayout({ children }) {
   return (
