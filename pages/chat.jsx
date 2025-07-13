@@ -1,5 +1,4 @@
-'use client';
-
+// pages/chat.jsx
 import { useEffect, useState, useRef } from 'react';
 
 export default function Chat() {
@@ -18,11 +17,11 @@ export default function Chat() {
         try {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
-          if (data.threadId) {
-            setThreadId(data.threadId); // Save the new threadId in state and localStorage
-            localStorage.setItem('kovalThreadId', data.threadId);
+          if (data.thread_id) {
+            setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
+            localStorage.setItem('kovalThreadId', data.thread_id);
           } else {
-            console.error('Thread creation failed: No threadId returned.');
+            console.error('Thread creation failed: No thread_id returned.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
@@ -67,7 +66,7 @@ export default function Chat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmedInput,
-          threadId: threadId, // Ensure that threadId is sent
+          thread_id: threadId,
           username: username, // Send the username to the backend
         }),
       });

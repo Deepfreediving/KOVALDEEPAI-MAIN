@@ -1,3 +1,5 @@
+// "use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
+
 import { useState } from 'react';
 
 export default function CreateThread() {
@@ -19,19 +21,19 @@ export default function CreateThread() {
       }
 
       const data = await response.json();
-      setThreadId(data.threadId);  // Set the thread ID once the thread is created successfully
+      setThreadId(data.thread_id);  // Set the thread ID once the thread is created successfully
     } catch (err) {
       setError('Error: ' + (err.message || 'An unknown error occurred'));  // Display a more user-friendly error message
     } finally {
-      setLoading(false);  // Reset loading state after the operation
+      setLoading(false);  // Reset loading state after the request is finished
     }
   };
 
   return (
-    <div>
+    <div className="container">
       <h1>Create a New Thread</h1>
       <button onClick={handleCreateThreadSubmit} disabled={loading}>
-        {loading ? 'Creating...' : 'Create Thread'}
+        {loading ? 'Creating Thread...' : 'Create Thread'}
       </button>
 
       {threadId && <p>Thread created! Thread ID: {threadId}</p>}
