@@ -4,7 +4,7 @@
     "paths": {
       "@lib/*": ["lib/*"],  // Correctly map the alias to the lib directory
       "@components/*": ["pages/components/*"],
-      "@pages/*": ["pages/pages/*"],
+      "@pages/*": ["pages/*"],  // Correct the path to refer to the 'pages' directory directly
       "@styles/*": ["pages/styles/*"],
       "@/*": ["pages/*"]
     },
@@ -13,11 +13,12 @@
   "include": [
     "pages/**/*",  // Include pages
     "components/**/*",  // Include components
-    "next.config.mjs",
-    "vercel.json"
+    "lib/**/*",  // Make sure 'lib' folder is included
+    "next.config.mjs",  // Include the Next.js config file
+    "vercel.json"  // Include the Vercel config file
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next"  // Exclude the Next.js build output
   ]
 }
