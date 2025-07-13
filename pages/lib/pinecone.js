@@ -1,36 +1,42 @@
-import { PineconeClient } from '@pinecone-database/pinecone'; // Ensure you have installed the Pinecone SDK
+import { Pinecone } from '@pinecone-database/pinecone'; // Import the Pinecone SDK
 
-const client = new PineconeClient();
-
-// Initialize Pinecone with your API key and other settings from environment variables
-client.init({
-  apiKey: process.env.PINECONE_API_KEY,
-  environment: process.env.PINECONE_REGION,  // Add your environment, like "us-east1-gcp"
-  index: process.env.PINECONE_INDEX,  // Add your index name
+// Initialize Pinecone client with the API key (no need to pass environment explicitly anymore)
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY,  // Your Pinecone API Key from environment
 });
 
-// Example function to interact with Pinecone
+// Initialize the Pinecone index using the environment variable for the index name
+const index = pinecone.index(process.env.PINECONE_INDEX); // Using the correct index
+
+// Example function to upsert data to Pinecone
 export const upsertData = async (data) => {
   try {
-    const upsertResponse = await client.upsert({
-      vectors: data, // Your data that you want to insert into Pinecone
+    // Ensure that 'data' is an array of vectors with necessary fields (id, values)
+    const upsertResponse = await index.upsert({
+      vectors: data, // Data being inserted into Pinecone (ensure correct format)
     });
     return upsertResponse;
   } catch (error) {
-    console.error('Pinecone upsert error:', error);
-    throw error;
+    // Log the error for debugging
+    console.error('Pinecone upsert error:', error.response?.data || error.message);
+    throw error;  // Rethrow the error for further handling
   }
 };
 
-// Example function to query Pinecone
+// Example function to query data from Pinecone
 export const queryData = async (query) => {
   try {
-    const queryResponse = await client.query({
-      vector: query, // Query vector for similarity search
+    // Ensure that the 'query' is formatted correctly for the Pinecone query
+    const queryResponse = await index.query({
+      vector: query,  // Vector for querying the Pinecone index
+      topK: 5,        // Example: limit to top 5 results
+      includeValues: true,  // Optional: Include vector values in the results
+      includeMetadata: true,  // Optional: Include metadata in the results
     });
     return queryResponse;
   } catch (error) {
-    console.error('Pinecone query error:', error);
-    throw error;
+    // Log the error for debugging
+    console.error('Pinecone query error:', error.response?.data || error.message);
+    throw error;  // Rethrow the error for further handling
   }
 };

@@ -1,6 +1,13 @@
-const PineconeClient = require('@pinecone-database/pinecone');
-const client = new PineconeClient();
+// Import Pinecone from the SDK
+const { Pinecone } = require('@pinecone-database/pinecone');
 
-const index = client.Index('your-index-name');  // Your Pinecone index name
+// Initialize Pinecone client
+const client = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY,  // API key from environment variables
+  controllerHostUrl: process.env.PINECONE_HOST,  // Optional: if needed
+});
+
+// Set the index to use
+const index = client.index(process.env.PINECONE_INDEX);  // Replace 'your-index-name' with actual index
 
 module.exports = index;
