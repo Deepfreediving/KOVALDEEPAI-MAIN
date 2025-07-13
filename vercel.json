@@ -6,8 +6,7 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "app" }
+      "use": "@vercel/next"  // Ensure Vercel uses the correct Next.js build
     }
   ],
   "env": {
@@ -15,7 +14,7 @@
     "PINECONE_INDEX": "PINECONE_INDEX",
     "PINECONE_HOST": "PINECONE_HOST",
     "PINECONE_REGION": "PINECONE_REGION",
-    "OPENAI_API_KEY": "PENAI_API_KEY",
+    "OPENAI_API_KEY": "OPENAI_API_KEY",
     "OPENAI_ASSISTANT_ID": "OPENAI_ASSISTANT_ID"
   }
 }

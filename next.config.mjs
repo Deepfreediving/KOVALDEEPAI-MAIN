@@ -1,17 +1,14 @@
-// next.config.mjs
-
 const nextConfig = {
   reactStrictMode: true, // Enables React's Strict Mode for development
   webpack(config, { isServer }) {
     if (isServer) {
-      // Additional server-side webpack configurations, if necessary
-      // You can add custom server-side configurations here, such as excluding packages from server-side bundles
+      // Custom server-side webpack configurations can go here if needed
     }
     return config;
   },
 
   images: {
-    domains: ['example.com', 'yourdomain.com'], // Add allowed domains for optimized images
+    domains: ['yourdomain.com', 'anotherdomain.com'],  // Replace with your actual domains for image optimization
   },
 
   serverRuntimeConfig: {
@@ -32,7 +29,7 @@ const nextConfig = {
 
   // Optional features
   async redirects() {
-    // Redirect configuration, for example, you can set up redirects for specific pages
+    // Example redirects (can be customized based on your needs)
     return [
       {
         source: '/old-url',
@@ -43,7 +40,7 @@ const nextConfig = {
   },
 
   async rewrites() {
-    // Rewrites configuration for altering routes without changing the URL
+    // Example rewrites (can be customized based on your needs)
     return [
       {
         source: '/api/old-api',
@@ -72,8 +69,8 @@ const nextConfig = {
   //   optimizeImages: true, // Optimize images by default for better performance
   // },
 
-  // Adjust build output directory if needed
-  // output: 'standalone', // Use this if you want Vercel to build the app as a standalone package
+  // Use this if you want to create a standalone build
+  // output: 'standalone', // This can be used for Vercel deployment if needed
 };
 
 export default nextConfig;
