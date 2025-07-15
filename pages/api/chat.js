@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
       // Call createMessage function to send the message to OpenAI
       const response = await createMessage(thread_id, message);
-      
+
       // Log the response from OpenAI for debugging
       console.log("OpenAI Response:", response);
 
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
     } catch (error) {
       // Log the error message for debugging
-      console.error('Error in /api/chat:', error.message || error.response?.data);
+      console.error('Error in /api/chat:', error.message || error);
 
       // Return an error response with status 500 if something went wrong
       return res.status(500).json({
