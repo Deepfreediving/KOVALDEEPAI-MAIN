@@ -29,11 +29,11 @@ export default function Chat() {
         try {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
-          if (data.thread_id) {
-            setThreadId(data.thread_id); // Save thread_id to state and localStorage
-            localStorage.setItem('kovalThreadId', data.thread_id);
+          if (data.threadId) {
+            setThreadId(data.threadId); // Save threadId to state and localStorage
+            localStorage.setItem('kovalThreadId', data.threadId);
           } else {
-            console.error('Thread creation failed: No thread_id returned.');
+            console.warn('Thread creation failed: No threadId returned.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
@@ -62,14 +62,26 @@ export default function Chat() {
     setInput('');
     setLoading(true);
 
+    // Retrieve threadId and username from localStorage (fallback to 'Guest' if missing)
+    const threadId = localStorage.getItem('kovalThreadId');
+    const username = localStorage.getItem('kovalUser') || 'Guest';
+
+    // Log a warning if either field is missing, but continue processing
+    if (!threadId) {
+      console.warn('No threadId found in localStorage. Thread creation might have failed.');
+    }
+    if (!username) {
+      console.warn('No username found in localStorage. Defaulting to "Guest".');
+    }
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmedInput,
-          thread_id: threadId,
-          username: username,
+          thread_id: threadId,  // Send threadId
+          username: username,  // Send username
         }),
       });
 

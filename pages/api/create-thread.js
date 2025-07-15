@@ -1,4 +1,4 @@
-import openaiApi, { createThread } from '@lib/openai';  // Importing axios and createThread function
+import { createThread } from '@lib/openai';  // Importing createThread from @lib/openai
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
