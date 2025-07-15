@@ -6,11 +6,9 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');  // New state for error handling
-  const bottomRef = useRef(null);
+  const bottomRef = useRef(null); // For auto-scrolling
 
-  // ... (rest of the code)
-
+  // Retrieve or create threadId on mount
   useEffect(() => {
     const storedUsername = localStorage.getItem('kovalUser');
     if (!storedUsername) {
@@ -30,15 +28,13 @@ export default function Chat() {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.threadId) {
-            setThreadId(data.threadId);
+            setThreadId(data.threadId); 
             localStorage.setItem('kovalThreadId', data.threadId);
           } else {
             console.warn('Thread creation failed: No threadId returned.');
-            setErrorMessage('Failed to create thread. Please try again later.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
-          setErrorMessage('Failed to create thread. Please try again later.');
         }
       };
       createThread();
@@ -47,6 +43,30 @@ export default function Chat() {
     }
   }, []);
 
+  // Scroll to bottom of chat when new message is added
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Define the handleKeyDown function within the useEffect hook to ensure it's only defined in the client-side environment
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit(e);
+      }
+    };
+
+    // Add event listener for keydown (client-side only)
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      // Clean up the event listener
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Handle message submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedInput = input.trim();
@@ -54,7 +74,7 @@ export default function Chat() {
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    setMessages(updatedMessages); 
     setInput('');
     setLoading(true);
 
@@ -62,31 +82,44 @@ export default function Chat() {
     const username = localStorage.getItem('kovalUser') || 'Guest';
 
     if (!threadId) {
-      setErrorMessage('No threadId found. Thread creation might have failed.');
+      console.warn('No threadId found in localStorage. Thread creation might have failed.');
       return;
     }
     if (!username) {
-      setErrorMessage('No username found. Defaulting to "Guest".');
+      console.warn('No username found in localStorage. Defaulting to "Guest".');
     }
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmedInput, thread_id: threadId, username: username }),
+        body: JSON.stringify({
+          message: trimmedInput,
+          thread_id: threadId,
+          username: username,
+        }),
       });
 
       const data = await res.json();
-      const assistantMessage = data?.assistantMessage ?? { role: 'assistant', content: '⚠️ Something went wrong. Please try again.' };
+      const assistantMessage = data?.assistantMessage ?? {
+        role: 'assistant',
+        content: '⚠️ Something went wrong. Please try again.',
+      };
+
       setMessages((prev) => [...prev, assistantMessage]);
 
     } catch (err) {
       console.error('Error fetching assistant response:', err);
-      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' },
+      ]);
     } finally {
       setLoading(false);
     }
   };
+
+  const isThreadReady = threadId && username;
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
@@ -98,13 +131,6 @@ export default function Chat() {
           {username && <span className="text-white text-sm">Hello, {username}!</span>}
         </div>
 
-        {/* Error Banner */}
-        {errorMessage && (
-          <div className="bg-red-500 text-white p-3 text-center">
-            {errorMessage}
-          </div>
-        )}
-
         {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
           {messages.length === 0 && (
@@ -113,14 +139,7 @@ export default function Chat() {
             </div>
           )}
           {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${
-                m.role === 'assistant'
-                  ? 'bg-teal-800 text-white self-start shadow-md'
-                  : 'bg-blue-600 text-white self-end shadow-lg'
-              }`}
-            >
+            <div key={i} className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${m.role === 'assistant' ? 'bg-teal-800 text-white self-start shadow-md' : 'bg-blue-600 text-white self-end shadow-lg'}`}>
               <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
               <div>{m.content}</div>
             </div>
@@ -136,12 +155,11 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={handleKeyDown}
           />
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading || !threadId || !username}
+            disabled={loading || !isThreadReady}
           >
             {loading ? 'Thinking...' : 'Send'}
           </button>
