@@ -48,14 +48,15 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle message submission when enter or return is pressed
+  // Handle message submission when Enter or Return is pressed
   const handleKeyDown = (e) => {
     if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault(); // Prevent default behavior (new line in text area)
       handleSubmit(); // Trigger form submission
     }
   };
 
+  // Handle message submission
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
