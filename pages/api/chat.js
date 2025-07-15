@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     try {
       const { message, thread_id, username } = req.body;  // Receive the message, thread_id, and username
 
-      // Log the received data
+      // Log the received data for debugging
       console.log("Received from frontend:", { message, thread_id, username });
 
       // Validate required parameters
@@ -16,6 +16,14 @@ export default async function handler(req, res) {
       // Call createMessage function to send the message to OpenAI
       const response = await createMessage(thread_id, message);
 
+      // Log the response from OpenAI for debugging
+      console.log("OpenAI Response:", response);
+
+      // Ensure that response contains choices and message
+      if (!response || !response.choices || !response.choices[0]?.message) {
+        throw new Error('No valid response from OpenAI.');
+      }
+
       // Assuming the response has a message field from the assistant
       const assistantMessage = response?.choices?.[0]?.message || { role: 'assistant', content: 'Error: No response from assistant.' };
 
@@ -23,8 +31,13 @@ export default async function handler(req, res) {
       res.status(200).json({ assistantMessage });
 
     } catch (error) {
+      // Log the error message for debugging
       console.error('Error in /api/chat:', error.message || error.response?.data);
-      res.status(500).json({ error: 'Internal Server Error: ' + error.message });
+
+      // Return an error response with status 500 if something went wrong
+      res.status(500).json({
+        error: 'Internal Server Error: Unable to fetch assistant response. Please check the OpenAI API or service.'
+      });
     }
   } else {
     res.status(405).json({ error: 'Method Not Allowed' });
