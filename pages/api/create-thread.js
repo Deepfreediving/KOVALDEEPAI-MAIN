@@ -1,4 +1,4 @@
-import { openaiApi } from './openaiApi'; // Ensure you import the axios instance properly
+import openaiApi, { createThread } from '../../lib/openai'; // Ensure you import the axios instance properly
 
 export const createThread = async () => {
   try {
