@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       }
 
       // Assuming the response has a message field from the assistant
-      const assistantMessage = response?.choices?.[0]?.message || { role: 'assistant', content: 'Error: No response from assistant.' };
+      const assistantMessage = response?.choices?.[0]?.message || { role: 'assistant', content: '⚠️ No response from assistant. Please try again.' };
 
       // Return the assistant's response
       return res.status(200).json({ assistantMessage });
