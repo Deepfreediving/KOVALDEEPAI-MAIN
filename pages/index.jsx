@@ -1,57 +1,70 @@
-'use client';
-
 import { useEffect, useState, useRef } from 'react';
-import ReactMarkdown from 'react-markdown'; // Keep this if you need to render markdown content
 
-export default function Index() {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: '👋 Hi! How can I assist you on your freediving journey today?',
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null);
-  const [threadId, setThreadId] = useState('');
+export default function Chat() {
   const [username, setUsername] = useState('');
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [threadId, setThreadId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null); // For auto-scrolling
 
+  // Retrieve or create threadId on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('kovalUser');
-      if (storedUser) {
-        setUsername(storedUser);
-      } else {
-        const newUser = 'Guest' + Math.floor(Math.random() * 1000);
-        localStorage.setItem('kovalUser', newUser);
-        setUsername(newUser);
-      }
+    const storedThreadId = localStorage.getItem('kovalThreadId');
+    if (!storedThreadId) {
+      const createThread = async () => {
+        try {
+          const response = await fetch('/api/create-thread', { method: 'POST' });
+          const data = await response.json();
+          if (data.thread_id) {
+            setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
+            localStorage.setItem('kovalThreadId', data.thread_id);
+          } else {
+            console.error('Thread creation failed: No thread_id returned.');
+          }
+        } catch (err) {
+          console.error('Error creating thread:', err);
+        }
+      };
+      createThread();
+    } else {
+      setThreadId(storedThreadId);
+    }
 
-      const storedThreadId = localStorage.getItem('kovalThreadId');
-      if (storedThreadId) {
-        setThreadId(storedThreadId);
-      } else {
-        const newThreadId = 'thread-' + Date.now();
-        localStorage.setItem('kovalThreadId', newThreadId);
-        setThreadId(newThreadId);
-      }
+    // Retrieve or create username on mount
+    const storedUser = localStorage.getItem('kovalUser');
+    if (!storedUser) {
+      const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username if none exists
+      localStorage.setItem('kovalUser', newUser);
+      setUsername(newUser);
+    } else {
+      setUsername(storedUser);
     }
   }, []);
 
+  // Scroll to bottom of chat when new message is added
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Function to handle message submission
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault();  // Prevent the form from reloading the page
     const trimmedInput = input.trim();
-    if (!trimmedInput) return;
+    if (!trimmedInput) return;  // Don't send empty messages
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    setMessages(updatedMessages); // Add the user message to the state
     setInput('');
     setLoading(true);
+
+    // Log to ensure the data is correct before sending to the backend
+    console.log("Sending to backend:", {
+      message: trimmedInput,
+      thread_id: threadId,
+      username: username,
+    });
 
     try {
       const res = await fetch('/api/chat', {
@@ -60,9 +73,16 @@ export default function Index() {
         body: JSON.stringify({
           message: trimmedInput,
           thread_id: threadId,
-          username: username,
+          username: username, // Send the username to the backend
         }),
       });
+
+      if (!res.ok) {
+        // If the response status is not OK (e.g., 500 or 400), log the error
+        const errorData = await res.json();
+        console.error("Backend Error:", errorData.error);
+        throw new Error(`Error from backend: ${errorData.error}`);
+      }
 
       const data = await res.json();
       const assistantMessage = data?.assistantMessage ?? {
@@ -71,29 +91,39 @@ export default function Index() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
     } catch (err) {
+      console.error('Error fetching assistant response:', err);
+      // Optionally, add an error message to the chat
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `❌ Error: ${err.message}` },
+        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' }
       ]);
     } finally {
-      setLoading(false);
+      setLoading(false);  // End loading state
+    }
+  };
+
+  // Handle Enter key press for submitting the message
+  const handleKeyDown = (e) => {
+    console.log("Key pressed:", e.key);  // Log key to ensure it's detecting the right key
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();  // Prevent default Enter behavior (adding a new line)
+      handleSubmit(e);  // Submit the message
     }
   };
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-3xl h-screen flex flex-col border border-gray-700 rounded-xl overflow-hidden shadow-lg bg-white">
+        {/* Header */}
         <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
-          <img
-            src="/deeplogo.jpg"
-            alt="Deep Freediving Logo"
-            className="w-12 h-12 rounded-full shadow-md"
-          />
+          <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
           <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
           {username && <span className="text-white text-sm">Hello, {username}!</span>}
         </div>
 
+        {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
           {messages.map((m, i) => (
             <div
@@ -105,33 +135,32 @@ export default function Index() {
               }`}
             >
               <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
-              <div>
-                {m.role === 'assistant' ? (
-                  <ReactMarkdown>{m.content}</ReactMarkdown> // Use for markdown content
-                ) : (
-                  m.content
-                )}
-              </div>
+              <div>{m.content}</div>
             </div>
           ))}
-          {loading && <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>}
+          {loading && (
+            <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>
+          )}
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
+        {/* Input Section */}
+        <form
+          onSubmit={handleSubmit}
+          className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl"
+        >
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here (e.g., I'm Kai, Level 2 diver training for 60m)..."
+            placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
+            onKeyDown={handleKeyDown}  // Handle Enter key press
           />
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50" disabled={loading}>
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
+            disabled={loading}
+          >
             {loading ? 'Thinking...' : 'Send'}
           </button>
         </form>

@@ -1,4 +1,3 @@
-// pages/chat.jsx
 import { useEffect, useState, useRef } from 'react';
 
 export default function Chat() {
@@ -9,7 +8,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null); // For auto-scrolling
 
-  // Retrieve or create threadId on mount
+  // Retrieve or create threadId and username on mount
   useEffect(() => {
     const storedThreadId = localStorage.getItem('kovalThreadId');
     if (!storedThreadId) {
@@ -77,14 +76,13 @@ export default function Chat() {
         content: '⚠️ Something went wrong. Please try again.',
       };
 
-      setMessages((prev) => [...prev, assistantMessage]); // Add assistant's response
+      // Only add assistant's response to the messages state
+      setMessages((prev) => [...prev, assistantMessage]);
+
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `❌ Error: ${err.message}` },
-      ]);
+      console.error('Error fetching assistant response:', err);
     } finally {
-      setLoading(false);
+      setLoading(false);  // End loading
     }
   };
 
