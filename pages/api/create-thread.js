@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     try {
       console.log('Creating thread...');
 
-      // Call the imported createThread function
+      // Call the createThread function
       const data = await createThread();  // Use the already defined function
 
       // Log the response for debugging
