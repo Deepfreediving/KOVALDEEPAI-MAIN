@@ -10,7 +10,6 @@ export default function Chat() {
 
   // Retrieve or create threadId on mount
   useEffect(() => {
-    // Get the stored username or prompt for input if it's the first time
     const storedUsername = localStorage.getItem('kovalUser');
     if (!storedUsername) {
       const name = prompt("Please enter your name for a personalized experience:");
@@ -22,7 +21,6 @@ export default function Chat() {
       setUsername(storedUsername);
     }
 
-    // Retrieve threadId from localStorage or create a new one if not present
     const storedThreadId = localStorage.getItem('kovalThreadId');
     if (!storedThreadId) {
       const createThread = async () => {
@@ -30,7 +28,7 @@ export default function Chat() {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.threadId) {
-            setThreadId(data.threadId); // Save threadId to state and localStorage
+            setThreadId(data.threadId); 
             localStorage.setItem('kovalThreadId', data.threadId);
           } else {
             console.warn('Thread creation failed: No threadId returned.');
@@ -54,21 +52,20 @@ export default function Chat() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedInput = input.trim();
-    if (!trimmedInput) return; // Don't send empty messages
+    if (!trimmedInput) return;
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages); // Add the user message to the state
+    setMessages(updatedMessages); 
     setInput('');
     setLoading(true);
 
-    // Retrieve threadId and username from localStorage (fallback to 'Guest' if missing)
     const threadId = localStorage.getItem('kovalThreadId');
     const username = localStorage.getItem('kovalUser') || 'Guest';
 
-    // Log a warning if either field is missing, but continue processing
     if (!threadId) {
       console.warn('No threadId found in localStorage. Thread creation might have failed.');
+      return;
     }
     if (!username) {
       console.warn('No username found in localStorage. Defaulting to "Guest".');
@@ -80,8 +77,8 @@ export default function Chat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmedInput,
-          thread_id: threadId,  // Send threadId
-          username: username,  // Send username
+          thread_id: threadId,
+          username: username,
         }),
       });
 
@@ -104,13 +101,14 @@ export default function Chat() {
     }
   };
 
-  // Handle Enter key press for submitting the message
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
   };
+
+  const isThreadReady = threadId && username;
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
@@ -130,14 +128,7 @@ export default function Chat() {
             </div>
           )}
           {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${
-                m.role === 'assistant'
-                  ? 'bg-teal-800 text-white self-start shadow-md'
-                  : 'bg-blue-600 text-white self-end shadow-lg'
-              }`}
-            >
+            <div key={i} className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${m.role === 'assistant' ? 'bg-teal-800 text-white self-start shadow-md' : 'bg-blue-600 text-white self-end shadow-lg'}`}>
               <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
               <div>{m.content}</div>
             </div>
@@ -158,7 +149,7 @@ export default function Chat() {
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading}
+            disabled={loading || !isThreadReady}
           >
             {loading ? 'Thinking...' : 'Send'}
           </button>
