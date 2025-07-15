@@ -8,49 +8,52 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null); // For auto-scrolling
 
+  // State to track initialization
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Retrieve or create threadId on mount, run on client-side only
+  // Retrieve or create threadId and username on mount
   useEffect(() => {
-    const storedUsername = localStorage.getItem('kovalUser');
     const storedThreadId = localStorage.getItem('kovalThreadId');
+    const storedUsername = localStorage.getItem('kovalUser');
     
-    if (storedUsername) setUsername(storedUsername);
-    if (storedThreadId) setThreadId(storedThreadId);
+    if (storedUsername) {
+      setUsername(storedUsername);
+    } else {
+      // If no username in localStorage, prompt the user
+      const name = prompt("Please enter your name for a personalized experience:");
+      if (name) {
+        localStorage.setItem('kovalUser', name);
+        setUsername(name);
+      } else {
+        const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username
+        localStorage.setItem('kovalUser', newUser);
+        setUsername(newUser);
+      }
+    }
+
+    // Check if a threadId exists
+    if (!storedThreadId) {
+      const createThread = async () => {
+        try {
+          const response = await fetch('/api/create-thread', { method: 'POST' });
+          const data = await response.json();
+          if (data.threadId) {
+            setThreadId(data.threadId);  // Set the threadId if returned
+            localStorage.setItem('kovalThreadId', data.threadId); // Store threadId in localStorage
+          } else {
+            console.error('Thread creation failed: No threadId returned.');
+          }
+        } catch (err) {
+          console.error('Error creating thread:', err);
+        }
+      };
+      createThread();
+    } else {
+      setThreadId(storedThreadId); // Use the stored threadId
+    }
 
     setIsInitialized(true); // Set initialization state
   }, []);
-
-  // Create thread if not available, ensure it runs after initial load
-  useEffect(() => {
-    if (!isInitialized || threadId) return;
-
-    const createThread = async () => {
-      try {
-        const response = await fetch('/api/create-thread', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create thread');
-        }
-
-        const data = await response.json();
-        if (data.threadId) {
-          setThreadId(data.threadId);
-          localStorage.setItem('kovalThreadId', data.threadId);
-        } else {
-          console.warn('Thread creation failed: No threadId returned.');
-        }
-      } catch (err) {
-        console.error('Error creating thread:', err);
-      }
-    };
-
-    createThread();
-  }, [isInitialized, threadId]);
 
   // Scroll to bottom of chat when new message is added
   useEffect(() => {
@@ -100,7 +103,7 @@ export default function Chat() {
       const data = await res.json();
       const assistantMessage = data?.assistantMessage ?? {
         role: 'assistant',
-        content: '⚠️ Something went wrong. Please try again later.',
+        content: '⚠️ Something went wrong. Please try again.',
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -112,7 +115,7 @@ export default function Chat() {
         { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
       ]);
     } finally {
-      setLoading(false);
+      setLoading(false);  // End loading
     }
   };
 
