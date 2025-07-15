@@ -1,35 +1,26 @@
-import { createThread } from '@lib/openai';  // Importing createThread from @lib/openai
+export const createThread = async () => {
+  try {
+    const response = await openaiApi.post('/chat/completions', {
+      model: process.env.OPENAI_MODEL || 'gpt-4o',  // Default model set to GPT-4o if not provided in the environment
+      messages: [
+        { role: 'user', content: 'start' },  // Start the conversation with a placeholder message
+      ],
+    });
 
-export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    try {
-      console.log('Creating thread...');  // Log to track if the thread creation started
+    // Log the entire response for debugging
+    console.log('Thread Creation Response:', response.data);
 
-      // Call the createThread function from @lib/openai
-      const data = await createThread();
-
-      // Log the response for debugging purposes
-      console.log('Thread creation response:', data);
-
-      // Ensure that threadId is returned in the response
-      if (!data || !data.threadId) {
-        const errorMessage = 'Thread creation failed: No threadId returned.';
-        console.error(errorMessage);  // Error logging for the absence of threadId
-        return res.status(500).json({ error: errorMessage });  // Return a structured error response
-      }
-
-      // Return the threadId to the client
-      return res.status(200).json({ threadId: data.threadId });
-
-    } catch (error) {
-      // Log the error message for debugging
-      console.error('Error creating thread:', error.message || error);
-
-      // Return an error response with status 500 if something went wrong
-      return res.status(500).json({ error: 'Failed to create thread: ' + (error.message || error) });
+    // Check if threadId exists in response
+    if (!response.data || !response.data.id) {
+      throw new Error('No threadId returned from OpenAI.');
     }
-  } else {
-    // Return a 405 error if the method is not POST
-    return res.status(405).json({ error: 'Method Not Allowed' });
+
+    // Return the threadId from the response
+    return { threadId: response.data.id };
+
+  } catch (error) {
+    // Enhanced error logging
+    console.error("Error creating thread:", error.response?.data || error.message);
+    throw new Error('Error creating thread: ' + (error.message || error.response?.data));
   }
-}
+};
