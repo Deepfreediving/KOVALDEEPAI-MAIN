@@ -15,7 +15,7 @@ export default async function handler(req, res) {
       if (!data || !data.threadId) {
         const errorMessage = 'Thread creation failed: No threadId returned.';
         console.error(errorMessage);
-        throw new Error(errorMessage);  // Throwing the error with a descriptive message
+        return res.status(500).json({ error: errorMessage });
       }
       
       // Return the threadId to the client
