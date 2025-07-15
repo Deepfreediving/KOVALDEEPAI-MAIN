@@ -48,21 +48,6 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Define the handleKeyDown function outside useEffect
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
   // Handle message submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,12 +63,9 @@ export default function Chat() {
     const threadId = localStorage.getItem('kovalThreadId');
     const username = localStorage.getItem('kovalUser') || 'Guest';
 
-    if (!threadId) {
-      console.warn('No threadId found in localStorage. Thread creation might have failed.');
+    if (!threadId || !username) {
+      console.warn('Missing threadId or username');
       return;
-    }
-    if (!username) {
-      console.warn('No username found in localStorage. Defaulting to "Guest".');
     }
 
     try {
@@ -152,6 +134,7 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
+            onKeyDown={handleKeyDown}  // Attach the keydown event to the textarea
           />
           <button
             type="submit"
