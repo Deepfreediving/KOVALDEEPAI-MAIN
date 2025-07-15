@@ -1,4 +1,4 @@
-// "use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
+"use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
 
 import { useState } from 'react';
 
@@ -21,7 +21,11 @@ export default function CreateThread() {
       }
 
       const data = await response.json();
-      setThreadId(data.thread_id);  // Set the thread ID once the thread is created successfully
+      if (data.threadId) {
+        setThreadId(data.threadId);  // Corrected the field name to threadId
+      } else {
+        throw new Error('Thread ID is missing from the response');
+      }
     } catch (err) {
       setError('Error: ' + (err.message || 'An unknown error occurred'));  // Display a more user-friendly error message
     } finally {
