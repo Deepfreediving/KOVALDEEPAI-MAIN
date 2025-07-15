@@ -1,6 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-console.log("Thread ID:", threadId);
-console.log("Username:", username);
 
 export default function Chat() {
   const [username, setUsername] = useState('');
@@ -10,10 +8,9 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null); // For auto-scrolling
 
-  // State to track initialization
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Retrieve or create threadId on mount
+  // Retrieve or create threadId on mount, run on client-side only
   useEffect(() => {
     const storedUsername = localStorage.getItem('kovalUser');
     const storedThreadId = localStorage.getItem('kovalThreadId');
@@ -24,10 +21,10 @@ export default function Chat() {
     setIsInitialized(true); // Set initialization state
   }, []);
 
-  // Create thread if not available
+  // Create thread if not available, ensure it runs after initial load
   useEffect(() => {
     if (!isInitialized || threadId) return;
-    
+
     const createThread = async () => {
       try {
         const response = await fetch('/api/create-thread', {
