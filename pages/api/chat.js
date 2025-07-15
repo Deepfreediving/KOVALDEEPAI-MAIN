@@ -15,31 +15,33 @@ export default async function handler(req, res) {
 
       // Call createMessage function to send the message to OpenAI
       const response = await createMessage(thread_id, message);
-
+      
       // Log the response from OpenAI for debugging
       console.log("OpenAI Response:", response);
 
       // Ensure that response contains choices and message
       if (!response || !response.choices || !response.choices[0]?.message) {
-        throw new Error('No valid response from OpenAI.');
+        console.error('Error: No valid response from OpenAI.');
+        return res.status(500).json({ error: 'Error: No valid response from OpenAI.' });
       }
 
       // Assuming the response has a message field from the assistant
       const assistantMessage = response?.choices?.[0]?.message || { role: 'assistant', content: 'Error: No response from assistant.' };
 
       // Return the assistant's response
-      res.status(200).json({ assistantMessage });
+      return res.status(200).json({ assistantMessage });
 
     } catch (error) {
       // Log the error message for debugging
       console.error('Error in /api/chat:', error.message || error.response?.data);
 
       // Return an error response with status 500 if something went wrong
-      res.status(500).json({
+      return res.status(500).json({
         error: 'Internal Server Error: Unable to fetch assistant response. Please check the OpenAI API or service.'
       });
     }
   } else {
-    res.status(405).json({ error: 'Method Not Allowed' });
+    // Return a 405 error if the method is not POST
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 }
