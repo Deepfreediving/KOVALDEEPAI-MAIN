@@ -25,7 +25,18 @@ export default function Chat() {
     if (!storedThreadId) {
       const createThread = async () => {
         try {
-          const response = await fetch('/api/create-thread', { method: 'POST' });
+          const response = await fetch('/api/create-thread', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',  // Ensure proper header
+            },
+            body: JSON.stringify({})  // Send an empty object or any required data
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to create thread');
+          }
+
           const data = await response.json();
           if (data.threadId) {
             setThreadId(data.threadId);
@@ -106,6 +117,12 @@ export default function Chat() {
   };
 
   const isThreadReady = threadId && username;
+
+  // Debugging info: Monitor values
+  useEffect(() => {
+    console.log('Thread ID:', threadId);
+    console.log('Username:', username);
+  }, [threadId, username]);
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
