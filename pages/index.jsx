@@ -10,6 +10,19 @@ export default function Chat() {
 
   // Retrieve or create threadId on mount
   useEffect(() => {
+    // Get the stored username or prompt for input if it's the first time
+    const storedUsername = localStorage.getItem('kovalUser');
+    if (!storedUsername) {
+      const name = prompt("Please enter your name for a personalized experience:");
+      if (name) {
+        localStorage.setItem('kovalUser', name);
+        setUsername(name);
+      }
+    } else {
+      setUsername(storedUsername);
+    }
+
+    // Retrieve threadId from localStorage or create a new one if not present
     const storedThreadId = localStorage.getItem('kovalThreadId');
     if (!storedThreadId) {
       const createThread = async () => {
@@ -17,7 +30,7 @@ export default function Chat() {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.thread_id) {
-            setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
+            setThreadId(data.thread_id); // Save thread_id to state and localStorage
             localStorage.setItem('kovalThreadId', data.thread_id);
           } else {
             console.error('Thread creation failed: No thread_id returned.');
@@ -30,16 +43,6 @@ export default function Chat() {
     } else {
       setThreadId(storedThreadId);
     }
-
-    // Retrieve or create username on mount
-    const storedUser = localStorage.getItem('kovalUser');
-    if (!storedUser) {
-      const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username if none exists
-      localStorage.setItem('kovalUser', newUser);
-      setUsername(newUser);
-    } else {
-      setUsername(storedUser);
-    }
   }, []);
 
   // Scroll to bottom of chat when new message is added
@@ -47,24 +50,17 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Function to handle message submission
+  // Handle message submission
   const handleSubmit = async (e) => {
-    e.preventDefault();  // Prevent the form from reloading the page
+    e.preventDefault();
     const trimmedInput = input.trim();
-    if (!trimmedInput) return;  // Don't send empty messages
+    if (!trimmedInput) return; // Don't send empty messages
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages); // Add the user message to the state
     setInput('');
     setLoading(true);
-
-    // Log to ensure the data is correct before sending to the backend
-    console.log("Sending to backend:", {
-      message: trimmedInput,
-      thread_id: threadId,
-      username: username,
-    });
 
     try {
       const res = await fetch('/api/chat', {
@@ -73,16 +69,9 @@ export default function Chat() {
         body: JSON.stringify({
           message: trimmedInput,
           thread_id: threadId,
-          username: username, // Send the username to the backend
+          username: username,
         }),
       });
-
-      if (!res.ok) {
-        // If the response status is not OK (e.g., 500 or 400), log the error
-        const errorData = await res.json();
-        console.error("Backend Error:", errorData.error);
-        throw new Error(`Error from backend: ${errorData.error}`);
-      }
 
       const data = await res.json();
       const assistantMessage = data?.assistantMessage ?? {
@@ -94,22 +83,20 @@ export default function Chat() {
 
     } catch (err) {
       console.error('Error fetching assistant response:', err);
-      // Optionally, add an error message to the chat
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' }
+        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' },
       ]);
     } finally {
-      setLoading(false);  // End loading state
+      setLoading(false);
     }
   };
 
   // Handle Enter key press for submitting the message
   const handleKeyDown = (e) => {
-    console.log("Key pressed:", e.key);  // Log key to ensure it's detecting the right key
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();  // Prevent default Enter behavior (adding a new line)
-      handleSubmit(e);  // Submit the message
+      e.preventDefault();
+      handleSubmit(e);
     }
   };
 
@@ -125,6 +112,11 @@ export default function Chat() {
 
         {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-400">
+              <p>Welcome to Koval Deep AI! How can I assist you today?</p>
+            </div>
+          )}
           {messages.map((m, i) => (
             <div
               key={i}
@@ -138,23 +130,18 @@ export default function Chat() {
               <div>{m.content}</div>
             </div>
           ))}
-          {loading && (
-            <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>
-          )}
+          {loading && <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>}
           <div ref={bottomRef} />
         </div>
 
         {/* Input Section */}
-        <form
-          onSubmit={handleSubmit}
-          className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl"
-        >
+        <form onSubmit={handleSubmit} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={handleKeyDown}  // Handle Enter key press
+            onKeyDown={handleKeyDown}
           />
           <button
             type="submit"

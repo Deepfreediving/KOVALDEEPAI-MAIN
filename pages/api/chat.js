@@ -5,6 +5,9 @@ export default async function handler(req, res) {
     try {
       const { message, thread_id, username } = req.body;  // Receive the message, thread_id, and username
 
+      // Log the received data
+      console.log("Received from frontend:", { message, thread_id, username });
+
       // Validate required parameters
       if (!message || !thread_id || !username) {
         return res.status(400).json({ error: 'Missing required fields: message, thread_id, or username' });
@@ -24,7 +27,6 @@ export default async function handler(req, res) {
       res.status(500).json({ error: 'Internal Server Error: ' + error.message });
     }
   } else {
-    // Method not allowed for other HTTP methods
     res.status(405).json({ error: 'Method Not Allowed' });
   }
 }
