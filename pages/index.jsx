@@ -32,9 +32,11 @@ export default function Chat() {
             localStorage.setItem('kovalThreadId', data.threadId);
           } else {
             console.warn('Thread creation failed: No threadId returned.');
+            alert('Thread creation failed. Please try again.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
+          alert('Error creating thread. Please try again later.');
         }
       };
       createThread();
@@ -65,6 +67,7 @@ export default function Chat() {
 
     if (!threadId) {
       console.warn('No threadId found in localStorage. Thread creation might have failed.');
+      alert('Thread creation failed. Please try again.');
       return;
     }
     if (!username) {
