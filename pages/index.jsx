@@ -28,7 +28,7 @@ export default function Chat() {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.threadId) {
-            setThreadId(data.threadId); 
+            setThreadId(data.threadId);
             localStorage.setItem('kovalThreadId', data.threadId);
           } else {
             console.warn('Thread creation failed: No threadId returned.');
@@ -48,15 +48,21 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle message submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Handle message submission when enter or return is pressed
+  const handleKeyDown = (e) => {
+    if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(); // Trigger form submission
+    }
+  };
+
+  const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages); 
+    setMessages(updatedMessages);
     setInput('');
     setLoading(true);
 
@@ -128,13 +134,13 @@ export default function Chat() {
         </div>
 
         {/* Input Section */}
-        <form onSubmit={handleSubmit} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={handleKeyDown}  // Attach the keydown event to the textarea
+            onKeyDown={handleKeyDown}  // Make sure keydown works
           />
           <button
             type="submit"
