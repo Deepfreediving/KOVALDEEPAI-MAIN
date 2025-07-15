@@ -1,4 +1,6 @@
 import { createThread } from '../../lib/openai';  // Import createThread from openai.js
+console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY);
+console.log("OPENAI_MODEL:", process.env.OPENAI_MODEL);
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {

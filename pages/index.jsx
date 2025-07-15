@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
+console.log("Thread ID:", threadId);
+console.log("Username:", username);
 
 export default function Chat() {
   const [username, setUsername] = useState('');
