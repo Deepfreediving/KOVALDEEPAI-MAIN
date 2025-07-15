@@ -48,20 +48,17 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Define the handleKeyDown function within the useEffect hook to ensure it's only defined in the client-side environment
+  // Define the handleKeyDown function outside useEffect
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit(e);
-      }
-    };
-
-    // Add event listener for keydown (client-side only)
     window.addEventListener('keydown', handleKeyDown);
-
     return () => {
-      // Clean up the event listener
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
