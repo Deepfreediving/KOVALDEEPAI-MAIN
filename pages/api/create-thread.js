@@ -1,35 +1,35 @@
-import openaiApi, { createThread } from '../../lib/openai'; // Ensure you import the axios instance properly
+import { createThread } from '../../lib/openai';  // Import createThread from openai.js
 
-export const createThread = async () => {
-  try {
-    console.log("Creating thread...");
+export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    try {
+      console.log('Creating thread...');
 
-    // Send the request to OpenAI API to create a new thread (chat completion)
-    const response = await openaiApi.post('/chat/completions', {
-      model: process.env.OPENAI_MODEL || 'gpt-4',  // Default to GPT-4 if no model is specified in the environment
-      messages: [
-        { role: 'user', content: 'start' },  // Starting the conversation with a placeholder message
-      ],
-    });
+      // Call the imported createThread function
+      const data = await createThread();  // Use the already defined function
 
-    // Log the full response from OpenAI to check the structure
-    console.log('Full OpenAI API Response:', response);
+      // Log the response for debugging
+      console.log('Thread creation response:', data);
 
-    // Ensure the response contains a valid threadId (completion ID)
-    if (!response.data || !response.data.id) {
-      const errorMessage = 'Thread creation failed: No threadId returned from OpenAI API.';
-      console.error(errorMessage);
-      throw new Error(errorMessage);  // Throwing the error with a descriptive message
+      // Ensure that threadId is returned in the response
+      if (!data || !data.threadId) {
+        const errorMessage = 'Thread creation failed: No threadId returned.';
+        console.error(errorMessage);
+        return res.status(500).json({ error: errorMessage });  // Return a structured error response
+      }
+
+      // Return the threadId to the client
+      return res.status(200).json({ threadId: data.threadId });
+
+    } catch (error) {
+      // Log the error message for debugging
+      console.error('Error creating thread:', error.message || error);
+
+      // Return an error response with status 500 if something went wrong
+      return res.status(500).json({ error: 'Failed to create thread: ' + (error.message || error) });
     }
-
-    // Return the threadId from the response
-    return { threadId: response.data.id };
-
-  } catch (error) {
-    // Log the error with more details for debugging
-    console.error("Error creating thread:", error.response?.data || error.message);
-
-    // Return a custom error message or throw depending on your error-handling strategy
-    throw new Error('Error creating thread: ' + (error.message || error.response?.data?.error?.message || 'Unknown error'));
+  } else {
+    // Return a 405 error if the method is not POST
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
-};
+}
