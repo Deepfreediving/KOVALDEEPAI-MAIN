@@ -6,9 +6,11 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null); // For auto-scrolling
+  const [errorMessage, setErrorMessage] = useState('');  // New state for error handling
+  const bottomRef = useRef(null);
 
-  // Retrieve or create threadId on mount
+  // ... (rest of the code)
+
   useEffect(() => {
     const storedUsername = localStorage.getItem('kovalUser');
     if (!storedUsername) {
@@ -28,15 +30,15 @@ export default function Chat() {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.threadId) {
-            setThreadId(data.threadId); 
+            setThreadId(data.threadId);
             localStorage.setItem('kovalThreadId', data.threadId);
           } else {
             console.warn('Thread creation failed: No threadId returned.');
-            alert('Thread creation failed. Please try again.');
+            setErrorMessage('Failed to create thread. Please try again later.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
-          alert('Error creating thread. Please try again later.');
+          setErrorMessage('Failed to create thread. Please try again later.');
         }
       };
       createThread();
@@ -45,12 +47,6 @@ export default function Chat() {
     }
   }, []);
 
-  // Scroll to bottom of chat when new message is added
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Handle message submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedInput = input.trim();
@@ -58,7 +54,7 @@ export default function Chat() {
 
     const userMessage = { role: 'user', content: trimmedInput };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages); 
+    setMessages(updatedMessages);
     setInput('');
     setLoading(true);
 
@@ -66,52 +62,31 @@ export default function Chat() {
     const username = localStorage.getItem('kovalUser') || 'Guest';
 
     if (!threadId) {
-      console.warn('No threadId found in localStorage. Thread creation might have failed.');
-      alert('Thread creation failed. Please try again.');
+      setErrorMessage('No threadId found. Thread creation might have failed.');
       return;
     }
     if (!username) {
-      console.warn('No username found in localStorage. Defaulting to "Guest".');
+      setErrorMessage('No username found. Defaulting to "Guest".');
     }
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmedInput,
-          thread_id: threadId,
-          username: username,
-        }),
+        body: JSON.stringify({ message: trimmedInput, thread_id: threadId, username: username }),
       });
 
       const data = await res.json();
-      const assistantMessage = data?.assistantMessage ?? {
-        role: 'assistant',
-        content: '⚠️ Something went wrong. Please try again.',
-      };
-
+      const assistantMessage = data?.assistantMessage ?? { role: 'assistant', content: '⚠️ Something went wrong. Please try again.' };
       setMessages((prev) => [...prev, assistantMessage]);
 
     } catch (err) {
       console.error('Error fetching assistant response:', err);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' },
-      ]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' }]);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
-  const isThreadReady = threadId && username;
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
@@ -123,6 +98,13 @@ export default function Chat() {
           {username && <span className="text-white text-sm">Hello, {username}!</span>}
         </div>
 
+        {/* Error Banner */}
+        {errorMessage && (
+          <div className="bg-red-500 text-white p-3 text-center">
+            {errorMessage}
+          </div>
+        )}
+
         {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
           {messages.length === 0 && (
@@ -131,7 +113,14 @@ export default function Chat() {
             </div>
           )}
           {messages.map((m, i) => (
-            <div key={i} className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${m.role === 'assistant' ? 'bg-teal-800 text-white self-start shadow-md' : 'bg-blue-600 text-white self-end shadow-lg'}`}>
+            <div
+              key={i}
+              className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${
+                m.role === 'assistant'
+                  ? 'bg-teal-800 text-white self-start shadow-md'
+                  : 'bg-blue-600 text-white self-end shadow-lg'
+              }`}
+            >
               <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
               <div>{m.content}</div>
             </div>
@@ -152,7 +141,7 @@ export default function Chat() {
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading || !isThreadReady}
+            disabled={loading || !threadId || !username}
           >
             {loading ? 'Thinking...' : 'Send'}
           </button>
