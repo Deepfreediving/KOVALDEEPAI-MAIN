@@ -3,7 +3,7 @@ import { createThread } from '@lib/openai';  // Importing createThread from @lib
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
-      console.log('Creating thread...');
+      console.log('Creating thread...');  // Log to track if the thread creation started
       
       // Call the createThread function from @lib/openai
       const data = await createThread();
@@ -14,8 +14,8 @@ export default async function handler(req, res) {
       // Ensure that threadId is returned in the response
       if (!data || !data.threadId) {
         const errorMessage = 'Thread creation failed: No threadId returned.';
-        console.error(errorMessage);
-        return res.status(500).json({ error: errorMessage });
+        console.error(errorMessage);  // Error logging for the absence of threadId
+        return res.status(500).json({ error: errorMessage });  // Return a structured error response
       }
       
       // Return the threadId to the client
