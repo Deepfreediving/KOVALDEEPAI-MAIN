@@ -8,55 +8,56 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null); // For auto-scrolling
 
+  // State to track initialization
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Retrieve or create threadId on mount
   useEffect(() => {
     const storedUsername = localStorage.getItem('kovalUser');
-    if (!storedUsername) {
-      const name = prompt("Please enter your name for a personalized experience:");
-      if (name) {
-        localStorage.setItem('kovalUser', name);
-        setUsername(name);
-      }
-    } else {
-      setUsername(storedUsername);
-    }
-
     const storedThreadId = localStorage.getItem('kovalThreadId');
-    if (!storedThreadId) {
-      const createThread = async () => {
-        try {
-          const response = await fetch('/api/create-thread', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',  // Ensure proper header
-            },
-            body: JSON.stringify({})  // Send an empty object or any required data
-          });
+    
+    if (storedUsername) setUsername(storedUsername);
+    if (storedThreadId) setThreadId(storedThreadId);
 
-          if (!response.ok) {
-            throw new Error('Failed to create thread');
-          }
-
-          const data = await response.json();
-          if (data.threadId) {
-            setThreadId(data.threadId);
-            localStorage.setItem('kovalThreadId', data.threadId);
-          } else {
-            console.warn('Thread creation failed: No threadId returned.');
-          }
-        } catch (err) {
-          console.error('Error creating thread:', err);
-        }
-      };
-      createThread();
-    } else {
-      setThreadId(storedThreadId);
-    }
+    setIsInitialized(true); // Set initialization state
   }, []);
+
+  // Create thread if not available
+  useEffect(() => {
+    if (!isInitialized || threadId) return;
+    
+    const createThread = async () => {
+      try {
+        const response = await fetch('/api/create-thread', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create thread');
+        }
+
+        const data = await response.json();
+        if (data.threadId) {
+          setThreadId(data.threadId);
+          localStorage.setItem('kovalThreadId', data.threadId);
+        } else {
+          console.warn('Thread creation failed: No threadId returned.');
+        }
+      } catch (err) {
+        console.error('Error creating thread:', err);
+      }
+    };
+
+    createThread();
+  }, [isInitialized, threadId]);
 
   // Scroll to bottom of chat when new message is added
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   // Handle message submission when Enter or Return is pressed
@@ -100,7 +101,7 @@ export default function Chat() {
       const data = await res.json();
       const assistantMessage = data?.assistantMessage ?? {
         role: 'assistant',
-        content: '⚠️ Something went wrong. Please try again.',
+        content: '⚠️ Something went wrong. Please try again later.',
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -109,7 +110,7 @@ export default function Chat() {
       console.error('Error fetching assistant response:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again.' },
+        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
       ]);
     } finally {
       setLoading(false);
@@ -117,12 +118,6 @@ export default function Chat() {
   };
 
   const isThreadReady = threadId && username;
-
-  // Debugging info: Monitor values
-  useEffect(() => {
-    console.log('Thread ID:', threadId);
-    console.log('Username:', username);
-  }, [threadId, username]);
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
@@ -158,12 +153,12 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={handleKeyDown}  // Make sure keydown works
+            onKeyDown={handleKeyDown}
           />
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading || !isThreadReady}
+            disabled={loading || !isThreadReady || input.trim() === ""}
           >
             {loading ? 'Thinking...' : 'Send'}
           </button>
