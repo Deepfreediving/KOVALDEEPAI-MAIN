@@ -1,4 +1,4 @@
-import { createThread } from '../../lib/openai';  // Import createThread from openai.js
+import { createThread } from '@lib/openai'; // Correct if using alias
 
 // Log environment variables for debugging purposes (use cautiously, avoid logging sensitive info in production)
 if (process.env.OPENAI_API_KEY) {
