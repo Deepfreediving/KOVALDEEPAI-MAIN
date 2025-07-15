@@ -1,4 +1,4 @@
-import { createMessage } from '../../lib/openai';  // Importing function to interact with OpenAI
+import { createMessage } from '@lib/openai';  // Importing function to interact with OpenAI
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
