@@ -1,25 +1,28 @@
 export const createThread = async () => {
   try {
+    console.log("Creating thread...");
+
+    // Send the request to OpenAI API
     const response = await openaiApi.post('/chat/completions', {
-      model: process.env.OPENAI_MODEL || 'gpt-4o',  // Default model set to GPT-4o if not provided in the environment
+      model: process.env.OPENAI_MODEL || 'gpt-4o',  // Default model if none is provided
       messages: [
-        { role: 'user', content: 'start' },  // Start the conversation with a placeholder message
+        { role: 'user', content: 'start' },  // Starting the conversation with a placeholder message
       ],
     });
 
-    // Log the entire response for debugging
-    console.log('Thread Creation Response:', response.data);
+    // Log the full response from OpenAI to check the structure
+    console.log('Full OpenAI API Response:', response);
 
-    // Check if threadId exists in response
+    // Check if the threadId is in the response
     if (!response.data || !response.data.id) {
-      throw new Error('No threadId returned from OpenAI.');
+      throw new Error('No threadId returned from OpenAI API.');
     }
 
-    // Return the threadId from the response
+    // Return the threadId
     return { threadId: response.data.id };
 
   } catch (error) {
-    // Enhanced error logging
+    // Log the error with more details for debugging
     console.error("Error creating thread:", error.response?.data || error.message);
     throw new Error('Error creating thread: ' + (error.message || error.response?.data));
   }
