@@ -19,27 +19,25 @@ export default function Chat() {
     if (storedUsername) {
       setUsername(storedUsername);
     } else {
-      // If no username in localStorage, prompt the user
       const name = prompt("Please enter your name for a personalized experience:");
       if (name) {
         localStorage.setItem('kovalUser', name);
         setUsername(name);
       } else {
-        const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username
+        const newUser = 'Guest' + Math.floor(Math.random() * 1000);
         localStorage.setItem('kovalUser', newUser);
         setUsername(newUser);
       }
     }
 
-    // Check if a threadId exists
     if (!storedThreadId) {
       const createThread = async () => {
         try {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
           if (data.threadId) {
-            setThreadId(data.threadId);  // Set the threadId if returned
-            localStorage.setItem('kovalThreadId', data.threadId); // Store threadId in localStorage
+            setThreadId(data.threadId);
+            localStorage.setItem('kovalThreadId', data.threadId);
           } else {
             console.error('Thread creation failed: No threadId returned.');
           }
@@ -49,10 +47,10 @@ export default function Chat() {
       };
       createThread();
     } else {
-      setThreadId(storedThreadId); // Use the stored threadId
+      setThreadId(storedThreadId);
     }
 
-    setIsInitialized(true); // Set initialization state
+    setIsInitialized(true);
   }, []);
 
   // Scroll to bottom of chat when new message is added
@@ -62,29 +60,26 @@ export default function Chat() {
     }
   }, [messages]);
 
-  // Handle message submission when Enter or Return is pressed
   const handleKeyDown = (e) => {
     if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
-      e.preventDefault(); // Prevent default behavior (new line in text area)
-      handleSubmit(); // Trigger form submission
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
-  // Handle message submission
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
 
     const userMessage = { role: 'user', content: trimmedInput };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    setMessages([...messages, userMessage]);
     setInput('');
     setLoading(true);
 
-    const threadId = localStorage.getItem('kovalThreadId');
-    const username = localStorage.getItem('kovalUser') || 'Guest';
+    const storedThreadId = localStorage.getItem('kovalThreadId');
+    const storedUsername = localStorage.getItem('kovalUser') || 'Guest';
 
-    if (!threadId || !username) {
+    if (!storedThreadId || !storedUsername) {
       console.warn('Missing threadId or username');
       return;
     }
@@ -95,19 +90,18 @@ export default function Chat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmedInput,
-          thread_id: threadId,
-          username: username,
+          thread_id: storedThreadId,
+          username: storedUsername,
         }),
       });
 
       const data = await res.json();
-      const assistantMessage = data?.assistantMessage ?? {
+      const assistantMessage = data?.assistantMessage || {
         role: 'assistant',
         content: '⚠️ Something went wrong. Please try again.',
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-
     } catch (err) {
       console.error('Error fetching assistant response:', err);
       setMessages((prev) => [
@@ -115,7 +109,7 @@ export default function Chat() {
         { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
       ]);
     } finally {
-      setLoading(false);  // End loading
+      setLoading(false);
     }
   };
 
@@ -124,14 +118,12 @@ export default function Chat() {
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-3xl h-screen flex flex-col border border-gray-700 rounded-xl overflow-hidden shadow-lg bg-white">
-        {/* Header */}
         <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
           <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
           <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
           {username && <span className="text-white text-sm">Hello, {username}!</span>}
         </div>
 
-        {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-gray-400">
@@ -148,7 +140,6 @@ export default function Chat() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input Section */}
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
           <textarea
             value={input}
