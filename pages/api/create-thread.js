@@ -1,52 +1,29 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
+import { createThread } from '@lib/openai';
 
-// Load environment variables from .env file
-dotenv.config();
+export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    try {
+      // Attempt to create the thread
+      const threadResponse = await createThread();
 
-// Setup Axios for OpenAI API calls
-const openaiApi = axios.create({
-  baseURL: process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',  // Default to OpenAI API base URL
-  headers: {
-    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,  // Authorization header with your API key
-    'Content-Type': 'application/json',  // Ensure content type is correctly set for JSON
-  },
-});
+      // Ensure threadId is returned from the createThread function
+      if (!threadResponse || !threadResponse.threadId) {
+        console.error('Thread creation failed: No threadId returned.');
+        return res.status(500).json({ error: 'Thread creation failed, no threadId returned.' });
+      }
 
-// Function to create a new thread (or conversation) for the assistant
-export const createThread = async () => {
-  try {
-    console.log("Creating thread...");
+      // Return the threadId
+      return res.status(200).json({ threadId: threadResponse.threadId });
+    } catch (error) {
+      // Log the full error including message and stack trace for better debugging
+      console.error('Error creating thread:', error.message, error.stack);
 
-    // Log environment and request parameters
-    console.log("OpenAI API Key:", process.env.OPENAI_API_KEY);  // Debugging: Log the API key
-    console.log("Model:", process.env.OPENAI_MODEL);  // Debugging: Log the model being used
-
-    // Send the request to OpenAI API to create a new thread (chat completion)
-    const response = await openaiApi.post('/chat/completions', {
-      model: process.env.OPENAI_MODEL || 'gpt-4',  // Default to GPT-4 if no model is specified in the environment
-      messages: [
-        { role: 'user', content: 'start conversation' },  // Start the conversation with a placeholder message
-      ],
-    });
-
-    // Log the full response to see if threadId is returned
-    console.log('Thread Creation Response:', response.data);
-
-    // Ensure the response contains a valid threadId (completion ID)
-    if (!response.data || !response.data.id) {
-      const errorMessage = 'Thread creation failed: No threadId returned from OpenAI API.';
-      console.error(errorMessage);
-      throw new Error(errorMessage);  // Throwing the error with a descriptive message
+      // Return a detailed error message to the frontend
+      return res.status(500).json({ error: `Internal error: ${error.message || 'Unknown error'}` });
     }
-
-    // Return the threadId from the response
-    return { threadId: response.data.id };  // Return the completion ID as the thread identifier
-  } catch (error) {
-    // Log the error message for debugging
-    console.error('Error creating thread:', error.message || error);
-
-    // Return a custom error message or throw depending on your error-handling strategy
-    throw new Error('Error creating thread: ' + (error.message || error.response?.data?.error?.message || 'Unknown error'));
+  } else {
+    // If not a POST request, return Method Not Allowed
+    console.warn('Invalid method used. Only POST requests are allowed.');
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
-};
+}

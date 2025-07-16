@@ -15,7 +15,7 @@ export default function Chat() {
   useEffect(() => {
     const storedThreadId = localStorage.getItem('kovalThreadId');
     const storedUsername = localStorage.getItem('kovalUser');
-    
+
     if (storedUsername) {
       setUsername(storedUsername);
     } else {
@@ -30,6 +30,7 @@ export default function Chat() {
       }
     }
 
+    // Check if a threadId exists or needs to be created
     if (!storedThreadId) {
       const createThread = async () => {
         try {
@@ -47,13 +48,13 @@ export default function Chat() {
       };
       createThread();
     } else {
-      setThreadId(storedThreadId);
+      setThreadId(storedThreadId); // Use stored threadId
     }
 
     setIsInitialized(true);
   }, []);
 
-  // Scroll to bottom of chat when new message is added
+  // Scroll to bottom of chat when a new message is added
   useEffect(() => {
     if (messages.length > 0) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,7 +64,7 @@ export default function Chat() {
   const handleKeyDown = (e) => {
     if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      handleSubmit(); // Trigger form submission
     }
   };
 
@@ -72,7 +73,8 @@ export default function Chat() {
     if (!trimmedInput) return;
 
     const userMessage = { role: 'user', content: trimmedInput };
-    setMessages([...messages, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);  // Add user message to state
     setInput('');
     setLoading(true);
 
@@ -101,7 +103,7 @@ export default function Chat() {
         content: '⚠️ Something went wrong. Please try again.',
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]); // Add assistant message to state
     } catch (err) {
       console.error('Error fetching assistant response:', err);
       setMessages((prev) => [
@@ -109,7 +111,7 @@ export default function Chat() {
         { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
       ]);
     } finally {
-      setLoading(false);
+      setLoading(false);  // End loading state
     }
   };
 
