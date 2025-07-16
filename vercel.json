@@ -6,15 +6,14 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/next" 
+      "use": "@vercel/next"
     }
   ],
   "env": {
-    "PINECONE_API_KEY": "PINECONE_API_KEY",  
-    "PINECONE_INDEX": "PINECONE_INDEX",
-    "PINECONE_HOST": "PINECONE_HOST",
-    "PINECONE_REGION": "PINECONE_REGION",
-    "OPENAI_API_KEY": "OPENAI_API_KEY",
-    "OPENAI_ASSISTANT_ID": "OPENAI_ASSISTANT_ID"
+    "PINECONE_API_KEY": "your-pinecone-api-key",
+    "PINECONE_ENV": "your-pinecone-region",
+    "OPENAI_API_KEY": "your-openai-api-key",
+    "OPENAI_MODEL": "your-openai-model",
+    "OPENAI_API_BASE": "your-openai-api-base"
   }
 }

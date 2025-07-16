@@ -1,4 +1,3 @@
-// pages/chat.jsx
 import { useEffect, useState, useRef } from 'react';
 
 export default function Chat() {
@@ -9,7 +8,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null); // For auto-scrolling
 
-  // Retrieve or create threadId on mount
+  // Retrieve or create threadId and username on mount
   useEffect(() => {
     const storedThreadId = localStorage.getItem('kovalThreadId');
     if (!storedThreadId) {
@@ -17,11 +16,11 @@ export default function Chat() {
         try {
           const response = await fetch('/api/create-thread', { method: 'POST' });
           const data = await response.json();
-          if (data.thread_id) {
-            setThreadId(data.thread_id); // Save the new thread_id in state and localStorage
-            localStorage.setItem('kovalThreadId', data.thread_id);
+          if (data.threadId) {
+            setThreadId(data.threadId); // Save the new threadId in state and localStorage
+            localStorage.setItem('kovalThreadId', data.threadId);
           } else {
-            console.error('Thread creation failed: No thread_id returned.');
+            console.error('Thread creation failed: No threadId returned.');
           }
         } catch (err) {
           console.error('Error creating thread:', err);
@@ -45,12 +44,13 @@ export default function Chat() {
 
   // Scroll to bottom of chat when new message is added
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   // Function to handle message submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
 
@@ -77,14 +77,13 @@ export default function Chat() {
         content: '⚠️ Something went wrong. Please try again.',
       };
 
-      setMessages((prev) => [...prev, assistantMessage]); // Add assistant's response
+      // Only add assistant's response to the messages state
+      setMessages((prev) => [...prev, assistantMessage]);
+
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `❌ Error: ${err.message}` },
-      ]);
+      console.error('Error fetching assistant response:', err);
     } finally {
-      setLoading(false);
+      setLoading(false);  // End loading
     }
   };
 
@@ -100,6 +99,11 @@ export default function Chat() {
 
         {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-400">
+              <p>Welcome to Koval Deep AI! How can I assist you today?</p>
+            </div>
+          )}
           {messages.map((m, i) => (
             <div
               key={i}
@@ -121,25 +125,25 @@ export default function Chat() {
 
         {/* Input Section */}
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
           className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl"
         >
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here (e.g., I'm Kai, Level 2 diver training for 60m)..."
+            placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSubmit(e); // Handle submit on Enter key press
+                handleSubmit(); // Handle submit on Enter key press
               }
             }}
           />
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading}
+            disabled={loading || !threadId || !username || input.trim() === ""}
           >
             {loading ? 'Thinking...' : 'Send'}
           </button>
