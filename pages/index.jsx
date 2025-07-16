@@ -1,49 +1,77 @@
-'use client';
-
 import { useEffect, useState, useRef } from 'react';
-import ReactMarkdown from 'react-markdown'; // Keep this if you need to render markdown content
 
-export default function Index() {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: '👋 Hi! How can I assist you on your freediving journey today?',
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null);
-  const [threadId, setThreadId] = useState('');
+export default function Chat() {
   const [username, setUsername] = useState('');
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [threadId, setThreadId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null); // For auto-scrolling
 
+  // State to track initialization
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Retrieve or create threadId and username on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('kovalUser');
-      if (storedUser) {
-        setUsername(storedUser);
+    const storedThreadId = localStorage.getItem('kovalThreadId');
+    const storedUsername = localStorage.getItem('kovalUser');
+    
+    if (storedUsername) {
+      setUsername(storedUsername);
+    } else {
+      // If no username in localStorage, prompt the user
+      const name = prompt("Please enter your name for a personalized experience:");
+      if (name) {
+        localStorage.setItem('kovalUser', name);
+        setUsername(name);
       } else {
-        const newUser = 'Guest' + Math.floor(Math.random() * 1000);
+        const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username
         localStorage.setItem('kovalUser', newUser);
         setUsername(newUser);
       }
-
-      const storedThreadId = localStorage.getItem('kovalThreadId');
-      if (storedThreadId) {
-        setThreadId(storedThreadId);
-      } else {
-        const newThreadId = 'thread-' + Date.now();
-        localStorage.setItem('kovalThreadId', newThreadId);
-        setThreadId(newThreadId);
-      }
     }
+
+    // Check if a threadId exists
+    if (!storedThreadId) {
+      const createThread = async () => {
+        try {
+          const response = await fetch('/api/create-thread', { method: 'POST' });
+          const data = await response.json();
+          if (data.threadId) {
+            setThreadId(data.threadId);  // Set the threadId if returned
+            localStorage.setItem('kovalThreadId', data.threadId); // Store threadId in localStorage
+          } else {
+            console.error('Thread creation failed: No threadId returned.');
+          }
+        } catch (err) {
+          console.error('Error creating thread:', err);
+        }
+      };
+      createThread();
+    } else {
+      setThreadId(storedThreadId); // Use the stored threadId
+    }
+
+    setIsInitialized(true); // Set initialization state
   }, []);
 
+  // Scroll to bottom of chat when new message is added
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Handle message submission when Enter or Return is pressed
+  const handleKeyDown = (e) => {
+    if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
+      e.preventDefault(); // Prevent default behavior (new line in text area)
+      handleSubmit(); // Trigger form submission
+    }
+  };
+
+  // Handle message submission
+  const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
 
@@ -52,6 +80,14 @@ export default function Index() {
     setMessages(updatedMessages);
     setInput('');
     setLoading(true);
+
+    const threadId = localStorage.getItem('kovalThreadId');
+    const username = localStorage.getItem('kovalUser') || 'Guest';
+
+    if (!threadId || !username) {
+      console.warn('Missing threadId or username');
+      return;
+    }
 
     try {
       const res = await fetch('/api/chat', {
@@ -71,67 +107,61 @@ export default function Index() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
     } catch (err) {
+      console.error('Error fetching assistant response:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `❌ Error: ${err.message}` },
+        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
       ]);
     } finally {
-      setLoading(false);
+      setLoading(false);  // End loading
     }
   };
+
+  const isThreadReady = threadId && username;
 
   return (
     <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-3xl h-screen flex flex-col border border-gray-700 rounded-xl overflow-hidden shadow-lg bg-white">
+        {/* Header */}
         <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
-          <img
-            src="/deeplogo.jpg"
-            alt="Deep Freediving Logo"
-            className="w-12 h-12 rounded-full shadow-md"
-          />
+          <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
           <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
           {username && <span className="text-white text-sm">Hello, {username}!</span>}
         </div>
 
+        {/* Messages Section */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-400">
+              <p>Welcome to Koval Deep AI! How can I assist you today?</p>
+            </div>
+          )}
           {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${
-                m.role === 'assistant'
-                  ? 'bg-teal-800 text-white self-start shadow-md'
-                  : 'bg-blue-600 text-white self-end shadow-lg'
-              }`}
-            >
+            <div key={i} className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${m.role === 'assistant' ? 'bg-teal-800 text-white self-start shadow-md' : 'bg-blue-600 text-white self-end shadow-lg'}`}>
               <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
-              <div>
-                {m.role === 'assistant' ? (
-                  <ReactMarkdown>{m.content}</ReactMarkdown> // Use for markdown content
-                ) : (
-                  m.content
-                )}
-              </div>
+              <div>{m.content}</div>
             </div>
           ))}
           {loading && <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>}
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
+        {/* Input Section */}
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here (e.g., I'm Kai, Level 2 diver training for 60m)..."
+            placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
             className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
+            onKeyDown={handleKeyDown}
           />
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50" disabled={loading}>
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
+            disabled={loading || !isThreadReady || input.trim() === ""}
+          >
             {loading ? 'Thinking...' : 'Send'}
           </button>
         </form>

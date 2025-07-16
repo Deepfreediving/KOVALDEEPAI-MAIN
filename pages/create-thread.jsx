@@ -1,4 +1,4 @@
-// "use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
+"use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
 
 import { useState } from 'react';
 
@@ -9,7 +9,7 @@ export default function CreateThread() {
 
   const handleCreateThreadSubmit = async () => {
     setLoading(true);
-    setError(null);  // Reset error before making a request
+    setError(null); // Reset error before making a request
 
     try {
       const response = await fetch('/api/create-thread', {
@@ -21,18 +21,29 @@ export default function CreateThread() {
       }
 
       const data = await response.json();
-      setThreadId(data.thread_id);  // Set the thread ID once the thread is created successfully
+      if (data.threadId) {
+        setThreadId(data.threadId); // Corrected the field name to threadId
+      } else {
+        throw new Error('Thread ID is missing from the response');
+      }
     } catch (err) {
-      setError('Error: ' + (err.message || 'An unknown error occurred'));  // Display a more user-friendly error message
+      setError(`Error: ${err.message || 'An unknown error occurred'}`); // Display a more user-friendly error message
     } finally {
-      setLoading(false);  // Reset loading state after the request is finished
+      setLoading(false); // Reset loading state after the request is finished
     }
   };
 
   return (
     <div className="container">
       <h1>Create a New Thread</h1>
-      <button onClick={handleCreateThreadSubmit} disabled={loading}>
+      <button 
+        onClick={handleCreateThreadSubmit} 
+        disabled={loading} 
+        style={{ 
+          backgroundColor: loading ? 'gray' : '#0070f3', 
+          cursor: loading ? 'not-allowed' : 'pointer' 
+        }}
+      >
         {loading ? 'Creating Thread...' : 'Create Thread'}
       </button>
 
