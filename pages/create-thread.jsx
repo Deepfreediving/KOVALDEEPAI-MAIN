@@ -1,6 +1,6 @@
 "use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
 
-import { useState } from 'react';
+import { useState } from "react";
 
 export default function CreateThread() {
   const [threadId, setThreadId] = useState(null);
@@ -12,22 +12,22 @@ export default function CreateThread() {
     setError(null); // Reset error before making a request
 
     try {
-      const response = await fetch('/api/create-thread', {
-        method: 'POST',
+      const response = await fetch("/api/create-thread", {
+        method: "POST",
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create thread');
+        throw new Error("Failed to create thread");
       }
 
       const data = await response.json();
       if (data.threadId) {
         setThreadId(data.threadId); // Corrected the field name to threadId
       } else {
-        throw new Error('Thread ID is missing from the response');
+        throw new Error("Thread ID is missing from the response");
       }
     } catch (err) {
-      setError(`Error: ${err.message || 'An unknown error occurred'}`); // Display a more user-friendly error message
+      setError(`Error: ${err.message || "An unknown error occurred"}`); // Display a more user-friendly error message
     } finally {
       setLoading(false); // Reset loading state after the request is finished
     }
@@ -36,19 +36,19 @@ export default function CreateThread() {
   return (
     <div className="container">
       <h1>Create a New Thread</h1>
-      <button 
-        onClick={handleCreateThreadSubmit} 
-        disabled={loading} 
-        style={{ 
-          backgroundColor: loading ? 'gray' : '#0070f3', 
-          cursor: loading ? 'not-allowed' : 'pointer' 
+      <button
+        onClick={handleCreateThreadSubmit}
+        disabled={loading}
+        style={{
+          backgroundColor: loading ? "gray" : "#0070f3",
+          cursor: loading ? "not-allowed" : "pointer",
         }}
       >
-        {loading ? 'Creating Thread...' : 'Create Thread'}
+        {loading ? "Creating Thread..." : "Create Thread"}
       </button>
 
       {threadId && <p>Thread created! Thread ID: {threadId}</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }

@@ -6,36 +6,49 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "postinstall": "next build",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "analyze": "BUNDLE_ANALYZE=true next build"
   },
   "engines": {
-    "node": ">=14.x"
+    "node": ">=18.0.0"
   },
   "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.27.6",
-    "@next/bundle-analyzer": "^13.5.5",
     "@pinecone-database/pinecone": "^2.2.2",
-    "@types/react": "^19.1.8",
     "axios": "^1.10.0",
-    "dotenv": "^10.0.0",
-    "next": "^15.3.5",
-    "openai": "^5.9.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.0",
+    "next": "^15.4.1",
+    "openai": "^5.10.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
     "@babel/eslint-parser": "^7.28.0",
     "@babel/preset-react": "^7.27.1",
+    "@next/bundle-analyzer": "^15.4.1",
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^24.0.14",
+    "@types/react": "^19.1.8",
     "autoprefixer": "^10.4.21",
     "eslint": "^8.0.0",
     "eslint-config-next": "^13.5.5",
+    "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-next": "^0.0.0",
+    "eslint-plugin-prettier": "^5.5.1",
     "eslint-plugin-react": "^7.37.5",
     "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
     "tailwindcss": "^3.4.17",
-    "typescript": "^4.8.4"
+    "typescript": "^4.9.5",
+    "webpack-bundle-analyzer": "^4.10.2",
+    "webpack-remove-debug": "^0.1.0"
   }
 }
