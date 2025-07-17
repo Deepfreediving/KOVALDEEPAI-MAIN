@@ -1,8 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next'; // Import Next.js API types
 import axios from 'axios'; // Import axios for making HTTP requests
 
-// Ensure environment variables are loaded properly
-const OPENAI_SECRET_KEY = process.env.OPENAI_SECRET_KEY; // OpenAI Secret Key from env
+// Ensure environment variables are loaded properly and use a consistent name for the key
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+if (!OPENAI_API_KEY) {
+  console.error("Missing OPENAI_API_KEY in environment variables");
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -38,6 +42,16 @@ export default async function handler(
   console.log('Creating thread for username:', username);
 
   try {
+    if (!OPENAI_API_KEY) {
+      console.warn('OPENAI_API_KEY not set, returning mock thread');
+      const threadId = Date.now().toString();
+      return res.status(200).json({
+        threadId,
+        initialMessage:
+          'OpenAI API key missing. Running in development mock mode.',
+      });
+    }
+
     // Prepare data for OpenAI API request
     const data = {
       model: 'gpt-4',  // Using GPT-4 model
@@ -52,7 +66,7 @@ export default async function handler(
       data,
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_SECRET_KEY}`,
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
       }
@@ -74,6 +88,10 @@ export default async function handler(
     });
   } catch (error) {
     console.error('Error with OpenAI request:', error);
-    return res.status(500).json({ error: 'Error creating thread: '  });
+    return res.status(500).json({
+      error: `Error creating thread: ${
+        (error as Error).message || 'Unknown error'
+      }`,
+    });
   }
 }
