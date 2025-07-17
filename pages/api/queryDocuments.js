@@ -1,44 +1,33 @@
-// pages/api/queryDocuments.js
-import { queryData } from '@lib/pinecone'; // Import query function
+import { upsertData } from "@lib/pinecone"; // Import the Pinecone upsert function
 
 export default async function handler(req, res) {
-  if (req.method === 'POST') {
+  if (req.method === "POST") {
     try {
-      const { queryVector } = req.body;  // Expecting a query vector from the request body
+      // Example data to be upserted to Pinecone
+      const data = [
+        {
+          id: "example-id-1", // Unique identifier for the vector
+          values: [0.1, 0.2, 0.3, 0.4], // Vector values (ensure they match the index dimensions)
+        },
+        {
+          id: "example-id-2", // Another unique identifier
+          values: [0.5, 0.6, 0.7, 0.8], // Corresponding vector values
+        },
+        // You can add more vectors here as needed
+      ];
 
-      // Validate that the query vector is provided and is an array
-      if (!queryVector || !Array.isArray(queryVector)) {
-        return res.status(400).json({ error: 'Query vector must be provided as an array.' });
-      }
+      // Call the upsert function from Pinecone to add the data to the index
+      const response = await upsertData(data);
 
-      // Optionally, validate the query vector length (based on your index's dimensions)
-      const expectedLength = 1536;  // Replace with the actual dimension of your Pinecone index
-      if (queryVector.length !== expectedLength) {
-        return res.status(400).json({ error: `Query vector must have ${expectedLength} elements.` });
-      }
-
-      // Log incoming query (useful for debugging)
-      console.log('Query vector received:', queryVector);
-
-      // Call Pinecone query
-      const queryResponse = await queryData(queryVector);
-
-      // Handle case where no matches are found
-      if (!queryResponse || queryResponse.matches.length === 0) {
-        return res.status(404).json({ error: 'No matching documents found.' });
-      }
-
-      // Respond with the query results
-      res.status(200).json(queryResponse);  
+      // Return the response back to the client
+      res.status(200).json({ success: true, data: response });
     } catch (error) {
-      // Log error for debugging
-      console.error('Error querying Pinecone:', error);
-
-      // Send more context with the error response
-      res.status(500).json({ error: 'Error querying Pinecone', details: error.message });
+      // Handle errors by returning an error response
+      console.error("Error upserting data to Pinecone:", error.message);
+      res.status(500).json({ success: false, error: error.message });
     }
   } else {
-    // Handle only POST requests
-    res.status(405).json({ error: 'Method Not Allowed' });  // Only POST requests are allowed
+    // If the method is not POST, return a 405 Method Not Allowed
+    res.status(405).json({ error: "Method Not Allowed" });
   }
 }
