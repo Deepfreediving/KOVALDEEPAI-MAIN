@@ -11,7 +11,7 @@ export default function Chat() {
   // Track initialization and retrieve user data
   useEffect(() => {
     const storedThreadId = localStorage.getItem("kovalThreadId");
-    const storedUsername = localStorage.getItem("kovalUser");
+    let storedUsername = localStorage.getItem("kovalUser");
 
     // Handle new or returning users
     if (!storedUsername) {
@@ -21,10 +21,12 @@ export default function Chat() {
       if (name) {
         localStorage.setItem("kovalUser", name);
         setUsername(name);
+        storedUsername = name;
       } else {
         const newUser = "Guest" + Math.floor(Math.random() * 1000);
         localStorage.setItem("kovalUser", newUser);
         setUsername(newUser);
+        storedUsername = newUser;
       }
     } else {
       setUsername(storedUsername);
@@ -50,7 +52,7 @@ export default function Chat() {
     } else {
       setThreadId(storedThreadId);
     }
-  }, []);
+  }, []); // Empty dependency array ensures this runs only on mount
 
   const handleKeyDown = (e) => {
     if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey) {
