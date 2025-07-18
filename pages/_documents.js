@@ -1,6 +1,7 @@
-// pages/_document.js
-import { Html, Head, Main, NextScript } from 'next/document';
-import { metadata } from '../lib/metadata';  // Import metadata from your lib
+import { Html, Head, Main, NextScript } from "next/document";
+import { getMetadata } from "../lib/metadata"; // ✅ Correct function import
+
+const metadata = getMetadata(); // call the function to get values
 
 export default function Document() {
   return (
@@ -8,7 +9,10 @@ export default function Document() {
       <Head>
         <title>{metadata.title}</title>
         <meta name="description" content={metadata.description} />
-        {/* You can add other metadata, links to styles, or fonts here */}
+        {/* Open Graph metadata */}
+        <meta property="og:title" content={metadata.title} />
+        <meta property="og:description" content={metadata.description} />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <body className="bg-black text-white">
         <Main />

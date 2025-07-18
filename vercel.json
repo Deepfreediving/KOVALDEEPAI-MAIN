@@ -1,19 +1,27 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
   ],
   "builds": [
     {
-      "src": "package.json",
+      "src": "next.config.js",
       "use": "@vercel/next"
     }
   ],
   "env": {
-    "PINECONE_API_KEY": "your-pinecone-api-key",
-    "PINECONE_ENV": "your-pinecone-region",
-    "OPENAI_API_KEY": "your-openai-api-key",
-    "OPENAI_MODEL": "your-openai-model",
-    "OPENAI_API_BASE": "your-openai-api-base"
+    "PINECONE_API_KEY": "@pinecone_api_key",
+    "NEXT_PUBLIC_OPENAI_API_KEY": "@openai_api_key",
+    "PINECONE_INDEX": "@pinecone_index",
+    "PINECONE_HOST": "@pinecone_host",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "OPENAI_MODEL": "gpt-4o",
+    "OPENAI_API_BASE": "https://api.openai.com/v1"
   }
 }

@@ -1,76 +1,90 @@
-const nextConfig = {
-  reactStrictMode: true, // Enables React's Strict Mode for development
+import { fileURLToPath } from 'url';
+import path from 'path';
+import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
+
+// Get the current directory in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default {
+  reactStrictMode: true,  // Enable React's strict mode for better debugging
+
   webpack(config, { isServer }) {
-    if (isServer) {
-      // Custom server-side webpack configurations can go here if needed
+    // Aliases for cleaner imports
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": path.resolve(__dirname),
+      "@lib": path.resolve(__dirname, "lib"),
+      "@components": path.resolve(__dirname, "components"),
+      "@pages": path.resolve(__dirname, "pages"),
+      "@styles": path.resolve(__dirname, "styles"),
+    };
+
+    // Conditionally enable Bundle Analyzer (only on client-side builds)
+    if (!isServer && process.env.BUNDLE_ANALYZE === "true") {
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: "static",  // Output HTML file
+          openAnalyzer: false,     // Set true to open automatically
+          reportFilename: "bundle-report.html",
+        })
+      );
     }
+
     return config;
   },
 
   images: {
-    domains: ['yourdomain.com', 'anotherdomain.com'],  // Replace with your actual domains for image optimization
-  },
-
-  serverRuntimeConfig: {
-    // Sensitive keys for server-side only
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,  // Ensure your API key is loaded from environment
-  },
-
-  publicRuntimeConfig: {
-    // These variables are available on both the client and the server
-    APP_NAME: process.env.APP_NAME || 'DefaultApp', // Public runtime variables
-    CUSTOM_ENV_VAR: process.env.CUSTOM_ENV_VAR || 'default',  // Custom environment variables
+    domains: ["yourdomain.com"],  // Add your allowed domains here
+    formats: ["image/webp"],      // Set image format
+    deviceSizes: [640, 750, 1080, 1200, 1920], // Set device sizes for image optimization
   },
 
   env: {
-    // Adding custom environment variables directly to be accessed throughout the app
-    CUSTOM_ENV_VAR: process.env.CUSTOM_ENV_VAR || 'default',  // Use these in your app, accessible client-side and server-side
+    NEXT_PUBLIC_OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,  // This is your main API key
+    OPENAI_API_BASE: process.env.OPENAI_API_URL || "https://api.openai.com/v1",  // Default OpenAI API URL
+    PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+    PINECONE_INDEX: process.env.PINECONE_INDEX,
+    PINECONE_HOST: process.env.PINECONE_HOST,
   },
 
-  // Optional features
+  // Optional redirects, if you have any
   async redirects() {
-    // Example redirects (can be customized based on your needs)
     return [
       {
-        source: '/old-url',
-        destination: '/new-url',
+        source: "/old-url",
+        destination: "/new-url",
         permanent: true,
       },
     ];
   },
 
+  // Optional rewrites, if needed
   async rewrites() {
-    // Example rewrites (can be customized based on your needs)
     return [
       {
-        source: '/api/old-api',
-        destination: '/api/new-api',
+        source: "/api/old-api",
+        destination: "/api/new-api",
       },
     ];
   },
 
+  // Optional headers, if you need custom headers for routes
   async headers() {
-    // Set custom headers for your pages or API routes
     return [
       {
-        source: '/:path*',  // Apply to all routes
+        source: "/:path*",
         headers: [
           {
-            key: 'X-Custom-Header',
-            value: 'my-custom-value',
+            key: "X-Custom-Header",
+            value: "my-custom-value",
           },
         ],
       },
     ];
   },
 
-  // Uncomment below if you're using experimental features in Next.js 12+
-  // experimental: {
-  //   optimizeImages: true, // Optimize images by default for better performance
-  // },
-
-  // Use this if you want to create a standalone build
-  // output: 'standalone', // This can be used for Vercel deployment if needed
+  // Middleware: should be in a separate `middleware.js` or `middleware.ts` file
+  // Example: /pages/middleware.js or /pages/api/middleware.js
 };
-
-export default nextConfig;
