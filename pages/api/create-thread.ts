@@ -1,69 +1,45 @@
-import { NextApiRequest, NextApiResponse } from 'next'; // Import Next.js API types
-import axios from 'axios'; // Import axios for making HTTP requests
+import { NextApiRequest, NextApiResponse } from 'next';
+import axios from 'axios';
 
-// Ensure environment variables are loaded properly and use a consistent name for the key
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-if (!OPENAI_API_KEY) {
-  console.error("Missing OPENAI_API_KEY in environment variables");
-}
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  // Log the incoming request for debugging
-  console.log("Received request:", req.method, req.body);
-
-  // Ensure it's a POST request
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Only allow POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
-
-  // Extract API key from headers
-  const apiKey = req.headers['x-api-key'];
-
-  // Ensure apiKey is a string before using it
-  if (typeof apiKey !== 'string') {
-    return res.status(403).json({ error: 'API key is missing or invalid' });
-  }
-
-  console.log('Validating API key...');
-  // Here you could add the logic for API key validation if needed
-  // Since we're assuming the API key is valid for now, we skip validation logic
 
   const { username } = req.body;
 
-  // Ensure username is a string before using it
-  if (typeof username !== 'string') {
+  // Validate username
+  if (!username || typeof username !== 'string') {
     return res.status(400).json({ error: 'Username is required and must be a string' });
   }
 
-  console.log('Creating thread for username:', username);
+  console.log('Creating thread for:', username);
+
+  // Fallback: return mock data if no API key is set (dev mode)
+  if (!OPENAI_API_KEY) {
+    console.warn('No API key set. Returning mock thread.');
+    return res.status(200).json({
+      threadId: `mock-${Date.now()}`,
+      initialMessage: `Welcome ${username}! This is a mock assistant response.`,
+    });
+  }
 
   try {
-    if (!OPENAI_API_KEY) {
-      console.warn('OPENAI_API_KEY not set, returning mock thread');
-      const threadId = Date.now().toString();
-      return res.status(200).json({
-        threadId,
-        initialMessage:
-          'OpenAI API key missing. Running in development mock mode.',
-      });
-    }
-
-    // Prepare data for OpenAI API request
-    const data = {
-      model: 'gpt-4',  // Using GPT-4 model
-      messages: [{ role: 'system', content: `You are a helpful assistant.` }, { role: 'user', content: `Hello, I’m ${username}. Let’s start a conversation!`}], // Sending initial messages
-      max_tokens: 150,
-      temperature: 0.7,
-    };
-
-    console.log('Making request to OpenAI...');
+    // Call OpenAI API to simulate starting a conversation
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',  // Correct OpenAI chat completions endpoint
-      data,
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: `Hello, I’m ${username}. Let’s start a conversation!` }
+        ],
+        max_tokens: 150,
+        temperature: 0.7,
+      },
       {
         headers: {
           'Authorization': `Bearer ${OPENAI_API_KEY}`,
@@ -72,26 +48,21 @@ export default async function handler(
       }
     );
 
-    console.log('OpenAI response received:', response.data);
+    const reply = response.data.choices?.[0]?.message?.content?.trim();
 
-    // Check if OpenAI returned a valid response
-    if (!response.data || !response.data.choices || response.data.choices.length === 0) {
-      throw new Error('Invalid response from OpenAI API');
+    if (!reply) {
+      throw new Error('No message returned from OpenAI');
     }
 
-    const threadId = Date.now().toString(); // Generate a unique thread ID based on the current timestamp
-
-    // Return the thread ID and the initial message from OpenAI
     return res.status(200).json({
-      threadId,
-      initialMessage: response.data.choices[0].message.content.trim(), // Correct access to message content in OpenAI response
+      threadId: `thread-${Date.now()}`,
+      initialMessage: reply,
     });
-  } catch (error) {
-    console.error('Error with OpenAI request:', error);
+
+  } catch (err) {
+    console.error('OpenAI error:', err);
     return res.status(500).json({
-      error: `Error creating thread: ${
-        (error as Error).message || 'Unknown error'
-      }`,
+      error: 'Failed to create thread with OpenAI',
     });
   }
 }
