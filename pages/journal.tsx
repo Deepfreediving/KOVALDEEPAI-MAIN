@@ -20,7 +20,7 @@ export default function JournalEntryPage() {
   const handleSubmit = async () => {
     const body = new FormData();
     Object.entries(form).forEach(([key, val]) => {
-      if (val instanceof File) {
+      if (val instanceof Object && val instanceof File) {
         body.append(key, val);
       } else if (typeof val === 'boolean') {
         body.append(key, val.toString());

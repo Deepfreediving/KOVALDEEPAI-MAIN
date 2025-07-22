@@ -1,4 +1,9 @@
-export function analyzeLog(entry) {
+interface LogEntry {
+  maxDepth: number;
+  issueTags: string[];
+}
+
+export function analyzeLog(entry: LogEntry) {
   const { maxDepth, issueTags } = entry;
 
   if (maxDepth >= 40 && issueTags.includes("mouthfill compression")) {
