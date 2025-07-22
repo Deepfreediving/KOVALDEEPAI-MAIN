@@ -1,5 +1,4 @@
-// scripts/ingest-documents.js (CommonJS)
-
+// scripts/ingest-documents.js
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -7,26 +6,22 @@ const { Pinecone } = require('@pinecone-database/pinecone');
 const OpenAI = require('openai');
 const { encode } = require('gpt-3-encoder');
 
-// Load env variables
-const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX;
-const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// 🔐 Load and validate env vars
+const {
+  PINECONE_INDEX,
+  PINECONE_API_KEY,
+  OPENAI_API_KEY,
+} = process.env;
 
-if (!PINECONE_INDEX_NAME || typeof PINECONE_INDEX_NAME !== 'string') {
-  throw new Error('❌ Missing or invalid PINECONE_INDEX in .env');
-}
-if (!PINECONE_API_KEY) {
-  throw new Error('❌ Missing PINECONE_API_KEY in .env');
-}
-if (!OPENAI_API_KEY) {
-  throw new Error('❌ Missing OPENAI_API_KEY in .env');
+if (!PINECONE_INDEX || !PINECONE_API_KEY || !OPENAI_API_KEY) {
+  throw new Error('❌ Missing required environment variables in .env');
 }
 
-// Init clients
+// 🔧 Initialize clients
 const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// Recursively find all .txt files
+// 📂 Recursively get .txt files
 function getAllTxtFiles(dir, fileList = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -40,9 +35,9 @@ function getAllTxtFiles(dir, fileList = []) {
   return fileList;
 }
 
-// Token-based chunking
+// ✂️ Chunking by token count
 function chunkText(text, maxTokens = 500) {
-  const sentences = text.split(/\.\s+/);
+  const sentences = text.split(/(?<=[.?!])\s+/); // Sentence-aware split
   const chunks = [];
   let chunk = '';
 
@@ -52,7 +47,7 @@ function chunkText(text, maxTokens = 500) {
       if (chunk) chunks.push(chunk.trim());
       chunk = sentence;
     } else {
-      chunk += sentence + '. ';
+      chunk += sentence + ' ';
     }
   }
 
@@ -60,43 +55,55 @@ function chunkText(text, maxTokens = 500) {
   return chunks;
 }
 
-// Embedding + Upsert loop
+// 🚀 Ingest all .txt files into Pinecone
 async function embedAndUpsert() {
-  console.log('🔍 Checking Pinecone index...');
-  await pinecone.describeIndex(PINECONE_INDEX_NAME);
+  try {
+    console.log('🔍 Validating Pinecone index...');
+    await pinecone.describeIndex(PINECONE_INDEX);
+    const index = pinecone.Index(PINECONE_INDEX);
 
-  const index = pinecone.Index(PINECONE_INDEX_NAME);
-  const files = getAllTxtFiles(path.join(process.cwd(), 'data'));
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      throw new Error(`❌ Directory not found: ${dataDir}`);
+    }
 
-  for (const filePath of files) {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const relativePath = path.relative('data', filePath);
-    const chunks = chunkText(content);
+    const files = getAllTxtFiles(dataDir);
+    if (files.length === 0) {
+      console.warn('⚠️ No .txt files found in /data');
+      return;
+    }
 
-    const vectors = await Promise.all(
-      chunks.map(async (chunk, i) => {
-        const embedding = await openai.embeddings.create({
-          model: 'text-embedding-3-small',
-          input: chunk,
-        });
+    for (const filePath of files) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const relativePath = path.relative('data', filePath);
+      const chunks = chunkText(content);
 
-        return {
-          id: `${relativePath.replace(/\W+/g, '_')}_${i}`,
-          values: embedding.data[0].embedding,
-          metadata: {
-            source: relativePath,
-            chunkIndex: i,
-            text: chunk,
-          },
-        };
-      })
-    );
+      const vectors = await Promise.all(
+        chunks.map(async (chunk, i) => {
+          const embedding = await openai.embeddings.create({
+            model: 'text-embedding-3-small',
+            input: chunk,
+          });
 
-    await index.upsert(vectors);
-    console.log(`✅ Uploaded ${relativePath} with ${vectors.length} vectors.`);
+          return {
+            id: `${relativePath.replace(/\W+/g, '_')}_${i}`,
+            values: embedding.data[0].embedding,
+            metadata: {
+              source: relativePath,
+              chunkIndex: i,
+              text: chunk,
+            },
+          };
+        })
+      );
+
+      await index.upsert(vectors);
+      console.log(`✅ Uploaded: ${relativePath} (${vectors.length} chunks)`);
+    }
+  } catch (err) {
+    console.error('❌ Ingestion failed:', err);
   }
 }
 
-embedAndUpsert().catch((err) => {
-  console.error('❌ Embedding/upserting failed:', err);
-});
+// 🔁 Run
+embedAndUpsert();
