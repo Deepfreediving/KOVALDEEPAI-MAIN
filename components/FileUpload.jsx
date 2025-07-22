@@ -1,24 +1,25 @@
-// /components/FileUpload.jsx
 import { useState } from "react";
 
 export default function FileUpload({ onUploadSuccess }) {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
+  const [file, setFile] = useState(null);
 
   const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selected = e.target.files?.[0];
+    if (!selected) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (!selected.type.startsWith("image/")) {
       setMessage("❌ Please upload an image file.");
       return;
     }
 
     setUploading(true);
     setMessage("");
+    setFile(selected);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("image", selected); // ✅ correct key
 
     try {
       const res = await fetch("/api/upload-dive-image", {
@@ -49,6 +50,13 @@ export default function FileUpload({ onUploadSuccess }) {
         onChange={handleFileChange}
         className="text-sm border px-3 py-1 rounded-md"
       />
+      {file && (
+        <img
+          src={URL.createObjectURL(file)}
+          alt="Preview"
+          className="mt-2 w-24 h-24 object-cover rounded shadow border"
+        />
+      )}
       {uploading && <p className="text-blue-500 mt-1 text-sm">Uploading...</p>}
       {message && <p className="text-sm mt-1">{message}</p>}
     </div>

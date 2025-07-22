@@ -1,27 +1,25 @@
-import { fileURLToPath } from 'url';
-import path from 'path';
-import webpack from 'webpack';
+// next.config.js
 
-// For conditional plugin usage
+const path = require('path');
+const webpack = require('webpack');
 const isAnalyze = process.env.BUNDLE_ANALYZE === 'true';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-// Dynamically require only if analyzing
 const getPlugins = () => {
   const plugins = [];
   if (isAnalyze) {
     const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-    plugins.push(new BundleAnalyzerPlugin({
-      analyzerMode: 'static',
-      openAnalyzer: false,
-      reportFilename: 'bundle-report.html',
-    }));
+    plugins.push(
+      new BundleAnalyzerPlugin({
+        analyzerMode: 'static',
+        openAnalyzer: false,
+        reportFilename: 'bundle-report.html',
+      })
+    );
   }
   return plugins;
 };
 
-const nextConfig = {
+module.exports = {
   reactStrictMode: true,
 
   webpack(config, { isServer }) {
@@ -40,13 +38,12 @@ const nextConfig = {
   },
 
   images: {
-    domains: ['yourdomain.com'], // Update to actual domains
+    domains: ['yourdomain.com'], // Replace with actual image domains you're using
     formats: ['image/webp'],
     deviceSizes: [640, 750, 1080, 1200, 1920],
   },
 
   env: {
-    NEXT_PUBLIC_OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_API_BASE: process.env.OPENAI_API_URL || 'https://api.openai.com/v1',
     PINECONE_API_KEY: process.env.PINECONE_API_KEY,
@@ -87,5 +84,3 @@ const nextConfig = {
     ];
   },
 };
-
-export default nextConfig;
