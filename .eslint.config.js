@@ -7,23 +7,23 @@ export default [
     languageOptions: {
       parser: babelParser,
       parserOptions: {
-        ecmaVersion: 2021, // Use ECMAScript 2021
-        sourceType: "module", // Use module syntax
+        ecmaVersion: 2021,
+        sourceType: "module",
         ecmaFeatures: {
-          jsx: true, // Enable JSX parsing
+          jsx: true,
         },
       },
     },
     settings: {
       react: {
-        version: "detect", // Automatically detect React version
+        version: "detect",
       },
     },
     plugins: {
-      react: reactPlugin, // Add the React plugin
+      react: reactPlugin,
     },
     rules: {
-      "react/react-in-jsx-scope": "off", // No need for React import with React 17+
+      "react/react-in-jsx-scope": "off",
       "next/no-page-custom-font": "off",
       "next/no-img-element": "off",
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
