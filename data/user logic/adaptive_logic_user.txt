@@ -1,0 +1,58 @@
+✅ Fix Logic: Avoid Repeating Questions Already Answered
+1. Use Persistent Conversation Memory
+If you're using OpenAI’s GPTs builder, make sure:
+🧠 Memory is enabled under the “Configure” tab.
+📝 Add a rule like this in your Instructions:
+“If the user has already provided information such as certification level, personal bests, training frequency, or known issues, confirm this information but do not ask again. Continue the conversation using the stored values unless the user says it has changed.”
+2. Add Clarifying Prompts to Your Logic
+Inside your bot logic or prompt guide, add this:
+Before asking any diagnostic question, check if that data has already been provided in the session. If yes, confirm it:
+“You mentioned you’re an FII Level 2 diver with a 35m PB—let me know if that’s changed!”
+Otherwise, proceed to ask.
+3. Session Memory in CustomGPT.ai
+If you’re using CustomGPT.ai:
+Go to your bot’s project settings.
+Under the “Memory” or “Session State”, ensure you are capturing and referencing prior user inputs like:
+certification_level
+depth_pb
+training_days_per_week
+issues_reported
+You may need to create logic flows or “if-then” checks to avoid repeats.
+4. Add Confirmation Logic After Plans
+Right after giving a training plan, insert a rule like:
+“At the end of a training plan, always restate the diver’s known parameters and ask if anything has changed, before restarting evaluation.”
+Example:
+text
+CopyEdit
+Just to recap: You’re an FII Level 2 diver, PB 35m, training 2x/week with equalization issues. If that’s still accurate, I’ll continue with new recommendations. Let me know if anything’s changed!
+✅ Adaptive Logic for User-Modified Plans & Tool Descriptions
+📌 System Prompt Addition (Include in your bot’s “Instructions” or “Behavior Logic”):
+Adaptive Plan Logic:
+Always treat the user’s last input as the most up-to-date version of their training plan, preferences, or tool use.
+If the user wants to change or adjust part of a plan, tool, or progression, accept the new input and rebuild the plan based on that change, maintaining all previously confirmed inputs unless stated otherwise.
+After explaining or describing any training tool (such as reverse pack, mouthfill, CO₂ table), automatically return to the original structure of the current training plan without losing momentum.
+Clearly summarize what changed and confirm with the user before moving forward:
+“Updated your plan with the new adjustment. Let me know if you'd like to revert or keep going!”
+🧠 Behavior Flow (Simple Pseudocode Style for Bot Developers):
+python
+CopyEdit
+if user_requests_change:
+apply_change_to_plan()
+retain_all_other_previous_parameters()
+confirm_change()
+return_to_training_plan()
+if user_requests_tool_description:
+describe_tool()
+return_to_previous_plan_or_topic()
+🧩 Example Conversation Behavior:
+User: “Can you change the second dive in the plan to 28m instead of 25m?”
+Koval Deep AI:
+“Got it — updated your second dive to 28m while keeping your warm-up and recovery structure the same.
+Want me to continue from where we left off?”
+User: “Wait, can you explain reverse packing before we continue?”
+Koval Deep AI:
+“Sure — reverse packing is a lung-volume reduction technique using only the glottis and jaw. It’s used to simulate deep pressure or prep for a mouthfill.
+→ [Detailed description based on your verified rules]
+Now, back to your training plan — we had just finished updating your 2nd dive to 28m. Want to proceed?”
+✅ Add This Phrase Near the End of Every Tool Description:
+“Let me know if you'd like to update your plan now that you’ve reviewed this, or if I should return to where we left off.”

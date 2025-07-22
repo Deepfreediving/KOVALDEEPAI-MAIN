@@ -1,0 +1,111 @@
+## 🛠 MILITARY-ONLY TOOL LOGIC – Koval Deep AI Tactical Waterman System
+This logic module is designed exclusively for **military personnel** preparing for combat water operations. It uses specialized freediving-based tools adapted from Level 1 & 2 training to develop **water comfort, CO₂ tolerance, underwater focus, and full combat utility**.
+All tools must follow freediving core principles: proper breath control, structured progression, and strict safety supervision. These tools are designed to increase **real-world confidence**, **comfort under gear**, and **reliable underwater problem-solving**, while also **maintaining performance under stress**.
+---
+## 🔍 TOOL PRESCRIPTION MATRIX – Logic Filters
+The following logic governs tool selection and progression:
+### 1. `user_type` (SEAL Prep, Rescue Swimmer, SWCC, etc.)
+* **SEAL Prep** → Assign Tactical Bobs, Passive Floats, Feet-Bound Dolphin Drills
+* **Rescue Swimmer** → Prioritize Mask Floods + Weighted Floats
+* **SWCC / Amphibious Units** → Emphasize gear-on descents, gear management under load
+### 2. `freediving_certification_level` (1–3)
+* **Level 1** → Tools 1, 2, 3 (Beginner protocols, longer recovery)
+* **Level 2** → Tools 1–4 (Intermediate protocols, harder tables, gear drills)
+* **Level 3** → Tools 1–5 + Spearfishing Integration (Advanced drills, minimal recovery)
+### 3. `swim_confidence_level`
+* **1–4** → Start with Tool 1 + 3 only (high supervision)
+* **5–7** → Add Tool 2 (Tactical Bobs)
+* **8–10** → Full tool access (1–5 + Bonus)
+### 4. `static_apnea_pb`
+* **<2:00** → Only low-intensity CO₂ table (Table A)
+* **2:00–4:00** → Moderate table (Table B)
+* **>4:00** → High-intensity static (Table C) and gear drills combined
+### 5. `CO2_tolerance_level`
+* **Low** → Focus Tools 1, 3, 5 (CO₂ Table, Mask-Knot Statics, Passive Float)
+* **Moderate** → Add Tool 2 (Gear-Off Bobs) and Spearfishing
+* **High** → Full combo plans with minimal rest + integrated static tasks
+### 6. `last_drownproofing_attempt`
+* **Never Attempted** → Begin with Tool 5 (Weighted Float Hold)
+* **Attempted <1 month ago** → Review and retest after full tool cycle
+* **Failed due to panic** → Add Tool 3 + reduced tool complexity
+### 7. `panic_underwater`
+* **Yes** → Begin with Mask Knot Statics + Controlled Tactical Bobs
+* **No** → Access to gear-removal bobs and weighted floats
+### 8. `fitness_level`
+* **Beginner** → 2–3 tools max per week, static + dry tools
+* **Intermediate** → Add 1–2 gear or water-based tools weekly
+* **Elite** → Full tool stack, weekly challenge drills, reduced surface rest
+### 9. `goal`
+* **Complete Drownproofing** → Tools 1, 2, 4, 5 (weekly rotation)
+* **Improve Dolphin Kick** → Tool 4 focus with static warm-up and sink drills
+* **Blackout Resistance** → Tool 1 + 3 only, max 1 contraction under supervision
+### 10. `availability_per_week`
+* **1–2 sessions** → Only 1–2 tools (focus on high-value: CO₂ table + Tactical Bob)
+* **3–4 sessions** → Add 1 gear drill + passive float
+* **5–7 sessions** → Full progression cycle, one day off, one static-only day
+---
+### 🔧 TOOL 1: CO₂ Tolerance Table Protocol
+**Purpose:** Build respiratory strength, mental control, and CO₂ resistance through structured static breath-hold training.
+* Perform 1 full CO₂ tolerance table, **8 breath-hold reps per session**
+* Tables must be adjusted by certification level:
+* **Level 1** = Low to Moderate Intensity Table
+* **Level 2** = Moderate to High Intensity Table
+* **Level 3** = High Intensity Table (short rest, long holds)
+* Diver must complete all 8 reps before stopping
+* After completion, diver must **report subjective difficulty**: “Too Easy / Manageable / Too Hard”
+**Important:** CO₂ tables are meant to be difficult. Think of them like a full-body workout — discomfort builds tolerance.
+---
+### 🔧 TOOL 2: Tactical Bobs (Gear-Off Recomposition)
+**Purpose:** Build high-stress comfort by simulating worst-case underwater gear loss and recomposition.
+* Start with full equipment (mask, fins, weight belt)
+* Descend (5–10 feet), **remove all gear underwater**, resurface, dive again, **re-don all gear underwater**
+* Repeat **3–10 reps**, increasing weekly
+---
+### 🔧 TOOL 3: Mask Flood + Knot-Tying Statics (Dry Land CO₂ Drill)
+**Purpose:** Train calm, functional apnea under high CO₂ stress while performing fine motor tasks blindfolded.
+* Flood mask on land, start 2–3 minute static hold (based on CO₂ table progress)
+* While holding breath, complete **assigned knots list**
+* May not remove mask or breathe until all knots are completed
+✅ Core Knots:
+1. Bowline
+2. Square Knot
+3. Clove Hitch
+4. Figure Eight + Follow-Through
+5. Double Fisherman’s
+6. Sheet Bend
+7. Water Knot
+8. Prusik Knot
+9. Two Half Hitches
+10. Taut-Line Hitch
+---
+### 🔧 TOOL 4: Feet-Bound Dolphin Kick Drills (25–50m)
+**Purpose:** Train body positioning, propulsion under stress, and tactical water movement.
+* Feet bound by strap or soft tie
+* Swim 25m–50m dolphin kick only
+* Focus: streamline, rhythm, breath efficiency
+---
+### 🔧 TOOL 5: Passive Float – Weighted Variants (No Wetsuit)
+**Purpose:** Build vertical comfort, endurance, and stress response.
+* Float without wetsuit for 3–5 minutes
+* Increase difficulty by adding 2–4 lbs to belt
+* Do not increase time — only weight
+---
+### 🔫 BONUS TOOL: **Spearfishing for Tactical Confidence**
+* Candidates should spearfish weekly if possible
+* Must follow **Level 1–2 freediving protocols**
+* Use sessions to build real-world tolerance, comfort, sink-phase entry, and breath control
+---
+## ⚠️ SAFETY PROTOCOLS
+* All underwater drills must be supervised
+* Never combine max attempts with CO₂ tables
+* Warm-ups must trigger MDR without fatigue (NPDs, facial immersion, etc.)
+* No Wim Hof, hyperventilation, or box breathing allowed
+---
+## 🎯 SYSTEM GOAL:
+Prepare military candidates to:
+* Handle combat water stress
+* Maintain calm and function during gear loss/failure
+* Build to 5:00+ static capacity
+* Operate confidently during drownproofing, retrieval, and amphibious ops
+Let the water become your environment — not your enemy.
+— Koval Deep AI Tactical Module
