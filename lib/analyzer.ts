@@ -1,13 +1,12 @@
 // lib/analyzer.ts
-
-import { JournalEntry } from "@/models/journal";
+import type { DiveJournalEntry } from "@/components/models/journal";
 
 // Define known issue clusters by depth
 const issueByDepthMap: Record<string, string[]> = {
   "30-35": ["MF timing", "mental hesitation"],
   "35-40": ["MF compression", "no RP"],
   "40-45": ["EQ fatigue", "glottis leak"],
-  "45-50": ["lung squeeze warning", "soft palate unlocking"],
+  "45-50": ["lung squeeze warning", "soft palate locking"],
 };
 
 export function detectCommonIssueDepths(logs: JournalEntry[]) {
