@@ -1,15 +1,15 @@
 // lib/analyzer.ts
-import type { DiveJournalEntry } from "@/components/models/journal";
+import { DiveJournalEntry } from "@/components/models/journal";
 
 // Define known issue clusters by depth
 const issueByDepthMap: Record<string, string[]> = {
   "30-35": ["MF timing", "mental hesitation"],
-  "35-40": ["MF compression", "no RP"],
+  "35-40": ["MF runs out", "RP volume too small", "mouthfill too early"],
   "40-45": ["EQ fatigue", "glottis leak"],
   "45-50": ["lung squeeze warning", "soft palate locking"],
 };
 
-export function detectCommonIssueDepths(logs: JournalEntry[]) {
+export function detectCommonIssueDepths(logs: DiveJournalEntry[]) {
   const buckets: Record<string, number> = {};
 
   logs.forEach((entry) => {
