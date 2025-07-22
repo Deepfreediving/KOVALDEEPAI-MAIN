@@ -1,70 +1,69 @@
-import dotenv from "dotenv";
-dotenv.config(); // If you don't need a custom path, just use dotenv.config()
+require('dotenv').config();
 
-import { OpenAI } from "openai";
-import { Pinecone } from "@pinecone-database/pinecone";
+const { OpenAI } = require('openai');
+const { Pinecone } = require('@pinecone-database/pinecone');
 
-// Initialize OpenAI API client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Validate env variables early
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
+const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX || 'koval-deep-ai';
 
-// Initialize Pinecone client
-const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY,
-});
+if (!OPENAI_API_KEY || !PINECONE_API_KEY || !PINECONE_INDEX_NAME) {
+  throw new Error('❌ Missing one or more required .env variables: OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_INDEX');
+}
 
-// Specify the index name (should be provided in .env or default to 'koval-deep-ai')
-const indexName = process.env.PINECONE_INDEX || "koval-deep-ai";
-const index = pinecone.Index(indexName);
+// Initialize OpenAI and Pinecone clients
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
+const index = pinecone.Index(PINECONE_INDEX_NAME);
 
-// Function to get embedding for the query
+// Get embedding for the user query
 async function getQueryEmbedding(query) {
   try {
     const response = await openai.embeddings.create({
-      model: "text-embedding-ada-002", // Ensure correct model is used
+      model: 'text-embedding-3-small', // ✅ Match the ingestion model
       input: query,
     });
     return response.data[0].embedding;
-  } catch (error) {
-    console.error("Error generating query embedding:", error);
-    throw new Error("Failed to generate query embedding");
+  } catch (err) {
+    console.error('❌ Error generating embedding:', err);
+    throw new Error('Failed to generate query embedding');
   }
 }
 
-// Function to query Pinecone with the embedding
+// Query Pinecone with the embedding
 async function queryPinecone(query) {
   try {
     const embedding = await getQueryEmbedding(query);
     const result = await index.query({
-      topK: 3,
+      topK: 5, // You can adjust this depending on how many chunks you want returned
       vector: embedding,
-      includeMetadata: true, // Include metadata if necessary
+      includeMetadata: true,
     });
     return result;
-  } catch (error) {
-    console.error("Error querying Pinecone:", error);
-    throw new Error("Failed to query Pinecone");
+  } catch (err) {
+    console.error('❌ Error querying Pinecone:', err);
+    throw new Error('Failed to query Pinecone');
   }
 }
 
-// API handler
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+// API route handler (Next.js or Express style)
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const { query } = req.body;
 
-  if (!query || typeof query !== "string") {
-    return res.status(400).json({ error: "Query is required" });
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Query must be a string' });
   }
 
   try {
     const result = await queryPinecone(query);
-    return res.status(200).json(result); // Send the results back to the client
+    return res.status(200).json(result);
   } catch (err) {
-    console.error("Error handling query:", err.message || err);
-    return res.status(500).json({ error: "Failed to query Pinecone" });
+    console.error('❌ Handler error:', err.message || err);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
-}
+};
