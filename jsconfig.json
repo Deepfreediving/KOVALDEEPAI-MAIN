@@ -1,20 +1,15 @@
 {
   "compilerOptions": {
-    "baseUrl": ".", // Root directory
+    "baseUrl": ".",
     "paths": {
-      "@lib/*": ["lib/*"], // Correct mapping of the alias to lib
-      "@components/*": ["components/*"], // Updated to match correct directory structure
-      "@pages/*": ["pages/*"], // Corrected for direct usage of pages folder
-      "@styles/*": ["styles/*"], // Corrected styles directory structure
-      "@/*": ["pages/*"] // This already looks correct
+      "@lib/*": ["lib/*"],
+      "@components/*": ["components/*"],
+      "@pages/*": ["pages/*"],
+      "@styles/*": ["styles/*"],
+      "@/*": ["pages/*"]
     },
-    "jsx": "react-jsx" // JSX support for React
+    "jsx": "react-jsx"
   },
-  "include": [
-    "pages/**/*", // Include pages
-    "components/**/*", // Include components
-    "next.config.js",
-    "vercel.json"
-  ],
+  "include": ["pages/**/*", "components/**/*", "next.config.js", "vercel.json"],
   "exclude": ["node_modules", ".next"]
 }
