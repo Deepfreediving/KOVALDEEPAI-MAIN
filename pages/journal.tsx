@@ -61,6 +61,19 @@ export default function JournalEntryPage() {
 
       if (res.ok) {
         alert('Log submitted!');
+        // Reset form
+        setForm({
+          date: '',
+          discipline: '',
+          diveTime: '',
+          maxDepth: '',
+          targetDepth: '',
+          success: false,
+          issueTags: '',
+          notes: '',
+          image: null,
+          video: null,
+        });
       } else {
         alert('Submission failed.');
       }
@@ -73,13 +86,13 @@ export default function JournalEntryPage() {
   return (
     <div className="p-4 max-w-xl mx-auto">
       <h2 className="text-xl font-bold mb-4">Dive Journal Entry</h2>
-      <input name="date" type="date" onChange={handleChange} className="mb-2 w-full" />
-      <input name="discipline" placeholder="Discipline" onChange={handleChange} className="mb-2 w-full" />
-      <input name="diveTime" placeholder="Dive Time" onChange={handleChange} className="mb-2 w-full" />
-      <input name="maxDepth" placeholder="Max Depth" type="number" onChange={handleChange} className="mb-2 w-full" />
-      <input name="targetDepth" placeholder="Target Depth" type="number" onChange={handleChange} className="mb-2 w-full" />
-      <textarea name="issueTags" placeholder="Comma-separated tags" onChange={handleChange} className="mb-2 w-full" />
-      <textarea name="notes" placeholder="Notes" onChange={handleChange} className="mb-2 w-full" />
+      <input name="date" type="date" value={form.date} onChange={handleChange} className="mb-2 w-full" />
+      <input name="discipline" placeholder="Discipline" value={form.discipline} onChange={handleChange} className="mb-2 w-full" />
+      <input name="diveTime" placeholder="Dive Time" value={form.diveTime} onChange={handleChange} className="mb-2 w-full" />
+      <input name="maxDepth" placeholder="Max Depth" type="number" value={form.maxDepth} onChange={handleChange} className="mb-2 w-full" />
+      <input name="targetDepth" placeholder="Target Depth" type="number" value={form.targetDepth} onChange={handleChange} className="mb-2 w-full" />
+      <textarea name="issueTags" placeholder="Comma-separated tags" value={form.issueTags} onChange={handleChange} className="mb-2 w-full" />
+      <textarea name="notes" placeholder="Notes" value={form.notes} onChange={handleChange} className="mb-2 w-full" />
       <label className="block mb-2">Image: <input name="image" type="file" accept="image/*" onChange={handleChange} /></label>
       <label className="block mb-4">Video: <input name="video" type="file" accept="video/*" onChange={handleChange} /></label>
       <button onClick={handleSubmit} className="mt-2 bg-blue-500 text-white p-2 rounded">Submit</button>
