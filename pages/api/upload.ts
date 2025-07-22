@@ -1,23 +1,39 @@
 import nextConnect from 'next-connect';
 import multer from 'multer';
 import fs from 'fs';
+import path from 'path';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
-const upload = multer({ dest: './public/uploads' });
+// Configure multer upload
+const upload = multer({ dest: path.join(process.cwd(), 'public/uploads') });
 
-const apiRoute = nextConnect({
-  onError(error, req, res) {
+// Extend the request type to include multer fields
+interface ExtendedRequest extends NextApiRequest {
+  files?: {
+    image?: Express.Multer.File[];
+    video?: Express.Multer.File[];
+  };
+}
+
+// Initialize the API route with error handling
+const apiRoute = nextConnect<ExtendedRequest, NextApiResponse>({
+  onError(error: Error, _req: NextApiRequest, res: NextApiResponse) {
     res.status(501).json({ error: `Upload failed: ${error.message}` });
   },
-  onNoMatch(req, res) {
+  onNoMatch(req: NextApiRequest, res: NextApiResponse) {
     res.status(405).json({ error: `Method '${req.method}' not allowed` });
   },
 });
 
-apiRoute.use(upload.fields([
-  { name: 'image', maxCount: 1 },
-  { name: 'video', maxCount: 1 },
-]));
+// Middleware for parsing multipart/form-data
+apiRoute.use(
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'video', maxCount: 1 },
+  ])
+);
 
+// POST handler
 apiRoute.post((req, res) => {
   const data = {
     ...req.body,
@@ -25,7 +41,7 @@ apiRoute.post((req, res) => {
     videoRefs: req.files?.video?.[0]?.filename || null,
   };
 
-  const logPath = './data/logs.json';
+  const logPath = path.join(process.cwd(), 'data/logs.json');
   const existing = fs.existsSync(logPath)
     ? JSON.parse(fs.readFileSync(logPath, 'utf8'))
     : [];
@@ -36,10 +52,11 @@ apiRoute.post((req, res) => {
   res.status(200).json({ status: 'saved', data });
 });
 
-export default apiRoute;
-
+// Disable Next.js bodyParser so multer can handle it
 export const config = {
   api: {
     bodyParser: false,
   },
 };
+
+export default apiRoute;

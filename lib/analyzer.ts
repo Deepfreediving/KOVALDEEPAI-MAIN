@@ -13,7 +13,7 @@ export function detectCommonIssueDepths(logs: DiveJournalEntry[]) {
   const buckets: Record<string, number> = {};
 
   logs.forEach((entry) => {
-    const d = entry.max_depth;
+    const d = entry.maxDepth;
     const bucket = getDepthBucket(d);
     if (bucket) buckets[bucket] = (buckets[bucket] || 0) + 1;
   });
