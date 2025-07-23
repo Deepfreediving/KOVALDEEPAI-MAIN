@@ -28,7 +28,6 @@ export default function Chat() {
 
     setLoading(true);
 
-    // Create or retrieve local user
     const storedUsername =
       localStorage.getItem("kovalUser") ||
       (() => {
@@ -37,7 +36,6 @@ export default function Chat() {
         return newUser;
       })();
 
-    // Create or reuse thread ID
     let threadId = localStorage.getItem("kovalThreadId");
     if (!threadId) {
       try {
@@ -57,7 +55,7 @@ export default function Chat() {
       }
     }
 
-    // Handle image upload
+    // Upload Image if exists
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -68,15 +66,17 @@ export default function Chat() {
           body: formData,
         });
 
-        let uploadData;
-        try {
+        let uploadData = {};
+        const contentType = uploadRes.headers.get("content-type");
+
+        if (contentType && contentType.includes("application/json")) {
           uploadData = await uploadRes.json();
-        } catch (err) {
-          console.error("❌ Upload returned non-JSON response:", err);
-          throw new Error("Upload failed: server did not return JSON.");
+        } else {
+          throw new Error("Server returned non-JSON response.");
         }
 
         if (uploadRes.ok && uploadData.answer) {
+          console.log("📤 Image analyzed successfully");
           setMessages((prev) => [
             ...prev,
             { role: "assistant", content: uploadData.answer },
@@ -97,7 +97,7 @@ export default function Chat() {
           {
             role: "assistant",
             content:
-              "⚠️ Upload failed. Make sure the server is running and try again.",
+              "⚠️ Upload failed. Ensure the server is running and the file is a valid image.",
           },
         ]);
       } finally {
@@ -105,7 +105,7 @@ export default function Chat() {
       }
     }
 
-    // Handle text input
+    // Text input logic
     if (trimmedInput) {
       const userMessage = { role: "user", content: trimmedInput };
       setMessages((prev) => [...prev, userMessage]);
@@ -123,15 +123,13 @@ export default function Chat() {
         });
 
         const chatData = await chatRes.json();
-
-        // Optional debug output
-        console.log("🏃‍♂️ Run ID:", chatData?.runId || "n/a");
+        console.log("💬 Assistant reply received");
 
         const assistantMessage = {
           role: "assistant",
           content:
             chatData?.assistantMessage?.content ||
-            "⚠️ Something went wrong. Please try again.",
+            "⚠️ No response generated. Try rephrasing.",
         };
 
         setMessages((prev) => [...prev, assistantMessage]);

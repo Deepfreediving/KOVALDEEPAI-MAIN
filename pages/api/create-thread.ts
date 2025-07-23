@@ -54,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('No message returned from OpenAI');
     }
 
+    // Return the thread ID and initial assistant message
     return res.status(200).json({
       threadId: `thread-${Date.now()}`,
       initialMessage: reply,
