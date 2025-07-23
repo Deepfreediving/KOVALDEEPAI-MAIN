@@ -1,5 +1,5 @@
 const path = require('path');
-const webpack = require('webpack');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const isAnalyze = process.env.BUNDLE_ANALYZE === 'true';
 
@@ -7,7 +7,6 @@ const getPlugins = () => {
   const plugins = [];
 
   if (isAnalyze) {
-    const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
     plugins.push(
       new BundleAnalyzerPlugin({
         analyzerMode: 'static',
@@ -39,7 +38,7 @@ module.exports = {
   },
 
   images: {
-    domains: ['yourdomain.com'], // 🔁 Replace with real domains as needed
+    domains: ['yourdomain.com'],
     formats: ['image/webp'],
     deviceSizes: [640, 750, 1080, 1200, 1920],
   },

@@ -13,7 +13,7 @@ const index = pinecone.Index(process.env.PINECONE_INDEX || 'koval-deep-ai');
 async function getQueryEmbedding(query) {
   try {
     const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
+      model: 'text-embedding-3-small', // ✅ Match the ingestion model
       input: query,
     });
     return response.data[0].embedding;
@@ -25,19 +25,27 @@ async function getQueryEmbedding(query) {
 
 // Query Pinecone using embedding
 async function queryPineconeAndSearchDocs(query) {
-  const embedding = await getQueryEmbedding(query);
+  try {
+    const embedding = await getQueryEmbedding(query);
 
-  const result = await index.query({
-    vector: embedding,
-    topK: 5,
-    includeMetadata: true,
-  });
+    const result = await index.query({
+      vector: embedding,
+      topK: 5,
+      includeMetadata: true,
+    });
 
-  const topChunks = result.matches
-    .map((match) => match?.metadata?.text || '')
-    .filter((text) => text.trim() !== '');
-
-  return topChunks;
+    // Ensure there are matches before mapping
+    if (result.matches && result.matches.length > 0) {
+      return result.matches
+        .map((match) => match?.metadata?.text || '')
+        .filter((text) => text.trim() !== '');
+    } else {
+      return [];
+    }
+  } catch (err) {
+    console.error('❌ Error querying Pinecone:', err.message);
+    throw new Error('Failed to query Pinecone');
+  }
 }
 
 // Ask GPT with vector context
@@ -94,6 +102,7 @@ module.exports = async function handler(req, res) {
     const answer = await askGPTWithContext(chunks, query);
     return res.status(200).json({ answer });
   } catch (err) {
+    console.error('❌ Handler error:', err.message || err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
