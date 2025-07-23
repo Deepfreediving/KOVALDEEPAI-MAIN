@@ -1,40 +1,63 @@
 {
   "compilerOptions": {
-    "target": "es6",                        // Target ES6 to avoid issues with newer JS features
-    "lib": ["DOM", "DOM.Iterable", "ESNext"], // Add the necessary libraries for working with modern JS and DOM
-    "allowJs": false,                       // Set to false to strictly enforce TypeScript usage
-    "skipLibCheck": true,                    // Skip library checks for faster compilation
-    "strict": true,                          // Enable all strict type-checking options
+    "target": "es6", // Target ES6 to avoid issues with newer JS features
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ], // Add the necessary libraries for working with modern JS and DOM
+    "allowJs": false, // Set to false to strictly enforce TypeScript usage
+    "skipLibCheck": true, // Skip library checks for faster compilation
+    "strict": true, // Enable all strict type-checking options
     "forceConsistentCasingInFileNames": true, // Enforce consistent file name casing
-    "noEmit": true,                          // Don't generate any output files (just type checking)
-    "incremental": true,                     // Enable incremental compilation for faster rebuilds
-    "esModuleInterop": true,                 // Ensure interoperability between CommonJS and ES modules
-    "moduleResolution": "Node",              // Use Node module resolution strategy
-    "resolveJsonModule": true,               // Allow importing of JSON modules
-    "isolatedModules": true,                 // Required for compatibility with ts-node (avoid global script files)
-    "jsx": "preserve",                      // Preserve JSX for future processing (used with React)
-    "module": "commonjs",                    // Use CommonJS module system for compatibility
-    "baseUrl": ".",                          // Set the base directory for relative paths
-    "paths": {                               // Define custom path aliases
-      "@/*": ["./*"],
-      "@lib/*": ["lib/*"],
-      "@utils/*": ["utils/*"],
-      "@components/*": ["components/*"],
-      "@pages/*": ["pages/*"],
-      "@styles/*": ["styles/*"],
-      "@types/*": ["types/*"]
-    }
+    "noEmit": true, // Don't generate any output files (just type checking)
+    "incremental": true, // Enable incremental compilation for faster rebuilds
+    "esModuleInterop": true, // Ensure interoperability between CommonJS and ES modules
+    "moduleResolution": "Node", // Use Node module resolution strategy
+    "resolveJsonModule": true, // Allow importing of JSON modules
+    "isolatedModules": true, // Required for compatibility with ts-node (avoid global script files)
+    "jsx": "preserve", // Preserve JSX for future processing (used with React)
+    "module": "commonjs", // Use CommonJS module system for compatibility
+    "baseUrl": ".", // Set the base directory for relative paths
+    "paths": { // Define custom path aliases
+      "@/*": [
+        "./*"
+      ],
+      "@lib/*": [
+        "lib/*"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ],
+      "@components/*": [
+        "components/*"
+      ],
+      "@pages/*": [
+        "pages/*"
+      ],
+      "@styles/*": [
+        "styles/*"
+      ],
+      "@types/*": [
+        "types/*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
-    "**/*.ts",           // Include all TypeScript files in the project
-    "**/*.tsx",          // Include all TypeScript React files in the project
-    "next-env.d.ts",     // Include Next.js environment types
-    "types/**/*.d.ts",   // Include custom type definitions
+    "**/*.ts", // Include all TypeScript files in the project
+    "**/*.tsx", // Include all TypeScript React files in the project
+    "next-env.d.ts", // Include Next.js environment types
+    "types/**/*.d.ts", // Include custom type definitions
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",      // Exclude the node_modules folder
-    ".next",             // Exclude the .next folder (Next.js build artifacts)
-    "out"                // Exclude the out folder (if applicable)
+    "node_modules", // Exclude the node_modules folder
+    ".next", // Exclude the .next folder (Next.js build artifacts)
+    "out" // Exclude the out folder (if applicable)
   ]
 }

@@ -25,9 +25,9 @@ export default function Chat() {
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
-
     setLoading(true);
 
+    // User and thread ID logic
     const storedUsername =
       localStorage.getItem("kovalUser") ||
       (() => {
@@ -47,7 +47,7 @@ export default function Chat() {
         const threadData = await threadRes.json();
         threadId = threadData.threadId;
         localStorage.setItem("kovalThreadId", threadId);
-        console.log("🧵 Thread ID created:", threadId);
+        console.log("🧵 Thread created:", threadId);
       } catch (err) {
         console.error("❌ Thread creation failed:", err);
         setLoading(false);
@@ -55,7 +55,7 @@ export default function Chat() {
       }
     }
 
-    // Upload Image if exists
+    // Image upload and OCR logic
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -66,17 +66,12 @@ export default function Chat() {
           body: formData,
         });
 
-        let uploadData = {};
         const contentType = uploadRes.headers.get("content-type");
-
-        if (contentType && contentType.includes("application/json")) {
-          uploadData = await uploadRes.json();
-        } else {
-          throw new Error("Server returned non-JSON response.");
-        }
+        const uploadData = contentType?.includes("application/json")
+          ? await uploadRes.json()
+          : { error: "Server returned non-JSON." };
 
         if (uploadRes.ok && uploadData.answer) {
-          console.log("📤 Image analyzed successfully");
           setMessages((prev) => [
             ...prev,
             { role: "assistant", content: uploadData.answer },
@@ -86,7 +81,7 @@ export default function Chat() {
             ...prev,
             {
               role: "assistant",
-              content: uploadData?.error || "⚠️ Failed to analyze image.",
+              content: uploadData?.error || "⚠️ Image processing failed.",
             },
           ]);
         }
@@ -96,8 +91,7 @@ export default function Chat() {
           ...prev,
           {
             role: "assistant",
-            content:
-              "⚠️ Upload failed. Ensure the server is running and the file is a valid image.",
+            content: "⚠️ Upload failed. Check your image or try again.",
           },
         ]);
       } finally {
@@ -105,13 +99,13 @@ export default function Chat() {
       }
     }
 
-    // Text input logic
+    // Text message logic
     if (trimmedInput) {
-      const userMessage = { role: "user", content: trimmedInput };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
 
       try {
+        // 1. Talk to your OpenAI chatbot API
         const chatRes = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -123,23 +117,33 @@ export default function Chat() {
         });
 
         const chatData = await chatRes.json();
-        console.log("💬 Assistant reply received");
+        const assistantContent =
+          chatData?.assistantMessage?.content ||
+          chatData?.error ||
+          "⚠️ No response generated.";
 
-        const assistantMessage = {
-          role: "assistant",
-          content:
-            chatData?.assistantMessage?.content ||
-            "⚠️ No response generated. Try rephrasing.",
-        };
+        // 2. Show assistant response in chat
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: assistantContent },
+        ]);
 
-        setMessages((prev) => [...prev, assistantMessage]);
+        // 3. Sync with Wix memory store (optional, but recommended)
+        await fetch("https://www.deepfreediving.com/_functions/aiRequest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: storedUsername,
+            userInput: trimmedInput,
+          }),
+        });
       } catch (err) {
         console.error("❌ Chat error:", err);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "⚠️ Unable to respond. Please try again.",
+            content: "⚠️ Network error. Please try again.",
           },
         ]);
       }
@@ -166,6 +170,7 @@ export default function Chat() {
           darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
         }`}
       >
+        {/* Header */}
         <div
           className={`flex items-center justify-between px-6 py-4 border-b ${
             darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
@@ -187,6 +192,7 @@ export default function Chat() {
           </button>
         </div>
 
+        {/* Messages */}
         <ChatMessages
           messages={messages}
           BOT_NAME={BOT_NAME}
@@ -195,6 +201,7 @@ export default function Chat() {
           bottomRef={bottomRef}
         />
 
+        {/* Input */}
         <ChatInput
           input={input}
           setInput={setInput}
