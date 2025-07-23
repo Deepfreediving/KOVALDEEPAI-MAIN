@@ -1,4 +1,4 @@
-import FilePreview from "./FilePreview"; // ✅ CORRECT
+import FilePreview from "./FilePreview";
 
 export default function ChatInput({
   input,
@@ -11,8 +11,18 @@ export default function ChatInput({
   loading,
   darkMode,
 }) {
+  // Optional: Limit file uploads to 3
+  const onFilesChange = (e) => {
+    const selected = Array.from(e.target.files).slice(0, 3);
+    setFiles(selected);
+  };
+
   return (
-    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
       className={`w-full flex flex-col gap-3 p-4 border-t ${
         darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
       }`}
@@ -33,11 +43,11 @@ export default function ChatInput({
         type="file"
         accept="image/png, image/jpeg"
         multiple
-        onChange={handleFileChange}
+        onChange={onFilesChange}
         className="text-sm"
+        aria-label="Upload image files"
       />
 
-      {/* ✅ Image Previews */}
       <FilePreview files={files} setFiles={setFiles} />
 
       <button

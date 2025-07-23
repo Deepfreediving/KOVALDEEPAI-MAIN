@@ -1,11 +1,11 @@
-// next.config.js
-
 const path = require('path');
 const webpack = require('webpack');
+
 const isAnalyze = process.env.BUNDLE_ANALYZE === 'true';
 
 const getPlugins = () => {
   const plugins = [];
+
   if (isAnalyze) {
     const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
     plugins.push(
@@ -16,6 +16,7 @@ const getPlugins = () => {
       })
     );
   }
+
   return plugins;
 };
 
@@ -38,7 +39,7 @@ module.exports = {
   },
 
   images: {
-    domains: ['yourdomain.com'], // Replace with actual image domains you're using
+    domains: ['yourdomain.com'], // 🔁 Replace with real domains as needed
     formats: ['image/webp'],
     deviceSizes: [640, 750, 1080, 1200, 1920],
   },

@@ -35,8 +35,10 @@
   "devDependencies": {
     "@next/bundle-analyzer": "^15.4.1",
     "@types/express": "^5.0.3",
+    "@types/formidable": "^3.4.5",
     "@types/multer": "^2.0.0",
-    "@types/node": "^20.6.0",
+    "@types/next": "^8.0.7",
+    "@types/node": "^20.19.9",
     "@types/react": "^18.2.40",
     "autoprefixer": "^10.4.21",
     "eslint": "^8.57.0",
@@ -52,6 +54,6 @@
     "webpack-bundle-analyzer": "^4.10.2"
   },
   "optionalDependencies": {
-    "sharp": "^0.33.2"
+    "sharp": "^0.33.5"
   }
 }

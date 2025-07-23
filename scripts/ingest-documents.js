@@ -1,4 +1,3 @@
-// scripts/ingest-documents.js
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +5,7 @@ const { Pinecone } = require('@pinecone-database/pinecone');
 const OpenAI = require('openai');
 const { encode } = require('gpt-3-encoder');
 
-// 🔐 Load and validate env vars
+// 🔐 Validate environment variables
 const {
   PINECONE_INDEX,
   PINECONE_API_KEY,
@@ -17,11 +16,11 @@ if (!PINECONE_INDEX || !PINECONE_API_KEY || !OPENAI_API_KEY) {
   throw new Error('❌ Missing required environment variables in .env');
 }
 
-// 🔧 Initialize clients
+// 🔧 Initialize Pinecone and OpenAI clients
 const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// 📂 Recursively get .txt files
+// 📂 Recursively collect .txt files
 function getAllTxtFiles(dir, fileList = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -35,9 +34,9 @@ function getAllTxtFiles(dir, fileList = []) {
   return fileList;
 }
 
-// ✂️ Chunking by token count
+// ✂️ Token-aware text chunking
 function chunkText(text, maxTokens = 500) {
-  const sentences = text.split(/(?<=[.?!])\s+/); // Sentence-aware split
+  const sentences = text.split(/(?<=[.?!])\s+/);
   const chunks = [];
   let chunk = '';
 
@@ -55,7 +54,7 @@ function chunkText(text, maxTokens = 500) {
   return chunks;
 }
 
-// 🚀 Ingest all .txt files into Pinecone
+// 🚀 Embed and upsert to Pinecone
 async function embedAndUpsert() {
   try {
     console.log('🔍 Validating Pinecone index...');
@@ -64,7 +63,7 @@ async function embedAndUpsert() {
 
     const dataDir = path.join(process.cwd(), 'data');
     if (!fs.existsSync(dataDir)) {
-      throw new Error(`❌ Directory not found: ${dataDir}`);
+      throw new Error(`❌ Data directory not found: ${dataDir}`);
     }
 
     const files = getAllTxtFiles(dataDir);
@@ -101,9 +100,9 @@ async function embedAndUpsert() {
       console.log(`✅ Uploaded: ${relativePath} (${vectors.length} chunks)`);
     }
   } catch (err) {
-    console.error('❌ Ingestion failed:', err);
+    console.error('❌ Ingestion failed:', err.message || err);
   }
 }
 
-// 🔁 Run
+// 🔁 Run ingestion
 embedAndUpsert();

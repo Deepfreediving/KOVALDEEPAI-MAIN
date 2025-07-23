@@ -1,4 +1,4 @@
-"use client"; // Ensure this is at the top of the file for proper client-side behavior in Next.js
+"use client"; // Required for client-side hooks in Next.js App Router
 
 import { useState } from "react";
 
@@ -9,46 +9,51 @@ export default function CreateThread() {
 
   const handleCreateThreadSubmit = async () => {
     setLoading(true);
-    setError(null); // Reset error before making a request
+    setError(null);
 
     try {
-      const response = await fetch("/api/create-thread", {
-        method: "POST",
-      });
+      const res = await fetch("/api/create-thread", { method: "POST" });
 
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error("Failed to create thread");
       }
 
-      const data = await response.json();
-      if (data.threadId) {
-        setThreadId(data.threadId); // Corrected the field name to threadId
+      const data = await res.json();
+      if (data?.threadId) {
+        setThreadId(data.threadId);
       } else {
-        throw new Error("Thread ID is missing from the response");
+        throw new Error("Thread ID missing from response");
       }
     } catch (err) {
-      setError(`Error: ${err.message || "An unknown error occurred"}`); // Display a more user-friendly error message
+      setError(`❌ ${err.message || "Unknown error occurred"}`);
     } finally {
-      setLoading(false); // Reset loading state after the request is finished
+      setLoading(false);
     }
   };
 
   return (
-    <div className="container">
-      <h1>Create a New Thread</h1>
+    <div className="max-w-md mx-auto mt-12 p-6 border rounded-lg shadow bg-white text-black dark:bg-[#1a1a1a] dark:text-white">
+      <h1 className="text-2xl font-semibold mb-4">Create a New Thread</h1>
+
       <button
         onClick={handleCreateThreadSubmit}
         disabled={loading}
-        style={{
-          backgroundColor: loading ? "gray" : "#0070f3",
-          cursor: loading ? "not-allowed" : "pointer",
-        }}
+        className={`w-full px-4 py-2 text-white font-medium rounded ${
+          loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+        }`}
       >
         {loading ? "Creating Thread..." : "Create Thread"}
       </button>
 
-      {threadId && <p>Thread created! Thread ID: {threadId}</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {threadId && (
+        <p className="mt-4 text-green-600 font-mono break-all">
+          ✅ Thread created!<br />Thread ID: <strong>{threadId}</strong>
+        </p>
+      )}
+
+      {error && (
+        <p className="mt-4 text-red-600 font-medium">{error}</p>
+      )}
     </div>
   );
 }

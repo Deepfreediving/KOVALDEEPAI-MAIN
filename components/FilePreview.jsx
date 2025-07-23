@@ -1,7 +1,13 @@
-// components/FilePreview.jsx
+import { useEffect } from "react";
 
 export default function FilePreview({ files, setFiles }) {
   if (!files || files.length === 0) return null;
+
+  // Cleanup previews on unmount or file change
+  useEffect(() => {
+    const urls = files.map((file) => URL.createObjectURL(file));
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [files]);
 
   const removeFile = (index) => {
     const updated = [...files];
@@ -14,17 +20,21 @@ export default function FilePreview({ files, setFiles }) {
       {files.map((file, index) => {
         const previewUrl = URL.createObjectURL(file);
         return (
-          <div key={index} className="relative w-24 h-24">
+          <div
+            key={index}
+            className="relative w-24 h-24 border rounded-lg overflow-hidden shadow"
+          >
             <img
               src={previewUrl}
-              alt={`preview-${index}`}
-              className="object-cover w-full h-full rounded-lg border shadow"
+              alt={`Uploaded file preview ${index + 1}`}
+              className="object-cover w-full h-full"
             />
             <button
               type="button"
               onClick={() => removeFile(index)}
-              className="absolute top-0 right-0 bg-red-600 text-white text-xs px-1 rounded-bl"
-              title="Remove"
+              title="Remove this file"
+              className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded-bl"
+              aria-label={`Remove file ${index + 1}`}
             >
               ✕
             </button>
