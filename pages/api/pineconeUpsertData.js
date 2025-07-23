@@ -16,8 +16,12 @@ export default async function handler(req, res) {
         // You can add more vectors here as needed
       ];
 
+      console.log('Upserting data:', data);
+
       // Call the upsert function from Pinecone to add the data to the index
       const response = await upsertData(data);
+
+      console.log('Pinecone response:', response);
 
       // Return the response back to the client
       res.status(200).json({ success: true, data: response });

@@ -1,16 +1,17 @@
-require('dotenv').config();
+import dotenv from 'dotenv';  // This import will ensure TypeScript sees the file as a module
 const fs = require('fs');
 const path = require('path');
 const { Pinecone } = require('@pinecone-database/pinecone');
-const OpenAI = require('openai');
+const { OpenAI } = require('openai');
 const { encode } = require('gpt-3-encoder');
 
+// Load environment variables from .env file
+dotenv.config();
+
 // 🔐 Validate environment variables
-const {
-  PINECONE_INDEX,
-  PINECONE_API_KEY,
-  OPENAI_API_KEY,
-} = process.env;
+const PINECONE_INDEX = process.env.PINECONE_INDEX;
+const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 if (!PINECONE_INDEX || !PINECONE_API_KEY || !OPENAI_API_KEY) {
   throw new Error('❌ Missing required environment variables in .env');
@@ -21,7 +22,7 @@ const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // 📂 Recursively collect .txt files
-function getAllTxtFiles(dir, fileList = []) {
+function getAllTxtFiles(dir: string, fileList: string[] = []): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
@@ -35,9 +36,9 @@ function getAllTxtFiles(dir, fileList = []) {
 }
 
 // ✂️ Token-aware text chunking
-function chunkText(text, maxTokens = 500) {
+function chunkText(text: string, maxTokens = 500): string[] {
   const sentences = text.split(/(?<=[.?!])\s+/);
-  const chunks = [];
+  const chunks: string[] = [];
   let chunk = '';
 
   for (const sentence of sentences) {
@@ -58,6 +59,9 @@ function chunkText(text, maxTokens = 500) {
 async function embedAndUpsert() {
   try {
     console.log('🔍 Validating Pinecone index...');
+    if (!PINECONE_INDEX) {
+      throw new Error('❌ PINECONE_INDEX is not defined');
+    }
     await pinecone.describeIndex(PINECONE_INDEX);
     const index = pinecone.Index(PINECONE_INDEX);
 
@@ -100,7 +104,11 @@ async function embedAndUpsert() {
       console.log(`✅ Uploaded: ${relativePath} (${vectors.length} chunks)`);
     }
   } catch (err) {
-    console.error('❌ Ingestion failed:', err.message || err);
+    if (err instanceof Error) {
+      console.error('❌ Ingestion failed:', err.message);
+    } else {
+      console.error('❌ Unknown error during ingestion:', err);
+    }
   }
 }
 

@@ -1,6 +1,26 @@
 {
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
+  "/_documents": "pages/_documents.js",
+  "/api/chat": "pages/api/chat.js",
+  "/api/create-thread": "pages/api/create-thread.js",
+  "/api/getAllTxtFiles": "pages/api/getAllTxtFiles.js",
+  "/api/getFileText": "pages/api/getFileText.js",
+  "/api/ocr": "pages/api/ocr.js",
+  "/api/pineconeInit": "pages/api/pineconeInit.js",
+  "/api/pineconeQuery": "pages/api/pineconeQuery.js",
+  "/api/pineconeQueryTest": "pages/api/pineconeQueryTest.js",
+  "/api/pineconeUpsertData": "pages/api/pineconeUpsertData.js",
+  "/api/pineconequery-gpt": "pages/api/pineconequery-gpt.js",
+  "/api/queryDocuments": "pages/api/queryDocuments.js",
+  "/api/semanticSearch": "pages/api/semanticSearch.js",
+  "/api/test": "pages/api/test.js",
+  "/create-thread": "pages/create-thread.html",
+  "/": "pages/index.html",
+  "/journal": "pages/journal.html",
+  "/queryDocuments": "pages/queryDocuments.html",
+  "/api/pineconeCreateIndex": "pages/api/pineconeCreateIndex.js",
+  "/api/upload-dive-image": "pages/api/upload-dive-image.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js"
+  "/404": "pages/404.html"
 }

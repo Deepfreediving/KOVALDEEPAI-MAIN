@@ -10,6 +10,6 @@
     },
     "jsx": "react-jsx"
   },
-  "include": ["pages/**/*", "components/**/*", "next.config.js", "vercel.json"],
+  "include": ["pages/**/*", "components/**/*", "next.config.cjs", "vercel.json"],
   "exclude": ["node_modules", ".next"]
 }
