@@ -11,6 +11,19 @@ export default function Chat() {
   const [darkMode, setDarkMode] = useState(false);
   const bottomRef = useRef(null);
 
+  const [storedUsername, setStoredUsername] = useState("");
+
+  useEffect(() => {
+    const localUsername =
+      localStorage.getItem("kovalUser") ||
+      (() => {
+        const newUser = "Guest" + Math.floor(Math.random() * 1000);
+        localStorage.setItem("kovalUser", newUser);
+        return newUser;
+      })();
+    setStoredUsername(localUsername);
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -26,15 +39,6 @@ export default function Chat() {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
     setLoading(true);
-
-    // User and thread ID logic
-    const storedUsername =
-      localStorage.getItem("kovalUser") ||
-      (() => {
-        const newUser = "Guest" + Math.floor(Math.random() * 1000);
-        localStorage.setItem("kovalUser", newUser);
-        return newUser;
-      })();
 
     let threadId = localStorage.getItem("kovalThreadId");
     if (!threadId) {
@@ -55,7 +59,6 @@ export default function Chat() {
       }
     }
 
-    // Image upload and OCR logic
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -99,13 +102,11 @@ export default function Chat() {
       }
     }
 
-    // Text message logic
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
 
       try {
-        // 1. Talk to your OpenAI chatbot API
         const chatRes = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122,19 +123,20 @@ export default function Chat() {
           chatData?.error ||
           "⚠️ No response generated.";
 
-        // 2. Show assistant response in chat
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: assistantContent },
         ]);
 
-        // 3. Sync with Wix memory store (optional, but recommended)
-        await fetch("https://www.deepfreediving.com/_functions/aiRequest", {
+        // ✅ Save full chat log to Wix
+        await fetch("https://www.deepfreediving.com/_functions/saveMessage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: storedUsername,
-            userInput: trimmedInput,
+            userId: threadId,
+            username: storedUsername,
+            input: trimmedInput,
+            response: assistantContent,
           }),
         });
       } catch (err) {
@@ -170,15 +172,19 @@ export default function Chat() {
           darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
         }`}
       >
-        {/* Header */}
         <div
           className={`flex items-center justify-between px-6 py-4 border-b ${
             darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
           }`}
         >
-          <div className="flex items-center gap-4">
-            <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
-            <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-4">
+              <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
+              <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+            </div>
+            <p className="text-xs mt-1 text-gray-500">
+              User ID: {storedUsername}
+            </p>
           </div>
           <button
             onClick={toggleDarkMode}
@@ -192,7 +198,6 @@ export default function Chat() {
           </button>
         </div>
 
-        {/* Messages */}
         <ChatMessages
           messages={messages}
           BOT_NAME={BOT_NAME}
@@ -201,7 +206,6 @@ export default function Chat() {
           bottomRef={bottomRef}
         />
 
-        {/* Input */}
         <ChatInput
           input={input}
           setInput={setInput}
