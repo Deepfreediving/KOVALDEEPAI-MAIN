@@ -10,7 +10,6 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const bottomRef = useRef(null);
-
   const [storedUsername, setStoredUsername] = useState("");
 
   useEffect(() => {
@@ -127,16 +126,6 @@ export default function Chat() {
           ...prev,
           { role: "assistant", content: assistantContent },
         ]);
-
-        // ✅ Updated to use correct Wix HTTP endpoint and payload
-        await fetch("https://www.deepfreediving.com/_functions/aiRequest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userInput: trimmedInput,
-            userId: threadId,
-          }),
-        });
       } catch (err) {
         console.error("❌ Chat error:", err);
         setMessages((prev) => [
