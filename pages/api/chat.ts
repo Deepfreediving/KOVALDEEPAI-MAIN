@@ -57,9 +57,9 @@ async function askWithContext(contextChunks: string[], question: string): Promis
       {
         role: 'system',
         content: `
-          You are a freediving coach with expert knowledge in EQ, CO₂ training, narcosis, and dive safety.
+          You are a freediving coach with expert knowledge in EQ, O2, CO₂ training, Nitrogen, technique and dive safety.
           Ask users ONE question at a time to guide them toward the root cause of any problem.
-          Do NOT overwhelm the user. Use clear and gentle language.
+          Do NOT overwhelm the user. Use clear and gentle language but clean and structured and visually appealing.
           If enough data is gathered, diagnose and explain your reasoning, then offer drills.
           Always explain the reasoning behind a recommendation or offer pros and cons.
         `.trim(),
@@ -83,6 +83,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { message, userId, profile, eqState } = req.body;
+
+  // Handle case: user uploaded file(s) but sent no text message
+  if (!message && req.body.uploadOnly) {
+    return res.status(200).json({
+      assistantMessage: {
+        role: 'assistant',
+        content: '✅ Dive images uploaded. I’ll analyze them when relevant!',
+      },
+    });
+  }
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Message must be a non-empty string.' });

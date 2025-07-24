@@ -128,15 +128,13 @@ export default function Chat() {
           { role: "assistant", content: assistantContent },
         ]);
 
-        // ✅ Save full chat log to Wix
-        await fetch("https://www.deepfreediving.com/_functions/saveMessage", {
+        // ✅ Updated to use correct Wix HTTP endpoint and payload
+        await fetch("https://www.deepfreediving.com/_functions/aiRequest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            userInput: trimmedInput,
             userId: threadId,
-            username: storedUsername,
-            input: trimmedInput,
-            response: assistantContent,
           }),
         });
       } catch (err) {
