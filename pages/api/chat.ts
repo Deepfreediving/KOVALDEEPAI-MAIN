@@ -9,9 +9,9 @@ const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   const origin = req.headers.origin || '';
 
   const isAllowed =
-    origin === 'https://www.deepfreediving.com' ||
-    origin === 'https://kovaldeepai-main.vercel.app' ||
-    (origin.startsWith('https://kovaldeepai-main-') && origin.includes('.vercel.app'));
+  origin === 'https://www.deepfreediving.com' ||
+  origin === 'https://kovaldeepai-main.vercel.app' ||
+  /^https:\/\/kovaldeepai-main-[a-z0-9]+\.vercel\.app$/.test(origin);
 
   if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
