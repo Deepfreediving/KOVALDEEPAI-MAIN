@@ -7,11 +7,10 @@ import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 // === CORS Handling ===
 const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   const allowedOrigins = [
-    'https://kovaldeepai-main-1bt7it18k-kovaldeepais-projects.vercel.app',
     'https://kovaldeepai-main.vercel.app',
     'https://www.deepfreediving.com',
-    'https://your-wix-site.com', // Replace with actual Wix domain if needed
   ];
+
   const origin = req.headers.origin || '';
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -111,6 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { message, userId, profile, eqState } = req.body;
 
+  // ✅ Image-upload only (no message)
   if (!message && req.body.uploadOnly) {
     return res.status(200).json({
       assistantMessage: {
@@ -125,6 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // === 1: Profile Intake ===
     const intakeCheck = getMissingProfileField(profile || {});
     if (intakeCheck) {
       return res.status(200).json({
@@ -134,6 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // === 2: EQ Logic ===
     if (eqState && eqState.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
@@ -152,6 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // === 3: Context Search ===
     const contextChunks = await queryPinecone(message);
 
     if (contextChunks.length === 0) {
@@ -163,6 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // === 4: Generate AI Response ===
     const answer = await askWithContext(contextChunks, message);
 
     return res.status(200).json({
