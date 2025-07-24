@@ -4,14 +4,14 @@ import { Pinecone, Index } from '@pinecone-database/pinecone';
 import { getMissingProfileField } from '@/lib/coaching/profileIntake';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
-// === CORS Handling ===
+/** === CORS: Allow main and dynamic Vercel deployments + deepfreediving.com === */
 const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   const origin = req.headers.origin || '';
 
   const isAllowed =
-  origin === 'https://www.deepfreediving.com' ||
-  origin === 'https://kovaldeepai-main.vercel.app' ||
-  /^https:\/\/kovaldeepai-main-[a-z0-9]+\.vercel\.app$/.test(origin);
+    origin === 'https://www.deepfreediving.com' ||
+    origin === 'https://kovaldeepai-main.vercel.app' ||
+    /^https:\/\/kovaldeepai-main-[a-z0-9]+\.vercel\.app$/.test(origin);
 
   if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -29,12 +29,12 @@ const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   return false;
 };
 
-// === Init OpenAI ===
+/** === Init OpenAI === */
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
-// === Init Pinecone ===
+/** === Init Pinecone === */
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY || '',
 });
@@ -46,7 +46,7 @@ try {
   console.error('❌ Pinecone index init error:', err instanceof Error ? err.message : err);
 }
 
-// === Embedding Function ===
+/** === Embed Input for Pinecone Search === */
 async function getQueryEmbedding(query: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
@@ -60,7 +60,7 @@ async function getQueryEmbedding(query: string): Promise<number[]> {
   }
 }
 
-// === Pinecone Search ===
+/** === Pinecone Semantic Search === */
 async function queryPinecone(query: string): Promise<string[]> {
   const embedding = await getQueryEmbedding(query);
   const result = await index.query({
@@ -72,7 +72,7 @@ async function queryPinecone(query: string): Promise<string[]> {
   return result?.matches?.map((m: any) => m.metadata?.text).filter(Boolean) || [];
 }
 
-// === OpenAI Coaching Chat ===
+/** === Chat Completion with Context === */
 async function askWithContext(contextChunks: string[], question: string): Promise<string> {
   const context = contextChunks.join('\n\n');
 
@@ -101,7 +101,7 @@ async function askWithContext(contextChunks: string[], question: string): Promis
   return response?.choices?.[0]?.message?.content?.trim() || 'No answer generated.';
 }
 
-// === MAIN HANDLER ===
+/** === API Endpoint Handler === */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
 
@@ -109,10 +109,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { message, userId, profile, eqState } = req.body;
+  const { message, userId, profile, eqState, uploadOnly } = req.body;
 
-  // ✅ Image-upload only (no message)
-  if (!message && req.body.uploadOnly) {
+  if (!message && uploadOnly) {
     return res.status(200).json({
       assistantMessage: {
         role: 'assistant',
@@ -126,7 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // === 1: Profile Intake ===
+    // === Step 1: Profile Intake ===
     const intakeCheck = getMissingProfileField(profile || {});
     if (intakeCheck) {
       return res.status(200).json({
@@ -136,7 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // === 2: EQ Logic ===
+    // === Step 2: EQ Assessment ===
     if (eqState && eqState.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
@@ -155,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // === 3: Context Search ===
+    // === Step 3: Semantic Retrieval ===
     const contextChunks = await queryPinecone(message);
 
     if (contextChunks.length === 0) {
@@ -167,7 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // === 4: Generate AI Response ===
+    // === Step 4: AI Response ===
     const answer = await askWithContext(contextChunks, message);
 
     return res.status(200).json({
