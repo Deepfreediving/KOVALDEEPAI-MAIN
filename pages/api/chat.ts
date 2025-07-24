@@ -1,29 +1,27 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
-import { Pinecone, Index } from '@pinecone-database/pinecone'; // Import Pinecone.Index explicitly
+import { Pinecone, Index } from '@pinecone-database/pinecone';
+import { getMissingProfileField } from '@/lib/coaching/profileIntake';
+import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
-// Initialize OpenAI
+// === Init OpenAI ===
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
+  apiKey: process.env.OPENAI_API_KEY || '',
 });
 
-// Initialize Pinecone
+// === Init Pinecone ===
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY || "",
+  apiKey: process.env.PINECONE_API_KEY || '',
 });
 
-let index: Index; // Explicitly declare the type of 'index' as Index
+let index: Index;
 try {
-  index = pinecone.Index(process.env.PINECONE_INDEX || "");
+  index = pinecone.Index(process.env.PINECONE_INDEX || '');
 } catch (err) {
-  if (err instanceof Error) {
-    console.error("❌ Pinecone index init error:", err.message);
-  } else {
-    console.error("❌ Unknown error during Pinecone index initialization.");
-  }
+  console.error('❌ Pinecone index init error:', err instanceof Error ? err.message : err);
 }
 
-// Step 1: Get query embedding
+// === Embedding Function ===
 async function getQueryEmbedding(query: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
@@ -32,100 +30,102 @@ async function getQueryEmbedding(query: string): Promise<number[]> {
     });
     return response?.data?.[0]?.embedding || [];
   } catch (err) {
-    if (err instanceof Error) {
-      console.error("❌ Embedding generation failed:", err.message);
-    } else {
-      console.error("❌ Unknown error during embedding generation.");
-    }
-    throw new Error('Embedding generation failed.');
+    console.error('❌ Embedding error:', err);
+    throw new Error('Failed to get embedding.');
   }
 }
 
-// Step 2: Search Pinecone vector DB
+// === Pinecone Search ===
 async function queryPinecone(query: string): Promise<string[]> {
   const embedding = await getQueryEmbedding(query);
-  if (!embedding) throw new Error('Embedding is undefined.');
-  if (!index) throw new Error('Pinecone index not initialized.');
+  const result = await index.query({
+    vector: embedding,
+    topK: 6,
+    includeMetadata: true,
+  });
 
-  try {
-    const result = await index.query({
-      vector: embedding,
-      topK: 6,
-      includeMetadata: true,
-    });
-
-    return result?.matches
-      ?.map((m: any) => m.metadata?.text)
-      .filter(Boolean) || [];
-  } catch (err) {
-    if (err instanceof Error) {
-      console.error("❌ Pinecone query error:", err.message);
-    } else {
-      console.error("❌ Unknown error during Pinecone query.");
-    }
-    throw new Error('Pinecone vector search failed.');
-  }
+  return result?.matches?.map((m: any) => m.metadata?.text).filter(Boolean) || [];
 }
 
-// Step 3: Ask OpenAI using context
+// === OpenAI Coaching Chat ===
 async function askWithContext(contextChunks: string[], question: string): Promise<string> {
-  const context = contextChunks.join("\n\n");
+  const context = contextChunks.join('\n\n');
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a freediving coach with expert knowledge of breath-hold and equalization techniques. 
-                    Always provide detailed, step-by-step instructions for any exercises or tools.
-                    If you mention any exercise, especially advanced ones like the Progressive Mouthfill Compression with Reverse Packing, 
-                    ensure you explain all steps thoroughly. These include preparation, correct posture, breathing technique, 
-                    and training tips for safety and efficiency. Additionally, always ensure you clarify when and where each tool should be used.
-                    Be cautious about tool references and use precise language to avoid any misunderstandings.
-                  `.trim(),
-        },
-        {
-          role: 'user',
-          content: `Context:\n${context}\n\nQuestion: ${question}`,
-        },
-      ],
-      temperature: 0.3, // Lower temperature to prioritize factual and accurate answers
-      max_tokens: 700,
-    });
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: [
+      {
+        role: 'system',
+        content: `
+          You are a freediving coach with expert knowledge in EQ, CO₂ training, narcosis, and dive safety.
+          Ask users ONE question at a time to guide them toward the root cause of any problem.
+          Do NOT overwhelm the user. Use clear and gentle language.
+          If enough data is gathered, diagnose and explain your reasoning, then offer drills.
+          Always explain the reasoning behind a recommendation or offer pros and cons.
+        `.trim(),
+      },
+      {
+        role: 'user',
+        content: `Context:\n${context}\n\nQuestion: ${question}`,
+      },
+    ],
+    temperature: 0.3,
+    max_tokens: 700,
+  });
 
-    return response?.choices?.[0]?.message?.content?.trim() || "No answer generated.";
-  } catch (err) {
-    if (err instanceof Error) {
-      console.error("❌ OpenAI chat error:", err.message);
-    } else {
-      console.error("❌ Unknown error during OpenAI chat.");
-    }
-    throw new Error('Failed to generate assistant response.');
-  }
+  return response?.choices?.[0]?.message?.content?.trim() || 'No answer generated.';
 }
 
-// ✅ API Route
+// === MAIN HANDLER ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { message } = req.body;
+  const { message, userId, profile, eqState } = req.body;
 
-  if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "Message must be a non-empty string." });
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message must be a non-empty string.' });
   }
 
   try {
-    // Fetch relevant context chunks from Pinecone or other sources here
+    // === 1: Profile Intake Step ===
+    const intakeCheck = getMissingProfileField(profile || {});
+    if (intakeCheck) {
+      return res.status(200).json({
+        type: 'intake',
+        key: intakeCheck.key,
+        question: intakeCheck.question,
+      });
+    }
+
+    // === 2: EQ Diagnostic Logic ===
+    if (eqState && eqState.currentDepth) {
+      const next = getNextEQQuestion(eqState);
+      if (next.type === 'question') {
+        return res.status(200).json({
+          type: 'eq-followup',
+          question: next.question,
+          key: next.key,
+        });
+      } else if (next.type === 'diagnosis-ready') {
+        const result = evaluateEQAnswers(eqState.answers);
+        return res.status(200).json({
+          type: 'eq-diagnosis',
+          label: result.label,
+          drills: result.drills,
+        });
+      }
+    }
+
+    // === 3: Pinecone Fallback ===
     const contextChunks = await queryPinecone(message);
 
     if (contextChunks.length === 0) {
       return res.status(200).json({
         assistantMessage: {
-          role: "assistant",
-          content: "⚠️ No relevant information found for your question.",
+          role: 'assistant',
+          content: '⚠️ No relevant information found for your question.',
         },
       });
     }
@@ -134,16 +134,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       assistantMessage: {
-        role: "assistant",
+        role: 'assistant',
         content: answer,
       },
     });
   } catch (err) {
-    if (err instanceof Error) {
-      console.error("❌ /api/chat internal error:", err.message);
-    } else {
-      console.error("❌ Unknown error during API chat.");
-    }
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error('❌ /api/chat internal error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
