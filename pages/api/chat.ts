@@ -6,13 +6,14 @@ import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
 // === CORS Handling ===
 const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
-  const allowedOrigins = [
-    'https://kovaldeepai-main.vercel.app',
-    'https://www.deepfreediving.com',
-  ];
-
   const origin = req.headers.origin || '';
-  if (allowedOrigins.includes(origin)) {
+
+  const isAllowed =
+    origin === 'https://www.deepfreediving.com' ||
+    origin === 'https://kovaldeepai-main.vercel.app' ||
+    (origin.startsWith('https://kovaldeepai-main-') && origin.includes('.vercel.app'));
+
+  if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
 
