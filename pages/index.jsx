@@ -10,6 +10,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [storedUsername, setStoredUsername] = useState("");
+  const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({
     currentDepth: null,
@@ -19,7 +20,7 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
-  // Load username & stored profile
+  // Load username & profile
   useEffect(() => {
     const localUsername =
       localStorage.getItem("kovalUser") ||
@@ -33,6 +34,31 @@ export default function Chat() {
     const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
     setProfile(savedProfile);
   }, []);
+
+  // Ensure threadId
+  useEffect(() => {
+    const ensureThread = async () => {
+      let id = localStorage.getItem("kovalThreadId");
+      if (!id && storedUsername) {
+        try {
+          const res = await fetch("/api/create-thread", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: storedUsername }),
+          });
+          const data = await res.json();
+          id = data.threadId;
+          localStorage.setItem("kovalThreadId", id);
+          setThreadId(id);
+        } catch (err) {
+          console.error("❌ Failed to init thread:", err);
+        }
+      } else {
+        setThreadId(id);
+      }
+    };
+    ensureThread();
+  }, [storedUsername]);
 
   // Scroll to latest message
   useEffect(() => {
@@ -52,31 +78,18 @@ export default function Chat() {
     localStorage.setItem("kovalProfile", JSON.stringify(updated));
   };
 
+  const isExpert =
+    parseFloat(profile?.personalBestDepth || 0) >= 80 ||
+    profile?.isInstructor ||
+    (profile?.certLevel || "").toLowerCase().includes("instructor");
+
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
 
     setLoading(true);
 
-    let threadId = localStorage.getItem("kovalThreadId");
-    if (!threadId) {
-      try {
-        const threadRes = await fetch("/api/create-thread", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: storedUsername }),
-        });
-        const threadData = await threadRes.json();
-        threadId = threadData.threadId;
-        localStorage.setItem("kovalThreadId", threadId);
-      } catch (err) {
-        console.error("❌ Thread creation failed:", err);
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Upload image
+    // === Upload image ===
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -110,7 +123,7 @@ export default function Chat() {
       }
     }
 
-    // User message
+    // === User message ===
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -141,7 +154,7 @@ export default function Chat() {
           return;
         }
 
-        // EQ engine follow-up — save answer and track asked key
+        // EQ follow-up
         if (chatData?.type === "eq-followup") {
           setMessages((prev) => [
             ...prev,
@@ -151,7 +164,7 @@ export default function Chat() {
             ...prev,
             answers: {
               ...prev.answers,
-              [chatData.key]: trimmedInput, // Store user's answer
+              [chatData.key]: trimmedInput,
             },
             alreadyAsked: [...(prev.alreadyAsked || []), chatData.key],
           }));
@@ -174,6 +187,7 @@ export default function Chat() {
           return;
         }
 
+        // Final assistant reply
         const assistantContent =
           chatData?.assistantMessage?.content ||
           chatData?.error ||
@@ -221,10 +235,18 @@ export default function Chat() {
           <div className="flex flex-col">
             <div className="flex items-center gap-4">
               <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
-              <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+              <div>
+                <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+                {isExpert && (
+                  <span className="text-xs font-medium text-green-600">
+                    🧠 Coach Mode Activated
+                  </span>
+                )}
+              </div>
             </div>
             <p className="text-xs mt-1 text-gray-500">User ID: {storedUsername}</p>
           </div>
+
           <button
             onClick={toggleDarkMode}
             className={`px-4 py-1 rounded-md border text-sm transition-colors ${
