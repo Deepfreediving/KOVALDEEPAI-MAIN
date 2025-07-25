@@ -8,7 +8,6 @@ import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 // === CORS ===
 const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   const origin = req.headers.origin || '';
-
   const isAllowed =
     origin === 'https://www.deepfreediving.com' ||
     origin === 'https://kovaldeepai-main.vercel.app' ||
@@ -73,7 +72,6 @@ async function queryPinecone(query: string): Promise<string[]> {
 
 async function askWithContext(contextChunks: string[], question: string): Promise<string> {
   const context = contextChunks.join('\n\n');
-
   const response = await openai.chat.completions.create({
     model: 'gpt-4',
     messages: [
@@ -96,14 +94,15 @@ async function askWithContext(contextChunks: string[], question: string): Promis
     max_tokens: 700,
   });
 
-  console.log('🧠 OpenAI raw response:', JSON.stringify(response, null, 2));
   return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 }
 
-// === Handler ===
+// === Main Handler ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
   const {
     message,
@@ -132,7 +131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     console.log(`📩 Message from ${username || 'user'}: ${message}`);
 
-    // === 1. Profile Intake Check ===
+    // === 1. Profile Intake Logic ===
     const intakeCheck = getMissingProfileField(profile || {});
     if (intakeCheck) {
       return res.status(200).json({
@@ -146,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // === 2. EQ Engine Logic ===
+    // === 2. EQ Flow Logic ===
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
@@ -174,7 +173,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // === 3. Pinecone Context Retrieval ===
+    // === 3. Retrieve Training Context ===
     const contextChunks = await queryPinecone(message);
     if (contextChunks.length === 0) {
       return res.status(200).json({
@@ -204,7 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (err) {
-    console.error('❌ Internal error:', err);
+    console.error('❌ /api/chat internal error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
