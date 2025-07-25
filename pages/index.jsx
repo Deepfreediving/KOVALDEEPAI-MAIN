@@ -19,6 +19,7 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
+  // Load username & stored profile
   useEffect(() => {
     const localUsername =
       localStorage.getItem("kovalUser") ||
@@ -28,8 +29,12 @@ export default function Chat() {
         return newUser;
       })();
     setStoredUsername(localUsername);
+
+    const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
+    setProfile(savedProfile);
   }, []);
 
+  // Scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -39,6 +44,12 @@ export default function Chat() {
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files).slice(0, 3);
     setFiles(selected);
+  };
+
+  const saveProfileAnswer = (key, value) => {
+    const updated = { ...profile, [key]: value };
+    setProfile(updated);
+    localStorage.setItem("kovalProfile", JSON.stringify(updated));
   };
 
   const handleSubmit = async () => {
@@ -65,6 +76,7 @@ export default function Chat() {
       }
     }
 
+    // Upload image
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -91,16 +103,14 @@ export default function Chat() {
         console.error("❌ Upload error:", err);
         setMessages((prev) => [
           ...prev,
-          {
-            role: "assistant",
-            content: "⚠️ Upload failed. Try again.",
-          },
+          { role: "assistant", content: "⚠️ Upload failed. Try again." },
         ]);
       } finally {
         setFiles([]);
       }
     }
 
+    // User message
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -120,21 +130,18 @@ export default function Chat() {
 
         const chatData = await chatRes.json();
 
-        // === Intake Profile Follow-up ===
+        // Intake follow-up
         if (chatData?.type === "intake") {
           setMessages((prev) => [
             ...prev,
             { role: "assistant", content: chatData.question },
           ]);
-          setProfile((prev) => ({
-            ...prev,
-            [chatData.key]: "", // Capture new field
-          }));
+          saveProfileAnswer(chatData.key, trimmedInput);
           setLoading(false);
           return;
         }
 
-        // === EQ Engine Follow-up ===
+        // EQ engine follow-up
         if (chatData?.type === "eq-followup") {
           setMessages((prev) => [
             ...prev,
@@ -148,7 +155,7 @@ export default function Chat() {
           return;
         }
 
-        // === EQ Engine Diagnosis ===
+        // EQ diagnosis
         if (chatData?.type === "eq-diagnosis") {
           setMessages((prev) => [
             ...prev,

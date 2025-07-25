@@ -5,7 +5,7 @@ import { Pinecone, Index } from '@pinecone-database/pinecone';
 import { getMissingProfileField } from '@/lib/coaching/profileIntake';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
-// === CORS Handling ===
+// === CORS ===
 const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   const origin = req.headers.origin || '';
 
@@ -30,15 +30,9 @@ const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   return false;
 };
 
-// === OpenAI Setup ===
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
-
-// === Pinecone Setup ===
-const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY || '',
-});
+// === OpenAI & Pinecone Setup ===
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
+const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
 
 let index: Index;
 try {
@@ -47,7 +41,7 @@ try {
   console.error('❌ Pinecone index init error:', err instanceof Error ? err.message : err);
 }
 
-// === Embedding ===
+// === Embedding & Retrieval ===
 async function getQueryEmbedding(query: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
@@ -61,7 +55,6 @@ async function getQueryEmbedding(query: string): Promise<number[]> {
   }
 }
 
-// === Pinecone Search ===
 async function queryPinecone(query: string): Promise<string[]> {
   try {
     const embedding = await getQueryEmbedding(query);
@@ -78,7 +71,6 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// === Chat Completion ===
 async function askWithContext(contextChunks: string[], question: string): Promise<string> {
   const context = contextChunks.join('\n\n');
 
@@ -108,23 +100,19 @@ async function askWithContext(contextChunks: string[], question: string): Promis
   return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 }
 
-
-// === Main API Handler ===
+// === Handler ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const {
     message,
     userId,
+    username,
     profile,
     eqState,
     uploadOnly,
     thread_id,
-    username,
   } = req.body;
 
   if (!message && uploadOnly) {
@@ -133,6 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: 'assistant',
         content: '✅ Dive images uploaded. I’ll analyze them when relevant!',
       },
+      metadata: { sessionType: 'upload-only' },
     });
   }
 
@@ -141,26 +130,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log(`📨 New message from ${username || 'user'}:`, message);
+    console.log(`📩 Message from ${username || 'user'}: ${message}`);
 
-    // === 1. Profile Intake ===
+    // === 1. Profile Intake Check ===
     const intakeCheck = getMissingProfileField(profile || {});
     if (intakeCheck) {
       return res.status(200).json({
         type: 'intake',
         key: intakeCheck.key,
         question: intakeCheck.question,
+        metadata: {
+          intentLabel: 'profile-intake',
+          saveThis: true,
+        },
       });
     }
 
-    // === 2. EQ Engine ===
-    if (eqState && eqState.currentDepth) {
+    // === 2. EQ Engine Logic ===
+    if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
         return res.status(200).json({
           type: 'eq-followup',
-          question: next.question,
           key: next.key,
+          question: next.question,
+          metadata: {
+            intentLabel: 'eq-followup',
+            saveThis: true,
+          },
         });
       } else if (next.type === 'diagnosis-ready') {
         const result = evaluateEQAnswers(eqState.answers);
@@ -168,24 +165,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: 'eq-diagnosis',
           label: result.label,
           drills: result.drills,
+          metadata: {
+            intentLabel: 'eq-diagnosis',
+            sessionType: 'diagnostic',
+            saveThis: true,
+          },
         });
       }
     }
 
-    // === 3. Pinecone Retrieval ===
+    // === 3. Pinecone Context Retrieval ===
     const contextChunks = await queryPinecone(message);
-
     if (contextChunks.length === 0) {
-      console.warn("⚠️ No context found for message.");
       return res.status(200).json({
         assistantMessage: {
           role: 'assistant',
           content: '⚠️ I couldn’t find relevant training data for your question. You can still ask anything!',
         },
+        metadata: {
+          intentLabel: 'no-context-found',
+          sessionType: 'general',
+        },
       });
     }
 
-    // === 4. AI Response ===
+    // === 4. Generate AI Reply ===
     const answer = await askWithContext(contextChunks, message);
 
     return res.status(200).json({
@@ -193,9 +197,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: 'assistant',
         content: answer,
       },
+      metadata: {
+        intentLabel: 'ai-response',
+        sessionType: 'training',
+        saveThis: true,
+      },
     });
   } catch (err) {
-    console.error('❌ /api/chat internal error:', err);
+    console.error('❌ Internal error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
