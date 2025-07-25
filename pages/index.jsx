@@ -141,7 +141,7 @@ export default function Chat() {
           return;
         }
 
-        // EQ engine follow-up
+        // EQ engine follow-up — save answer and track asked key
         if (chatData?.type === "eq-followup") {
           setMessages((prev) => [
             ...prev,
@@ -149,6 +149,10 @@ export default function Chat() {
           ]);
           setEqState((prev) => ({
             ...prev,
+            answers: {
+              ...prev.answers,
+              [chatData.key]: trimmedInput, // Store user's answer
+            },
             alreadyAsked: [...(prev.alreadyAsked || []), chatData.key],
           }));
           setLoading(false);
