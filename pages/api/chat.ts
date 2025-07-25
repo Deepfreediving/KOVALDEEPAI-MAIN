@@ -25,7 +25,7 @@ const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   return false;
 };
 
-// === OpenAI & Pinecone Setup ===
+// === AI Setup ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
 
@@ -36,54 +36,48 @@ try {
   console.error('❌ Pinecone index init error:', err instanceof Error ? err.message : err);
 }
 
-// === 🧠 User Level Detection ===
+// === User Level Detection ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
   if (!profile) return 'beginner';
-  const { personalBestDepth, certLevel, isInstructor } = profile;
 
-  const numericPB = typeof personalBestDepth === 'string'
-    ? parseFloat(personalBestDepth.replace(/[^\d.]/g, ''))
-    : personalBestDepth;
+  const pb = profile.pb || profile.personalBestDepth;
+  const { certLevel, isInstructor } = profile;
 
+  const numericPB = typeof pb === 'string' ? parseFloat(pb.replace(/[^\d.]/g, '')) : pb;
   if (numericPB && numericPB >= 80) return 'expert';
   if (isInstructor || (certLevel && certLevel.toLowerCase().includes('instructor'))) return 'expert';
 
   return 'beginner';
 }
 
-// === 🧠 Dynamic Coaching Prompt Generator ===
+// === Coaching System Prompt ===
 function generateSystemPrompt(userLevel: 'expert' | 'beginner'): string {
   if (userLevel === 'expert') {
     return `
       You are Koval Deep AI, a world-class freediving coach.
-      If the user has a PB > 80m, or is a certified instructor trainer, or mentions advanced training experience, treat them as a peer-level diver.
-      Switch to coaching mode: provide concise, tactical solutions, structured routines, dry training advice, and targeted technique fixes.
-      Avoid diagnostic over-questioning. Don't hesitate to give knowledge, explain reasoning, and incorporate a strategic follow-up only if essential.
-      Use bullet points and clearly outline what the diver can apply today.
+      For users with PB > 80m or instructor credentials, use expert coaching mode.
+      • Provide tactical feedback, targeted drills, and concise advice.
+      • Avoid long intake sequences. Ask max 3 strategic follow-ups.
+      • Use bullet points and give direct suggestions they can act on today.
     `.trim();
   }
 
   return `
-    You are a freediving coach with expert knowledge in EQ, Oxygen, CO₂ training, freedive physiology, freedive physics, Nitrogen, mammalian dive reflex, adaptation technique, and dive safety.
-    Ask ONE–TWO clear, purposeful questions at a time. Use comparison and deductive logic to move closer to root issues.
-    Do NOT overwhelm the user. Maintain clarity, offer structure, and visually appealing formatting.
-    If enough context exists, diagnose and explain the cause, then offer actionable drills, routines, and advice.
-    Always explain your reasoning, and consider pros and cons of each recommendation.
+    You are a freediving coach with expert knowledge of EQ, physiology, training, and dive safety.
+    • Guide the user to the root of their issue through reasoning and short, clear follow-ups.
+    • Ask no more than 4 intake questions before offering diagnosis or actionable advice.
+    • Avoid overwhelming. Be structured, explanatory, and gentle.
+    • Use formatting and clear language to engage the diver.
   `.trim();
 }
 
-// === 🔍 Pinecone Vector Querying ===
+// === Embedding + Retrieval ===
 async function getQueryEmbedding(query: string): Promise<number[]> {
-  try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query,
-    });
-    return response?.data?.[0]?.embedding || [];
-  } catch (err) {
-    console.error('❌ Embedding error:', err);
-    throw new Error('Failed to generate embedding.');
-  }
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: query,
+  });
+  return response?.data?.[0]?.embedding || [];
 }
 
 async function queryPinecone(query: string): Promise<string[]> {
@@ -94,15 +88,14 @@ async function queryPinecone(query: string): Promise<string[]> {
       topK: 6,
       includeMetadata: true,
     });
-
     return result?.matches?.map((m: any) => m.metadata?.text).filter(Boolean) || [];
   } catch (err) {
-    console.error('❌ Pinecone query failed:', err);
+    console.error('❌ Pinecone query error:', err);
     return [];
   }
 }
 
-// === 🧠 Ask GPT with Context + Coaching Logic ===
+// === GPT Response Wrapper ===
 async function askWithContext(contextChunks: string[], question: string, userLevel: 'expert' | 'beginner'): Promise<string> {
   const systemPrompt = generateSystemPrompt(userLevel);
   const context = contextChunks.join('\n\n');
@@ -120,13 +113,12 @@ async function askWithContext(contextChunks: string[], question: string, userLev
   return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 }
 
-// === 📝 Log (Extend to DB Later) ===
+// === Logging (Extend Later) ===
 function logChat(userId: string, message: string, role: 'user' | 'assistant') {
   console.log(`📥 [${role}] ${userId}: ${message}`);
-  // Optional: Persist to external DB
 }
 
-// === 🌊 Main Handler ===
+// === Handler ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -134,11 +126,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const {
     message,
     userId = 'anonymous',
-    username,
-    profile,
+    profile = {},
     eqState,
     uploadOnly,
-    thread_id, // not used yet
+    intakeCount = 0, // NEW: track how many profile questions already asked
   } = req.body;
 
   if (!message && uploadOnly) {
@@ -158,9 +149,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     logChat(userId, message, 'user');
 
-    // === 1. Profile Intake
+    // === Intake Flow (limit to 4 questions max)
+    const userLevel = detectUserLevel(profile);
     const intakeCheck = getMissingProfileField(profile || {});
-    if (intakeCheck) {
+
+    if (intakeCheck && userLevel === 'beginner' && intakeCount < 4) {
       return res.status(200).json({
         type: 'intake',
         key: intakeCheck.key,
@@ -168,11 +161,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         metadata: {
           intentLabel: 'profile-intake',
           saveThis: true,
+          intakeCount: intakeCount + 1,
         },
       });
     }
 
-    // === 2. EQ Followup / Diagnosis
+    // === EQ Diagnostic Flow
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
@@ -200,12 +194,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // === 3. Determine Coaching Level
-    const userLevel = detectUserLevel(profile);
-
-    // === 4. Vector Search via Pinecone
+    // === Query Memory
     const contextChunks = await queryPinecone(message);
 
+    // Fallback if memory empty
     if (contextChunks.length === 0) {
       return res.status(200).json({
         assistantMessage: {
@@ -219,8 +211,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // === 5. Ask GPT in Coach Mode
+    // === Ask GPT in Coaching Mode
     const answer = await askWithContext(contextChunks, message, userLevel);
+
     logChat(userId, answer, 'assistant');
 
     return res.status(200).json({
@@ -236,7 +229,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (err) {
-    console.error('❌ /api/chat internal error:', err);
+    console.error('❌ Internal error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
