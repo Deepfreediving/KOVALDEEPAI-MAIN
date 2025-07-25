@@ -9,8 +9,15 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const bottomRef = useRef(null);
   const [storedUsername, setStoredUsername] = useState("");
+  const [profile, setProfile] = useState({});
+  const [eqState, setEqState] = useState({
+    currentDepth: null,
+    answers: {},
+    alreadyAsked: [],
+  });
+
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     const localUsername =
@@ -37,6 +44,7 @@ export default function Chat() {
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
+
     setLoading(true);
 
     let threadId = localStorage.getItem("kovalThreadId");
@@ -50,7 +58,6 @@ export default function Chat() {
         const threadData = await threadRes.json();
         threadId = threadData.threadId;
         localStorage.setItem("kovalThreadId", threadId);
-        console.log("🧵 Thread created:", threadId);
       } catch (err) {
         console.error("❌ Thread creation failed:", err);
         setLoading(false);
@@ -73,27 +80,20 @@ export default function Chat() {
           ? await uploadRes.json()
           : { error: "Server returned non-JSON." };
 
-        if (uploadRes.ok && uploadData.answer) {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: uploadData.answer },
-          ]);
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: uploadData?.error || "⚠️ Image processing failed.",
-            },
-          ]);
-        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: uploadData?.answer || uploadData?.error || "⚠️ Image processing failed.",
+          },
+        ]);
       } catch (err) {
         console.error("❌ Upload error:", err);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "⚠️ Upload failed. Check your image or try again.",
+            content: "⚠️ Upload failed. Try again.",
           },
         ]);
       } finally {
@@ -113,10 +113,56 @@ export default function Chat() {
             message: trimmedInput,
             thread_id: threadId,
             username: storedUsername,
+            profile,
+            eqState,
           }),
         });
 
         const chatData = await chatRes.json();
+
+        // === Intake Profile Follow-up ===
+        if (chatData?.type === "intake") {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: chatData.question },
+          ]);
+          setProfile((prev) => ({
+            ...prev,
+            [chatData.key]: "", // Capture new field
+          }));
+          setLoading(false);
+          return;
+        }
+
+        // === EQ Engine Follow-up ===
+        if (chatData?.type === "eq-followup") {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: chatData.question },
+          ]);
+          setEqState((prev) => ({
+            ...prev,
+            alreadyAsked: [...(prev.alreadyAsked || []), chatData.key],
+          }));
+          setLoading(false);
+          return;
+        }
+
+        // === EQ Engine Diagnosis ===
+        if (chatData?.type === "eq-diagnosis") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `🩺 Diagnosis: ${chatData.label}\n\nSuggested drills:\n${chatData.drills.join(
+                "\n"
+              )}`,
+            },
+          ]);
+          setLoading(false);
+          return;
+        }
+
         const assistantContent =
           chatData?.assistantMessage?.content ||
           chatData?.error ||
@@ -130,10 +176,7 @@ export default function Chat() {
         console.error("❌ Chat error:", err);
         setMessages((prev) => [
           ...prev,
-          {
-            role: "assistant",
-            content: "⚠️ Network error. Please try again.",
-          },
+          { role: "assistant", content: "⚠️ Network error. Please try again." },
         ]);
       }
     }
@@ -169,9 +212,7 @@ export default function Chat() {
               <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
               <h1 className="text-xl font-semibold">Koval Deep AI</h1>
             </div>
-            <p className="text-xs mt-1 text-gray-500">
-              User ID: {storedUsername}
-            </p>
+            <p className="text-xs mt-1 text-gray-500">User ID: {storedUsername}</p>
           </div>
           <button
             onClick={toggleDarkMode}
