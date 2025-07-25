@@ -1,6 +1,8 @@
 // /pages/api/chat.ts
+
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
+import axios from 'axios';
 import { Pinecone, Index } from '@pinecone-database/pinecone';
 import { getMissingProfileField } from '@/lib/coaching/profileIntake';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
@@ -38,37 +40,33 @@ try {
 
 // === User Level Detection ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
-  if (!profile) return 'beginner';
-
-  const pb = profile.pb || profile.personalBestDepth;
-  const { certLevel, isInstructor } = profile;
+  const pb = profile?.pb || profile?.personalBestDepth;
+  const certLevel = profile?.certLevel || '';
+  const isInstructor = profile?.isInstructor;
 
   const numericPB = typeof pb === 'string' ? parseFloat(pb.replace(/[^\d.]/g, '')) : pb;
   if (numericPB && numericPB >= 80) return 'expert';
-  if (isInstructor || (certLevel && certLevel.toLowerCase().includes('instructor'))) return 'expert';
-
+  if (isInstructor || certLevel.toLowerCase().includes('instructor')) return 'expert';
   return 'beginner';
 }
 
 // === Coaching System Prompt ===
-function generateSystemPrompt(userLevel: 'expert' | 'beginner'): string {
-  if (userLevel === 'expert') {
-    return `
+function generateSystemPrompt(level: 'expert' | 'beginner'): string {
+  return level === 'expert'
+    ? `
       You are Koval Deep AI, a world-class freediving coach.
-      For users with PB > 80m or instructor credentials, use expert coaching mode.
-      • Provide tactical feedback, targeted drills, and concise advice.
-      • Avoid long intake sequences. Ask max 3 strategic follow-ups.
-      • Use bullet points and give direct suggestions they can act on today.
+      Speak to professionals and instructors with depth > 80m.
+      • Deliver precise tactical advice, drills, and diagnostic guidance.
+      • Avoid long onboarding. Ask no more than 3 strategic questions.
+      • Use bullet points, be concise and actionable.
+    `.trim()
+    : `
+      You are a freediving coach with deep knowledge of EQ, training and physiology.
+      Help beginner and intermediate divers progress through:
+      • Short intake (max 4 questions)
+      • Gentle, structured, clear communication
+      • Practical exercises & explanations
     `.trim();
-  }
-
-  return `
-    You are a freediving coach with expert knowledge of EQ, physiology, training, and dive safety.
-    • Guide the user to the root of their issue through reasoning and short, clear follow-ups.
-    • Ask no more than 4 intake questions before offering diagnosis or actionable advice.
-    • Avoid overwhelming. Be structured, explanatory, and gentle.
-    • Use formatting and clear language to engage the diver.
-  `.trim();
 }
 
 // === Embedding + Retrieval ===
@@ -95,7 +93,7 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// === GPT Response Wrapper ===
+// === GPT Response with Context ===
 async function askWithContext(contextChunks: string[], question: string, userLevel: 'expert' | 'beginner'): Promise<string> {
   const systemPrompt = generateSystemPrompt(userLevel);
   const context = contextChunks.join('\n\n');
@@ -113,23 +111,61 @@ async function askWithContext(contextChunks: string[], question: string, userLev
   return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 }
 
-// === Logging (Extend Later) ===
+// === Optional: Save Conversation to Wix ===
+async function saveToWixMemory({
+  userId,
+  logEntry,
+  memoryContent,
+  profile,
+  eqState,
+  metadata,
+}: {
+  userId: string;
+  logEntry: string;
+  memoryContent: string;
+  profile: any;
+  eqState?: any;
+  metadata?: any;
+}) {
+  try {
+    await axios.post('https://www.deepfreediving.com/_functions/saveToUserMemory', {
+      userId,
+      logEntry,
+      memoryContent,
+      eqState,
+      profile,
+      timestamp: new Date().toISOString(),
+      metadata,
+    });
+    console.log(`✅ Chat log saved for ${userId}`);
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error('❌ Failed to save memory to Wix:', err.response?.data || err.message);
+    } else if (err instanceof Error) {
+      console.error('❌ Failed to save memory to Wix:', err.message);
+    } else {
+      console.error('❌ Failed to save memory to Wix:', err);
+    }
+  }
+}
+
+// === Log to Console ===
 function logChat(userId: string, message: string, role: 'user' | 'assistant') {
   console.log(`📥 [${role}] ${userId}: ${message}`);
 }
 
-// === Handler ===
+// === MAIN HANDLER ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const {
     message,
-    userId = 'anonymous',
+    userId = 'guest',
     profile = {},
     eqState,
     uploadOnly,
-    intakeCount = 0, // NEW: track how many profile questions already asked
+    intakeCount = 0,
   } = req.body;
 
   if (!message && uploadOnly) {
@@ -149,11 +185,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     logChat(userId, message, 'user');
 
-    // === Intake Flow (limit to 4 questions max)
     const userLevel = detectUserLevel(profile);
-    const intakeCheck = getMissingProfileField(profile || {});
+    const intakeCheck = getMissingProfileField(profile);
 
     if (intakeCheck && userLevel === 'beginner' && intakeCount < 4) {
+      await saveToWixMemory({
+        userId,
+        logEntry: message,
+        memoryContent: '',
+        profile,
+        eqState,
+        metadata: {
+          intentLabel: 'profile-intake',
+          sessionType: 'intake',
+          saveThis: true,
+          intakeCount: intakeCount + 1,
+        },
+      });
+
       return res.status(200).json({
         type: 'intake',
         key: intakeCheck.key,
@@ -166,7 +215,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // === EQ Diagnostic Flow
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
@@ -194,27 +242,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // === Query Memory
     const contextChunks = await queryPinecone(message);
 
-    // Fallback if memory empty
-    if (contextChunks.length === 0) {
-      return res.status(200).json({
-        assistantMessage: {
-          role: 'assistant',
-          content: '⚠️ I couldn’t find relevant training data for your question. You can still ask anything!',
-        },
-        metadata: {
-          intentLabel: 'no-context-found',
-          sessionType: 'general',
-        },
-      });
-    }
-
-    // === Ask GPT in Coaching Mode
     const answer = await askWithContext(contextChunks, message, userLevel);
-
     logChat(userId, answer, 'assistant');
+
+    await saveToWixMemory({
+      userId,
+      logEntry: message,
+      memoryContent: answer,
+      profile,
+      eqState,
+      metadata: {
+        intentLabel: 'ai-response',
+        sessionType: 'training',
+        userLevel,
+        saveThis: true,
+      },
+    });
 
     return res.status(200).json({
       assistantMessage: {
@@ -228,8 +273,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         saveThis: true,
       },
     });
-  } catch (err) {
-    console.error('❌ Internal error:', err);
+  } catch (err: any) {
+    console.error('❌ Internal error:', err.message || err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
