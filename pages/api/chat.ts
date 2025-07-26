@@ -50,22 +50,21 @@ function detectUserLevel(profile: any): 'expert' | 'beginner' {
   return 'beginner';
 }
 
-// === Coaching System Prompt ===
+// === System Prompt ===
 function generateSystemPrompt(level: 'expert' | 'beginner'): string {
   return level === 'expert'
     ? `
-      You are Koval Deep AI, a world-class freediving coach.
-      Speak to professionals and instructors with depth > 80m.
-      • Deliver precise tactical advice, drills, and diagnostic guidance.
-      • Avoid long onboarding. Ask no more than 3 strategic questions.
-      • Use bullet points, be concise and actionable.
+      You are Koval Deep AI, a professional freediving coach.
+      Speak to instructors and expert athletes (>80m depth).
+      • Offer drills, performance tools, and tactical suggestions.
+      • Avoid basic onboarding — just 2-3 strategic questions max.
     `.trim()
     : `
-      You are a freediving coach with deep knowledge of EQ, training and physiology.
-      Help beginner and intermediate divers progress through:
-      • Short intake (max 4 questions)
-      • Gentle, structured, clear communication
-      • Practical exercises & explanations
+      You are Koval AI, a friendly freediving coach.
+      • Help newer divers with gentle coaching and EQ diagnostics.
+      • Ask at most 3–4 onboarding questions.
+      • Be positive, encouraging, and clear.
+      • Use a warm tone and guide them like a trusted mentor.
     `.trim();
 }
 
@@ -93,7 +92,7 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// === GPT Response with Context ===
+// === GPT Chat Response ===
 async function askWithContext(contextChunks: string[], question: string, userLevel: 'expert' | 'beginner'): Promise<string> {
   const systemPrompt = generateSystemPrompt(userLevel);
   const context = contextChunks.join('\n\n');
@@ -111,7 +110,7 @@ async function askWithContext(contextChunks: string[], question: string, userLev
   return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 }
 
-// === Optional: Save Conversation to Wix ===
+// === Save Memory to Wix ===
 async function saveToWixMemory({
   userId,
   logEntry,
@@ -138,18 +137,12 @@ async function saveToWixMemory({
       metadata,
     });
     console.log(`✅ Chat log saved for ${userId}`);
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      console.error('❌ Failed to save memory to Wix:', err.response?.data || err.message);
-    } else if (err instanceof Error) {
-      console.error('❌ Failed to save memory to Wix:', err.message);
-    } else {
-      console.error('❌ Failed to save memory to Wix:', err);
-    }
+  } catch (err: any) {
+    console.error('❌ Failed to save to Wix:', err.response?.data || err.message);
   }
 }
 
-// === Log to Console ===
+// === Log Chat ===
 function logChat(userId: string, message: string, role: 'user' | 'assistant') {
   console.log(`📥 [${role}] ${userId}: ${message}`);
 }
@@ -164,8 +157,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     userId = 'guest',
     profile = {},
     eqState,
-    uploadOnly,
     intakeCount = 0,
+    uploadOnly,
   } = req.body;
 
   if (!message && uploadOnly) {
@@ -186,14 +179,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logChat(userId, message, 'user');
 
     const userLevel = detectUserLevel(profile);
+
+    // === 1. Handle intake ===
     const intakeCheck = getMissingProfileField(profile);
 
-    if (intakeCheck && userLevel === 'beginner' && intakeCount < 4) {
+    if (intakeCheck && intakeCount < 4) {
+      const updatedProfile = { ...profile, [intakeCheck.key]: message }; // Assume prior question was just answered
+      const nextMissing = getMissingProfileField(updatedProfile);
+
       await saveToWixMemory({
         userId,
         logEntry: message,
         memoryContent: '',
-        profile,
+        profile: updatedProfile,
         eqState,
         metadata: {
           intentLabel: 'profile-intake',
@@ -203,20 +201,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       });
 
-      return res.status(200).json({
-        type: 'intake',
-        key: intakeCheck.key,
-        question: intakeCheck.question,
-        metadata: {
-          intentLabel: 'profile-intake',
-          saveThis: true,
-          intakeCount: intakeCount + 1,
-        },
-      });
+      if (nextMissing) {
+        return res.status(200).json({
+          type: 'intake',
+          key: nextMissing.key,
+          question: nextMissing.question,
+          metadata: {
+            intentLabel: 'profile-intake',
+            saveThis: true,
+            intakeCount: intakeCount + 1,
+          },
+        });
+      } else {
+        return res.status(200).json({
+          assistantMessage: {
+            role: 'assistant',
+            content: "Thanks! That's all I need to get started. Ready to dive into some coaching?",
+          },
+          metadata: {
+            sessionType: 'intake-complete',
+            saveThis: true,
+          },
+        });
+      }
     }
 
+    // === 2. Handle EQ diagnostic ===
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
+
       if (next.type === 'question') {
         return res.status(200).json({
           type: 'eq-followup',
@@ -242,15 +255,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // === 3. General Q&A ===
     const contextChunks = await queryPinecone(message);
+    const reply = await askWithContext(contextChunks, message, userLevel);
 
-    const answer = await askWithContext(contextChunks, message, userLevel);
-    logChat(userId, answer, 'assistant');
+    logChat(userId, reply, 'assistant');
 
     await saveToWixMemory({
       userId,
       logEntry: message,
-      memoryContent: answer,
+      memoryContent: reply,
       profile,
       eqState,
       metadata: {
@@ -264,7 +278,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       assistantMessage: {
         role: 'assistant',
-        content: answer,
+        content: reply,
       },
       metadata: {
         intentLabel: 'ai-response',
@@ -273,6 +287,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         saveThis: true,
       },
     });
+
   } catch (err: any) {
     console.error('❌ Internal error:', err.message || err);
     return res.status(500).json({ error: 'Internal Server Error' });

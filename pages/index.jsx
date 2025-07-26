@@ -4,12 +4,13 @@ import ChatMessages from "../components/ChatMessages";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
+
   const [input, setInput] = useState("");
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [storedUsername, setStoredUsername] = useState("");
+  const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({
@@ -20,47 +21,41 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
-  // Load username & profile
+  // Load user ID & profile from localStorage
   useEffect(() => {
-    const localUsername =
-      localStorage.getItem("kovalUser") ||
-      (() => {
-        const newUser = "Guest" + Math.floor(Math.random() * 1000);
-        localStorage.setItem("kovalUser", newUser);
-        return newUser;
-      })();
-    setStoredUsername(localUsername);
+    const stored = localStorage.getItem("kovalUser");
+    const id = stored || `User${Math.floor(Math.random() * 10000)}`;
+    if (!stored) localStorage.setItem("kovalUser", id);
+    setUserId(id);
 
     const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
     setProfile(savedProfile);
   }, []);
 
-  // Ensure threadId
+  // Thread init (optional)
   useEffect(() => {
     const ensureThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
-      if (!id && storedUsername) {
+      if (!id && userId) {
         try {
           const res = await fetch("/api/create-thread", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: storedUsername }),
+            body: JSON.stringify({ username: userId }),
           });
           const data = await res.json();
           id = data.threadId;
           localStorage.setItem("kovalThreadId", id);
-          setThreadId(id);
         } catch (err) {
-          console.error("❌ Failed to init thread:", err);
+          console.error("❌ Thread init error:", err);
         }
-      } else {
-        setThreadId(id);
       }
+      setThreadId(id);
     };
     ensureThread();
-  }, [storedUsername]);
+  }, [userId]);
 
-  // Scroll to latest message
+  // Scroll on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -100,30 +95,26 @@ export default function Chat() {
           body: formData,
         });
 
-        const contentType = uploadRes.headers.get("content-type");
-        const uploadData = contentType?.includes("application/json")
-          ? await uploadRes.json()
-          : { error: "Server returned non-JSON." };
-
+        const result = await uploadRes.json();
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: uploadData?.answer || uploadData?.error || "⚠️ Image processing failed.",
+            content: result?.answer || result?.error || "⚠️ Image upload failed.",
           },
         ]);
       } catch (err) {
         console.error("❌ Upload error:", err);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "⚠️ Upload failed. Try again." },
+          { role: "assistant", content: "⚠️ Upload failed." },
         ]);
       } finally {
         setFiles([]);
       }
     }
 
-    // === User message ===
+    // === Send user message ===
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -134,74 +125,64 @@ export default function Chat() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: trimmedInput,
-            thread_id: threadId,
-            username: storedUsername,
+            userId,
             profile,
             eqState,
+            intakeCount: messages.filter(m => m.role === "assistant" && m.content?.includes("question")).length,
           }),
         });
 
-        const chatData = await chatRes.json();
+        const data = await chatRes.json();
 
-        // Intake follow-up
-        if (chatData?.type === "intake") {
+        // Intake flow
+        if (data?.type === "intake") {
+          saveProfileAnswer(data.key, trimmedInput);
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: chatData.question },
+            { role: "assistant", content: data.question },
           ]);
-          saveProfileAnswer(chatData.key, trimmedInput);
           setLoading(false);
           return;
         }
 
         // EQ follow-up
-        if (chatData?.type === "eq-followup") {
+        if (data?.type === "eq-followup") {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: chatData.question },
+            { role: "assistant", content: data.question },
           ]);
           setEqState((prev) => ({
             ...prev,
-            answers: {
-              ...prev.answers,
-              [chatData.key]: trimmedInput,
-            },
-            alreadyAsked: [...(prev.alreadyAsked || []), chatData.key],
+            answers: { ...prev.answers, [data.key]: trimmedInput },
+            alreadyAsked: [...(prev.alreadyAsked || []), data.key],
           }));
           setLoading(false);
           return;
         }
 
         // EQ diagnosis
-        if (chatData?.type === "eq-diagnosis") {
+        if (data?.type === "eq-diagnosis") {
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
-              content: `🩺 Diagnosis: ${chatData.label}\n\nSuggested drills:\n${chatData.drills.join(
-                "\n"
-              )}`,
+              content: `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${data.drills.join("\n")}`,
             },
           ]);
           setLoading(false);
           return;
         }
 
-        // Final assistant reply
-        const assistantContent =
-          chatData?.assistantMessage?.content ||
-          chatData?.error ||
-          "⚠️ No response generated.";
+        // Default AI reply
+        const assistantReply =
+          data?.assistantMessage?.content || data?.error || "⚠️ No response.";
+        setMessages((prev) => [...prev, { role: "assistant", content: assistantReply }]);
 
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: assistantContent },
-        ]);
       } catch (err) {
         console.error("❌ Chat error:", err);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "⚠️ Network error. Please try again." },
+          { role: "assistant", content: "⚠️ Chat failed." },
         ]);
       }
     }
@@ -244,7 +225,7 @@ export default function Chat() {
                 )}
               </div>
             </div>
-            <p className="text-xs mt-1 text-gray-500">User ID: {storedUsername}</p>
+            <p className="text-xs mt-1 text-gray-500">User ID: {userId}</p>
           </div>
 
           <button
