@@ -29,7 +29,6 @@ const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
-
 let index: Index;
 try {
   index = pinecone.Index(process.env.PINECONE_INDEX || '');
@@ -41,7 +40,6 @@ function detectUserLevel(profile: any): 'expert' | 'beginner' {
   const pb = profile?.pb || profile?.personalBestDepth;
   const certLevel = profile?.certLevel || '';
   const isInstructor = profile?.isInstructor;
-
   const numericPB = typeof pb === 'string' ? parseFloat(pb.replace(/[^\d.]/g, '')) : pb;
   if (numericPB && numericPB >= 80) return 'expert';
   if (isInstructor || certLevel.toLowerCase().includes('instructor')) return 'expert';
@@ -49,9 +47,18 @@ function detectUserLevel(profile: any): 'expert' | 'beginner' {
 }
 
 function generateSystemPrompt(level: 'expert' | 'beginner'): string {
-  return level === 'expert'
-    ? `You are Koval Deep AI, a freediving coach for experts.`
-    : `You are Koval AI, a supportive freediving assistant for beginners.`;
+  if (level === 'expert') {
+    return `You are Koval Deep AI, an elite freediving coach trained in EN.C.L.O.S.E. diagnostics and high-performance coaching systems.
+You specialize in helping divers past 80m troubleshoot depth-specific limitations, from EQ and CO₂ tolerance to narcosis and lung strain.
+Always offer targeted feedback with reasoning, tradeoffs, and root-cause thinking.
+Ask only one question at a time. Never overwhelm the diver.
+Behave like a real coach — adapt based on their answers and guide with clarity.
+Never give medical advice, but ensure all training feedback is medically accurate and safe.`;
+  } else {
+    return `You are Koval AI, a supportive freediving assistant for beginner and intermediate freedivers.
+Guide them through their goals, ask simple personalized questions one at a time, and explain the reasoning behind suggestions.
+Never overwhelm. Keep it safe, actionable, and tailored.`;
+  }
 }
 
 async function getQueryEmbedding(query: string): Promise<number[]> {
@@ -96,7 +103,7 @@ async function askWithContext(contextChunks: string[], question: string, userLev
 
 function defaultSessionName() {
   const now = new Date();
-  return `Session ${now.toISOString().slice(0, 19).replace("T", " ")}`;
+  return `Session – ${now.toISOString().split('T')[0]}`;
 }
 
 async function saveToWixMemory({
@@ -140,7 +147,7 @@ function logChat(userId: string, message: string, role: 'user' | 'assistant') {
   console.log(`📥 [${role}] ${userId}: ${message}`);
 }
 
-// === MAIN ===
+// === MAIN HANDLER ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -175,7 +182,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userLevel = detectUserLevel(profile);
 
     const intakeCheck = getMissingProfileField(profile);
-
     if (intakeCheck && intakeCount < 4) {
       const updatedProfile = { ...profile, [intakeCheck.key]: message };
       const nextMissing = getMissingProfileField(updatedProfile);
