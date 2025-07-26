@@ -26,6 +26,7 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
+  // Load local data
   useEffect(() => {
     const localId = localStorage.getItem("kovalUser") || `User${Date.now()}`;
     if (!localStorage.getItem("kovalUser")) localStorage.setItem("kovalUser", localId);
@@ -38,6 +39,7 @@ export default function Chat() {
     if (savedSession) setSessionName(savedSession);
   }, []);
 
+  // Ensure thread ID
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
@@ -83,7 +85,7 @@ export default function Chat() {
     if (!trimmedInput && files.length === 0) return;
     setLoading(true);
 
-    // === Upload ===
+    // Upload image
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -106,7 +108,7 @@ export default function Chat() {
       }
     }
 
-    // === AI Chat ===
+    // Chat
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -154,6 +156,33 @@ export default function Chat() {
     setLoading(false);
   };
 
+  const handleManualSave = async () => {
+    try {
+      const res = await fetch("/api/save-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          sessionName,
+          profile,
+          eqState,
+          messages,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Session saved to Wix. (${data.saved} entries)`);
+      } else {
+        alert("⚠️ Failed to save session.");
+      }
+    } catch (err) {
+      console.error("❌ Manual save error:", err);
+      alert("❌ Could not save session.");
+    }
+  };
+
   const handleKeyDown = (e) => {
     if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey) {
       e.preventDefault();
@@ -163,7 +192,7 @@ export default function Chat() {
 
   return (
     <main
-      className={`min-h-screen flex items-center justify-center px-4 transition-colors ${
+      className={`relative min-h-screen flex items-center justify-center px-4 transition-colors ${
         darkMode ? "bg-black text-white" : "bg-white text-gray-900"
       }`}
     >
@@ -219,6 +248,14 @@ export default function Chat() {
           loading={loading}
           darkMode={darkMode}
         />
+
+        {/* Save Button */}
+        <button
+          onClick={handleManualSave}
+          className="absolute bottom-5 right-6 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 shadow-md text-sm"
+        >
+          💾 Save Session
+        </button>
       </div>
     </main>
   );
