@@ -21,20 +21,19 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
-  // Load user ID & profile from localStorage
+  // Load from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("kovalUser");
-    const id = stored || `User${Math.floor(Math.random() * 10000)}`;
-    if (!stored) localStorage.setItem("kovalUser", id);
-    setUserId(id);
+    const localId = localStorage.getItem("kovalUser") || `User${Date.now()}`;
+    if (!localStorage.getItem("kovalUser")) localStorage.setItem("kovalUser", localId);
+    setUserId(localId);
 
-    const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
-    setProfile(savedProfile);
+    const saved = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
+    setProfile(saved);
   }, []);
 
-  // Thread init (optional)
+  // Ensure thread ID
   useEffect(() => {
-    const ensureThread = async () => {
+    const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
       if (!id && userId) {
         try {
@@ -52,10 +51,9 @@ export default function Chat() {
       }
       setThreadId(id);
     };
-    ensureThread();
+    initThread();
   }, [userId]);
 
-  // Scroll on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -84,43 +82,37 @@ export default function Chat() {
 
     setLoading(true);
 
-    // === Upload image ===
+    // === Image upload ===
     if (files.length > 0) {
       try {
         const formData = new FormData();
         formData.append("image", files[0]);
 
-        const uploadRes = await fetch("/api/upload-dive-image", {
+        const res = await fetch("/api/upload-dive-image", {
           method: "POST",
           body: formData,
         });
 
-        const result = await uploadRes.json();
+        const data = await res.json();
         setMessages((prev) => [
           ...prev,
-          {
-            role: "assistant",
-            content: result?.answer || result?.error || "⚠️ Image upload failed.",
-          },
+          { role: "assistant", content: data?.answer || data?.error || "⚠️ Upload error" },
         ]);
       } catch (err) {
         console.error("❌ Upload error:", err);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "⚠️ Upload failed." },
-        ]);
+        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Upload failed." }]);
       } finally {
         setFiles([]);
       }
     }
 
-    // === Send user message ===
+    // === Chat submission ===
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
 
       try {
-        const chatRes = await fetch("/api/chat", {
+        const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -132,58 +124,43 @@ export default function Chat() {
           }),
         });
 
-        const data = await chatRes.json();
+        const data = await res.json();
 
-        // Intake flow
+        // Intake
         if (data?.type === "intake") {
           saveProfileAnswer(data.key, trimmedInput);
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: data.question },
-          ]);
+          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
           setLoading(false);
           return;
         }
 
         // EQ follow-up
         if (data?.type === "eq-followup") {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: data.question },
-          ]);
           setEqState((prev) => ({
             ...prev,
             answers: { ...prev.answers, [data.key]: trimmedInput },
             alreadyAsked: [...(prev.alreadyAsked || []), data.key],
           }));
+          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
           setLoading(false);
           return;
         }
 
         // EQ diagnosis
         if (data?.type === "eq-diagnosis") {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${data.drills.join("\n")}`,
-            },
-          ]);
+          const drills = data.drills?.join("\n") || "No drills found.";
+          const diagnosis = `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${drills}`;
+          setMessages((prev) => [...prev, { role: "assistant", content: diagnosis }]);
           setLoading(false);
           return;
         }
 
-        // Default AI reply
-        const assistantReply =
-          data?.assistantMessage?.content || data?.error || "⚠️ No response.";
-        setMessages((prev) => [...prev, { role: "assistant", content: assistantReply }]);
-
+        // Regular response
+        const reply = data?.assistantMessage?.content || data?.error || "⚠️ No response.";
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       } catch (err) {
         console.error("❌ Chat error:", err);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "⚠️ Chat failed." },
-        ]);
+        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Chat failed." }]);
       }
     }
 
