@@ -1,5 +1,3 @@
-// /pages/api/chat.ts
-
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
 import axios from 'axios';
@@ -53,19 +51,8 @@ function detectUserLevel(profile: any): 'expert' | 'beginner' {
 // === System Prompt ===
 function generateSystemPrompt(level: 'expert' | 'beginner'): string {
   return level === 'expert'
-    ? `
-      You are Koval Deep AI, a professional freediving coach.
-      Speak to instructors and expert athletes (>80m depth).
-      • Offer drills, performance tools, and tactical suggestions.
-      • Avoid basic onboarding — just 2-3 strategic questions max.
-    `.trim()
-    : `
-      You are Koval AI, a friendly freediving coach.
-      • Help newer divers with gentle coaching and EQ diagnostics.
-      • Ask at most 3–4 onboarding questions.
-      • Be positive, encouraging, and clear.
-      • Use a warm tone and guide them like a trusted mentor.
-    `.trim();
+    ? `You are Koval Deep AI, a professional freediving coach. Speak to instructors and expert athletes (>80m). Be tactical.`
+    : `You are Koval AI, a friendly freediving coach. Help newer divers with guidance, onboarding, and EQ support.`;
 }
 
 // === Embedding + Retrieval ===
@@ -92,7 +79,7 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// === GPT Chat Response ===
+// ✅ === Ask GPT With Context ===
 async function askWithContext(contextChunks: string[], question: string, userLevel: 'expert' | 'beginner'): Promise<string> {
   const systemPrompt = generateSystemPrompt(userLevel);
   const context = contextChunks.join('\n\n');
@@ -142,11 +129,6 @@ async function saveToWixMemory({
   }
 }
 
-// === Log Chat ===
-function logChat(userId: string, message: string, role: 'user' | 'assistant') {
-  console.log(`📥 [${role}] ${userId}: ${message}`);
-}
-
 // === MAIN HANDLER ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
@@ -159,6 +141,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     eqState,
     intakeCount = 0,
     uploadOnly,
+    threadTitle, // Optional editable session name
   } = req.body;
 
   if (!message && uploadOnly) {
@@ -176,15 +159,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    logChat(userId, message, 'user');
-
     const userLevel = detectUserLevel(profile);
+    const sessionTitle = threadTitle || `Session – ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
-    // === 1. Handle intake ===
+    // === 1. Intake flow
     const intakeCheck = getMissingProfileField(profile);
-
     if (intakeCheck && intakeCount < 4) {
-      const updatedProfile = { ...profile, [intakeCheck.key]: message }; // Assume prior question was just answered
+      const updatedProfile = { ...profile, [intakeCheck.key]: message };
       const nextMissing = getMissingProfileField(updatedProfile);
 
       await saveToWixMemory({
@@ -196,8 +177,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         metadata: {
           intentLabel: 'profile-intake',
           sessionType: 'intake',
-          saveThis: true,
-          intakeCount: intakeCount + 1,
+          title: sessionTitle,
         },
       });
 
@@ -208,8 +188,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           question: nextMissing.question,
           metadata: {
             intentLabel: 'profile-intake',
-            saveThis: true,
-            intakeCount: intakeCount + 1,
+            sessionType: 'intake',
+            title: sessionTitle,
           },
         });
       } else {
@@ -220,13 +200,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           metadata: {
             sessionType: 'intake-complete',
-            saveThis: true,
+            title: sessionTitle,
           },
         });
       }
     }
 
-    // === 2. Handle EQ diagnostic ===
+    // === 2. EQ logic
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
 
@@ -237,7 +217,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           question: next.question,
           metadata: {
             intentLabel: 'eq-followup',
-            saveThis: true,
+            sessionType: 'eq',
+            title: sessionTitle,
           },
         });
       } else if (next.type === 'diagnosis-ready') {
@@ -249,17 +230,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           metadata: {
             intentLabel: 'eq-diagnosis',
             sessionType: 'diagnostic',
-            saveThis: true,
+            title: sessionTitle,
           },
         });
       }
     }
 
-    // === 3. General Q&A ===
+    // === 3. General coaching
     const contextChunks = await queryPinecone(message);
     const reply = await askWithContext(contextChunks, message, userLevel);
-
-    logChat(userId, reply, 'assistant');
 
     await saveToWixMemory({
       userId,
@@ -271,7 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         intentLabel: 'ai-response',
         sessionType: 'training',
         userLevel,
-        saveThis: true,
+        title: sessionTitle,
       },
     });
 
@@ -284,7 +263,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         intentLabel: 'ai-response',
         sessionType: 'training',
         userLevel,
-        saveThis: true,
+        title: sessionTitle,
       },
     });
 

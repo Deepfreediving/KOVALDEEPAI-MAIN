@@ -4,7 +4,12 @@ import ChatMessages from "../components/ChatMessages";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  })}`;
 
+  const [sessionName, setSessionName] = useState(defaultSessionName);
+  const [editingSessionName, setEditingSessionName] = useState(false);
   const [input, setInput] = useState("");
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -21,7 +26,6 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
-  // Load from localStorage
   useEffect(() => {
     const localId = localStorage.getItem("kovalUser") || `User${Date.now()}`;
     if (!localStorage.getItem("kovalUser")) localStorage.setItem("kovalUser", localId);
@@ -29,9 +33,11 @@ export default function Chat() {
 
     const saved = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
     setProfile(saved);
+
+    const savedSession = localStorage.getItem("kovalSessionName");
+    if (savedSession) setSessionName(savedSession);
   }, []);
 
-  // Ensure thread ID
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
@@ -60,9 +66,10 @@ export default function Chat() {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
-  const handleFileChange = (e) => {
-    const selected = Array.from(e.target.files).slice(0, 3);
-    setFiles(selected);
+  const handleSessionNameChange = (e) => setSessionName(e.target.value);
+  const saveSessionName = () => {
+    setEditingSessionName(false);
+    localStorage.setItem("kovalSessionName", sessionName.trim() || defaultSessionName);
   };
 
   const saveProfileAnswer = (key, value) => {
@@ -71,42 +78,35 @@ export default function Chat() {
     localStorage.setItem("kovalProfile", JSON.stringify(updated));
   };
 
-  const isExpert =
-    parseFloat(profile?.personalBestDepth || 0) >= 80 ||
-    profile?.isInstructor ||
-    (profile?.certLevel || "").toLowerCase().includes("instructor");
-
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
-
     setLoading(true);
 
-    // === Image upload ===
+    // === Upload ===
     if (files.length > 0) {
       try {
         const formData = new FormData();
         formData.append("image", files[0]);
 
-        const res = await fetch("/api/upload-dive-image", {
+        const uploadRes = await fetch("/api/upload-dive-image", {
           method: "POST",
           body: formData,
         });
 
-        const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data?.answer || data?.error || "⚠️ Upload error" },
-        ]);
+        const data = await uploadRes.json();
+        setMessages((prev) => [...prev, {
+          role: "assistant",
+          content: data?.answer || data?.error || "⚠️ Upload failed.",
+        }]);
       } catch (err) {
         console.error("❌ Upload error:", err);
-        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Upload failed." }]);
       } finally {
         setFiles([]);
       }
     }
 
-    // === Chat submission ===
+    // === AI Chat ===
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -121,43 +121,30 @@ export default function Chat() {
             profile,
             eqState,
             intakeCount: messages.filter(m => m.role === "assistant" && m.content?.includes("question")).length,
+            sessionName,
           }),
         });
 
         const data = await res.json();
 
-        // Intake
         if (data?.type === "intake") {
           saveProfileAnswer(data.key, trimmedInput);
           setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
-          setLoading(false);
-          return;
-        }
-
-        // EQ follow-up
-        if (data?.type === "eq-followup") {
+        } else if (data?.type === "eq-followup") {
           setEqState((prev) => ({
             ...prev,
             answers: { ...prev.answers, [data.key]: trimmedInput },
             alreadyAsked: [...(prev.alreadyAsked || []), data.key],
           }));
           setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
-          setLoading(false);
-          return;
-        }
-
-        // EQ diagnosis
-        if (data?.type === "eq-diagnosis") {
-          const drills = data.drills?.join("\n") || "No drills found.";
-          const diagnosis = `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${drills}`;
+        } else if (data?.type === "eq-diagnosis") {
+          const diagnosis = `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${data.drills.join("\n")}`;
           setMessages((prev) => [...prev, { role: "assistant", content: diagnosis }]);
-          setLoading(false);
-          return;
+        } else {
+          const reply = data?.assistantMessage?.content || "⚠️ No response.";
+          setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
         }
 
-        // Regular response
-        const reply = data?.assistantMessage?.content || data?.error || "⚠️ No response.";
-        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       } catch (err) {
         console.error("❌ Chat error:", err);
         setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Chat failed." }]);
@@ -176,41 +163,37 @@ export default function Chat() {
 
   return (
     <main
-      className={`min-h-screen flex items-center justify-center px-4 transition-colors duration-300 ${
+      className={`min-h-screen flex items-center justify-center px-4 transition-colors ${
         darkMode ? "bg-black text-white" : "bg-white text-gray-900"
       }`}
     >
       <div
-        className={`w-full max-w-3xl h-screen flex flex-col rounded-xl overflow-hidden shadow-lg border ${
+        className={`w-full max-w-3xl h-screen flex flex-col rounded-xl overflow-hidden border ${
           darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
         }`}
       >
-        <div
-          className={`flex items-center justify-between px-6 py-4 border-b ${
-            darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
-          }`}
-        >
-          <div className="flex flex-col">
-            <div className="flex items-center gap-4">
-              <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
-              <div>
-                <h1 className="text-xl font-semibold">Koval Deep AI</h1>
-                {isExpert && (
-                  <span className="text-xs font-medium text-green-600">
-                    🧠 Coach Mode Activated
-                  </span>
-                )}
-              </div>
-            </div>
-            <p className="text-xs mt-1 text-gray-500">User ID: {userId}</p>
+        <div className={`flex justify-between px-6 py-4 border-b ${darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"}`}>
+          <div>
+            {editingSessionName ? (
+              <input
+                className="text-xl font-semibold bg-transparent border-b border-dashed focus:outline-none"
+                value={sessionName}
+                onChange={handleSessionNameChange}
+                onBlur={saveSessionName}
+                autoFocus
+              />
+            ) : (
+              <h1 className="text-xl font-semibold cursor-pointer" onClick={() => setEditingSessionName(true)}>
+                {sessionName}
+              </h1>
+            )}
+            <p className="text-xs text-gray-500 mt-1">User ID: {userId}</p>
           </div>
 
           <button
             onClick={toggleDarkMode}
-            className={`px-4 py-1 rounded-md border text-sm transition-colors ${
-              darkMode
-                ? "bg-white text-black hover:bg-gray-200"
-                : "bg-black text-white hover:bg-gray-800"
+            className={`px-4 py-1 rounded-md border text-sm ${
+              darkMode ? "bg-white text-black" : "bg-black text-white"
             }`}
           >
             {darkMode ? "☀️ Light" : "🌙 Dark"}
@@ -230,7 +213,7 @@ export default function Chat() {
           setInput={setInput}
           handleSubmit={handleSubmit}
           handleKeyDown={handleKeyDown}
-          handleFileChange={handleFileChange}
+          handleFileChange={(e) => setFiles(Array.from(e.target.files).slice(0, 3))}
           files={files}
           setFiles={setFiles}
           loading={loading}
