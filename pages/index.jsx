@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import ChatInput from "../components/ChatInput";
 import ChatMessages from "../components/ChatMessages";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
-  const defaultSessionName = `Session – ${new Date().toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric'
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   })}`;
 
   const [sessionName, setSessionName] = useState(defaultSessionName);
@@ -26,7 +27,6 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
-  // Load local data
   useEffect(() => {
     const localId = localStorage.getItem("kovalUser") || `User${Date.now()}`;
     if (!localStorage.getItem("kovalUser")) localStorage.setItem("kovalUser", localId);
@@ -39,7 +39,6 @@ export default function Chat() {
     if (savedSession) setSessionName(savedSession);
   }, []);
 
-  // Ensure thread ID
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
@@ -85,7 +84,7 @@ export default function Chat() {
     if (!trimmedInput && files.length === 0) return;
     setLoading(true);
 
-    // Upload image
+    // === Upload ===
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -108,7 +107,7 @@ export default function Chat() {
       }
     }
 
-    // Chat
+    // === AI Chat ===
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -156,7 +155,7 @@ export default function Chat() {
     setLoading(false);
   };
 
-  const handleManualSave = async () => {
+  const handleSaveSession = async () => {
     try {
       const res = await fetch("/api/save-session", {
         method: "POST",
@@ -172,14 +171,14 @@ export default function Chat() {
       });
 
       const data = await res.json();
-      if (data.success) {
-        alert(`✅ Session saved to Wix. (${data.saved} entries)`);
+      if (data?.success) {
+        alert(`✅ Session saved! (${data.saved} entries)`);
       } else {
         alert("⚠️ Failed to save session.");
       }
     } catch (err) {
-      console.error("❌ Manual save error:", err);
-      alert("❌ Could not save session.");
+      console.error("❌ Save session error:", err);
+      alert("⚠️ Error saving session.");
     }
   };
 
@@ -191,16 +190,10 @@ export default function Chat() {
   };
 
   return (
-    <main
-      className={`relative min-h-screen flex items-center justify-center px-4 transition-colors ${
-        darkMode ? "bg-black text-white" : "bg-white text-gray-900"
-      }`}
-    >
-      <div
-        className={`w-full max-w-3xl h-screen flex flex-col rounded-xl overflow-hidden border ${
-          darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
-        }`}
-      >
+    <main className={`min-h-screen flex items-center justify-center px-4 transition-colors ${darkMode ? "bg-black text-white" : "bg-white text-gray-900"}`}>
+      <div className={`w-full max-w-3xl h-screen flex flex-col rounded-xl overflow-hidden border ${darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"}`}>
+        
+        {/* Header */}
         <div className={`flex justify-between px-6 py-4 border-b ${darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"}`}>
           <div>
             {editingSessionName ? (
@@ -221,14 +214,13 @@ export default function Chat() {
 
           <button
             onClick={toggleDarkMode}
-            className={`px-4 py-1 rounded-md border text-sm ${
-              darkMode ? "bg-white text-black" : "bg-black text-white"
-            }`}
+            className={`px-4 py-1 rounded-md border text-sm ${darkMode ? "bg-white text-black" : "bg-black text-white"}`}
           >
             {darkMode ? "☀️ Light" : "🌙 Dark"}
           </button>
         </div>
 
+        {/* Messages */}
         <ChatMessages
           messages={messages}
           BOT_NAME={BOT_NAME}
@@ -237,25 +229,33 @@ export default function Chat() {
           bottomRef={bottomRef}
         />
 
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          handleSubmit={handleSubmit}
-          handleKeyDown={handleKeyDown}
-          handleFileChange={(e) => setFiles(Array.from(e.target.files).slice(0, 3))}
-          files={files}
-          setFiles={setFiles}
-          loading={loading}
-          darkMode={darkMode}
-        />
+        {/* Input Section */}
+        <div className="p-4 border-t flex flex-col gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message or upload dive profiles..."
+            className="w-full p-2 border rounded"
+            rows={2}
+          />
 
-        {/* Save Button */}
-        <button
-          onClick={handleManualSave}
-          className="absolute bottom-5 right-6 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 shadow-md text-sm"
-        >
-          💾 Save Session
-        </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <input type="file" onChange={(e) => setFiles(Array.from(e.target.files).slice(0, 3))} />
+              <button onClick={handleSaveSession} className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                💾 Save Session
+              </button>
+            </div>
+            <button
+              onClick={handleSubmit}
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+              disabled={loading}
+            >
+              {loading ? "Sending..." : "Send"}
+            </button>
+          </div>
+        </div>
       </div>
     </main>
   );
