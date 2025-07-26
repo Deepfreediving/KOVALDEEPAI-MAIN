@@ -48,9 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     while (status !== 'completed' && retries < 10) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const check = await openai.beta.threads.runs.retrieve({
+      const check = await openai.beta.threads.runs.retrieve(run.id, {
         thread_id: thread.id,
-        run_id: run.id,
       });
       status = check.status;
       retries++;
