@@ -27,16 +27,28 @@ export default function Chat() {
 
   const bottomRef = useRef(null);
 
+  // Load Wix user ID via postMessage or fallback
   useEffect(() => {
-    const localId = localStorage.getItem("kovalUser") || `User${Date.now()}`;
-    if (!localStorage.getItem("kovalUser")) localStorage.setItem("kovalUser", localId);
-    setUserId(localId);
+    const storedId = localStorage.getItem("kovalUser");
+    const fallbackId = storedId || `Guest${Date.now()}`;
+    setUserId(fallbackId);
+    if (!storedId) localStorage.setItem("kovalUser", fallbackId);
 
-    const saved = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
-    setProfile(saved);
+    const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
+    setProfile(savedProfile);
 
     const savedSession = localStorage.getItem("kovalSessionName");
     if (savedSession) setSessionName(savedSession);
+
+    const receiveUserId = (event) => {
+      if (event.data?.userId) {
+        setUserId(event.data.userId);
+        localStorage.setItem("kovalUser", event.data.userId);
+      }
+    };
+
+    window.addEventListener("message", receiveUserId);
+    return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
   useEffect(() => {
@@ -70,7 +82,9 @@ export default function Chat() {
   const handleSessionNameChange = (e) => setSessionName(e.target.value);
   const saveSessionName = () => {
     setEditingSessionName(false);
-    localStorage.setItem("kovalSessionName", sessionName.trim() || defaultSessionName);
+    const trimmed = sessionName.trim() || defaultSessionName;
+    setSessionName(trimmed);
+    localStorage.setItem("kovalSessionName", trimmed);
   };
 
   const saveProfileAnswer = (key, value) => {
@@ -113,6 +127,8 @@ export default function Chat() {
       setInput("");
 
       try {
+        const intakeCount = messages.filter(m => m.role === "assistant" && m.content?.includes("question")).length;
+
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -121,7 +137,7 @@ export default function Chat() {
             userId,
             profile,
             eqState,
-            intakeCount: messages.filter(m => m.role === "assistant" && m.content?.includes("question")).length,
+            intakeCount,
             sessionName,
           }),
         });
@@ -214,6 +230,7 @@ export default function Chat() {
 
           <button
             onClick={toggleDarkMode}
+            aria-label="Toggle dark mode"
             className={`px-4 py-1 rounded-md border text-sm ${darkMode ? "bg-white text-black" : "bg-black text-white"}`}
           >
             {darkMode ? "☀️ Light" : "🌙 Dark"}
