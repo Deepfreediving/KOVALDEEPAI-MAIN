@@ -241,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       profile,
       eqState,
       sessionId,
-      sessionName,
+      sessionName: sessionName || defaultSessionName(),
       metadata: {
         intentLabel: 'ai-response',
         sessionType: 'training',

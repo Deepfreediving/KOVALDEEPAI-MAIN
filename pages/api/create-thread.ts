@@ -1,28 +1,24 @@
+// /pages/api/create-thread.ts
+
 import { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
+import { OpenAI } from 'openai';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ASSISTANT_ID = "asst_WnbEd7Jxgf1z2U0ziNWi8yz9"; // ✅ Your real assistant
 
-/**
- * API Route: /api/create-thread
- * Creates a mock or real assistant thread using OpenAI API (chat-based).
- */
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY || '' });
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // ✅ Method validation
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const { username } = req.body;
 
-  // ✅ Validate username
   if (!username || typeof username !== 'string') {
-    return res.status(400).json({ error: 'Username is required and must be a string' });
+    return res.status(400).json({ error: 'Username is required and must be a string.' });
   }
 
-  console.log('📩 Creating thread for user:', username);
-
-  // ✅ Dev Mode: Fallback if no API key
   if (!OPENAI_API_KEY) {
     console.warn('⚠️ No OpenAI API key set — returning mock data.');
     return res.status(200).json({
@@ -32,51 +28,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // ✅ Call OpenAI chat completion API (acts like a warm-up chat)
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a friendly freediving coach AI. Answer clearly, ask 1 question at a time, and provide helpful guidance.',
-          },
-          {
-            role: 'user',
-            content: `Hi, I'm ${username}. Let's begin a freediving conversation.`,
-          }
-        ],
-        temperature: 0.6,
-        max_tokens: 150,
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.log(`📩 Creating OpenAI thread for user: ${username}`);
 
-    const reply = response?.data?.choices?.[0]?.message?.content?.trim();
+    // ✅ Step 1: Create a real thread
+    const thread = await openai.beta.threads.create();
 
-    if (!reply) {
-      throw new Error('No message returned from OpenAI.');
+    // ✅ Step 2: Send an initial message (optional)
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: `Hi, I'm ${username}. Let's begin a freediving conversation.`,
+    });
+
+    // ✅ Step 3: Run the assistant
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: ASSISTANT_ID,
+    });
+
+    // ✅ Step 4: Poll until the run is complete
+    let status = run.status;
+    let retries = 0;
+
+    while (status !== 'completed' && retries < 10) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const check = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      status = check.status;
+      retries++;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log("🧠 OpenAI raw response:", JSON.stringify(response.data, null, 2));
+    if (status !== 'completed') {
+      throw new Error('Run did not complete in time.');
     }
 
-    // ✅ Return simulated thread ID and initial message
+    // ✅ Step 5: Get the latest message from the assistant
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const last = messages.data.find((m) => m.role === 'assistant');
+    const reply = last?.content?.[0]?.text?.value || "👋 Let's begin!";
+
     return res.status(200).json({
-      threadId: `thread-${Date.now()}`,
+      threadId: thread.id,
       initialMessage: reply,
     });
   } catch (err: any) {
-    console.error('❌ OpenAI error:', err?.response?.data || err.message || err);
-    return res.status(500).json({
-      error: 'Failed to create thread with OpenAI',
-    });
+    console.error('❌ Assistant thread error:', err?.response?.data || err.message);
+    return res.status(500).json({ error: 'Failed to create assistant thread' });
   }
 }
