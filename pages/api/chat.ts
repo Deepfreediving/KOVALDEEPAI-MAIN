@@ -1,3 +1,5 @@
+// /pages/api/chat.ts
+
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
 import axios from 'axios';
@@ -25,7 +27,6 @@ const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   return false;
 };
 
-// === AI Setup ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
 
@@ -33,10 +34,9 @@ let index: Index;
 try {
   index = pinecone.Index(process.env.PINECONE_INDEX || '');
 } catch (err) {
-  console.error('❌ Pinecone index init error:', err instanceof Error ? err.message : err);
+  console.error('❌ Pinecone index error:', err);
 }
 
-// === User Level Detection ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
   const pb = profile?.pb || profile?.personalBestDepth;
   const certLevel = profile?.certLevel || '';
@@ -48,14 +48,12 @@ function detectUserLevel(profile: any): 'expert' | 'beginner' {
   return 'beginner';
 }
 
-// === System Prompt ===
 function generateSystemPrompt(level: 'expert' | 'beginner'): string {
   return level === 'expert'
-    ? `You are Koval Deep AI, a professional freediving coach. Speak to instructors and expert athletes (>80m). Be tactical.`
-    : `You are Koval AI, a friendly freediving coach. Help newer divers with guidance, onboarding, and EQ support.`;
+    ? `You are Koval Deep AI, a freediving coach for experts.`
+    : `You are Koval AI, a supportive freediving assistant for beginners.`;
 }
 
-// === Embedding + Retrieval ===
 async function getQueryEmbedding(query: string): Promise<number[]> {
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
@@ -79,7 +77,6 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// ✅ === Ask GPT With Context ===
 async function askWithContext(contextChunks: string[], question: string, userLevel: 'expert' | 'beginner'): Promise<string> {
   const systemPrompt = generateSystemPrompt(userLevel);
   const context = contextChunks.join('\n\n');
@@ -97,7 +94,11 @@ async function askWithContext(contextChunks: string[], question: string, userLev
   return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 }
 
-// === Save Memory to Wix ===
+function defaultSessionName() {
+  const now = new Date();
+  return `Session ${now.toISOString().slice(0, 19).replace("T", " ")}`;
+}
+
 async function saveToWixMemory({
   userId,
   logEntry,
@@ -105,6 +106,8 @@ async function saveToWixMemory({
   profile,
   eqState,
   metadata,
+  sessionId,
+  sessionName,
 }: {
   userId: string;
   logEntry: string;
@@ -112,6 +115,8 @@ async function saveToWixMemory({
   profile: any;
   eqState?: any;
   metadata?: any;
+  sessionId?: string;
+  sessionName?: string;
 }) {
   try {
     await axios.post('https://www.deepfreediving.com/_functions/saveToUserMemory', {
@@ -120,16 +125,22 @@ async function saveToWixMemory({
       memoryContent,
       eqState,
       profile,
+      sessionId: sessionId || null,
+      sessionName: sessionName || defaultSessionName(),
       timestamp: new Date().toISOString(),
       metadata,
     });
-    console.log(`✅ Chat log saved for ${userId}`);
+    console.log(`✅ Memory saved for ${userId}`);
   } catch (err: any) {
-    console.error('❌ Failed to save to Wix:', err.response?.data || err.message);
+    console.error('❌ Wix save error:', err.response?.data || err.message);
   }
 }
 
-// === MAIN HANDLER ===
+function logChat(userId: string, message: string, role: 'user' | 'assistant') {
+  console.log(`📥 [${role}] ${userId}: ${message}`);
+}
+
+// === MAIN ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -141,7 +152,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     eqState,
     intakeCount = 0,
     uploadOnly,
-    threadTitle, // Optional editable session name
+    sessionId,
+    sessionName,
   } = req.body;
 
   if (!message && uploadOnly) {
@@ -159,11 +171,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    logChat(userId, message, 'user');
     const userLevel = detectUserLevel(profile);
-    const sessionTitle = threadTitle || `Session – ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
-    // === 1. Intake flow
     const intakeCheck = getMissingProfileField(profile);
+
     if (intakeCheck && intakeCount < 4) {
       const updatedProfile = { ...profile, [intakeCheck.key]: message };
       const nextMissing = getMissingProfileField(updatedProfile);
@@ -174,10 +186,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         memoryContent: '',
         profile: updatedProfile,
         eqState,
+        sessionId,
+        sessionName,
         metadata: {
           intentLabel: 'profile-intake',
           sessionType: 'intake',
-          title: sessionTitle,
+          intakeCount: intakeCount + 1,
         },
       });
 
@@ -186,40 +200,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: 'intake',
           key: nextMissing.key,
           question: nextMissing.question,
-          metadata: {
-            intentLabel: 'profile-intake',
-            sessionType: 'intake',
-            title: sessionTitle,
-          },
         });
       } else {
         return res.status(200).json({
           assistantMessage: {
             role: 'assistant',
-            content: "Thanks! That's all I need to get started. Ready to dive into some coaching?",
-          },
-          metadata: {
-            sessionType: 'intake-complete',
-            title: sessionTitle,
+            content: "Thanks! That’s all I need. Ready to dive into some coaching?",
           },
         });
       }
     }
 
-    // === 2. EQ logic
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
-
       if (next.type === 'question') {
         return res.status(200).json({
           type: 'eq-followup',
           key: next.key,
           question: next.question,
-          metadata: {
-            intentLabel: 'eq-followup',
-            sessionType: 'eq',
-            title: sessionTitle,
-          },
         });
       } else if (next.type === 'diagnosis-ready') {
         const result = evaluateEQAnswers(eqState.answers);
@@ -227,18 +225,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: 'eq-diagnosis',
           label: result.label,
           drills: result.drills,
-          metadata: {
-            intentLabel: 'eq-diagnosis',
-            sessionType: 'diagnostic',
-            title: sessionTitle,
-          },
         });
       }
     }
 
-    // === 3. General coaching
     const contextChunks = await queryPinecone(message);
     const reply = await askWithContext(contextChunks, message, userLevel);
+
+    logChat(userId, reply, 'assistant');
 
     await saveToWixMemory({
       userId,
@@ -246,11 +240,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       memoryContent: reply,
       profile,
       eqState,
+      sessionId,
+      sessionName,
       metadata: {
         intentLabel: 'ai-response',
         sessionType: 'training',
         userLevel,
-        title: sessionTitle,
       },
     });
 
@@ -259,16 +254,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: 'assistant',
         content: reply,
       },
-      metadata: {
-        intentLabel: 'ai-response',
-        sessionType: 'training',
-        userLevel,
-        title: sessionTitle,
-      },
     });
-
   } catch (err: any) {
-    console.error('❌ Internal error:', err.message || err);
+    console.error('❌ Handler error:', err.message || err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
