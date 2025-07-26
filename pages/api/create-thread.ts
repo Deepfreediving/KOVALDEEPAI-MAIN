@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
-import type { MessageContent } from 'openai/resources/beta/threads/messages/messages';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ASSISTANT_ID = 'asst_WnbEd7Jxgf1z2U0ziNWi8yz9';
@@ -61,13 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('Run did not complete in time.');
     }
 
-    // Step 5: Get latest assistant message
+    // Step 5: Retrieve the assistant's message
     const messages = await openai.beta.threads.messages.list(thread.id);
     const last = messages.data.find((m) => m.role === 'assistant');
 
-    const textBlock = (last?.content || []).find(
-      (c: MessageContent) => c.type === 'text'
-    ) as Extract<MessageContent, { type: 'text' }>;
+    const textBlock = (last?.content || []).find((c) => {
+      return (c as any)?.type === 'text' && (c as any)?.text?.value;
+    }) as any;
 
     const reply = textBlock?.text?.value || "👋 Let's begin!";
 
