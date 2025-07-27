@@ -5,7 +5,12 @@ import DiveJournalForm from "../components/DiveJournalForm";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
-  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
+
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
 
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -25,35 +30,35 @@ export default function Chat() {
 
   useEffect(() => {
     const storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
-    localStorage.setItem("kovalUser", storedId);
     setUserId(storedId);
+    localStorage.setItem("kovalUser", storedId);
 
-    setProfile(JSON.parse(localStorage.getItem("kovalProfile") || "{}"));
-    setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
-    setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
+    const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
+    setProfile(savedProfile);
 
-    const receiveUserId = (e) => {
-      if (e.data?.userId) {
-        setUserId(e.data.userId);
-        localStorage.setItem("kovalUser", e.data.userId);
-      }
-    };
-    window.addEventListener("message", receiveUserId);
-    return () => window.removeEventListener("message", receiveUserId);
+    const savedSession = localStorage.getItem("kovalSessionName") || defaultSessionName;
+    setSessionName(savedSession);
+
+    const storedSessions = JSON.parse(localStorage.getItem("kovalSessionsList") || "[]");
+    setSessionsList(storedSessions);
   }, []);
 
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
       if (!id && userId) {
-        const res = await fetch("/api/create-thread", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: userId }),
-        });
-        const data = await res.json();
-        id = data.threadId;
-        localStorage.setItem("kovalThreadId", id);
+        try {
+          const res = await fetch("/api/create-thread", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: userId }),
+          });
+          const data = await res.json();
+          id = data.threadId;
+          localStorage.setItem("kovalThreadId", id);
+        } catch (err) {
+          console.error("❌ Thread init error:", err);
+        }
       }
       setThreadId(id);
     };
@@ -66,141 +71,32 @@ export default function Chat() {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
   const toggleDiveJournal = () => setShowDiveJournalForm((prev) => !prev);
-  const handleSessionNameChange = (e) => setSessionName(e.target.value);
 
-  const saveSessionName = () => {
-    const trimmed = sessionName.trim() || defaultSessionName;
-    setEditingSessionName(false);
-    setSessionName(trimmed);
-    localStorage.setItem("kovalSessionName", trimmed);
-
-    if (!sessionsList.includes(trimmed)) {
-      const updatedList = [...sessionsList, trimmed];
-      setSessionsList(updatedList);
-      localStorage.setItem("kovalSessionsList", JSON.stringify(updatedList));
-    }
-  };
-
-  const handleSelectSession = (name) => {
-    const saved = localStorage.getItem(`session-${name}`);
-    if (saved) {
-      setSessionName(name);
-      setMessages(JSON.parse(saved));
-    }
-  };
-
-  const startNewSession = () => {
-    const newName = `Session – ${new Date().toLocaleDateString("en-US")}`;
-    setSessionName(newName);
-    setMessages([]);
-    setEqState({ currentDepth: null, answers: {}, alreadyAsked: [] });
-  };
-
-  const saveProfileAnswer = (key, value) => {
-    const updated = { ...profile, [key]: value };
-    setProfile(updated);
-    localStorage.setItem("kovalProfile", JSON.stringify(updated));
-  };
-
-  const handleSubmit = async () => {
-    const trimmedInput = input.trim();
-    if (!trimmedInput && files.length === 0) return;
-    setLoading(true);
-
-    if (files.length > 0) {
-      try {
-        const formData = new FormData();
-        formData.append("image", files[0]);
-        const uploadRes = await fetch("/api/upload-dive-image", { method: "POST", body: formData });
-        const data = await uploadRes.json();
-        setMessages((prev) => [...prev, { role: "assistant", content: data?.answer || "⚠️ Upload failed." }]);
-      } catch (err) {
-        console.error("❌ Upload error:", err);
-      } finally {
-        setFiles([]);
-      }
-    }
-
-    if (trimmedInput) {
-      setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
-      setInput("");
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: trimmedInput, userId, profile, eqState, sessionName }),
-        });
-
-        const data = await res.json();
-        if (data?.type === "intake") {
-          saveProfileAnswer(data.key, trimmedInput);
-          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
-        } else if (data?.type === "eq-followup") {
-          setEqState((prev) => ({
-            ...prev,
-            answers: { ...prev.answers, [data.key]: trimmedInput },
-            alreadyAsked: [...(prev.alreadyAsked || []), data.key],
-          }));
-          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
-        } else if (data?.type === "eq-diagnosis") {
-          const diagnosis = `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${data.drills.join("\n")}`;
-          setMessages((prev) => [...prev, { role: "assistant", content: diagnosis }]);
-        } else {
-          const reply = data?.assistantMessage?.content || "⚠️ No response.";
-          setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-        }
-      } catch (err) {
-        console.error("❌ Chat error:", err);
-        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Chat failed." }]);
-      }
-    }
-
-    setLoading(false);
-  };
-
-  const handleSaveSession = () => {
-    localStorage.setItem(`session-${sessionName}`, JSON.stringify(messages));
-    saveSessionName();
-    alert("✅ Session saved locally!");
-  };
-
-  const handleJournalSubmit = async (entry) => {
+  const handleSaveDive = async (form) => {
     try {
       const res = await fetch("/api/save-dive-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entry),
+        body: JSON.stringify(form),
       });
       const data = await res.json();
 
-      // Save to local
-      const key = `diveLogs-${userId}`;
-      const currentLogs = JSON.parse(localStorage.getItem(key) || "[]");
-      const updatedLogs = [...currentLogs, entry];
-      localStorage.setItem(key, JSON.stringify(updatedLogs));
-
-      // Send summary to OpenAI memory
-      const summary = `Dive Log (${entry.date}): ${entry.disciplineType} – ${entry.discipline} in ${entry.location}.\n` +
-        `Target depth: ${entry.targetDepth}m, Reached: ${entry.reachedDepth}m.\n` +
-        `Mouthfill taken at ${entry.mouthfillDepth}m. Issues at ${entry.issueDepth}: ${entry.issueComment}.\n` +
-        `Total time: ${entry.totalDiveTime}, Surface protocol: ${entry.surfaceProtocol}. Notes: ${entry.notes}`;
-
-      await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          message: `MEMORY:: ${summary}`,
-          sessionName,
-          profile,
-          eqState,
-        }),
-      });
-
-      alert("✅ Dive log saved!");
+      if (data?.success && threadId) {
+        const summaryRes = await fetch("/api/record-memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ log: form, threadId, userId }),
+        });
+        const memoryData = await summaryRes.json();
+        if (memoryData?.assistantMessage) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: memoryData.assistantMessage.content },
+          ]);
+        }
+      }
     } catch (err) {
-      console.error("❌ Failed to save dive log:", err);
+      console.error("❌ Dive save error:", err);
     }
   };
 
