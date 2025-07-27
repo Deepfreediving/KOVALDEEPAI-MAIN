@@ -3,10 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 
-// In production, you'd store this in a real database (or Pinecone if you want embedding)
+// Store dive logs in local filesystem for now
 const LOG_DIR = path.resolve('./data/diveLogs');
-
-// Ensure the directory exists
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
@@ -29,9 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       durationOrDistance,
       attemptType,
       notes,
+      totalDiveTime,         // 🆕 mm:ss
+      issueComment,          // 🆕 optional
+      surfaceProtocol,       // 🆕 final exit steps
     } = req.body;
 
-    // Simple validation
     if (!date || !discipline) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -52,12 +52,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       durationOrDistance,
       attemptType,
       notes,
+      totalDiveTime,
+      issueComment,
+      surfaceProtocol,
       timestamp: new Date().toISOString(),
     };
 
-    // Save each log as a separate JSON file (you can change this to use a DB later)
     fs.writeFileSync(path.join(LOG_DIR, `${id}.json`), JSON.stringify(logData, null, 2));
-
     res.status(200).json({ success: true, id });
   } catch (err) {
     console.error('❌ Error saving dive log:', err);

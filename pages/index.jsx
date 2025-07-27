@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import ChatMessages from "../components/ChatMessages";
 import DiveJournalDisplay from "../components/DiveJournalDisplay";
+import DiveJournalForm from "../components/DiveJournalForm";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
@@ -23,10 +24,10 @@ export default function Chat() {
   const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
+  const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
 
   const bottomRef = useRef(null);
 
-  // === Load User ===
   useEffect(() => {
     const storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
     setUserId(storedId);
@@ -51,7 +52,6 @@ export default function Chat() {
     return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
-  // === Thread Init ===
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
@@ -79,6 +79,7 @@ export default function Chat() {
   }, [messages]);
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
+  const toggleDiveJournal = () => setShowDiveJournalForm(prev => !prev);
   const handleSessionNameChange = (e) => setSessionName(e.target.value);
 
   const saveSessionName = () => {
@@ -120,7 +121,6 @@ export default function Chat() {
     if (!trimmedInput && files.length === 0) return;
     setLoading(true);
 
-    // === Upload ===
     if (files.length > 0) {
       try {
         const formData = new FormData();
@@ -135,7 +135,6 @@ export default function Chat() {
       }
     }
 
-    // === Chat ===
     if (trimmedInput) {
       setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
@@ -194,21 +193,33 @@ export default function Chat() {
     <main className={`min-h-screen flex transition-colors ${darkMode ? "bg-black text-white" : "bg-white text-gray-900"}`}>
       
       {/* Sidebar */}
-      <aside className={`w-64 border-r p-4 ${darkMode ? "bg-[#121212] border-gray-700" : "bg-gray-100 border-gray-300"}`}>
-        <h2 className="text-lg font-semibold mb-4">🗂️ Sessions</h2>
-        <button onClick={startNewSession} className="mb-4 text-blue-600 underline">➕ New Session</button>
-        <ul className="space-y-2">
-          {sessionsList.map((s, i) => (
-            <li key={i}>
-              <button
-                className={`text-left w-full px-2 py-1 rounded ${s === sessionName ? "bg-blue-100" : ""}`}
-                onClick={() => handleSelectSession(s)}
-              >
-                {s}
-              </button>
-            </li>
-          ))}
-        </ul>
+      <aside className={`w-72 flex flex-col justify-between border-r p-4 ${darkMode ? "bg-[#121212] border-gray-700" : "bg-gray-100 border-gray-300"}`}>
+        <div>
+          <h2 className="text-lg font-semibold mb-4">🗂️ Sessions</h2>
+          <button onClick={startNewSession} className="mb-4 text-blue-600 underline">➕ New Session</button>
+          <ul className="space-y-2 mb-6">
+            {sessionsList.map((s, i) => (
+              <li key={i}>
+                <button
+                  className={`text-left w-full px-2 py-1 rounded ${s === sessionName ? "bg-blue-100" : ""}`}
+                  onClick={() => handleSelectSession(s)}
+                >
+                  {s}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <button onClick={toggleDiveJournal} className="mb-4 text-left w-full px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 border">
+            {showDiveJournalForm ? "📕 Close Dive Journal" : "📘 Open Dive Journal"}
+          </button>
+
+          {showDiveJournalForm && <DiveJournalForm />}
+        </div>
+
+        <button onClick={handleSaveSession} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 mt-4">
+          💾 Save Session
+        </button>
       </aside>
 
       {/* Chat Panel */}
@@ -237,10 +248,7 @@ export default function Chat() {
           </button>
         </div>
 
-        {/* Messages */}
         <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
-
-        {/* === Dive Logs Display === */}
         <DiveJournalDisplay userId={userId} />
 
         {/* Input */}
@@ -248,10 +256,7 @@ export default function Chat() {
           <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
             placeholder="Type your message or upload dive profiles..." className="w-full p-2 border rounded" rows={2} />
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <input type="file" onChange={(e) => setFiles(Array.from(e.target.files).slice(0, 3))} />
-              <button onClick={handleSaveSession} className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">💾 Save Session</button>
-            </div>
+            <input type="file" onChange={(e) => setFiles(Array.from(e.target.files).slice(0, 3))} />
             <button onClick={handleSubmit} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700" disabled={loading}>
               {loading ? "Sending..." : "Send"}
             </button>
