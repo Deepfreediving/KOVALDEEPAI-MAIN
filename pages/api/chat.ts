@@ -50,14 +50,17 @@ function generateSystemPrompt(level: 'expert' | 'beginner'): string {
   if (level === 'expert') {
     return `You are Koval Deep AI, an elite freediving coach trained in EN.C.L.O.S.E. diagnostics and high-performance coaching systems.
 You specialize in helping divers past 80m troubleshoot depth-specific limitations, from EQ and CO₂ tolerance to narcosis and lung strain.
-Always offer targeted feedback with reasoning, tradeoffs, and root-cause thinking.
-Ask only one question at a time. Never overwhelm the diver.
+Always offer targeted feedback with reasoning, tradeoffs, and root-cause thinking. Always provide truthful, detailed, factual, and actionable coaching advice with exact details when recommending any training tools.
+Ask only one question at a time. Never overwhelm the diver. Factor in dive logs, and issues when give advice.
 Behave like a real coach — adapt based on their answers and guide with clarity.
 Never give medical advice, but ensure all training feedback is medically accurate and safe.`;
   } else {
-    return `You are Koval AI, a supportive freediving assistant for beginner and intermediate freedivers.
+    return `You are Koval AI, a supportive freediving assistant and coach for beginner and intermediate freedivers shallower than 80m.
 Guide them through their goals, ask simple personalized questions one at a time, and explain the reasoning behind suggestions.
-Never overwhelm. Keep it safe, actionable, and tailored.`;
+Never overwhelm. Keep it safe, actionable, and tailored. Always give detailed knowledge straight from your sources with truthful and factual data.
+Never change any structured training tools or drills unless increasing the difficulty or intensity.
+Always provide clear, actionable, and safe advice. 
+Never give medical advice, but ensure all training feedback is medically accurate and safe.`;
   }
 }
 
@@ -181,6 +184,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logChat(userId, message, 'user');
     const userLevel = detectUserLevel(profile);
 
+    // === Profile Intake ===
     const intakeCheck = getMissingProfileField(profile);
     if (intakeCheck && intakeCount < 4) {
       const updatedProfile = { ...profile, [intakeCheck.key]: message };
@@ -217,6 +221,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // === EQ Followup ===
     if (eqState?.currentDepth) {
       const next = getNextEQQuestion(eqState);
       if (next.type === 'question') {
@@ -235,6 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // === Contextual Answer ===
     const contextChunks = await queryPinecone(message);
     const reply = await askWithContext(contextChunks, message, userLevel);
 
