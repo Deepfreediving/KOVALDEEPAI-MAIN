@@ -21,7 +21,6 @@ export default function Chat() {
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
-
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -71,11 +70,6 @@ export default function Chat() {
     setDiveLogs(logs);
   }, [userId]);
 
-  const refreshDiveLogs = () => {
-    const key = `diveLogs-${userId}`;
-    setDiveLogs(JSON.parse(localStorage.getItem(key) || "[]"));
-  };
-
   const toggleDarkMode = () => setDarkMode(!darkMode);
   const toggleDiveJournal = () => setShowDiveJournalForm((prev) => !prev);
   const handleSessionNameChange = (e) => setSessionName(e.target.value);
@@ -85,7 +79,6 @@ export default function Chat() {
     setEditingSessionName(false);
     setSessionName(trimmed);
     localStorage.setItem("kovalSessionName", trimmed);
-
     if (!sessionsList.includes(trimmed)) {
       const updatedList = [...sessionsList, trimmed];
       setSessionsList(updatedList);
@@ -106,12 +99,6 @@ export default function Chat() {
     setSessionName(newName);
     setMessages([]);
     setEqState({ currentDepth: null, answers: {}, alreadyAsked: [] });
-  };
-
-  const saveProfileAnswer = (key, value) => {
-    const updated = { ...profile, [key]: value };
-    setProfile(updated);
-    localStorage.setItem("kovalProfile", JSON.stringify(updated));
   };
 
   const handleSubmit = async () => {
@@ -145,23 +132,8 @@ export default function Chat() {
         });
 
         const data = await res.json();
-        if (data?.type === "intake") {
-          saveProfileAnswer(data.key, trimmedInput);
-          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
-        } else if (data?.type === "eq-followup") {
-          setEqState((prev) => ({
-            ...prev,
-            answers: { ...prev.answers, [data.key]: trimmedInput },
-            alreadyAsked: [...(prev.alreadyAsked || []), data.key],
-          }));
-          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
-        } else if (data?.type === "eq-diagnosis") {
-          const diagnosis = `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${data.drills.join("\n")}`;
-          setMessages((prev) => [...prev, { role: "assistant", content: diagnosis }]);
-        } else {
-          const reply = data?.assistantMessage?.content || "⚠️ No response.";
-          setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-        }
+        const reply = data?.assistantMessage?.content || data?.question || "⚠️ No response.";
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       } catch (err) {
         console.error("❌ Chat error:", err);
         setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Chat failed." }]);
@@ -171,25 +143,26 @@ export default function Chat() {
     setLoading(false);
   };
 
-  const handleSaveSession = () => {
-    localStorage.setItem(`session-${sessionName}`, JSON.stringify(messages));
-    saveSessionName();
-    alert("✅ Session saved locally!");
+  const handleKeyDown = (e) => {
+    if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
 
   const handleJournalSubmit = async (entry) => {
     const key = `diveLogs-${userId}`;
-    let currentLogs = JSON.parse(localStorage.getItem(key) || "[]");
+    let logs = JSON.parse(localStorage.getItem(key) || "[]");
 
     if (editLogIndex !== null) {
-      currentLogs[editLogIndex] = entry;
+      logs[editLogIndex] = entry;
       setEditLogIndex(null);
     } else {
-      currentLogs.push(entry);
+      logs.push(entry);
     }
 
-    localStorage.setItem(key, JSON.stringify(currentLogs));
-    setDiveLogs(currentLogs);
+    localStorage.setItem(key, JSON.stringify(logs));
+    setDiveLogs(logs);
     setShowDiveJournalForm(false);
 
     const summary = `Dive Log (${entry.date}): ${entry.disciplineType} – ${entry.discipline} in ${entry.location}.\n` +
@@ -203,30 +176,29 @@ export default function Chat() {
     });
   };
 
-  const handleEdit = (index) => {
-    setEditLogIndex(index);
+  const handleEdit = (i) => {
+    setEditLogIndex(i);
     setShowDiveJournalForm(true);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = (i) => {
     const key = `diveLogs-${userId}`;
     const updated = [...diveLogs];
-    updated.splice(index, 1);
+    updated.splice(i, 1);
     localStorage.setItem(key, JSON.stringify(updated));
     setDiveLogs(updated);
   };
 
-  const handleKeyDown = (e) => {
-    if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
+  const handleSaveSession = () => {
+    localStorage.setItem(`session-${sessionName}`, JSON.stringify(messages));
+    saveSessionName();
+    alert("✅ Session saved locally!");
   };
 
   return (
-    <main className={`min-h-screen flex transition-colors ${darkMode ? "bg-black text-white" : "bg-white text-gray-900"}`}>
+    <main className={`min-h-screen flex ${darkMode ? "bg-black text-white" : "bg-white text-gray-900"}`}>
       {/* Sidebar */}
-      <aside className={`w-72 flex flex-col justify-between border-r p-4 ${darkMode ? "bg-[#121212] border-gray-700" : "bg-gray-100 border-gray-300"}`}>
+      <aside className={`w-72 h-screen overflow-y-auto border-r p-4 flex flex-col justify-between ${darkMode ? "bg-[#121212] border-gray-700" : "bg-gray-100 border-gray-300"}`}>
         <div>
           <h2 className="text-lg font-semibold mb-4">🗂️ Sessions</h2>
           <button onClick={startNewSession} className="mb-4 text-blue-600 underline">➕ New Session</button>
@@ -268,15 +240,14 @@ export default function Chat() {
             </div>
           )}
         </div>
-
         <button onClick={handleSaveSession} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 mt-4">
-          💾 Save Session
+          Save Session
         </button>
       </aside>
 
-      {/* Chat & Display */}
-      <div className="flex-1 flex flex-col border-l">
-        <div className={`flex justify-between px-6 py-4 border-b ${darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"}`}>
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col h-screen">
+        <div className={`sticky top-0 flex justify-between px-6 py-4 border-b z-10 ${darkMode ? "bg-[#1a1a1a] border-gray-700" : "bg-gray-100 border-gray-200"}`}>
           <div>
             {editingSessionName ? (
               <input className="text-xl font-semibold bg-transparent border-b border-dashed focus:outline-none"
@@ -293,7 +264,9 @@ export default function Chat() {
           </button>
         </div>
 
-        <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
+        <div className="flex-1 overflow-y-auto">
+          <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
+        </div>
 
         <div className="p-4 border-t flex flex-col gap-2">
           <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
