@@ -1,0 +1,17 @@
+{
+  "id": "f549b01d-9dc1-4c85-90b9-1683337f6ed0",
+  "date": "2025-07-25",
+  "disciplineType": "depth",
+  "discipline": "Cwt",
+  "location": "Ocean",
+  "targetDepth": "70",
+  "reachedDepth": "70",
+  "mouthfillDepth": "30",
+  "issueDepth": "68",
+  "squeeze": false,
+  "exit": "clean",
+  "durationOrDistance": "",
+  "attemptType": "",
+  "notes": "hung at the bottem for a little while dive 3:05 got backed up on eq at the end",
+  "timestamp": "2025-07-27T00:45:19.594Z"
+}
