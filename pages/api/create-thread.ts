@@ -1,8 +1,10 @@
+// /pages/api/create-thread.ts
+
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const ASSISTANT_ID = 'asst_WnbEd7Jxgf1z2U0ziNWi8yz9';
+const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || 'asst_WnbEd7Jxgf1z2U0ziNWi8yz9';
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY || '' });
 
@@ -11,14 +13,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { username } = req.body;
-
-  if (!username || typeof username !== 'string') {
-    return res.status(400).json({ error: 'Username is required and must be a string.' });
-  }
+  const { username = 'guest' } = req.body;
 
   if (!OPENAI_API_KEY) {
-    console.warn('⚠️ No OpenAI API key set — returning mock data.');
+    console.warn('⚠️ Missing OpenAI API Key — returning mock data.');
     return res.status(200).json({
       threadId: `mock-${Date.now()}`,
       initialMessage: `👋 Hello ${username}, I’m your freediving AI coach. Ask me anything about EQ, breathwork, or training!`,
@@ -26,32 +24,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log(`📩 Creating OpenAI thread for user: ${username}`);
+    // Step 1: Create thread
+    const thread = await openai.beta.threads.create({
+      metadata: { createdBy: username },
+    });
 
-    // Step 1: Create a real thread
-    const thread = await openai.beta.threads.create();
-
-    // Step 2: Send initial message
+    // Step 2: Add user message
     await openai.beta.threads.messages.create(thread.id, {
       role: 'user',
       content: `Hi, I'm ${username}. Let's begin a freediving conversation.`,
     });
 
-    // Step 3: Run the assistant
+    // Step 3: Run assistant
     const run = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: ASSISTANT_ID,
     });
 
-    // Step 4: Poll for run completion
+    // Step 4: Poll run status
     let status = run.status;
     let retries = 0;
-
     while (status !== 'completed' && retries < 10) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const check = await openai.beta.threads.runs.retrieve(run.id, {
-        thread_id: thread.id,
-      });
-      status = check.status;
+      await new Promise((r) => setTimeout(r, 1000));
+      const updatedRun = await openai.beta.threads.runs.retrieve(run.id, { thread_id: thread.id });
+      status = updatedRun.status;
       retries++;
     }
 
@@ -59,22 +54,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('Run did not complete in time.');
     }
 
-    // Step 5: Retrieve the assistant's message
+    // Step 5: Get last assistant message
     const messages = await openai.beta.threads.messages.list(thread.id);
-    const last = messages.data.find((m) => m.role === 'assistant');
+    const assistantMessage = messages.data.find((m) => m.role === 'assistant');
 
-    const textBlock = (last?.content || []).find((c) => {
+    const textBlock = (assistantMessage?.content || []).find((c) => {
       return (c as any)?.type === 'text' && (c as any)?.text?.value;
     }) as any;
 
-    const reply = textBlock?.text?.value || "👋 Let's begin!";
-
     return res.status(200).json({
       threadId: thread.id,
-      initialMessage: reply,
+      initialMessage: textBlock?.text?.value || "👋 Let’s begin!",
     });
   } catch (err: any) {
-    console.error('❌ Assistant thread error:', err?.response?.data || err.message);
+    console.error('❌ Thread creation error:', err?.response?.data || err.message);
     return res.status(500).json({ error: 'Failed to create assistant thread' });
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import ChatMessages from "../components/ChatMessages";
+import DiveJournalDisplay from "../components/DiveJournalDisplay";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
@@ -78,7 +79,6 @@ export default function Chat() {
   }, [messages]);
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
-
   const handleSessionNameChange = (e) => setSessionName(e.target.value);
 
   const saveSessionName = () => {
@@ -239,6 +239,9 @@ export default function Chat() {
 
         {/* Messages */}
         <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
+
+        {/* === Dive Logs Display === */}
+        <DiveJournalDisplay userId={userId} />
 
         {/* Input */}
         <div className="p-4 border-t flex flex-col gap-2">
