@@ -48,7 +48,7 @@ async function getQueryEmbedding(query: string): Promise<number[]> {
 async function queryPinecone(query: string): Promise<string[]> {
   const vector = await getQueryEmbedding(query);
   const result = await index.query({ vector, topK: 6, includeMetadata: true });
-  return result?.matches?.map(m => m.metadata?.text).filter(Boolean) || [];
+  return result?.matches?.map(m => m.metadata?.text).filter((text): text is string => typeof text === 'string') || [];
 }
 
 async function askWithContext(contextChunks: string[], message: string, userLevel: 'expert' | 'beginner') {
