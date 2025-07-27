@@ -1,16 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import ChatMessages from "../components/ChatMessages";
-import DiveJournalDisplay from "../components/DiveJournalDisplay";
 import DiveJournalForm from "../components/DiveJournalForm";
 
 export default function Chat() {
   const BOT_NAME = "Koval AI";
-
-  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })}`;
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -25,40 +19,42 @@ export default function Chat() {
   const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
+  const [diveLogs, setDiveLogs] = useState([]);
+  const [editLogIndex, setEditLogIndex] = useState(null);
 
   const bottomRef = useRef(null);
 
   useEffect(() => {
     const storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
-    setUserId(storedId);
     localStorage.setItem("kovalUser", storedId);
+    setUserId(storedId);
 
-    const savedProfile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
-    setProfile(savedProfile);
+    setProfile(JSON.parse(localStorage.getItem("kovalProfile") || "{}"));
+    setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
+    setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
-    const savedSession = localStorage.getItem("kovalSessionName") || defaultSessionName;
-    setSessionName(savedSession);
-
-    const storedSessions = JSON.parse(localStorage.getItem("kovalSessionsList") || "[]");
-    setSessionsList(storedSessions);
+    const receiveUserId = (e) => {
+      if (e.data?.userId) {
+        setUserId(e.data.userId);
+        localStorage.setItem("kovalUser", e.data.userId);
+      }
+    };
+    window.addEventListener("message", receiveUserId);
+    return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
       if (!id && userId) {
-        try {
-          const res = await fetch("/api/create-thread", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: userId }),
-          });
-          const data = await res.json();
-          id = data.threadId;
-          localStorage.setItem("kovalThreadId", id);
-        } catch (err) {
-          console.error("❌ Thread init error:", err);
-        }
+        const res = await fetch("/api/create-thread", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: userId }),
+        });
+        const data = await res.json();
+        id = data.threadId;
+        localStorage.setItem("kovalThreadId", id);
       }
       setThreadId(id);
     };
@@ -69,35 +65,155 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const key = `diveLogs-${userId}`;
+    const logs = JSON.parse(localStorage.getItem(key) || "[]");
+    setDiveLogs(logs);
+  }, [userId]);
+
+  const refreshDiveLogs = () => {
+    const key = `diveLogs-${userId}`;
+    setDiveLogs(JSON.parse(localStorage.getItem(key) || "[]"));
+  };
+
   const toggleDarkMode = () => setDarkMode(!darkMode);
   const toggleDiveJournal = () => setShowDiveJournalForm((prev) => !prev);
+  const handleSessionNameChange = (e) => setSessionName(e.target.value);
 
-  const handleSaveDive = async (form) => {
-    try {
-      const res = await fetch("/api/save-dive-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
+  const saveSessionName = () => {
+    const trimmed = sessionName.trim() || defaultSessionName;
+    setEditingSessionName(false);
+    setSessionName(trimmed);
+    localStorage.setItem("kovalSessionName", trimmed);
 
-      if (data?.success && threadId) {
-        const summaryRes = await fetch("/api/record-memory", {
+    if (!sessionsList.includes(trimmed)) {
+      const updatedList = [...sessionsList, trimmed];
+      setSessionsList(updatedList);
+      localStorage.setItem("kovalSessionsList", JSON.stringify(updatedList));
+    }
+  };
+
+  const handleSelectSession = (name) => {
+    const saved = localStorage.getItem(`session-${name}`);
+    if (saved) {
+      setSessionName(name);
+      setMessages(JSON.parse(saved));
+    }
+  };
+
+  const startNewSession = () => {
+    const newName = `Session – ${new Date().toLocaleDateString("en-US")}`;
+    setSessionName(newName);
+    setMessages([]);
+    setEqState({ currentDepth: null, answers: {}, alreadyAsked: [] });
+  };
+
+  const saveProfileAnswer = (key, value) => {
+    const updated = { ...profile, [key]: value };
+    setProfile(updated);
+    localStorage.setItem("kovalProfile", JSON.stringify(updated));
+  };
+
+  const handleSubmit = async () => {
+    const trimmedInput = input.trim();
+    if (!trimmedInput && files.length === 0) return;
+    setLoading(true);
+
+    if (files.length > 0) {
+      try {
+        const formData = new FormData();
+        formData.append("image", files[0]);
+        const uploadRes = await fetch("/api/upload-dive-image", { method: "POST", body: formData });
+        const data = await uploadRes.json();
+        setMessages((prev) => [...prev, { role: "assistant", content: data?.answer || "⚠️ Upload failed." }]);
+      } catch (err) {
+        console.error("❌ Upload error:", err);
+      } finally {
+        setFiles([]);
+      }
+    }
+
+    if (trimmedInput) {
+      setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
+      setInput("");
+
+      try {
+        const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ log: form, threadId, userId }),
+          body: JSON.stringify({ message: trimmedInput, userId, profile, eqState, sessionName }),
         });
-        const memoryData = await summaryRes.json();
-        if (memoryData?.assistantMessage) {
-          setMessages((prev) => [
+
+        const data = await res.json();
+        if (data?.type === "intake") {
+          saveProfileAnswer(data.key, trimmedInput);
+          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
+        } else if (data?.type === "eq-followup") {
+          setEqState((prev) => ({
             ...prev,
-            { role: "assistant", content: memoryData.assistantMessage.content },
-          ]);
+            answers: { ...prev.answers, [data.key]: trimmedInput },
+            alreadyAsked: [...(prev.alreadyAsked || []), data.key],
+          }));
+          setMessages((prev) => [...prev, { role: "assistant", content: data.question }]);
+        } else if (data?.type === "eq-diagnosis") {
+          const diagnosis = `🩺 Diagnosis: ${data.label}\n\nSuggested drills:\n${data.drills.join("\n")}`;
+          setMessages((prev) => [...prev, { role: "assistant", content: diagnosis }]);
+        } else {
+          const reply = data?.assistantMessage?.content || "⚠️ No response.";
+          setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
         }
+      } catch (err) {
+        console.error("❌ Chat error:", err);
+        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Chat failed." }]);
       }
-    } catch (err) {
-      console.error("❌ Dive save error:", err);
     }
+
+    setLoading(false);
+  };
+
+  const handleSaveSession = () => {
+    localStorage.setItem(`session-${sessionName}`, JSON.stringify(messages));
+    saveSessionName();
+    alert("✅ Session saved locally!");
+  };
+
+  const handleJournalSubmit = async (entry) => {
+    const key = `diveLogs-${userId}`;
+    let currentLogs = JSON.parse(localStorage.getItem(key) || "[]");
+
+    if (editLogIndex !== null) {
+      currentLogs[editLogIndex] = entry;
+      setEditLogIndex(null);
+    } else {
+      currentLogs.push(entry);
+    }
+
+    localStorage.setItem(key, JSON.stringify(currentLogs));
+    setDiveLogs(currentLogs);
+    setShowDiveJournalForm(false);
+
+    const summary = `Dive Log (${entry.date}): ${entry.disciplineType} – ${entry.discipline} in ${entry.location}.\n` +
+      `Target depth: ${entry.targetDepth}m, Reached: ${entry.reachedDepth}m.\nMouthfill at ${entry.mouthfillDepth}m. Issue: ${entry.issueComment}.\n` +
+      `Time: ${entry.totalDiveTime}, Surface: ${entry.surfaceProtocol}. Notes: ${entry.notes}`;
+
+    await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: `MEMORY:: ${summary}`, userId, sessionName, profile, eqState }),
+    });
+  };
+
+  const handleEdit = (index) => {
+    setEditLogIndex(index);
+    setShowDiveJournalForm(true);
+  };
+
+  const handleDelete = (index) => {
+    const key = `diveLogs-${userId}`;
+    const updated = [...diveLogs];
+    updated.splice(index, 1);
+    localStorage.setItem(key, JSON.stringify(updated));
+    setDiveLogs(updated);
   };
 
   const handleKeyDown = (e) => {
@@ -117,24 +233,40 @@ export default function Chat() {
           <ul className="space-y-2 mb-6">
             {sessionsList.map((s, i) => (
               <li key={i}>
-                <button
-                  className={`text-left w-full px-2 py-1 rounded ${s === sessionName ? "bg-blue-100" : ""}`}
-                  onClick={() => handleSelectSession(s)}
-                >
+                <button className={`text-left w-full px-2 py-1 rounded ${s === sessionName ? "bg-blue-100" : ""}`} onClick={() => handleSelectSession(s)}>
                   {s}
                 </button>
               </li>
             ))}
           </ul>
 
-          <button
-            onClick={toggleDiveJournal}
-            className="mb-4 text-left w-full px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 border"
-          >
+          <button onClick={toggleDiveJournal} className="mb-4 text-left w-full px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 border">
             {showDiveJournalForm ? "📕 Close Dive Journal" : "📘 Open Dive Journal"}
           </button>
 
-          {showDiveJournalForm && <DiveJournalForm onSubmit={handleJournalSubmit} />}
+          {showDiveJournalForm && (
+            <DiveJournalForm
+              onSubmit={handleJournalSubmit}
+              existingEntry={editLogIndex !== null ? diveLogs[editLogIndex] : null}
+            />
+          )}
+
+          {!showDiveJournalForm && (
+            <div className="mt-4">
+              <h3 className="font-semibold mb-2">📒 Dive Logs</h3>
+              <ul className="space-y-2">
+                {diveLogs.map((log, i) => (
+                  <li key={i} className="border p-2 rounded text-sm bg-white text-black">
+                    <strong>{log.date}</strong> – {log.disciplineType}: {log.targetDepth}m
+                    <div className="flex justify-end space-x-2 mt-1">
+                      <button onClick={() => handleEdit(i)} className="text-blue-600 text-xs">🖊️ Edit</button>
+                      <button onClick={() => handleDelete(i)} className="text-red-600 text-xs">🗑️ Delete</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <button onClick={handleSaveSession} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 mt-4">
@@ -162,7 +294,6 @@ export default function Chat() {
         </div>
 
         <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
-        <DiveJournalDisplay userId={userId} />
 
         <div className="p-4 border-t flex flex-col gap-2">
           <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
