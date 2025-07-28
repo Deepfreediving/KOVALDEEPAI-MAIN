@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import imageCompression from "browser-image-compression";
 
 export default function ChatBox({
   userId = "Guest",
@@ -7,26 +8,22 @@ export default function ChatBox({
   setEqState,
   darkMode,
   onUploadSuccess,
+  messages,
+  setMessages,
+  input,
+  setInput,
+  files,
+  setFiles,
+  loading,
+  setLoading,
 }) {
   const BOT_NAME = "Koval AI";
-
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [files, setFiles] = useState([]);
-  const [uploadMessage, setUploadMessage] = useState("");
-
   const bottomRef = useRef(null);
+  const [uploadMessage, setUploadMessage] = useState("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const toggleDarkMode = () => {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("toggle-dark"));
-    }
-  };
 
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files).slice(0, 3);
@@ -40,37 +37,43 @@ export default function ChatBox({
 
     setLoading(true);
 
-    // Upload file(s)
+    // Upload and analyze image files
     if (files.length > 0) {
       try {
-        const formData = new FormData();
-        files.forEach((file) => formData.append("files", file));
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        for (const file of files) {
+          const compressed = await imageCompression(file, {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1280,
+            useWebWorker: true,
+          });
 
-        if (res.ok) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "user",
-              content: `📤 Uploaded ${files.length} image(s).`,
-            },
-          ]);
-          setUploadMessage("✅ File(s) uploaded successfully.");
-          onUploadSuccess?.("✅ Dive profile uploaded.");
-        } else {
-          throw new Error("Upload failed");
+          const formData = new FormData();
+          formData.append("image", compressed);
+
+          const res = await fetch("/api/upload-dive-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            const aiResponse = data.answer || "✅ Image uploaded.";
+            setMessages((prev) => [
+              ...prev,
+              { role: "user", content: `📤 Uploaded: ${file.name}` },
+              { role: "assistant", content: aiResponse },
+            ]);
+            onUploadSuccess?.("✅ Dive profile uploaded.");
+          } else {
+            throw new Error(data.error || "Image upload failed");
+          }
         }
+        setUploadMessage("✅ Image(s) uploaded and analyzed.");
       } catch (err) {
-        console.error("❌ File upload error:", err);
+        console.error("❌ Upload error:", err);
         setMessages((prev) => [
           ...prev,
-          {
-            role: "assistant",
-            content: "⚠️ File upload failed. Please try again.",
-          },
+          { role: "assistant", content: "⚠️ Failed to process image. Try again." },
         ]);
         setUploadMessage("❌ Upload error.");
       } finally {
@@ -88,28 +91,15 @@ export default function ChatBox({
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: trimmedInput,
-            profile,
-            eqState,
-            userId,
-          }),
+          body: JSON.stringify({ message: trimmedInput, profile, eqState, userId }),
         });
 
         const data = await res.json();
 
-        if (data.type === "intake") {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: `📋 ${data.question}` },
-          ]);
-        } else if (data.type === "eq-followup") {
+        if (data.type === "eq-followup") {
           setEqState?.((prev) => ({
             ...prev,
-            answers: {
-              ...prev.answers,
-              [data.key]: trimmedInput,
-            },
+            answers: { ...prev.answers, [data.key]: trimmedInput },
           }));
           setMessages((prev) => [
             ...prev,
@@ -152,21 +142,26 @@ export default function ChatBox({
   };
 
   return (
-    <main className={`min-h-screen flex items-center justify-center px-4 ${darkMode ? "bg-black text-white" : "bg-white text-gray-900"}`}>
-      <div className={`w-full max-w-3xl h-screen flex flex-col rounded-xl shadow-lg border ${darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"}`}>
-        
+    <main
+      className={`min-h-screen flex items-center justify-center px-4 ${
+        darkMode ? "bg-black text-white" : "bg-white text-gray-900"
+      }`}
+    >
+      <div
+        className={`w-full max-w-3xl h-screen flex flex-col rounded-xl shadow-lg border ${
+          darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
+        }`}
+      >
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"}`}>
+        <div
+          className={`flex items-center justify-between px-6 py-4 border-b ${
+            darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
             <h1 className="text-xl font-semibold">Koval Deep AI</h1>
           </div>
-          <button
-            onClick={toggleDarkMode}
-            className={`px-4 py-1 rounded-md border text-sm ${darkMode ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"}`}
-          >
-            {darkMode ? "☀️ Light" : "🌙 Dark"}
-          </button>
         </div>
 
         {/* Messages */}
@@ -203,7 +198,9 @@ export default function ChatBox({
             e.preventDefault();
             handleSubmit();
           }}
-          className={`w-full flex flex-col gap-3 p-4 border-t ${darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"}`}
+          className={`w-full flex flex-col gap-3 p-4 border-t ${
+            darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
+          }`}
         >
           <textarea
             value={input}
@@ -243,7 +240,11 @@ export default function ChatBox({
             type="submit"
             disabled={loading || (!input.trim() && files.length === 0)}
             className={`mt-1 px-5 py-3 rounded-md font-semibold ${
-              loading ? "opacity-50 cursor-not-allowed" : darkMode ? "bg-blue-500 hover:bg-blue-600" : "bg-blue-600 hover:bg-blue-700"
+              loading
+                ? "opacity-50 cursor-not-allowed"
+                : darkMode
+                ? "bg-blue-500 hover:bg-blue-600"
+                : "bg-blue-600 hover:bg-blue-700"
             } text-white`}
           >
             {loading ? "Thinking..." : "Send"}

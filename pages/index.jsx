@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import ChatMessages from "../components/ChatMessages";
 import Sidebar from "../components/Sidebar";
-import ChatBox from "../components/Chat";
+import ChatBox from "../components/ChatBox";
 
-export default function Chat() {
+export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
@@ -24,15 +24,15 @@ export default function Chat() {
   const [editLogIndex, setEditLogIndex] = useState(null);
   const bottomRef = useRef(null);
 
-  // 🧠 Load user, sessions, profile
+  // Load user and session
   useEffect(() => {
     const storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
     localStorage.setItem("kovalUser", storedId);
     setUserId(storedId);
 
     setProfile(JSON.parse(localStorage.getItem("kovalProfile") || "{}"));
-    setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
+    setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
     const receiveUserId = (e) => {
       if (e.data?.type === "user-auth" && e.data?.userId) {
@@ -45,7 +45,7 @@ export default function Chat() {
     return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
-  // 🎯 Create a new thread
+  // Thread init
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
@@ -64,64 +64,93 @@ export default function Chat() {
     if (userId) initThread();
   }, [userId]);
 
-  // 🔁 Scroll to bottom when messages update
+  // Scroll chat to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 📝 Load local dive logs
+  // Load and merge dive logs from backend
   useEffect(() => {
+    if (!userId) return;
     const key = `diveLogs-${userId}`;
-    const logs = JSON.parse(localStorage.getItem(key) || "[]");
-    setDiveLogs(logs);
+    const localLogs = JSON.parse(localStorage.getItem(key) || "[]");
+
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch(`/api/get-dive-logs?userId=${userId}`);
+        const remoteLogs = await res.json();
+
+        // Merge remote and local (assume remote is source of truth for now)
+        const combined = Array.isArray(remoteLogs) ? remoteLogs : localLogs;
+
+        localStorage.setItem(key, JSON.stringify(combined));
+        setDiveLogs(combined);
+      } catch (err) {
+        console.error("⚠️ Dive log fetch failed. Using local backup.");
+        setDiveLogs(localLogs);
+      }
+    };
+
+    fetchLogs();
   }, [userId]);
 
-  // ✅ Upload success message handler
   const handleUploadSuccess = (message) => {
     setMessages((prev) => [...prev, { role: "assistant", content: message }]);
   };
 
-  // 💾 Save session
   const saveSession = () => {
-    const sessionData = { sessionName, messages, timestamp: Date.now() };
-    const updated = [...sessionsList, sessionData];
-    setSessionsList(updated);
+    const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
+    const updated = [
+      ...filtered,
+      { sessionName, messages, timestamp: Date.now() },
+    ];
     localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+    localStorage.setItem("kovalSessionName", sessionName);
+    setSessionsList(updated);
   };
 
-  // ➕ Start new session
   const newSession = () => {
-    const newName = `Session – ${new Date().toLocaleDateString("en-US")} (${Date.now().toString().slice(-4)})`;
-    setSessionName(newName);
+    const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
+    setSessionName(name);
     setMessages([]);
     setFiles([]);
+    setEditingSessionName(false);
+    localStorage.setItem("kovalSessionName", name);
   };
 
-  // 🔁 Select existing session
-  const handleSelectSession = (selectedName) => {
-    setSessionName(selectedName);
-    const found = sessionsList.find((s) => s.sessionName === selectedName);
-    if (found) setMessages(found.messages || []);
+  const toggleDiveJournal = () => {
+    setShowDiveJournalForm((prev) => !prev);
   };
 
-  // 🗑 Delete session
-  const handleDeleteSession = (index) => {
-    const updated = sessionsList.filter((_, i) => i !== index);
-    setSessionsList(updated);
-    localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+  const handleSelectSession = (selectedSessionName) => {
+    const found = sessionsList.find((s) => s.sessionName === selectedSessionName);
+    if (found) {
+      setSessionName(found.sessionName);
+      setMessages(found.messages || []);
+      setInput("");
+    }
   };
 
-  // 📘 Journal handlers
-  const toggleDiveJournal = () => setShowDiveJournalForm((prev) => !prev);
-
-  const handleJournalSubmit = (entry) => {
+  const handleJournalSubmit = async (entry) => {
     const key = `diveLogs-${userId}`;
     const updated = [...diveLogs];
+
     if (editLogIndex !== null) {
       updated[editLogIndex] = entry;
     } else {
       updated.push(entry);
     }
+
+    try {
+      await fetch("/api/save-dive-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      });
+    } catch (err) {
+      console.error("❌ Failed to save dive log remotely:", err);
+    }
+
     localStorage.setItem(key, JSON.stringify(updated));
     setDiveLogs(updated);
     setShowDiveJournalForm(false);
@@ -174,30 +203,39 @@ export default function Chat() {
   };
 
   return (
-    <main className={`min-h-screen flex ${darkMode ? "bg-black text-white" : "bg-white text-gray-900"}`}>
-      <Sidebar
-        {...sharedProps}
-        startNewSession={newSession}
-        handleSaveSession={saveSession}
-        handleSelectSession={handleSelectSession}
-        handleDeleteSession={handleDeleteSession}
-        toggleDiveJournal={toggleDiveJournal}
-        handleJournalSubmit={handleJournalSubmit}
-        handleEdit={handleEdit}
-        handleDelete={handleDelete}
-      />
-      <div className="flex-1 flex flex-col h-screen">
-        <div className="flex-1 overflow-y-auto">
-          <ChatMessages
-            messages={messages}
-            BOT_NAME={BOT_NAME}
-            darkMode={darkMode}
-            loading={loading}
-            bottomRef={bottomRef}
-          />
+    <div className={darkMode ? "dark" : ""}>
+      <main className="min-h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
+        <Sidebar
+          {...sharedProps}
+          startNewSession={newSession}
+          handleSaveSession={saveSession}
+          toggleDiveJournal={toggleDiveJournal}
+          handleSelectSession={handleSelectSession}
+          handleJournalSubmit={handleJournalSubmit}
+          handleEdit={handleEdit}
+          handleDelete={handleDelete}
+        />
+        <div className="flex-1 flex flex-col h-screen">
+          <div className="flex justify-end p-2">
+            <button
+              onClick={() => setDarkMode((prev) => !prev)}
+              className="px-4 py-1 rounded border text-sm dark:bg-white dark:text-black bg-black text-white"
+            >
+              {darkMode ? "☀ Light Mode" : "🌙 Dark Mode"}
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <ChatMessages
+              messages={messages}
+              BOT_NAME={BOT_NAME}
+              darkMode={darkMode}
+              loading={loading}
+              bottomRef={bottomRef}
+            />
+          </div>
+          <ChatBox {...sharedProps} onUploadSuccess={handleUploadSuccess} />
         </div>
-        <ChatBox {...sharedProps} onUploadSuccess={handleUploadSuccess} />
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

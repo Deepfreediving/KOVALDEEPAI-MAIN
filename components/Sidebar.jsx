@@ -8,16 +8,17 @@ export default function Sidebar({
   diveLogs,
   toggleDiveJournal,
   handleSelectSession,
+  handleDeleteSession,
   handleSaveSession,
   startNewSession,
   handleJournalSubmit,
   editLogIndex,
   handleEdit,
   handleDelete,
-  handleDeleteSession,
   userId,
   setLoading,
   setMessages,
+  darkMode
 }) {
   const fileInputRef = useRef(null);
 
@@ -55,7 +56,11 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-72 h-screen overflow-y-auto border-r p-4 flex flex-col justify-between bg-gray-100 dark:bg-[#121212] dark:border-gray-700">
+    <aside
+      className={`w-72 h-screen overflow-y-auto border-r p-4 flex flex-col justify-between ${
+        darkMode ? "bg-[#121212] text-white border-gray-700" : "bg-gray-100 text-black border-gray-200"
+      }`}
+    >
       <div>
         <h2 className="text-lg font-semibold mb-4">🗂️ Sessions</h2>
 
@@ -65,10 +70,14 @@ export default function Sidebar({
 
         <ul className="space-y-2 mb-6">
           {sessionsList.map((s, i) => (
-            <li key={i} className="flex items-center justify-between group">
+            <li key={i} className="flex justify-between items-center">
               <button
-                className={`text-left w-full px-2 py-1 rounded ${
-                  s.sessionName === sessionName ? "bg-blue-100" : ""
+                className={`text-left flex-1 px-2 py-1 rounded ${
+                  s.sessionName === sessionName
+                    ? "bg-blue-100 dark:bg-blue-700"
+                    : darkMode
+                    ? "hover:bg-gray-800"
+                    : "hover:bg-gray-200"
                 }`}
                 onClick={() => handleSelectSession(s.sessionName)}
               >
@@ -76,8 +85,8 @@ export default function Sidebar({
               </button>
               <button
                 onClick={() => handleDeleteSession(i)}
+                className="text-red-500 text-xs ml-2"
                 title="Delete session"
-                className="text-red-500 text-xs ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 ❌
               </button>
@@ -87,7 +96,11 @@ export default function Sidebar({
 
         <button
           onClick={toggleDiveJournal}
-          className="mb-4 text-left w-full px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 border"
+          className={`mb-4 text-left w-full px-3 py-2 rounded border ${
+            darkMode
+              ? "bg-blue-900 hover:bg-blue-800 text-white"
+              : "bg-blue-50 hover:bg-blue-100 text-black"
+          }`}
         >
           {showDiveJournalForm ? "📕 Close Dive Journal" : "📘 Open Dive Journal"}
         </button>
@@ -102,15 +115,11 @@ export default function Sidebar({
             <h3 className="font-semibold mb-2">📒 Dive Logs</h3>
             <ul className="space-y-2">
               {diveLogs.map((log, i) => (
-                <li key={i} className="border p-2 rounded text-sm bg-white text-black">
+                <li key={i} className={`border p-2 rounded text-sm ${darkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
                   <strong>{log.date}</strong> – {log.disciplineType}: {log.targetDepth}m
                   <div className="flex justify-end space-x-2 mt-1">
-                    <button onClick={() => handleEdit(i)} className="text-blue-600 text-xs">
-                      🖊️ Edit
-                    </button>
-                    <button onClick={() => handleDelete(i)} className="text-red-600 text-xs">
-                      🗑️ Delete
-                    </button>
+                    <button onClick={() => handleEdit(i)} className="text-blue-500 text-xs">🖊️ Edit</button>
+                    <button onClick={() => handleDelete(i)} className="text-red-500 text-xs">🗑️ Delete</button>
                   </div>
                 </li>
               ))}
@@ -125,7 +134,11 @@ export default function Sidebar({
             accept="image/png, image/jpeg"
             onChange={handleFileChange}
             ref={fileInputRef}
-            className="block w-full text-sm text-gray-900 bg-white border border-gray-300 rounded cursor-pointer focus:outline-none"
+            className={`block w-full text-sm ${
+              darkMode
+                ? "bg-gray-900 text-white border border-gray-600"
+                : "bg-white text-gray-900 border border-gray-300"
+            } rounded cursor-pointer focus:outline-none`}
           />
         </div>
       </div>
