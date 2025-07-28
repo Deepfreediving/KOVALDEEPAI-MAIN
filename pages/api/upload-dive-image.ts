@@ -17,10 +17,15 @@ export const config = {
   },
 };
 
+// Validate environment variable
+const apiKey = process.env.OPENAI_API_KEY;
+if (!apiKey) {
+  console.error("❌ Missing OPENAI_API_KEY in environment.");
+  throw new Error("Missing OPENAI_API_KEY");
+}
+
 // Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
-});
+const openai = new OpenAI({ apiKey });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -37,49 +42,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     },
   });
 
-  form.parse(req, async (err: any, fields: any, files: Files) => {
+  form.parse(req, async (err, fields, files: Files) => {
     if (err) {
-      console.error("❌ Form parse error:", err);
-      return res.status(400).json({ error: "Image upload failed (form error)." });
+      console.error("❌ Formidable parsing error:", err);
+      return res.status(400).json({ error: "Image upload failed during parsing." });
     }
 
     const fileEntry = extractUploadedFile(files);
-
     if (!fileEntry || !fileEntry.filepath) {
-      console.error("❌ Invalid file received:", fileEntry);
+      console.error("❌ No valid file found in upload:", files);
       return res.status(400).json({ error: "No valid image file uploaded." });
     }
 
-    const filePath = fileEntry.filepath;
-    const mimeType = fileEntry.mimetype || "image/jpeg";
-
     try {
-      // Read the image file into a buffer and encode as base64
-      const imageBuffer = fs.readFileSync(filePath);
-      const base64Image = imageBuffer.toString("base64");
+      const filePath = fileEntry.filepath;
+      const mimeType = fileEntry.mimetype || "image/jpeg";
+      const base64Image = fs.readFileSync(filePath).toString("base64");
 
-      // Call OpenAI's image analysis API with the updated system prompt
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
             content: `
-              You are a professional freediving coach analyzing uploaded dive profile images. The profile shows important data, including:
-              - Depth (meters)
-              - Dive time (minutes and seconds)
-              - Ascent and descent rates
-              - Turnaround time at depth
-              You should extract these details if they are visible in the image, and provide a detailed coaching summary with actionable feedback.
-
-              Key points to address in your analysis:
-              - Descent and ascent techniques
-              - Pace of the dive and efficiency
-              - Relaxation and breath-hold strategies
-              - Safety considerations
-              - Recommendations for future dives based on performance
-
-              If the image does not contain necessary information like depth or time, indicate that the information is missing and ask for more details if needed.
+              You are a professional freediving coach analyzing uploaded dive profile images. The profile shows important data:
+              - Depth (meters), Dive time, Ascent/descent rates, Turnaround time
+              Extract these if visible, then give detailed coaching feedback:
+              - Descent/ascent technique, pace changes, breath-hold strategy, safety, and next steps comparing to 1 meter per second as balance.
+              If info is missing, ask for more details.
             `.trim(),
           },
           {
@@ -101,24 +91,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         max_tokens: 800,
       });
 
-      const result = response.choices?.[0]?.message?.content || "No insights generated.";
+      const result = response.choices?.[0]?.message?.content || "⚠️ No insights generated.";
 
-      // Clean up uploaded file after processing
+      // Clean up the uploaded file
       fs.unlink(filePath, (unlinkErr) => {
-        if (unlinkErr) {
-          console.warn("⚠️ File cleanup failed:", unlinkErr.message);
-        }
+        if (unlinkErr) console.warn("⚠️ Failed to delete uploaded file:", unlinkErr);
       });
 
       return res.status(200).json({ answer: result });
     } catch (error: any) {
-      console.error("❌ OpenAI Vision processing error:", error?.message || error);
-      return res.status(500).json({ error: "Failed to analyze image with OpenAI." });
+      console.error("❌ OpenAI Vision error:", error?.message || error);
+      return res.status(500).json({ error: "Failed to process image with OpenAI." });
     }
   });
 }
 
-// 🔧 Helper: Extract file from files object
+// Helper to extract file from form
 function extractUploadedFile(files: Files): File | undefined {
   const fileField = files.image || Object.values(files)[0];
   return Array.isArray(fileField) ? fileField[0] : fileField;
