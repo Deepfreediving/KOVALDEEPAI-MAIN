@@ -46,7 +46,6 @@ export default function Index() {
       }
     }
 
-    // Handle postMessage from Wix
     const receiveUserId = (e) => {
       if (e.data?.type === "user-auth" && e.data?.userId) {
         console.log("✅ Received userId from Wix:", e.data.userId);
@@ -56,7 +55,6 @@ export default function Index() {
     };
     window.addEventListener("message", receiveUserId);
 
-    // Fallback to Guest after 1.5s if still unset
     setTimeout(() => {
       const existing = localStorage.getItem("kovalUser");
       if (!existing) {
@@ -91,12 +89,10 @@ export default function Index() {
     if (userId) initThread();
   }, [userId]);
 
-  // Scroll chat to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load and merge dive logs
   useEffect(() => {
     if (!userId) return;
     const key = `diveLogs-${userId}`;
@@ -161,19 +157,51 @@ export default function Index() {
     }
 
     try {
+      // Save locally
+      localStorage.setItem(key, JSON.stringify(updated));
+      setDiveLogs(updated);
+      setShowDiveJournalForm(false);
+      setEditLogIndex(null);
+
+      // Save remotely
       await fetch("/api/save-dive-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entry),
       });
-    } catch (err) {
-      console.error("❌ Failed to save remotely:", err);
-    }
 
-    localStorage.setItem(key, JSON.stringify(updated));
-    setDiveLogs(updated);
-    setShowDiveJournalForm(false);
-    setEditLogIndex(null);
+      // Record in OpenAI memory and get assistant feedback
+      const memoryRes = await fetch("/api/record-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ log: entry, userId, threadId }),
+      });
+
+      const memoryData = await memoryRes.json();
+      const aiMessage = memoryData?.assistantMessage?.content;
+
+      if (aiMessage) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: aiMessage },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "📝 Dive log saved. Let me know if you'd like coaching on this entry!" },
+        ]);
+      }
+
+    } catch (err) {
+      console.error("❌ Error submitting dive log:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "⚠️ There was an error saving or analyzing your dive log.",
+        },
+      ]);
+    }
   };
 
   const handleEdit = (index) => {
@@ -224,7 +252,6 @@ export default function Index() {
   return (
     <div className={darkMode ? "dark" : ""}>
       <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
-        {/* Sidebar */}
         <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
           <Sidebar
             {...sharedProps}
@@ -238,7 +265,6 @@ export default function Index() {
           />
         </div>
 
-        {/* Chat */}
         <div className="flex-1 flex flex-col h-screen">
           <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-2 flex justify-end">
             <button
