@@ -1,23 +1,32 @@
 import { useEffect, useState, useRef } from "react";
 
-export default function Chat() {
+export default function ChatBox({
+  userId = "Guest",
+  profile = {},
+  eqState = {},
+  setEqState,
+  darkMode,
+  onUploadSuccess,
+}) {
   const BOT_NAME = "Koval AI";
 
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [files, setFiles] = useState([]);
-  const [profile, setProfile] = useState({});
-  const [eqState, setEqState] = useState({});
-  const bottomRef = useRef(null);
   const [uploadMessage, setUploadMessage] = useState("");
+
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const toggleDarkMode = () => setDarkMode(!darkMode);
+  const toggleDarkMode = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("toggle-dark"));
+    }
+  };
 
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files).slice(0, 3);
@@ -50,6 +59,7 @@ export default function Chat() {
             },
           ]);
           setUploadMessage("✅ File(s) uploaded successfully.");
+          onUploadSuccess?.("✅ Dive profile uploaded.");
         } else {
           throw new Error("Upload failed");
         }
@@ -82,7 +92,7 @@ export default function Chat() {
             message: trimmedInput,
             profile,
             eqState,
-            userId: localStorage.getItem("kovalUser") || "Guest",
+            userId,
           }),
         });
 
@@ -94,7 +104,7 @@ export default function Chat() {
             { role: "assistant", content: `📋 ${data.question}` },
           ]);
         } else if (data.type === "eq-followup") {
-          setEqState((prev) => ({
+          setEqState?.((prev) => ({
             ...prev,
             answers: {
               ...prev.answers,
@@ -113,7 +123,7 @@ export default function Chat() {
               content: `🧠 Diagnosis: ${data.label}\n\nRecommended Drills:\n${data.drills.join("\n")}`,
             },
           ]);
-          setEqState({}); // reset
+          setEqState?.({});
         } else if (data.assistantMessage) {
           setMessages((prev) => [...prev, data.assistantMessage]);
         } else {
