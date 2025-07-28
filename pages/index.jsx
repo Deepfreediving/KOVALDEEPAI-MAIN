@@ -26,40 +26,49 @@ export default function Index() {
 
   // Load user and session
   useEffect(() => {
-    let storedId = "";
-    let profileData = {};
-
     const memberDetails = localStorage.getItem("__wix.memberDetails");
+    let profileData = {};
+    let storedId = "";
 
     if (memberDetails) {
       try {
         const parsed = JSON.parse(memberDetails);
-        storedId = parsed.loginEmail || parsed.id || `Guest${Date.now()}`;
         profileData = parsed;
+        storedId = parsed.loginEmail || parsed.id;
+        if (storedId) {
+          localStorage.setItem("kovalUser", storedId);
+          localStorage.setItem("kovalProfile", JSON.stringify(profileData));
+          setUserId(storedId);
+          setProfile(profileData);
+        }
       } catch (e) {
-        console.warn("⚠️ Failed to parse __wix.memberDetails:", e);
-        storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
+        console.warn("⚠️ Could not parse Wix member details:", e);
       }
-    } else {
-      storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
     }
 
-    localStorage.setItem("kovalUser", storedId);
-    localStorage.setItem("kovalProfile", JSON.stringify(profileData));
-    setUserId(storedId);
-    setProfile(profileData);
+    // Handle postMessage from Wix
+    const receiveUserId = (e) => {
+      if (e.data?.type === "user-auth" && e.data?.userId) {
+        console.log("✅ Received userId from Wix:", e.data.userId);
+        localStorage.setItem("kovalUser", e.data.userId);
+        setUserId(e.data.userId);
+      }
+    };
+    window.addEventListener("message", receiveUserId);
+
+    // Fallback to Guest after 1.5s if still unset
+    setTimeout(() => {
+      const existing = localStorage.getItem("kovalUser");
+      if (!existing) {
+        const guestId = `Guest${Date.now()}`;
+        localStorage.setItem("kovalUser", guestId);
+        setUserId(guestId);
+      }
+    }, 1500);
 
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
     setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
-    const receiveUserId = (e) => {
-      if (e.data?.type === "user-auth" && e.data?.userId) {
-        setUserId(e.data.userId);
-        localStorage.setItem("kovalUser", e.data.userId);
-      }
-    };
-
-    window.addEventListener("message", receiveUserId);
     return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
@@ -215,7 +224,7 @@ export default function Index() {
   return (
     <div className={darkMode ? "dark" : ""}>
       <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
-        {/* Sidebar (scrolls independently) */}
+        {/* Sidebar */}
         <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
           <Sidebar
             {...sharedProps}
@@ -229,9 +238,8 @@ export default function Index() {
           />
         </div>
 
-        {/* Chat Panel */}
+        {/* Chat */}
         <div className="flex-1 flex flex-col h-screen">
-          {/* Sticky Header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-2 flex justify-end">
             <button
               onClick={() => setDarkMode((prev) => !prev)}
@@ -241,7 +249,6 @@ export default function Index() {
             </button>
           </div>
 
-          {/* Chat Messages Scrollable */}
           <div className="flex-1 overflow-y-auto px-4">
             <ChatMessages
               messages={messages}
@@ -252,7 +259,6 @@ export default function Index() {
             />
           </div>
 
-          {/* Chat Input */}
           <ChatBox {...sharedProps} onUploadSuccess={handleUploadSuccess} />
         </div>
       </main>
