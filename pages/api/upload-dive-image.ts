@@ -4,27 +4,24 @@ import fs from "fs";
 import path from "path";
 import { OpenAI } from "openai";
 
-// Ensure upload directory exists
+// Ensure uploads directory exists
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Disable Next.js body parser to allow multipart/form-data
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Ensure OpenAI API key is available
 const apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {
   console.error("❌ Missing OPENAI_API_KEY");
   throw new Error("Missing OPENAI_API_KEY");
 }
 
-// Initialize OpenAI client
 const openai = new OpenAI({ apiKey });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -35,28 +32,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = new IncomingForm({
     uploadDir,
     keepExtensions: true,
-    maxFileSize: 5 * 1024 * 1024, // 5 MB
+    maxFileSize: 5 * 1024 * 1024,
     multiples: false,
-    filter: ({ mimetype }) => {
-      return !!mimetype && ["image/jpeg", "image/png"].includes(mimetype);
-    },
+    filter: ({ mimetype }) => ["image/jpeg", "image/png"].includes(mimetype || ""),
   });
 
   form.parse(req, async (err, fields, files: Files) => {
     if (err) {
-      console.error("❌ Form parsing failed:", err);
+      console.error("❌ Form parse error:", err);
       return res.status(400).json({ error: "Image upload parsing failed." });
     }
 
     const fileEntry = extractUploadedFile(files);
     if (!fileEntry || !fileEntry.filepath) {
-      return res.status(400).json({ error: "No valid image file uploaded." });
+      return res.status(400).json({ error: "No image file uploaded." });
     }
 
     try {
       const filePath = fileEntry.filepath;
       const mimeType = fileEntry.mimetype || "image/jpeg";
-      const base64Image = fs.readFileSync(filePath).toString("base64");
+      const base64Image = fs.readFileSync(filePath, "base64");
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -65,16 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             role: "system",
             content: `
-              You are a professional freediving coach analyzing uploaded dive profile images.
-              The profile shows important data like:
-              - Depth (meters)
+              You are a professional freediving coach.
+              Analyze dive profile images showing:
+              - Depth over time
               - Dive time
-              - Ascent/descent rate
-              - Turnaround time
-              
-              Extract this data if visible. Then give coaching feedback:
-              - Pacing, descent/ascent technique, breath strategy, and any red flags.
-              If unclear, ask the diver to clarify what the graph shows.
+              - Ascent/descent rates
+              - Turnaround point
+              Provide coaching insights and suggestions.
             `,
           },
           {
@@ -88,30 +80,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               },
               {
                 type: "text",
-                text: "Please analyze this dive profile image and provide coaching insights.",
+                text: "Please analyze this dive profile image and give coaching feedback.",
               },
             ],
           },
         ],
       });
 
-      const result = response.choices?.[0]?.message?.content || "⚠️ No analysis produced.";
+      const result = response.choices?.[0]?.message?.content?.trim();
 
-      // Clean up temporary file
-      fs.unlink(filePath, (unlinkErr) => {
-        if (unlinkErr) console.warn("⚠️ Failed to delete image:", unlinkErr);
+      fs.unlink(filePath, (err) => {
+        if (err) console.warn("⚠️ Could not delete file:", err);
       });
+
+      if (!result) {
+        return res.status(200).json({ answer: "⚠️ Image uploaded, but no analysis returned." });
+      }
 
       return res.status(200).json({ answer: result });
     } catch (error: any) {
-      console.error("❌ OpenAI processing failed:", error?.message || error);
-      return res.status(500).json({ error: "Failed to process image with OpenAI." });
+      console.error("❌ OpenAI image analysis failed:", error?.message || error);
+      return res.status(500).json({ error: "Image analysis failed. Try again or check image quality." });
     }
   });
 }
 
-// Utility to extract the uploaded file safely
+// Helper to extract file safely
 function extractUploadedFile(files: Files): File | undefined {
-  const fileField = files.image || Object.values(files)[0];
-  return Array.isArray(fileField) ? fileField[0] : fileField;
+  const file = files.image || Object.values(files)[0];
+  return Array.isArray(file) ? file[0] : file;
 }

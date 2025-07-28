@@ -34,10 +34,11 @@ export default function Index() {
     if (memberDetails) {
       try {
         const parsed = JSON.parse(memberDetails);
-        storedId = parsed.id || parsed.loginEmail || `Guest${Date.now()}`;
+        storedId = parsed.loginEmail || parsed.id || `Guest${Date.now()}`;
         profileData = parsed;
-      } catch {
-        storedId = `Guest${Date.now()}`;
+      } catch (e) {
+        console.warn("⚠️ Failed to parse __wix.memberDetails:", e);
+        storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
       }
     } else {
       storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
@@ -45,7 +46,6 @@ export default function Index() {
 
     localStorage.setItem("kovalUser", storedId);
     localStorage.setItem("kovalProfile", JSON.stringify(profileData));
-
     setUserId(storedId);
     setProfile(profileData);
 
@@ -214,19 +214,25 @@ export default function Index() {
 
   return (
     <div className={darkMode ? "dark" : ""}>
-      <main className="min-h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
-        <Sidebar
-          {...sharedProps}
-          startNewSession={newSession}
-          handleSaveSession={saveSession}
-          toggleDiveJournal={toggleDiveJournal}
-          handleSelectSession={handleSelectSession}
-          handleJournalSubmit={handleJournalSubmit}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-        />
+      <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
+        {/* Sidebar (scrolls independently) */}
+        <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
+          <Sidebar
+            {...sharedProps}
+            startNewSession={newSession}
+            handleSaveSession={saveSession}
+            toggleDiveJournal={toggleDiveJournal}
+            handleSelectSession={handleSelectSession}
+            handleJournalSubmit={handleJournalSubmit}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+          />
+        </div>
+
+        {/* Chat Panel */}
         <div className="flex-1 flex flex-col h-screen">
-          <div className="flex justify-end p-2">
+          {/* Sticky Header */}
+          <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-2 flex justify-end">
             <button
               onClick={() => setDarkMode((prev) => !prev)}
               className="px-4 py-1 rounded border text-sm dark:bg-white dark:text-black bg-black text-white"
@@ -234,7 +240,9 @@ export default function Index() {
               {darkMode ? "☀ Light Mode" : "🌙 Dark Mode"}
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto">
+
+          {/* Chat Messages Scrollable */}
+          <div className="flex-1 overflow-y-auto px-4">
             <ChatMessages
               messages={messages}
               BOT_NAME={BOT_NAME}
@@ -243,6 +251,8 @@ export default function Index() {
               bottomRef={bottomRef}
             />
           </div>
+
+          {/* Chat Input */}
           <ChatBox {...sharedProps} onUploadSuccess={handleUploadSuccess} />
         </div>
       </main>
