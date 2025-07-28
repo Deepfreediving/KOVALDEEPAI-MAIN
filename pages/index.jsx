@@ -26,11 +26,29 @@ export default function Index() {
 
   // Load user and session
   useEffect(() => {
-    const storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
-    localStorage.setItem("kovalUser", storedId);
-    setUserId(storedId);
+    let storedId = "";
+    let profileData = {};
 
-    setProfile(JSON.parse(localStorage.getItem("kovalProfile") || "{}"));
+    const memberDetails = localStorage.getItem("__wix.memberDetails");
+
+    if (memberDetails) {
+      try {
+        const parsed = JSON.parse(memberDetails);
+        storedId = parsed.id || parsed.loginEmail || `Guest${Date.now()}`;
+        profileData = parsed;
+      } catch {
+        storedId = `Guest${Date.now()}`;
+      }
+    } else {
+      storedId = localStorage.getItem("kovalUser") || `Guest${Date.now()}`;
+    }
+
+    localStorage.setItem("kovalUser", storedId);
+    localStorage.setItem("kovalProfile", JSON.stringify(profileData));
+
+    setUserId(storedId);
+    setProfile(profileData);
+
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
     setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
@@ -69,7 +87,7 @@ export default function Index() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load and merge dive logs from backend
+  // Load and merge dive logs
   useEffect(() => {
     if (!userId) return;
     const key = `diveLogs-${userId}`;
@@ -79,14 +97,11 @@ export default function Index() {
       try {
         const res = await fetch(`/api/get-dive-logs?userId=${userId}`);
         const remoteLogs = await res.json();
-
-        // Merge remote and local (assume remote is source of truth for now)
         const combined = Array.isArray(remoteLogs) ? remoteLogs : localLogs;
-
         localStorage.setItem(key, JSON.stringify(combined));
         setDiveLogs(combined);
-      } catch (err) {
-        console.error("⚠️ Dive log fetch failed. Using local backup.");
+      } catch {
+        console.warn("⚠️ Dive log fetch failed. Using local logs.");
         setDiveLogs(localLogs);
       }
     };
@@ -100,10 +115,7 @@ export default function Index() {
 
   const saveSession = () => {
     const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
-    const updated = [
-      ...filtered,
-      { sessionName, messages, timestamp: Date.now() },
-    ];
+    const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
     localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
     localStorage.setItem("kovalSessionName", sessionName);
     setSessionsList(updated);
@@ -118,12 +130,10 @@ export default function Index() {
     localStorage.setItem("kovalSessionName", name);
   };
 
-  const toggleDiveJournal = () => {
-    setShowDiveJournalForm((prev) => !prev);
-  };
+  const toggleDiveJournal = () => setShowDiveJournalForm((prev) => !prev);
 
-  const handleSelectSession = (selectedSessionName) => {
-    const found = sessionsList.find((s) => s.sessionName === selectedSessionName);
+  const handleSelectSession = (name) => {
+    const found = sessionsList.find((s) => s.sessionName === name);
     if (found) {
       setSessionName(found.sessionName);
       setMessages(found.messages || []);
@@ -148,7 +158,7 @@ export default function Index() {
         body: JSON.stringify(entry),
       });
     } catch (err) {
-      console.error("❌ Failed to save dive log remotely:", err);
+      console.error("❌ Failed to save remotely:", err);
     }
 
     localStorage.setItem(key, JSON.stringify(updated));

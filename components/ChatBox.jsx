@@ -37,7 +37,7 @@ export default function ChatBox({
 
     setLoading(true);
 
-    // Upload and analyze image files
+    // Upload and analyze images
     if (files.length > 0) {
       try {
         for (const file of files) {
@@ -56,6 +56,7 @@ export default function ChatBox({
           });
 
           const data = await res.json();
+
           if (res.ok) {
             const aiResponse = data.answer || "✅ Image uploaded.";
             setMessages((prev) => [
@@ -68,6 +69,7 @@ export default function ChatBox({
             throw new Error(data.error || "Image upload failed");
           }
         }
+
         setUploadMessage("✅ Image(s) uploaded and analyzed.");
       } catch (err) {
         console.error("❌ Upload error:", err);
@@ -160,7 +162,12 @@ export default function ChatBox({
         >
           <div className="flex items-center gap-4">
             <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
-            <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+            <div>
+              <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {profile?.nickname || userId}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -188,7 +195,9 @@ export default function ChatBox({
               <div>{m.content}</div>
             </div>
           ))}
-          {loading && <div className="text-gray-400 italic">{BOT_NAME} is thinking...</div>}
+          {loading && (
+            <div className="text-gray-400 italic">{BOT_NAME} is thinking...</div>
+          )}
           <div ref={bottomRef} />
         </div>
 
@@ -207,7 +216,9 @@ export default function ChatBox({
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message or upload dive images..."
             className={`resize-none rounded-md p-3 text-sm h-20 shadow-md focus:outline-none ${
-              darkMode ? "bg-gray-900 text-white placeholder-gray-500" : "bg-white text-black placeholder-gray-400"
+              darkMode
+                ? "bg-gray-900 text-white placeholder-gray-500"
+                : "bg-white text-black placeholder-gray-400"
             }`}
             onKeyDown={handleKeyDown}
           />
