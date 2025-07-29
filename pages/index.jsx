@@ -53,27 +53,41 @@ export default function Index() {
     }
 
     const receiveUserId = (e) => {
+      const allowedOrigin = "https://www.deepfreediving.com";
+      if (e.origin !== allowedOrigin) {
+        console.warn("⚠️ Ignored message from untrusted origin:", e.origin);
+        return;
+      }
+
       if (e.data?.type === "user-auth" && e.data.userId) {
         console.log("✅ Received userId from Wix:", e.data.userId);
         localStorage.setItem("kovalUser", e.data.userId);
         setUserId(e.data.userId);
+      } else {
+        console.warn("⚠️ Message received, but missing required fields:", e.data);
       }
     };
+
     window.addEventListener("message", receiveUserId);
 
-    setTimeout(() => {
+    // Guest fallback if nothing received after delay
+    const timeout = setTimeout(() => {
       const existing = localStorage.getItem("kovalUser");
       if (!existing) {
         const guestId = `Guest${Date.now()}`;
+        console.log("👤 No user received — using guest ID:", guestId);
         localStorage.setItem("kovalUser", guestId);
         setUserId(guestId);
       }
-    }, 1500);
+    }, 2000);
 
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
     setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
-    return () => window.removeEventListener("message", receiveUserId);
+    return () => {
+      window.removeEventListener("message", receiveUserId);
+      clearTimeout(timeout);
+    };
   }, []);
 
   useEffect(() => {
@@ -196,7 +210,9 @@ export default function Index() {
         ...prev,
         {
           role: "assistant",
-          content: aiMessage || "📝 Dive log saved. Let me know if you'd like coaching on this entry!",
+          content:
+            aiMessage ||
+            "📝 Dive log saved. Let me know if you'd like coaching on this entry!",
         },
       ]);
     } catch (err) {
