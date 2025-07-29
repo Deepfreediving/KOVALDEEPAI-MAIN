@@ -28,6 +28,7 @@ export default function Index() {
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
+  const [wixData, setWixData] = useState([]); // <-- NEW STATE for Wix data
   const bottomRef = useRef(null);
 
   // Display name fallback
@@ -47,11 +48,36 @@ export default function Index() {
     }
   };
 
-  // ---------- 1️⃣ User Detection (Wix iframe + local fallback) ----------
+  // ---------- 1️⃣ Fetch Wix Collection Data ----------
+  useEffect(() => {
+    const fetchWixData = async () => {
+      try {
+        const res = await fetch("/api/wixconnect");
+        const json = await res.json();
+
+        if (json.data) {
+          setWixData(json.data);
+          // Optionally add to chat messages
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `📌 Pulled ${json.data.length} data items from Wix collection.`,
+            },
+          ]);
+        }
+      } catch (err) {
+        console.error("❌ Failed to fetch Wix data:", err);
+      }
+    };
+
+    fetchWixData();
+  }, []);
+
+  // ---------- 2️⃣ User Detection (Wix iframe + local fallback) ----------
   useEffect(() => {
     console.log("🔄 Initializing user detection...");
 
-    // Try to load stored member details (Wix sometimes sets this in localStorage)
     const memberDetails = localStorage.getItem("__wix.memberDetails");
     if (!userId && memberDetails) {
       try {
@@ -69,26 +95,18 @@ export default function Index() {
       }
     }
 
-    // Listen for Wix iframe messages
     const receiveUserId = (e) => {
       if (!e.data?.type || e.data.type !== "user-auth") return;
-
       if (e.data?.userId) {
         console.log("✅ Received userId from Wix page:", e.data.userId);
         setUserId(e.data.userId);
         localStorage.setItem("kovalUser", e.data.userId);
-
-        // Preserve profile if we have one
-        if (!profile.loginEmail && localStorage.getItem("kovalProfile")) {
-          setProfile(JSON.parse(localStorage.getItem("kovalProfile")));
-        }
       }
     };
 
     window.addEventListener("message", receiveUserId);
     window.opener && window.opener.addEventListener?.("message", receiveUserId);
 
-    // Fallback to Guest only if no Wix message received after 6s
     const fallbackTimer = setTimeout(() => {
       if (!userId && !localStorage.getItem("kovalUser")) {
         const guest = `Guest${Date.now()}`;
@@ -105,7 +123,7 @@ export default function Index() {
     };
   }, [userId, profile]);
 
-  // ---------- 2️⃣ Initialize AI Thread ----------
+  // ---------- 3️⃣ Initialize AI Thread ----------
   useEffect(() => {
     if (!userId || threadId) return;
     const initThread = async () => {
@@ -127,7 +145,7 @@ export default function Index() {
     initThread();
   }, [userId]);
 
-  // ---------- 3️⃣ Load Dive Logs ----------
+  // ---------- 4️⃣ Load Dive Logs ----------
   useEffect(() => {
     if (!userId) return;
     const key = storageKey(userId);
@@ -154,7 +172,7 @@ export default function Index() {
     fetchLogs();
   }, [userId]);
 
-  // ---------- 4️⃣ Pending Sync Processor ----------
+  // ---------- 5️⃣ Pending Sync Processor ----------
   useEffect(() => {
     const processQueue = async () => {
       const queue = getPendingSync();
@@ -191,7 +209,7 @@ export default function Index() {
     };
   }, [userId]);
 
-  // ---------- 5️⃣ Journal Submit ----------
+  // ---------- 6️⃣ Journal Submit ----------
   const handleJournalSubmit = async (entry) => {
     const key = storageKey(userId);
     const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
@@ -200,7 +218,6 @@ export default function Index() {
     setDiveLogs(updated);
     localStorage.setItem(key, JSON.stringify(updated));
 
-    // Queue for sync
     const pending = getPendingSync();
     savePendingSync([...pending, { userId, diveLog: newEntry, timestamp: new Date() }]);
 
@@ -306,6 +323,20 @@ export default function Index() {
               {darkMode ? "☀ Light Mode" : "🌙 Dark Mode"}
             </button>
           </div>
+
+          {/* Display Wix Data */}
+          {wixData.length > 0 && (
+            <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+              <h2 className="font-bold mb-1">📂 Wix Data:</h2>
+              <ul>
+                {wixData.map((item) => (
+                  <li key={item._id} className="text-sm">
+                    {item.data?.title || "Unnamed item"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto px-4">
             <ChatMessages
