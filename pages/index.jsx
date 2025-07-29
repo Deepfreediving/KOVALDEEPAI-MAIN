@@ -24,7 +24,6 @@ export default function Index() {
   const [editLogIndex, setEditLogIndex] = useState(null);
   const bottomRef = useRef(null);
 
-  // Load user and session
   useEffect(() => {
     const memberDetails = localStorage.getItem("__wix.memberDetails");
     let profileData = {};
@@ -70,7 +69,6 @@ export default function Index() {
     return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
-  // Thread init
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
@@ -157,20 +155,23 @@ export default function Index() {
     }
 
     try {
-      // Save locally
       localStorage.setItem(key, JSON.stringify(updated));
       setDiveLogs(updated);
       setShowDiveJournalForm(false);
       setEditLogIndex(null);
 
-      // Save remotely
-      await fetch("/api/save-dive-log", {
+      await fetch("https://www.deepfreediving.com/_functions/saveToUserMemory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entry),
+        body: JSON.stringify({
+          userId,
+          diveLog: entry,
+          memoryContent: "",
+          timestamp: new Date(),
+          sessionName: "Dive Log Entry",
+        }),
       });
 
-      // Record in OpenAI memory and get assistant feedback
       const memoryRes = await fetch("/api/record-memory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -180,18 +181,15 @@ export default function Index() {
       const memoryData = await memoryRes.json();
       const aiMessage = memoryData?.assistantMessage?.content;
 
-      if (aiMessage) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: aiMessage },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "📝 Dive log saved. Let me know if you'd like coaching on this entry!" },
-        ]);
-      }
-
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            aiMessage ||
+            "📝 Dive log saved. Let me know if you'd like coaching on this entry!",
+        },
+      ]);
     } catch (err) {
       console.error("❌ Error submitting dive log:", err);
       setMessages((prev) => [

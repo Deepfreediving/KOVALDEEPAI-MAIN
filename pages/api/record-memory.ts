@@ -5,8 +5,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Utility to fallback to 'N/A' for missing fields
+const safe = (v: any) => (v !== undefined && v !== null && v !== "") ? v : 'N/A';
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
   try {
     const { log, threadId, userId } = req.body;
@@ -15,33 +20,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing log, threadId, or userId' });
     }
 
-    // Summarize the log for memory
+    // Generate a formatted summary
     const summary = `
 Dive Log Summary for User ${userId}:
-- Date: ${log.date}
-- Discipline: ${log.disciplineType} – ${log.discipline}
-- Location: ${log.location}
-- Target Depth: ${log.targetDepth}
-- Reached Depth: ${log.reachedDepth}
-- Mouthfill Depth: ${log.mouthfillDepth}
-- Issue Depth: ${log.issueDepth}
-- Issue Comment: ${log.issueComment}
-- Duration/Distance: ${log.durationOrDistance}
-- Total Dive Time: ${log.totalDiveTime}
-- Attempt Type: ${log.attemptType}
-- Exit: ${log.exit}
-- Surface Protocol: ${log.surfaceProtocol}
+- Date: ${safe(log.date)}
+- Discipline: ${safe(log.disciplineType)} – ${safe(log.discipline)}
+- Location: ${safe(log.location)}
+- Target Depth: ${safe(log.targetDepth)}
+- Reached Depth: ${safe(log.reachedDepth)}
+- Mouthfill Depth: ${safe(log.mouthfillDepth)}
+- Issue Depth: ${safe(log.issueDepth)}
+- Issue Comment: ${safe(log.issueComment)}
+- Duration/Distance: ${safe(log.durationOrDistance)}
+- Total Dive Time: ${safe(log.totalDiveTime)}
+- Attempt Type: ${safe(log.attemptType)}
+- Exit: ${safe(log.exit)}
+- Surface Protocol: ${safe(log.surfaceProtocol)}
 - Squeeze: ${log.squeeze ? 'Yes' : 'No'}
-- Notes: ${log.notes}
+- Notes: ${safe(log.notes)}
 `;
 
-    // Add to assistant memory
+    // Send the log as a memory message
     await openai.beta.threads.messages.create(threadId, {
       role: 'user',
       content: `Here is a dive log entry:\n${summary}\nPlease keep this in memory and provide a coaching response.`,
+      metadata: {
+        type: 'diveLog',
+        userId,
+      },
     });
 
-    // Get assistant's immediate follow-up response
+    // Trigger the assistant to respond
     const run = await openai.beta.threads.runs.createAndPoll(threadId, {
       assistant_id: process.env.OPENAI_ASSISTANT_ID!,
     });
@@ -49,7 +58,10 @@ Dive Log Summary for User ${userId}:
     const messages = await openai.beta.threads.messages.list(threadId);
     const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
 
-    return res.status(200).json({ success: true, assistantMessage });
+    return res.status(200).json({
+      success: true,
+      assistantMessage: assistantMessage || { role: 'assistant', content: '' },
+    });
   } catch (err) {
     console.error("❌ Error recording memory:", err);
     return res.status(500).json({ error: "Internal Server Error" });
