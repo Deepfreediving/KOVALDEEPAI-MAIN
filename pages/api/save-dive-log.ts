@@ -5,6 +5,7 @@ import path from 'path';
 
 const LOG_DIR = path.resolve('./data/diveLogs');
 
+// Ensure log directory exists
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
@@ -18,23 +19,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const {
       userId,
       date,
-      disciplineType,
+      disciplineType = '',
       discipline,
-      location,
-      targetDepth,
-      reachedDepth,
-      mouthfillDepth,
-      issueDepth,
-      squeeze,
-      exit,
-      durationOrDistance,
-      attemptType,
-      notes,
-      totalDiveTime,
-      issueComment,
-      surfaceProtocol,
+      location = '',
+      targetDepth = '',
+      reachedDepth = '',
+      mouthfillDepth = '',
+      issueDepth = '',
+      squeeze = false,
+      exit = '',
+      durationOrDistance = '',
+      attemptType = '',
+      notes = '',
+      totalDiveTime = '',
+      issueComment = '',
+      surfaceProtocol = '',
     } = req.body;
 
+    // Basic validation
     if (!userId || !date || !discipline) {
       return res.status(400).json({ error: 'Missing required fields: userId, date, or discipline' });
     }
@@ -48,11 +50,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       disciplineType,
       discipline,
       location,
-      targetDepth,
-      reachedDepth,
-      mouthfillDepth,
-      issueDepth,
-      squeeze,
+      targetDepth: parseFloat(targetDepth) || 0,
+      reachedDepth: parseFloat(reachedDepth) || 0,
+      mouthfillDepth: parseFloat(mouthfillDepth) || 0,
+      issueDepth: parseFloat(issueDepth) || 0,
+      squeeze: !!squeeze,
       exit,
       durationOrDistance,
       attemptType,
@@ -73,8 +75,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     fs.writeFileSync(filePath, JSON.stringify(logEntry, null, 2));
 
     return res.status(200).json({ success: true, id, saved: true });
-  } catch (err) {
-    console.error('❌ Error saving dive log:', err);
+  } catch (err: any) {
+    console.error('❌ Error saving dive log:', err.message || err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
