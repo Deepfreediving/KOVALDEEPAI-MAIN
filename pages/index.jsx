@@ -24,20 +24,15 @@ export default function Index() {
   const [editLogIndex, setEditLogIndex] = useState(null);
   const bottomRef = useRef(null);
 
-  // ---------- Helper Functions ----------
+  // Helper to display name
   const getDisplayName = () => {
     if (profile?.loginEmail) return profile.loginEmail;
     if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
-    if (userId?.startsWith("Guest")) return "Guest User";
-    return "User";
+    return userId?.startsWith("Guest") ? "Guest User" : "User";
   };
 
   const storageKey = (uid) => `diveLogs-${uid}`;
-
-  const savePendingSync = (logs) => {
-    localStorage.setItem("pendingSync", JSON.stringify(logs));
-  };
-
+  const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
   const getPendingSync = () => {
     try {
       return JSON.parse(localStorage.getItem("pendingSync") || "[]");
@@ -46,7 +41,7 @@ export default function Index() {
     }
   };
 
-  // ---------- 1️⃣ User Detection ----------
+  // ---------- 1️⃣ User Detection (with Wix iframe message support) ----------
   useEffect(() => {
     const memberDetails = localStorage.getItem("__wix.memberDetails");
     if (!userId && memberDetails) {
@@ -64,27 +59,34 @@ export default function Index() {
       }
     }
 
-    // Listen for Wix message
+    // Listen for Wix user-auth message
     const receiveUserId = (e) => {
-      if (e.origin !== "https://www.deepfreediving.com") return;
-      if (e.data?.type === "user-auth" && e.data.userId) {
+      if (!e.data?.type || e.data.type !== "user-auth") return;
+      if (e.data?.userId) {
+        console.log("✅ Received userId from Wix page:", e.data.userId);
         setUserId(e.data.userId);
         localStorage.setItem("kovalUser", e.data.userId);
       }
     };
     window.addEventListener("message", receiveUserId);
 
-    // Fallback guest user
-    if (!userId) {
-      const guest = `Guest${Date.now()}`;
-      setUserId(guest);
-      localStorage.setItem("kovalUser", guest);
-    }
+    // Avoid random Guest fallback if Wix sends real ID soon
+    const fallbackTimer = setTimeout(() => {
+      if (!userId) {
+        const guest = `Guest${Date.now()}`;
+        setUserId(guest);
+        localStorage.setItem("kovalUser", guest);
+        console.warn("⚠️ Falling back to guest user:", guest);
+      }
+    }, 4000);
 
-    return () => window.removeEventListener("message", receiveUserId);
+    return () => {
+      clearTimeout(fallbackTimer);
+      window.removeEventListener("message", receiveUserId);
+    };
   }, []);
 
-  // ---------- 2️⃣ Initialize Thread ----------
+  // ---------- 2️⃣ Initialize AI Thread ----------
   useEffect(() => {
     if (!userId || threadId) return;
     const initThread = async () => {
@@ -115,7 +117,7 @@ export default function Index() {
 
     const fetchLogs = async () => {
       try {
-        const res = await fetch(`/api/get-dive-logs?userId=${userId}`);
+        const res = await fetch(`/api/get-dive-logs?userId=${encodeURIComponent(userId)}`);
         const remoteLogs = await res.json();
         if (Array.isArray(remoteLogs)) {
           const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
@@ -133,35 +135,44 @@ export default function Index() {
     fetchLogs();
   }, [userId]);
 
-  // ---------- 4️⃣ Pending Sync Processor ----------
+  // ---------- 4️⃣ Pending Sync Processor (auto-includes userId) ----------
   useEffect(() => {
     const processQueue = async () => {
       const queue = getPendingSync();
       if (!queue.length) return;
+
       try {
-        const batch = queue.slice(0, 10); // up to 10 at a time
+        const payload = queue.map((item) => ({
+          ...item,
+          userId: userId || item.userId,
+        }));
+
         const res = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(batch),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         });
-        const result = await res.json();
-        if (result.success) {
-          savePendingSync(queue.slice(10));
+
+        if (res.ok) {
+          savePendingSync([]);
+        } else {
+          console.warn("⚠️ Sync failed, will retry:", await res.text());
         }
       } catch (err) {
-        console.error("❌ Sync error, will retry:", err);
+        console.error("❌ Sync error:", err);
       }
     };
 
     processQueue();
-    const interval = setInterval(processQueue, 10000); // every 10s
+    const interval = setInterval(processQueue, 10000);
     window.addEventListener("focus", processQueue);
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", processQueue);
     };
-  }, []);
+  }, [userId]);
 
   // ---------- 5️⃣ Journal Submit ----------
   const handleJournalSubmit = async (entry) => {
@@ -181,7 +192,7 @@ export default function Index() {
 
     setMessages((prev) => [
       ...prev,
-      { role: "assistant", content: "📝 Dive log saved locally and will sync soon." },
+      { role: "assistant", content: "📝 Dive log saved locally and queued for sync." },
     ]);
   };
 
