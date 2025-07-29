@@ -6,10 +6,7 @@ import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
 // === INITIALIZATION ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
-
-const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY || '',
-});
+const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
 const index = pinecone.Index(process.env.PINECONE_INDEX || '');
 
 // === HELPERS ===
@@ -72,10 +69,11 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
 
 function generateSystemPrompt(level: 'expert' | 'beginner', depthRange: string): string {
   return `
-You are **Koval Deep AI**, the only freediving assistant trained directly by Daniel Koval.
+You are **Koval Deep AI**, a professional freediving assistant trained by Daniel Koval.
 
 Rules for your response:
-- Base your answer ONLY on Koval-approved knowledge retrieved from Pinecone.
+- Use ONLY Koval-approved knowledge retrieved from Pinecone.
+- Prioritize **user dive logs and PB depth** over generic advice.
 - Adapt to the diver’s current depth (${depthRange}) and their experience level (${level}).
 - Always follow this structure:
 
@@ -84,9 +82,10 @@ Rules for your response:
 3️⃣ Training Adaptation (how Koval training adapts physiology safely)
 4️⃣ Motivator Hook (make them curious or excited to learn the next step)
 
-- Exclude SSI, Padi, AIDA, Molchanovs, or any non-Koval standards unless a factual comparison is requested.
+- If logs or PB are provided, analyze them first and focus on **progression toward their target depth**.
 - Never give unsafe or speculative advice.
-- Use simple, clear language while remaining technically precise.
+- Exclude SSI, Padi, AIDA, Molchanovs unless a factual comparison is requested.
+- Be clear, technical, and concise (no generic beginner filler unless truly relevant).
 `;
 }
 
@@ -102,7 +101,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
         max_tokens: 800,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser question:\n${message}` },
+          { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser input:\n${message}` },
         ],
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Chat completion timeout')), 15000)),
@@ -117,9 +116,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
 
 async function extractProfileFields(message: string) {
   const extractionPrompt = `Extract freediving profile info from this message.
-Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), discipline, currentDepth (number).
-
-User: ${message}`;
+Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), discipline, currentDepth (number).`;
 
   try {
     const result = await openai.chat.completions.create({
@@ -127,7 +124,7 @@ User: ${message}`;
       temperature: 0,
       messages: [
         { role: 'system', content: 'You are a precise information extractor for freediving profiles.' },
-        { role: 'user', content: extractionPrompt },
+        { role: 'user', content: message },
       ],
     });
 
@@ -230,16 +227,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Extract profile info
     const extractedProfile = await extractProfileFields(message);
     const mergedProfile = { ...profile, ...extractedProfile };
+
+    // Determine depth from logs, PB, or message
+    const logDepth = diveLogs?.length ? parseFloat(diveLogs[diveLogs.length - 1]?.reachedDepth || 0) : undefined;
+    const depthRange = getDepthRange(
+      mergedProfile.currentDepth || mergedProfile.pb || logDepth || 10
+    );
     const userLevel = detectUserLevel(mergedProfile);
 
-    // Derive depth range (fallback to PB or 10m)
-    const depthRange = getDepthRange(
-      mergedProfile.currentDepth || mergedProfile.pb || 10
-    );
-
-    // EQ Follow-up
+    // Handle EQ follow-up
     if (eqState?.currentDepth) {
       const followup = getNextEQQuestion(eqState);
       if (followup.type === 'question') {
@@ -250,10 +249,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Query knowledge base
-    const contextChunks = await queryPinecone(message, depthRange);
-    const assistantReply = await askWithContext(contextChunks, message, userLevel, depthRange);
+    // Build user context message
+    let userContext = message;
+    if (diveLogs?.length) {
+      const lastLog = diveLogs[diveLogs.length - 1];
+      userContext += `\n\nHere is my most recent dive log: ${JSON.stringify(lastLog)}. Evaluate this dive and help me progress safely toward ${mergedProfile.targetDepth || 120}m.`;
+    }
 
+    // Query Pinecone
+    const contextChunks = await queryPinecone(userContext, depthRange);
+    const assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
+
+    // Save to memory
     await saveToWixMemory({
       userId,
       logEntry: message,
