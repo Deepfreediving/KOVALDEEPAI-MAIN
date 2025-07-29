@@ -67,6 +67,7 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
   }
 }
 
+// ✅ ORIGINAL UNCOMPRESSED PROMPT
 function generateSystemPrompt(level: 'expert' | 'beginner', depthRange: string): string {
   return `
 You are **Koval Deep AI**, a highly specialized freediving coach assistant created by world-record freediver Daniel Koval.  
