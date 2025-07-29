@@ -24,6 +24,13 @@ export default function Index() {
   const [editLogIndex, setEditLogIndex] = useState(null);
   const bottomRef = useRef(null);
 
+  const getDisplayName = () => {
+    if (profile?.loginEmail) return profile.loginEmail;
+    if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
+    if (userId?.startsWith("Guest")) return "Guest User";
+    return "User";
+  };
+
   useEffect(() => {
     const memberDetails = localStorage.getItem("__wix.memberDetails");
     let profileData = {};
@@ -45,7 +52,6 @@ export default function Index() {
       }
     }
 
-    // ✅ Listen for user ID from Wix iframe postMessage
     const receiveUserId = (e) => {
       if (e.data?.type === "user-auth" && e.data.userId) {
         console.log("✅ Received userId from Wix:", e.data.userId);
@@ -55,7 +61,6 @@ export default function Index() {
     };
     window.addEventListener("message", receiveUserId);
 
-    // ✅ Fallback: If no user ID detected, create guest ID
     setTimeout(() => {
       const existing = localStorage.getItem("kovalUser");
       if (!existing) {
@@ -65,7 +70,6 @@ export default function Index() {
       }
     }, 1500);
 
-    // Load session state from local storage
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
     setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
@@ -75,20 +79,24 @@ export default function Index() {
   useEffect(() => {
     const initThread = async () => {
       let id = localStorage.getItem("kovalThreadId");
+      const displayName = getDisplayName();
+
       if (!id && userId) {
         const res = await fetch("/api/create-thread", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: userId }),
+          body: JSON.stringify({ username: userId, displayName }),
         });
         const data = await res.json();
         id = data.threadId;
         localStorage.setItem("kovalThreadId", id);
       }
+
       setThreadId(id);
     };
+
     if (userId) initThread();
-  }, [userId]);
+  }, [userId, profile]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -267,7 +275,10 @@ export default function Index() {
         </div>
 
         <div className="flex-1 flex flex-col h-screen">
-          <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-2 flex justify-end">
+          <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-2 flex justify-between items-center text-sm">
+            <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
+              👤 {getDisplayName()}
+            </div>
             <button
               onClick={() => setDarkMode((prev) => !prev)}
               className="px-4 py-1 rounded border text-sm dark:bg-white dark:text-black bg-black text-white"

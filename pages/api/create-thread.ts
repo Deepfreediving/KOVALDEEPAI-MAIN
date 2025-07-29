@@ -10,7 +10,7 @@ type TextContent = {
   type: 'text';
   text: {
     value: string;
-    annotations: Array<any>; // Add the annotations property to match the expected type
+    annotations: Array<any>;
   };
 };
 
@@ -19,23 +19,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { username = 'guest' } = req.body;
+  const { username = 'guest', displayName = 'Freediver' } = req.body;
 
   if (!OPENAI_API_KEY) {
     console.warn('⚠️ Missing OpenAI API Key — returning mock data.');
     return res.status(200).json({
       threadId: `mock-${Date.now()}`,
-      initialMessage: `👋 Hello ${username}, I’m your freediving AI coach. Ask me anything about EQ, breathwork, or training!`,
+      initialMessage: `👋 Hello ${displayName}, I’m your freediving AI coach. Ask me anything about EQ, breathwork, or training!`,
     });
   }
 
   try {
-    // Step 1: Create thread
+    // Step 1: Create thread with user metadata
     const thread = await openai.beta.threads.create({
-      metadata: { createdBy: username },
+      metadata: {
+        createdBy: username,
+        displayName: displayName,
+      },
     });
 
-    // Step 2: Preload dive log summaries from Wix
+    // Step 2: Load user dive logs from Wix
     const summariesRes = await fetch("https://www.deepfreediving.com/_functions/getUserDiveSummaries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -53,18 +56,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Step 3: Add user intro message
+    // Step 3: Send an introductory user message
     await openai.beta.threads.messages.create(thread.id, {
       role: 'user',
-      content: `Hi, I'm ${username}. Let's begin a freediving conversation.`,
+      content: `Hi, I'm ${displayName}. I'm ready to dive into freediving topics.`,
     });
 
-    // Step 4: Run assistant
+    // Step 4: Run the assistant
     const run = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: ASSISTANT_ID,
     });
 
-    // Step 5: Poll run status with retry
+    // Step 5: Poll for run completion
     let status = run.status;
     let retries = 0;
     const maxRetries = 10;
@@ -80,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error(`Run did not complete (status: ${status}).`);
     }
 
-    // Step 6: Get last assistant message
+    // Step 6: Extract assistant response
     const messages = await openai.beta.threads.messages.list(thread.id);
     const assistantMessage = messages.data.find((m) => m.role === 'assistant');
 
