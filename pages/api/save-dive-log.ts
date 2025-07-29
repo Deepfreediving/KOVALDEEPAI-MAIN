@@ -3,10 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 
-// === Local directory to save dive logs ===
 const LOG_DIR = path.resolve('./data/diveLogs');
 
-// Ensure the directory exists
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
@@ -32,12 +30,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       durationOrDistance,
       attemptType,
       notes,
-      totalDiveTime,        // e.g., '02:30'
-      issueComment,         // optional
-      surfaceProtocol,      // optional
+      totalDiveTime,
+      issueComment,
+      surfaceProtocol,
     } = req.body;
 
-    // === Validation ===
     if (!userId || !date || !discipline) {
       return res.status(400).json({ error: 'Missing required fields: userId, date, or discipline' });
     }
@@ -64,9 +61,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       issueComment,
       surfaceProtocol,
       timestamp: new Date().toISOString(),
+      source: "save-dive-log.ts"
     };
 
-    // Save log as JSON file
     const userLogDir = path.join(LOG_DIR, userId);
     if (!fs.existsSync(userLogDir)) {
       fs.mkdirSync(userLogDir, { recursive: true });
