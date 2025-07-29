@@ -17,14 +17,20 @@ export default function Index() {
   const [darkMode, setDarkMode] = useState(false);
   const [userId, setUserId] = useState(localStorage.getItem("kovalUser") || "");
   const [threadId, setThreadId] = useState(localStorage.getItem("kovalThreadId") || null);
-  const [profile, setProfile] = useState({});
+  const [profile, setProfile] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("kovalProfile") || "{}");
+    } catch {
+      return {};
+    }
+  });
   const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
   const bottomRef = useRef(null);
 
-  // Helper to display name
+  // Display name fallback
   const getDisplayName = () => {
     if (profile?.loginEmail) return profile.loginEmail;
     if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
@@ -41,14 +47,18 @@ export default function Index() {
     }
   };
 
-  // ---------- 1️⃣ User Detection (with Wix iframe message support) ----------
+  // ---------- 1️⃣ User Detection (Wix iframe + local fallback) ----------
   useEffect(() => {
+    console.log("🔄 Initializing user detection...");
+
+    // Try to load stored member details (Wix sometimes sets this in localStorage)
     const memberDetails = localStorage.getItem("__wix.memberDetails");
     if (!userId && memberDetails) {
       try {
         const parsed = JSON.parse(memberDetails);
         const uid = parsed.loginEmail || parsed.id;
         if (uid) {
+          console.log("✅ Loaded user from stored memberDetails:", uid);
           setUserId(uid);
           setProfile(parsed);
           localStorage.setItem("kovalUser", uid);
@@ -59,32 +69,41 @@ export default function Index() {
       }
     }
 
-    // Listen for Wix user-auth message
+    // Listen for Wix iframe messages
     const receiveUserId = (e) => {
       if (!e.data?.type || e.data.type !== "user-auth") return;
+
       if (e.data?.userId) {
         console.log("✅ Received userId from Wix page:", e.data.userId);
         setUserId(e.data.userId);
         localStorage.setItem("kovalUser", e.data.userId);
+
+        // Preserve profile if we have one
+        if (!profile.loginEmail && localStorage.getItem("kovalProfile")) {
+          setProfile(JSON.parse(localStorage.getItem("kovalProfile")));
+        }
       }
     };
-    window.addEventListener("message", receiveUserId);
 
-    // Avoid random Guest fallback if Wix sends real ID soon
+    window.addEventListener("message", receiveUserId);
+    window.opener && window.opener.addEventListener?.("message", receiveUserId);
+
+    // Fallback to Guest only if no Wix message received after 6s
     const fallbackTimer = setTimeout(() => {
-      if (!userId) {
+      if (!userId && !localStorage.getItem("kovalUser")) {
         const guest = `Guest${Date.now()}`;
         setUserId(guest);
         localStorage.setItem("kovalUser", guest);
         console.warn("⚠️ Falling back to guest user:", guest);
       }
-    }, 4000);
+    }, 6000);
 
     return () => {
       clearTimeout(fallbackTimer);
       window.removeEventListener("message", receiveUserId);
+      window.opener && window.opener.removeEventListener?.("message", receiveUserId);
     };
-  }, []);
+  }, [userId, profile]);
 
   // ---------- 2️⃣ Initialize AI Thread ----------
   useEffect(() => {
@@ -135,7 +154,7 @@ export default function Index() {
     fetchLogs();
   }, [userId]);
 
-  // ---------- 4️⃣ Pending Sync Processor (auto-includes userId) ----------
+  // ---------- 4️⃣ Pending Sync Processor ----------
   useEffect(() => {
     const processQueue = async () => {
       const queue = getPendingSync();
@@ -149,9 +168,7 @@ export default function Index() {
 
         const res = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
