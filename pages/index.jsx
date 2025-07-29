@@ -196,9 +196,7 @@ export default function Index() {
         ...prev,
         {
           role: "assistant",
-          content:
-            aiMessage ||
-            "📝 Dive log saved. Let me know if you'd like coaching on this entry!",
+          content: aiMessage || "📝 Dive log saved. Let me know if you'd like coaching on this entry!",
         },
       ]);
     } catch (err) {
