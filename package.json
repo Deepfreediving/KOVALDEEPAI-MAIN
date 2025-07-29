@@ -33,7 +33,8 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "tesseract.js": "^6.0.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "vercel": "^32.0.1"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^15.4.1",
