@@ -15,8 +15,8 @@ export default function Index() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [userId, setUserId] = useState("");
-  const [threadId, setThreadId] = useState(null);
+  const [userId, setUserId] = useState(localStorage.getItem("kovalUser") || "");
+  const [threadId, setThreadId] = useState(localStorage.getItem("kovalThreadId") || null);
   const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
@@ -24,6 +24,7 @@ export default function Index() {
   const [editLogIndex, setEditLogIndex] = useState(null);
   const bottomRef = useRef(null);
 
+  // ---------- Helper Functions ----------
   const getDisplayName = () => {
     if (profile?.loginEmail) return profile.loginEmail;
     if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
@@ -31,12 +32,25 @@ export default function Index() {
     return "User";
   };
 
+  const storageKey = (uid) => `diveLogs-${uid}`;
+
+  const savePendingSync = (logs) => {
+    localStorage.setItem("pendingSync", JSON.stringify(logs));
+  };
+
+  const getPendingSync = () => {
+    try {
+      return JSON.parse(localStorage.getItem("pendingSync") || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  // ---------- 1️⃣ User Detection ----------
   useEffect(() => {
     const memberDetails = localStorage.getItem("__wix.memberDetails");
-    const sessionKey = "kovalSessionsList";
-
-    try {
-      if (memberDetails) {
+    if (!userId && memberDetails) {
+      try {
         const parsed = JSON.parse(memberDetails);
         const uid = parsed.loginEmail || parsed.id;
         if (uid) {
@@ -45,175 +59,130 @@ export default function Index() {
           localStorage.setItem("kovalUser", uid);
           localStorage.setItem("kovalProfile", JSON.stringify(parsed));
         }
+      } catch (e) {
+        console.warn("⚠️ Could not parse Wix member details:", e);
       }
-    } catch (e) {
-      console.warn("⚠️ Could not parse Wix member details:", e);
     }
 
+    // Listen for Wix message
     const receiveUserId = (e) => {
       if (e.origin !== "https://www.deepfreediving.com") return;
       if (e.data?.type === "user-auth" && e.data.userId) {
-        console.log("✅ Received userId from Wix:", e.data.userId);
         setUserId(e.data.userId);
         localStorage.setItem("kovalUser", e.data.userId);
       }
     };
-
     window.addEventListener("message", receiveUserId);
 
-    const fallbackTimeout = setTimeout(() => {
-      if (!localStorage.getItem("kovalUser")) {
-        const guest = `Guest${Date.now()}`;
-        setUserId(guest);
-        localStorage.setItem("kovalUser", guest);
-      }
-    }, 2000);
-
-    setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
-
-    try {
-      const stored = JSON.parse(localStorage.getItem(sessionKey) || "[]");
-      if (Array.isArray(stored)) setSessionsList(stored);
-    } catch {
-      console.warn("⚠️ Invalid session storage. Resetting.");
-      localStorage.removeItem(sessionKey);
+    // Fallback guest user
+    if (!userId) {
+      const guest = `Guest${Date.now()}`;
+      setUserId(guest);
+      localStorage.setItem("kovalUser", guest);
     }
 
-    return () => {
-      clearTimeout(fallbackTimeout);
-      window.removeEventListener("message", receiveUserId);
-    };
+    return () => window.removeEventListener("message", receiveUserId);
   }, []);
 
+  // ---------- 2️⃣ Initialize Thread ----------
   useEffect(() => {
+    if (!userId || threadId) return;
     const initThread = async () => {
-      const displayName = getDisplayName();
-      let id = localStorage.getItem("kovalThreadId");
-
-      if (!id && userId) {
+      try {
         const res = await fetch("/api/create-thread", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: userId, displayName }),
+          body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
         });
         const data = await res.json();
-        id = data.threadId;
-        localStorage.setItem("kovalThreadId", id);
+        if (data.threadId) {
+          setThreadId(data.threadId);
+          localStorage.setItem("kovalThreadId", data.threadId);
+        }
+      } catch (err) {
+        console.error("❌ Thread init failed:", err);
       }
-
-      setThreadId(id);
     };
+    initThread();
+  }, [userId]);
 
-    if (userId) initThread();
-  }, [userId, profile]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
+  // ---------- 3️⃣ Load Dive Logs ----------
   useEffect(() => {
     if (!userId) return;
-    const key = `diveLogs-${userId}`;
+    const key = storageKey(userId);
     const localLogs = JSON.parse(localStorage.getItem(key) || "[]");
+    setDiveLogs(localLogs);
 
     const fetchLogs = async () => {
       try {
         const res = await fetch(`/api/get-dive-logs?userId=${userId}`);
         const remoteLogs = await res.json();
-        const valid = Array.isArray(remoteLogs) ? remoteLogs : localLogs;
-        setDiveLogs(valid);
-        localStorage.setItem(key, JSON.stringify(valid));
+        if (Array.isArray(remoteLogs)) {
+          const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
+            map[log.localId || log._id] = log;
+            return map;
+          }, {});
+          const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
+          setDiveLogs(combined);
+          localStorage.setItem(key, JSON.stringify(combined));
+        }
       } catch {
         console.warn("⚠️ Dive log fetch failed. Using local only.");
-        setDiveLogs(localLogs);
       }
     };
-
     fetchLogs();
   }, [userId]);
 
-  const handleUploadSuccess = (message) => {
-    setMessages((prev) => [...prev, { role: "assistant", content: message }]);
-  };
+  // ---------- 4️⃣ Pending Sync Processor ----------
+  useEffect(() => {
+    const processQueue = async () => {
+      const queue = getPendingSync();
+      if (!queue.length) return;
+      try {
+        const batch = queue.slice(0, 10); // up to 10 at a time
+        const res = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(batch),
+        });
+        const result = await res.json();
+        if (result.success) {
+          savePendingSync(queue.slice(10));
+        }
+      } catch (err) {
+        console.error("❌ Sync error, will retry:", err);
+      }
+    };
 
-  const saveSession = () => {
-    const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
-    const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
-    localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
-    localStorage.setItem("kovalSessionName", sessionName);
-    setSessionsList(updated);
-  };
+    processQueue();
+    const interval = setInterval(processQueue, 10000); // every 10s
+    window.addEventListener("focus", processQueue);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", processQueue);
+    };
+  }, []);
 
-  const newSession = () => {
-    const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
-    setSessionName(name);
-    setMessages([]);
-    setFiles([]);
-    setEditingSessionName(false);
-    localStorage.setItem("kovalSessionName", name);
-  };
-
-  const toggleDiveJournal = () => setShowDiveJournalForm((prev) => !prev);
-
-  const handleSelectSession = (name) => {
-    const found = sessionsList.find((s) => s.sessionName === name);
-    if (found) {
-      setSessionName(found.sessionName);
-      setMessages(found.messages || []);
-      setInput("");
-    }
-  };
-
+  // ---------- 5️⃣ Journal Submit ----------
   const handleJournalSubmit = async (entry) => {
-    const key = `diveLogs-${userId}`;
-    const updated = [...diveLogs];
-    if (editLogIndex !== null) updated[editLogIndex] = entry;
-    else updated.push(entry);
+    const key = storageKey(userId);
+    const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+    const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
 
-    try {
-      localStorage.setItem(key, JSON.stringify(updated));
-      setDiveLogs(updated);
-      setShowDiveJournalForm(false);
-      setEditLogIndex(null);
+    setDiveLogs(updated);
+    localStorage.setItem(key, JSON.stringify(updated));
 
-      await fetch("https://www.deepfreediving.com/_functions/saveToUserMemory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          diveLog: entry,
-          memoryContent: "",
-          timestamp: new Date(),
-          sessionName: "Dive Log Entry",
-        }),
-      });
+    // Queue for sync
+    const pending = getPendingSync();
+    savePendingSync([...pending, { userId, diveLog: newEntry, timestamp: new Date() }]);
 
-      const memoryRes = await fetch("/api/record-memory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ log: entry, userId, threadId }),
-      });
+    setShowDiveJournalForm(false);
+    setEditLogIndex(null);
 
-      const memoryData = await memoryRes.json();
-      const aiMessage = memoryData?.assistantMessage?.content;
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: aiMessage || "📝 Dive log saved. Let me know if you'd like coaching.",
-        },
-      ]);
-    } catch (err) {
-      console.error("❌ Error submitting dive log:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "⚠️ There was an error saving or analyzing your dive log.",
-        },
-      ]);
-    }
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "📝 Dive log saved locally and will sync soon." },
+    ]);
   };
 
   const handleEdit = (index) => {
@@ -222,7 +191,7 @@ export default function Index() {
   };
 
   const handleDelete = (index) => {
-    const key = `diveLogs-${userId}`;
+    const key = storageKey(userId);
     const updated = diveLogs.filter((_, i) => i !== index);
     localStorage.setItem(key, JSON.stringify(updated));
     setDiveLogs(updated);
@@ -267,10 +236,30 @@ export default function Index() {
         <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
           <Sidebar
             {...sharedProps}
-            startNewSession={newSession}
-            handleSaveSession={saveSession}
-            toggleDiveJournal={toggleDiveJournal}
-            handleSelectSession={handleSelectSession}
+            startNewSession={() => {
+              const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
+              setSessionName(name);
+              setMessages([]);
+              setFiles([]);
+              setEditingSessionName(false);
+              localStorage.setItem("kovalSessionName", name);
+            }}
+            handleSaveSession={() => {
+              const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
+              const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
+              localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+              localStorage.setItem("kovalSessionName", sessionName);
+              setSessionsList(updated);
+            }}
+            toggleDiveJournal={() => setShowDiveJournalForm((prev) => !prev)}
+            handleSelectSession={(name) => {
+              const found = sessionsList.find((s) => s.sessionName === name);
+              if (found) {
+                setSessionName(found.sessionName);
+                setMessages(found.messages || []);
+                setInput("");
+              }
+            }}
             handleJournalSubmit={handleJournalSubmit}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
@@ -300,7 +289,7 @@ export default function Index() {
             />
           </div>
 
-          <ChatBox {...sharedProps} onUploadSuccess={handleUploadSuccess} />
+          <ChatBox {...sharedProps} />
         </div>
       </main>
     </div>

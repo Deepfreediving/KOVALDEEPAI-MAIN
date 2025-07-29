@@ -1,90 +1,136 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { OpenAI } from 'openai';
+import OpenAI from 'openai';
 import axios from 'axios';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
-// Initialize OpenAI and Pinecone
+// === INITIALIZATION ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
+
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY || '',
+});
 const index = pinecone.Index(process.env.PINECONE_INDEX || '');
 
-// === SYSTEM PROMPTS ===
+// === HELPERS ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
   const pb = profile?.pb || profile?.personalBestDepth;
   const certLevel = profile?.certLevel || '';
   const isInstructor = profile?.isInstructor;
   const numericPB = typeof pb === 'string' ? parseFloat(pb.replace(/[^\d.]/g, '')) : pb;
+
   if (numericPB && numericPB >= 80) return 'expert';
   if (isInstructor || certLevel.toLowerCase().includes('instructor')) return 'expert';
   return 'beginner';
 }
 
-function generateSystemPrompt(level: 'expert' | 'beginner'): string {
-  return level === 'expert'
-    ? `You are Koval Deep AI, an elite freediving coach trained in EN.C.L.O.S.E. diagnostics and high-performance coaching systems.
-You help divers over 80m solve EQ, narcosis, lung strain, and CO₂ limitations.
-Always provide accurate, safe, detailed, and actionable training advice.`
-    : `You are Koval AI, a supportive assistant for beginner freedivers training below 80m.
-Guide one step at a time. Ensure all advice is safe, clear, personalized, and non-medical.`;
+function getDepthRange(depth: number): string {
+  if (!depth || isNaN(depth)) return '10m';
+  const rounded = Math.floor(depth / 10) * 10;
+  return `${rounded}m`;
 }
 
-// === UTILITIES ===
 async function getQueryEmbedding(query: string): Promise<number[]> {
-  const res = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: query,
-  });
-  return res?.data?.[0]?.embedding || [];
+  try {
+    const res = await Promise.race([
+      openai.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: query,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Embedding timeout')), 8000)),
+    ]);
+    return (res as any)?.data?.[0]?.embedding || [];
+  } catch (err) {
+    console.error('Embedding error:', err);
+    return [];
+  }
 }
 
-async function queryPinecone(query: string): Promise<string[]> {
-  const vector = await getQueryEmbedding(query);
-  const result = await index.query({
-    vector,
-    topK: 6,
-    includeMetadata: true,
-  });
-  return result?.matches
-    ?.map((m) => m.metadata?.text)
-    .filter((t): t is string => typeof t === 'string' && t.length > 20) || [];
+async function queryPinecone(query: string, depthRange: string): Promise<string[]> {
+  try {
+    const vector = await getQueryEmbedding(query);
+    if (!vector.length) return [];
+
+    const result = await index.query({
+      vector,
+      topK: 8,
+      includeMetadata: true,
+      filter: {
+        approvedBy: 'Koval',
+        depthRange: { $in: [depthRange, 'all'] },
+      },
+    });
+
+    return result?.matches
+      ?.map((m) => m.metadata?.text)
+      .filter((t): t is string => typeof t === 'string' && t.length > 15) || [];
+  } catch (err) {
+    console.error('Pinecone query error:', err);
+    return [];
+  }
 }
 
-async function askWithContext(contextChunks: string[], message: string, userLevel: 'expert' | 'beginner') {
+function generateSystemPrompt(level: 'expert' | 'beginner', depthRange: string): string {
+  return `
+You are **Koval Deep AI**, the only freediving assistant trained directly by Daniel Koval.
+
+Rules for your response:
+- Base your answer ONLY on Koval-approved knowledge retrieved from Pinecone.
+- Adapt to the diver’s current depth (${depthRange}) and their experience level (${level}).
+- Always follow this structure:
+
+1️⃣ Physics & Physiology (laws that apply, e.g., Boyle's, Dalton's, RV, MDR)
+2️⃣ Diver Experience (what they feel physically at this depth)
+3️⃣ Training Adaptation (how Koval training adapts physiology safely)
+4️⃣ Motivator Hook (make them curious or excited to learn the next step)
+
+- Exclude SSI, Padi, AIDA, Molchanovs, or any non-Koval standards unless a factual comparison is requested.
+- Never give unsafe or speculative advice.
+- Use simple, clear language while remaining technically precise.
+`;
+}
+
+async function askWithContext(contextChunks: string[], message: string, userLevel: 'expert' | 'beginner', depthRange: string) {
   const context = contextChunks.join('\n\n');
-  const systemPrompt = generateSystemPrompt(userLevel);
+  const systemPrompt = generateSystemPrompt(userLevel, depthRange);
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4',
-    temperature: 0.4,
-    max_tokens: 700,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Context:\n${context}\n\nUser:\n${message}` },
-    ],
-  });
+  try {
+    const response = await Promise.race([
+      openai.chat.completions.create({
+        model: 'gpt-4o',
+        temperature: 0.4,
+        max_tokens: 800,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser question:\n${message}` },
+        ],
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Chat completion timeout')), 15000)),
+    ]);
 
-  return response.choices[0]?.message?.content?.trim() || '⚠️ No response generated.';
+    return (response as any).choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
+  } catch (err) {
+    console.error('Chat completion error:', err);
+    return '⚠️ I encountered a processing issue. Please try again.';
+  }
 }
 
 async function extractProfileFields(message: string) {
-  const extractionPrompt = `Extract relevant freediving profile fields from the user's message.
-Return JSON with keys: pb, certLevel, focus, isInstructor (boolean), discipline. Omit if unknown.
-
-Example: {"pb":112, "certLevel":"AIDA", "focus":"EQ", "isInstructor":false, "discipline":"CWT"}
+  const extractionPrompt = `Extract freediving profile info from this message.
+Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), discipline, currentDepth (number).
 
 User: ${message}`;
 
-  const result = await openai.chat.completions.create({
-    model: 'gpt-4',
-    temperature: 0,
-    messages: [
-      { role: 'system', content: 'You are a precise information extractor for freediving profiles.' },
-      { role: 'user', content: extractionPrompt },
-    ],
-  });
-
   try {
+    const result = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0,
+      messages: [
+        { role: 'system', content: 'You are a precise information extractor for freediving profiles.' },
+        { role: 'user', content: extractionPrompt },
+      ],
+    });
+
     return JSON.parse(result.choices[0].message.content || '{}');
   } catch {
     return {};
@@ -127,7 +173,6 @@ async function saveToWixMemory({
   }
 }
 
-// === CORS HANDLER ===
 const handleCors = (req: NextApiRequest, res: NextApiResponse): boolean => {
   const origin = req.headers.origin || '';
   const allowedOrigins = [
@@ -159,17 +204,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const {
-  message,
-  userId = 'guest',
-  profile = {},
-  eqState,
-  diveLogs = [],
-  intakeCount = 0,
-  uploadOnly,
-  sessionId,
-  sessionName,
-} = req.body;
-
+    message,
+    userId = 'guest',
+    profile = {},
+    eqState,
+    diveLogs = [],
+    intakeCount = 0,
+    uploadOnly,
+    sessionId,
+    sessionName,
+  } = req.body;
 
   if (!message && uploadOnly) {
     return res.status(200).json({
@@ -190,6 +234,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mergedProfile = { ...profile, ...extractedProfile };
     const userLevel = detectUserLevel(mergedProfile);
 
+    // Derive depth range (fallback to PB or 10m)
+    const depthRange = getDepthRange(
+      mergedProfile.currentDepth || mergedProfile.pb || 10
+    );
+
     // EQ Follow-up
     if (eqState?.currentDepth) {
       const followup = getNextEQQuestion(eqState);
@@ -201,9 +250,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Chat with contextual memory
-    const contextChunks = await queryPinecone(message);
-    const assistantReply = await askWithContext(contextChunks, message, userLevel);
+    // Query knowledge base
+    const contextChunks = await queryPinecone(message, depthRange);
+    const assistantReply = await askWithContext(contextChunks, message, userLevel, depthRange);
 
     await saveToWixMemory({
       userId,
@@ -217,6 +266,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sessionType: 'training',
         intentLabel: 'ai-response',
         userLevel,
+        depthRange,
       },
     });
 
