@@ -28,15 +28,8 @@ export default function Index() {
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
-  const [wixData, setWixData] = useState([]); // <-- NEW STATE for Wix data
+  const [wixData, setWixData] = useState([]);
   const bottomRef = useRef(null);
-
-  // Display name fallback
-  const getDisplayName = () => {
-    if (profile?.loginEmail) return profile.loginEmail;
-    if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
-    return userId?.startsWith("Guest") ? "Guest User" : "User";
-  };
 
   const storageKey = (uid) => `diveLogs-${uid}`;
   const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
@@ -48,43 +41,42 @@ export default function Index() {
     }
   };
 
-  // ---------- 1️⃣ Fetch Wix Collection Data ----------
+  // ✅ Display name helper
+  const getDisplayName = () => {
+    if (profile?.loginEmail) return profile.loginEmail;
+    if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
+    return userId?.startsWith("Guest") ? "Guest User" : "User";
+  };
+
+  // 1️⃣ Fetch Wix Collection Data
   useEffect(() => {
     const fetchWixData = async () => {
       try {
         const res = await fetch("/api/wixconnect");
         const json = await res.json();
-
         if (json.data) {
           setWixData(json.data);
-          // Optionally add to chat messages
           setMessages((prev) => [
             ...prev,
-            {
-              role: "assistant",
-              content: `📌 Pulled ${json.data.length} data items from Wix collection.`,
-            },
+            { role: "assistant", content: `📌 Pulled ${json.data.length} data items from Wix collection.` },
           ]);
         }
       } catch (err) {
         console.error("❌ Failed to fetch Wix data:", err);
       }
     };
-
     fetchWixData();
   }, []);
 
-  // ---------- 2️⃣ User Detection (Wix iframe + local fallback) ----------
+  // 2️⃣ Detect User (iframe postMessage or local fallback)
   useEffect(() => {
     console.log("🔄 Initializing user detection...");
-
     const memberDetails = localStorage.getItem("__wix.memberDetails");
     if (!userId && memberDetails) {
       try {
         const parsed = JSON.parse(memberDetails);
         const uid = parsed.loginEmail || parsed.id;
         if (uid) {
-          console.log("✅ Loaded user from stored memberDetails:", uid);
           setUserId(uid);
           setProfile(parsed);
           localStorage.setItem("kovalUser", uid);
@@ -96,7 +88,7 @@ export default function Index() {
     }
 
     const receiveUserId = (e) => {
-      if (!e.data?.type || e.data.type !== "user-auth") return;
+      if (e.data?.type !== "user-auth") return;
       if (e.data?.userId) {
         console.log("✅ Received userId from Wix page:", e.data.userId);
         setUserId(e.data.userId);
@@ -123,7 +115,7 @@ export default function Index() {
     };
   }, [userId, profile]);
 
-  // ---------- 3️⃣ Initialize AI Thread ----------
+  // 3️⃣ Initialize AI Thread
   useEffect(() => {
     if (!userId || threadId) return;
     const initThread = async () => {
@@ -145,7 +137,7 @@ export default function Index() {
     initThread();
   }, [userId]);
 
-  // ---------- 4️⃣ Load Dive Logs ----------
+  // 4️⃣ Load Dive Logs (local + remote + memory endpoint)
   useEffect(() => {
     if (!userId) return;
     const key = storageKey(userId);
@@ -154,42 +146,47 @@ export default function Index() {
 
     const fetchLogs = async () => {
       try {
+        // ✅ Fetch logs from remote DB
         const res = await fetch(`/api/get-dive-logs?userId=${encodeURIComponent(userId)}`);
         const remoteLogs = await res.json();
-        if (Array.isArray(remoteLogs)) {
-          const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
-            map[log.localId || log._id] = log;
-            return map;
-          }, {});
-          const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
-          setDiveLogs(combined);
-          localStorage.setItem(key, JSON.stringify(combined));
-        }
-      } catch {
-        console.warn("⚠️ Dive log fetch failed. Using local only.");
+
+        // ✅ Fetch logs from /api/read-memory
+        const memRes = await fetch("/api/read-memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+        const memData = await memRes.json();
+        const memoryLogs = memData?.memory || [];
+
+        // ✅ Merge all sources
+        const merged = [...localLogs, ...(remoteLogs || []), ...memoryLogs].reduce((map, log) => {
+          map[log.localId || log._id || log.id] = log;
+          return map;
+        }, {});
+        const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        setDiveLogs(combined);
+        localStorage.setItem(key, JSON.stringify(combined));
+      } catch (err) {
+        console.warn("⚠️ Dive log fetch failed. Using local only.", err);
       }
     };
     fetchLogs();
   }, [userId]);
 
-  // ---------- 5️⃣ Pending Sync Processor ----------
+  // 5️⃣ Sync queued logs to backend
   useEffect(() => {
     const processQueue = async () => {
       const queue = getPendingSync();
       if (!queue.length) return;
-
       try {
-        const payload = queue.map((item) => ({
-          ...item,
-          userId: userId || item.userId,
-        }));
-
+        const payload = queue.map((item) => ({ ...item, userId: userId || item.userId }));
         const res = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-
         if (res.ok) {
           savePendingSync([]);
         } else {
@@ -209,12 +206,11 @@ export default function Index() {
     };
   }, [userId]);
 
-  // ---------- 6️⃣ Journal Submit ----------
+  // 6️⃣ Handle Dive Journal
   const handleJournalSubmit = async (entry) => {
     const key = storageKey(userId);
     const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
     const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
-
     setDiveLogs(updated);
     localStorage.setItem(key, JSON.stringify(updated));
 
@@ -223,11 +219,7 @@ export default function Index() {
 
     setShowDiveJournalForm(false);
     setEditLogIndex(null);
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", content: "📝 Dive log saved locally and queued for sync." },
-    ]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "📝 Dive log saved locally and queued for sync." }]);
   };
 
   const handleEdit = (index) => {

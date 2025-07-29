@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 
 const LOG_DIR = path.resolve('./data/diveLogs');
+const SAFE_USERID = /^[a-zA-Z0-9_-]+$/;
 
 interface DiveLog {
+  timestamp?: string | number;
   [key: string]: any;
 }
 
@@ -19,36 +21,39 @@ export default async function handler(
 
   const { userId } = req.query;
 
-  if (!userId || typeof userId !== 'string') {
+  // ✅ Validate userId format
+  if (!userId || typeof userId !== 'string' || !SAFE_USERID.test(userId)) {
     res.status(400).json({ error: 'Missing or invalid userId' });
     return;
   }
 
   const userPath = path.join(LOG_DIR, userId);
 
-  if (!fs.existsSync(userPath)) {
-    res.status(200).json({ logs: [] }); // No logs yet
-    return;
-  }
-
   try {
-    const files = fs.readdirSync(userPath);
+    // ✅ Check if directory exists
+    try {
+      await fs.access(userPath);
+    } catch {
+      res.status(200).json({ logs: [] });
+      return;
+    }
+
+    const files = await fs.readdir(userPath);
     const logs: DiveLog[] = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
           const filePath = path.join(userPath, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const parsed: DiveLog = JSON.parse(content);
-          logs.push(parsed);
+          const content = await fs.readFile(filePath, 'utf8');
+          logs.push(JSON.parse(content));
         } catch (parseErr) {
           console.warn(`⚠️ Could not parse file ${file}:`, parseErr);
         }
       }
     }
 
-    // ✅ Optional: Sort logs by timestamp (most recent first)
+    // ✅ Sort logs (most recent first)
     logs.sort((a, b) => {
       const dateA = new Date(a.timestamp || 0).getTime();
       const dateB = new Date(b.timestamp || 0).getTime();

@@ -6,11 +6,10 @@ import { OpenAI } from "openai";
 
 export const config = {
   api: {
-    bodyParser: false, // Required for formidable
+    bodyParser: false,
   },
 };
 
-// Ensure uploads directory exists
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -25,9 +24,9 @@ if (!apiKey) {
 const openai = new OpenAI({ apiKey });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
   if (req.method === "OPTIONS") {
-    // CORS preflight
-    res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     return res.status(204).end();
@@ -40,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = new IncomingForm({
     uploadDir,
     keepExtensions: true,
-    maxFileSize: 5 * 1024 * 1024, // 5MB max
+    maxFileSize: 5 * 1024 * 1024,
     multiples: false,
     filter: ({ mimetype }) => ["image/jpeg", "image/png"].includes(mimetype || ""),
   });
@@ -52,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const fileEntry = extractUploadedFile(files);
-    if (!fileEntry || !fileEntry.filepath) {
+    if (!fileEntry?.filepath) {
       return res.status(400).json({ error: "No image file uploaded." });
     }
 
@@ -63,33 +62,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const base64Image = fs.readFileSync(filePath, "base64");
 
       const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o", // multimodal
         max_tokens: 800,
         messages: [
           {
             role: "system",
-            content: `
-              You are a professional freediving coach.
-              Analyze dive profile images showing:
-              - Depth over time
-              - Dive time
-              - Ascent/descent rates
-              - Turnaround point
-              Provide coaching insights and suggestions.
-            `,
+            content: "You are a professional freediving coach analyzing dive profiles.",
           },
           {
             role: "user",
             content: [
               {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`,
-                },
+                type: "text",
+                text: "Please analyze this dive profile image and provide coaching feedback:",
               },
               {
-                type: "text",
-                text: "Please analyze this dive profile image and give coaching feedback.",
+                type: "image_url",
+                image_url: { url: `data:${mimeType};base64,${base64Image}` },
               },
             ],
           },
@@ -98,21 +87,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const result = aiResponse.choices?.[0]?.message?.content?.trim();
 
-      // Delete file after use
+      // Cleanup temp file
       fs.unlink(filePath, (unlinkErr) => {
-        if (unlinkErr) {
-          console.warn("⚠️ Failed to delete temp file:", unlinkErr.message);
-        }
+        if (unlinkErr) console.warn("⚠️ Failed to delete temp file:", unlinkErr.message);
       });
 
-      if (!result) {
-        return res.status(200).json({ answer: "⚠️ Image uploaded, but no feedback received." });
-      }
+      return res.status(200).json({
+        answer: result || "⚠️ Image uploaded, but no feedback received.",
+      });
 
-      return res.status(200).json({ answer: result });
     } catch (error: any) {
       console.error("❌ OpenAI image analysis failed:", error?.message || error);
-      return res.status(500).json({ error: "Image analysis failed. Please try again or check image format." });
+
+      // Cleanup temp file on error
+      fs.unlink(filePath, () => {});
+      return res.status(500).json({
+        error: "Image analysis failed. Please try again or check image format.",
+      });
     }
   });
 }
