@@ -5,7 +5,28 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const assistantId = process.env.OPENAI_ASSISTANT_ID;
+
 const safe = (v: any) => (v !== undefined && v !== null && v !== "") ? v : 'N/A';
+
+// Helper to timeout a promise
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("OpenAI response timed out."));
+    }, timeoutMs);
+
+    promise
+      .then((res) => {
+        clearTimeout(timeout);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+  });
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -48,9 +69,12 @@ Dive Log Summary for User ${userId}:
       },
     });
 
-    const run = await openai.beta.threads.runs.createAndPoll(threadId, {
-      assistant_id: process.env.OPENAI_ASSISTANT_ID!,
-    });
+    const run = await withTimeout(
+      openai.beta.threads.runs.createAndPoll(threadId, {
+        assistant_id: assistantId!,
+      }),
+      20000 // 20 second timeout
+    );
 
     const messages = await openai.beta.threads.messages.list(threadId);
     const assistantMessage = messages.data.find(msg => msg.role === 'assistant') || {
@@ -63,8 +87,8 @@ Dive Log Summary for User ${userId}:
       assistantMessage,
     });
 
-  } catch (err) {
-    console.error("❌ Error recording memory:", err);
+  } catch (err: any) {
+    console.error("❌ Error recording memory:", err?.message || err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }

@@ -33,67 +33,62 @@ export default function Index() {
 
   useEffect(() => {
     const memberDetails = localStorage.getItem("__wix.memberDetails");
-    let profileData = {};
-    let storedId = "";
+    const sessionKey = "kovalSessionsList";
 
-    if (memberDetails) {
-      try {
+    try {
+      if (memberDetails) {
         const parsed = JSON.parse(memberDetails);
-        profileData = parsed;
-        storedId = parsed.loginEmail || parsed.id;
-        if (storedId) {
-          localStorage.setItem("kovalUser", storedId);
-          localStorage.setItem("kovalProfile", JSON.stringify(profileData));
-          setUserId(storedId);
-          setProfile(profileData);
+        const uid = parsed.loginEmail || parsed.id;
+        if (uid) {
+          setUserId(uid);
+          setProfile(parsed);
+          localStorage.setItem("kovalUser", uid);
+          localStorage.setItem("kovalProfile", JSON.stringify(parsed));
         }
-      } catch (e) {
-        console.warn("⚠️ Could not parse Wix member details:", e);
       }
+    } catch (e) {
+      console.warn("⚠️ Could not parse Wix member details:", e);
     }
 
     const receiveUserId = (e) => {
-      const allowedOrigin = "https://www.deepfreediving.com";
-      if (e.origin !== allowedOrigin) {
-        console.warn("⚠️ Ignored message from untrusted origin:", e.origin);
-        return;
-      }
-
+      if (e.origin !== "https://www.deepfreediving.com") return;
       if (e.data?.type === "user-auth" && e.data.userId) {
         console.log("✅ Received userId from Wix:", e.data.userId);
-        localStorage.setItem("kovalUser", e.data.userId);
         setUserId(e.data.userId);
-      } else {
-        console.warn("⚠️ Message received, but missing required fields:", e.data);
+        localStorage.setItem("kovalUser", e.data.userId);
       }
     };
 
     window.addEventListener("message", receiveUserId);
 
-    // Guest fallback if nothing received after delay
-    const timeout = setTimeout(() => {
-      const existing = localStorage.getItem("kovalUser");
-      if (!existing) {
-        const guestId = `Guest${Date.now()}`;
-        console.log("👤 No user received — using guest ID:", guestId);
-        localStorage.setItem("kovalUser", guestId);
-        setUserId(guestId);
+    const fallbackTimeout = setTimeout(() => {
+      if (!localStorage.getItem("kovalUser")) {
+        const guest = `Guest${Date.now()}`;
+        setUserId(guest);
+        localStorage.setItem("kovalUser", guest);
       }
     }, 2000);
 
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
-    setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
+
+    try {
+      const stored = JSON.parse(localStorage.getItem(sessionKey) || "[]");
+      if (Array.isArray(stored)) setSessionsList(stored);
+    } catch {
+      console.warn("⚠️ Invalid session storage. Resetting.");
+      localStorage.removeItem(sessionKey);
+    }
 
     return () => {
+      clearTimeout(fallbackTimeout);
       window.removeEventListener("message", receiveUserId);
-      clearTimeout(timeout);
     };
   }, []);
 
   useEffect(() => {
     const initThread = async () => {
-      let id = localStorage.getItem("kovalThreadId");
       const displayName = getDisplayName();
+      let id = localStorage.getItem("kovalThreadId");
 
       if (!id && userId) {
         const res = await fetch("/api/create-thread", {
@@ -125,11 +120,11 @@ export default function Index() {
       try {
         const res = await fetch(`/api/get-dive-logs?userId=${userId}`);
         const remoteLogs = await res.json();
-        const combined = Array.isArray(remoteLogs) ? remoteLogs : localLogs;
-        localStorage.setItem(key, JSON.stringify(combined));
-        setDiveLogs(combined);
+        const valid = Array.isArray(remoteLogs) ? remoteLogs : localLogs;
+        setDiveLogs(valid);
+        localStorage.setItem(key, JSON.stringify(valid));
       } catch {
-        console.warn("⚠️ Dive log fetch failed. Using local logs.");
+        console.warn("⚠️ Dive log fetch failed. Using local only.");
         setDiveLogs(localLogs);
       }
     };
@@ -172,12 +167,8 @@ export default function Index() {
   const handleJournalSubmit = async (entry) => {
     const key = `diveLogs-${userId}`;
     const updated = [...diveLogs];
-
-    if (editLogIndex !== null) {
-      updated[editLogIndex] = entry;
-    } else {
-      updated.push(entry);
-    }
+    if (editLogIndex !== null) updated[editLogIndex] = entry;
+    else updated.push(entry);
 
     try {
       localStorage.setItem(key, JSON.stringify(updated));
@@ -210,9 +201,7 @@ export default function Index() {
         ...prev,
         {
           role: "assistant",
-          content:
-            aiMessage ||
-            "📝 Dive log saved. Let me know if you'd like coaching on this entry!",
+          content: aiMessage || "📝 Dive log saved. Let me know if you'd like coaching.",
         },
       ]);
     } catch (err) {

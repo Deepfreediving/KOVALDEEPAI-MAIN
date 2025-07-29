@@ -4,17 +4,17 @@ import fs from "fs";
 import path from "path";
 import { OpenAI } from "openai";
 
+export const config = {
+  api: {
+    bodyParser: false, // Required for formidable
+  },
+};
+
 // Ensure uploads directory exists
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 const apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {
@@ -25,6 +25,14 @@ if (!apiKey) {
 const openai = new OpenAI({ apiKey });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === "OPTIONS") {
+    // CORS preflight
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST requests are allowed." });
   }
@@ -32,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = new IncomingForm({
     uploadDir,
     keepExtensions: true,
-    maxFileSize: 5 * 1024 * 1024,
+    maxFileSize: 5 * 1024 * 1024, // 5MB max
     multiples: false,
     filter: ({ mimetype }) => ["image/jpeg", "image/png"].includes(mimetype || ""),
   });
@@ -40,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   form.parse(req, async (err, fields, files: Files) => {
     if (err) {
       console.error("❌ Form parse error:", err);
-      return res.status(400).json({ error: "Image upload parsing failed." });
+      return res.status(400).json({ error: "Failed to parse uploaded file." });
     }
 
     const fileEntry = extractUploadedFile(files);
@@ -48,12 +56,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "No image file uploaded." });
     }
 
+    const filePath = fileEntry.filepath;
+    const mimeType = fileEntry.mimetype || "image/jpeg";
+
     try {
-      const filePath = fileEntry.filepath;
-      const mimeType = fileEntry.mimetype || "image/jpeg";
       const base64Image = fs.readFileSync(filePath, "base64");
 
-      const response = await openai.chat.completions.create({
+      const aiResponse = await openai.chat.completions.create({
         model: "gpt-4o",
         max_tokens: 800,
         messages: [
@@ -87,25 +96,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ],
       });
 
-      const result = response.choices?.[0]?.message?.content?.trim();
+      const result = aiResponse.choices?.[0]?.message?.content?.trim();
 
-      fs.unlink(filePath, (err) => {
-        if (err) console.warn("⚠️ Could not delete file:", err);
+      // Delete file after use
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.warn("⚠️ Failed to delete temp file:", unlinkErr.message);
+        }
       });
 
       if (!result) {
-        return res.status(200).json({ answer: "⚠️ Image uploaded, but no analysis returned." });
+        return res.status(200).json({ answer: "⚠️ Image uploaded, but no feedback received." });
       }
 
       return res.status(200).json({ answer: result });
     } catch (error: any) {
       console.error("❌ OpenAI image analysis failed:", error?.message || error);
-      return res.status(500).json({ error: "Image analysis failed. Try again or check image quality." });
+      return res.status(500).json({ error: "Image analysis failed. Please try again or check image format." });
     }
   });
 }
 
-// Helper to extract file safely
 function extractUploadedFile(files: Files): File | undefined {
   const file = files.image || Object.values(files)[0];
   return Array.isArray(file) ? file[0] : file;
