@@ -40,6 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing log, threadId, or userId' });
     }
 
+    // -----------------------------
+    // 1️⃣ Build Dive Log Summary
+    // -----------------------------
     const summary = `
 Dive Log Summary for User ${userId}:
 - Date: ${safe(log.date)}
@@ -59,6 +62,9 @@ Dive Log Summary for User ${userId}:
 - Notes: ${safe(log.notes)}
 `;
 
+    // -----------------------------
+    // 2️⃣ Save to OpenAI Memory
+    // -----------------------------
     await openai.beta.threads.messages.create(threadId, {
       role: 'user',
       content: `Here is a dive log entry:\n${summary}\nPlease keep this in memory and provide a coaching response.`,
@@ -82,6 +88,44 @@ Dive Log Summary for User ${userId}:
       content: "✅ Log received. No detailed response available yet.",
     };
 
+    // -----------------------------
+    // 3️⃣ Save to Wix CMS (User Memory)
+    // -----------------------------
+    try {
+      const wixResp = await fetch('https://www.deepfreediving.com/_functions/saveToUserMemory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          Date: log.date || new Date().toISOString(),
+          disciplineType: log.disciplineType || '',
+          discipline: log.discipline || '',
+          location: log.location || '',
+          targetDepth: log.targetDepth || '',
+          reachedDepth: log.reachedDepth || '',
+          mouthfillDepth: log.mouthfillDepth || '',
+          issueDepth: log.issueDepth || '',
+          issueComment: log.issueComment || '',
+          durationOrDistance: log.durationOrDistance || '',
+          totalDiveTime: log.totalDiveTime || '',
+          attemptType: log.attemptType || '',
+          exit: log.exit || '',
+          surfaceProtocol: log.surfaceProtocol || '',
+          squeeze: log.squeeze ? 'Yes' : 'No',
+          notes: log.notes || '',
+          threadId
+        }),
+      });
+
+      const wixData = await wixResp.json();
+      console.log("✅ Wix save response:", wixData);
+    } catch (wixErr: any) {
+      console.error("❌ Failed to save to Wix User Memory:", wixErr.message || wixErr);
+    }
+
+    // -----------------------------
+    // 4️⃣ Send API Response
+    // -----------------------------
     return res.status(200).json({
       success: true,
       assistantMessage,
