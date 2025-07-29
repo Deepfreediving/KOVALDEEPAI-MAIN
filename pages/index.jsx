@@ -45,8 +45,9 @@ export default function Index() {
       }
     }
 
+    // ✅ Listen for user ID from Wix iframe postMessage
     const receiveUserId = (e) => {
-      if (e.data?.type === "user-auth" && e.data?.userId) {
+      if (e.data?.type === "user-auth" && e.data.userId) {
         console.log("✅ Received userId from Wix:", e.data.userId);
         localStorage.setItem("kovalUser", e.data.userId);
         setUserId(e.data.userId);
@@ -54,6 +55,7 @@ export default function Index() {
     };
     window.addEventListener("message", receiveUserId);
 
+    // ✅ Fallback: If no user ID detected, create guest ID
     setTimeout(() => {
       const existing = localStorage.getItem("kovalUser");
       if (!existing) {
@@ -63,6 +65,7 @@ export default function Index() {
       }
     }, 1500);
 
+    // Load session state from local storage
     setSessionName(localStorage.getItem("kovalSessionName") || defaultSessionName);
     setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList") || "[]"));
 
