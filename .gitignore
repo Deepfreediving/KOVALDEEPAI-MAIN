@@ -13,3 +13,4 @@ node_modules/
 *.swp
 # prevent uploaded images from being committed
 /public/uploads/
+.next
