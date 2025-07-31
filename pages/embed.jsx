@@ -6,11 +6,12 @@ import dynamic from "next/dynamic";
 const App = dynamic(() => import("./index"), { ssr: false });
 
 export default function Embed() {
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<Array<any>>([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    // ✅ Notify parent page to resize iframe dynamically
+    // ✅ Function to adjust iframe height dynamically
     const adjustHeight = () => {
       if (window.parent) {
         window.parent.postMessage(
@@ -20,11 +21,11 @@ export default function Embed() {
       }
     };
 
-    // Watch for DOM size changes to auto-fit height
+    // ✅ Observe DOM changes to trigger height adjustments
     const resizeObserver = new ResizeObserver(adjustHeight);
     resizeObserver.observe(document.body);
 
-    // ✅ Listen for messages from parent widget
+    // ✅ Listen for messages from parent widget (external sites)
     const handleMessage = async (event) => {
       const allowedOrigins = [
         window.location.origin,
@@ -34,20 +35,21 @@ export default function Embed() {
 
       if (event.data?.type === "LOAD_LOGS" && event.data.data?.userId) {
         setLoading(true);
+        setErrorMsg("");
         try {
           const res = await fetch(`/api/getDiveLogs?userId=${event.data.data.userId}`);
           if (!res.ok) throw new Error(`API error: ${res.status}`);
           const data = await res.json();
 
-          // ✅ Always continue loading bot even if no logs exist
-          if (Array.isArray(data.logs) && data.logs.length > 0) {
+          if (Array.isArray(data.logs)) {
             setLogs(data.logs);
           } else {
-            console.info("ℹ️ No dive logs found for this user.");
+            console.info("ℹ️ No valid dive logs found for this user.");
             setLogs([]);
           }
         } catch (err) {
           console.error("❌ Failed to fetch dive logs:", err);
+          setErrorMsg("Failed to load dive logs. Please try again later.");
           setLogs([]);
         } finally {
           setLoading(false);
@@ -73,11 +75,11 @@ export default function Embed() {
         flexDirection: "column",
         backgroundColor: "#fff",
         overflow: "hidden",
-        fontFamily: "Arial, sans-serif"
+        fontFamily: "Arial, sans-serif",
       }}
     >
       {/* ✅ Main Bot App */}
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, overflowY: "auto" }}>
         <App />
       </div>
 
@@ -85,6 +87,13 @@ export default function Embed() {
       {loading && (
         <div style={{ padding: "10px", background: "#222", color: "#ccc" }}>
           Loading dive logs...
+        </div>
+      )}
+
+      {/* ✅ Error State */}
+      {!loading && errorMsg && (
+        <div style={{ padding: "10px", background: "#300", color: "#fdd" }}>
+          {errorMsg}
         </div>
       )}
 
@@ -97,7 +106,7 @@ export default function Embed() {
             color: "#fff",
             maxHeight: "220px",
             overflowY: "auto",
-            borderTop: "2px solid #333"
+            borderTop: "2px solid #333",
           }}
         >
           <h3 style={{ margin: "0 0 8px" }}>Your Dive Logs</h3>
@@ -108,7 +117,7 @@ export default function Embed() {
                 style={{
                   marginBottom: "8px",
                   borderBottom: "1px solid #333",
-                  paddingBottom: "6px"
+                  paddingBottom: "6px",
                 }}
               >
                 <strong>
@@ -117,7 +126,11 @@ export default function Embed() {
                     : "Unknown date"}
                   :
                 </strong>
-                <div>{log.logEntry || log.memoryContent || "No details available"}</div>
+                <div>
+                  {log.logEntry ||
+                    log.memoryContent ||
+                    "No details available"}
+                </div>
               </li>
             ))}
           </ul>
