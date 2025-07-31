@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import ChatMessages from "../components/ChatMessages";
 import Sidebar from "../components/Sidebar";
 import ChatBox from "../components/ChatBox";
@@ -17,14 +17,17 @@ export default function Index() {
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // ✅ Light mode default
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("kovalDarkMode");
       if (stored !== null) return stored === "true";
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      return false; // ✅ Default Light Mode
     }
     return false;
   });
+
   const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
@@ -48,7 +51,7 @@ export default function Index() {
     }
   };
 
-  // ✅ Load LocalStorage Data
+  // ✅ Load Data
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
@@ -62,7 +65,7 @@ export default function Index() {
     }
   }, []);
 
-  // ✅ Keep HTML class in sync with theme
+  // ✅ Sync theme with DOM
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.documentElement.classList.toggle("dark", darkMode);
@@ -77,37 +80,21 @@ export default function Index() {
     return userId?.startsWith("Guest") ? "Guest User" : "User";
   };
 
-  // ----------------------------
-  // 1️⃣ Listen for messages from widget
-  // ----------------------------
+  // 1️⃣ Listen for widget messages
   useEffect(() => {
     const handleWidgetMessages = (event) => {
       const { type, data } = event.data || {};
-
-      switch (type) {
-        case "USER_AUTH":
-          if (data?.userId) {
-            setUserId(data.userId);
-            setProfile(data.profile || {});
-            localStorage.setItem("kovalUser", data.userId);
-            localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
-          }
-          break;
-
-        case "THEME_CHANGE":
-          if (typeof data?.dark === "boolean") {
-            setDarkMode(data.dark);
-          }
-          break;
-
-        case "RESIZE_IFRAME":
-          if (data?.height && window.parent) {
-            window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
-          }
-          break;
-
-        default:
-          break;
+      if (type === "USER_AUTH" && data?.userId) {
+        setUserId(data.userId);
+        setProfile(data.profile || {});
+        localStorage.setItem("kovalUser", data.userId);
+        localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
+      }
+      if (type === "THEME_CHANGE" && typeof data?.dark === "boolean") {
+        setDarkMode(data.dark);
+      }
+      if (type === "RESIZE_IFRAME" && data?.height && window.parent) {
+        window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
       }
     };
 
@@ -115,9 +102,7 @@ export default function Index() {
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // ----------------------------
-  // 2️⃣ Inject <koa-bot> widget if missing
-  // ----------------------------
+  // 2️⃣ Inject <koa-bot>
   useEffect(() => {
     if (typeof window !== "undefined" && !document.querySelector("koa-bot")) {
       const botElement = document.createElement("koa-bot");
@@ -125,57 +110,37 @@ export default function Index() {
     }
   }, []);
 
-  // ----------------------------
-  // 3️⃣ Handle "OpenBotIfNoMemories" event
-  // ----------------------------
+  // 3️⃣ Handle "OpenBotIfNoMemories"
   useEffect(() => {
     const openBotHandler = () => {
       if (window.KovalBot) {
-        window.KovalBot.sendMessage(
-          "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
-        );
+        window.KovalBot.sendMessage("Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?");
       }
     };
     window.addEventListener("OpenBotIfNoMemories", openBotHandler);
     return () => window.removeEventListener("OpenBotIfNoMemories", openBotHandler);
   }, []);
 
-  // ----------------------------
   // 4️⃣ Fetch Wix Collection Data
-  // ----------------------------
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/wixConnect");
         if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
-
         const json = await res.json();
 
-        if (json.data) {
-          setWixData(json.data);
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: `📌 Pulled ${json.data.length} items from Wix collection.` },
-          ]);
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: "⚠️ No data found from Wix collection." },
-          ]);
+        setWixData(json.data || []);
+        if (!json.data) {
+          setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ No data found from Wix collection." }]);
         }
       } catch (err) {
         console.error("❌ Failed to fetch Wix data:", err);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "⚠️ Failed to connect to Wix. Please try again later." },
-        ]);
+        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Failed to connect to Wix. Please try again later." }]);
       }
     })();
   }, []);
 
-  // ----------------------------
   // 5️⃣ Initialize AI Thread
-  // ----------------------------
   useEffect(() => {
     if (!userId || threadId) return;
     (async () => {
@@ -196,9 +161,7 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // ----------------------------
   // 6️⃣ Load and Sync Dive Logs
-  // ----------------------------
   useEffect(() => {
     if (!userId) return;
     const key = storageKey(userId);
@@ -234,43 +197,32 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // ----------------------------
   // 7️⃣ Handle Dive Journal
-  // ----------------------------
-  const handleJournalSubmit = useCallback(
-    (entry) => {
-      const key = storageKey(userId);
-      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
-      const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
-      setDiveLogs(updated);
-      localStorage.setItem(key, JSON.stringify(updated));
-
-      savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
-      setShowDiveJournalForm(false);
-      setEditLogIndex(null);
-      setMessages((prev) => [...prev, { role: "assistant", content: "📝 Dive log saved locally and queued for sync." }]);
-    },
-    [userId, diveLogs]
-  );
+  const handleJournalSubmit = useCallback((entry) => {
+    const key = storageKey(userId);
+    const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+    const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
+    setDiveLogs(updated);
+    localStorage.setItem(key, JSON.stringify(updated));
+    savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
+    setShowDiveJournalForm(false);
+    setEditLogIndex(null);
+    setMessages((prev) => [...prev, { role: "assistant", content: "📝 Dive log saved locally and queued for sync." }]);
+  }, [userId, diveLogs]);
 
   const handleEdit = useCallback((index) => {
     setEditLogIndex(index);
     setShowDiveJournalForm(true);
   }, []);
 
-  const handleDelete = useCallback(
-    (index) => {
-      const key = storageKey(userId);
-      const updated = diveLogs.filter((_, i) => i !== index);
-      localStorage.setItem(key, JSON.stringify(updated));
-      setDiveLogs(updated);
-    },
-    [userId, diveLogs]
-  );
+  const handleDelete = useCallback((index) => {
+    const key = storageKey(userId);
+    const updated = diveLogs.filter((_, i) => i !== index);
+    localStorage.setItem(key, JSON.stringify(updated));
+    setDiveLogs(updated);
+  }, [userId, diveLogs]);
 
-  // ----------------------------
   // 8️⃣ Handle Save Session
-  // ----------------------------
   const handleSaveSession = useCallback(() => {
     const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
     const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
@@ -279,19 +231,12 @@ export default function Index() {
     setSessionsList(updated);
 
     if (window.KovalBot) {
-      window.KovalBot.saveSession({
-        userId,
-        sessionName,
-        messages,
-        timestamp: Date.now(),
-      });
+      window.KovalBot.saveSession({ userId, sessionName, messages, timestamp: Date.now() });
     }
   }, [sessionName, sessionsList, messages, userId]);
 
-  // ----------------------------
-  // ✅ Shared Props
-  // ----------------------------
-  const sharedProps = {
+  // ✅ Shared props (memoized for perf)
+  const sharedProps = useMemo(() => ({
     BOT_NAME,
     sessionName,
     setSessionName,
@@ -322,7 +267,7 @@ export default function Index() {
     bottomRef,
     darkMode,
     setDarkMode,
-  };
+  }), [sessionName, sessionsList, messages, darkMode, diveLogs, input, files, loading, userId, profile, eqState, showDiveJournalForm, editLogIndex, threadId]);
 
   return (
     <div className={darkMode ? "dark" : ""}>
@@ -362,6 +307,14 @@ export default function Index() {
             <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
               👤 {getDisplayName()}
             </div>
+
+            {/* Theme Toggle Button */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+            >
+              {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+            </button>
           </div>
 
           {/* Wix Data */}
