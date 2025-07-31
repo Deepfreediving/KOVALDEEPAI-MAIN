@@ -124,22 +124,36 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 4️⃣ Fetch Wix Collection Data
+  // 4️⃣ Fetch Wix Collection Data (Improved Error Handling)
   // ----------------------------
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/wixconnect");
+        const res = await fetch("/api/wixConnect");
+        if (!res.ok) {
+          throw new Error(`Server returned status: ${res.status}`);
+        }
+
         const json = await res.json();
+
         if (json.data) {
           setWixData(json.data);
           setMessages((prev) => [
             ...prev,
             { role: "assistant", content: `📌 Pulled ${json.data.length} items from Wix collection.` },
           ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: "⚠️ No data found from Wix collection." },
+          ]);
         }
       } catch (err) {
         console.error("❌ Failed to fetch Wix data:", err);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "⚠️ Failed to connect to Wix. Please try again later." },
+        ]);
       }
     })();
   }, []);
