@@ -1,3 +1,5 @@
+// pages/api/save-dive-log.ts
+
 import { NextApiRequest, NextApiResponse } from 'next';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
@@ -6,17 +8,19 @@ import axios from 'axios';
 
 const LOG_DIR = path.resolve('./data/diveLogs');
 
-// Ensure log directory exists on startup
+// ✅ Ensure log directory exists on startup
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // ✅ Allow only POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
+    // Extract and sanitize data
     const {
       userId = '',
       date = '',
@@ -37,13 +41,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       surfaceProtocol = '',
     } = req.body || {};
 
+    // ✅ Validate required fields
     if (!userId || !date || !discipline) {
       return res.status(400).json({ error: 'Missing required fields: userId, date, or discipline' });
     }
 
-    const safeUserId = path.basename(userId);
+    const safeUserId = path.basename(userId); // Prevent directory traversal
     const id = uuidv4();
 
+    // ✅ Construct log entry
     const logEntry = {
       id,
       userId: safeUserId,
@@ -67,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source: 'save-dive-log.ts',
     };
 
-    // ✅ 1. Save locally
+    // ✅ 1. Save locally (organized by user folder)
     const userLogDir = path.join(LOG_DIR, safeUserId);
     if (!fs.existsSync(userLogDir)) {
       fs.mkdirSync(userLogDir, { recursive: true });
@@ -76,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const filePath = path.join(userLogDir, `${id}.json`);
     await fs.promises.writeFile(filePath, JSON.stringify(logEntry, null, 2));
 
-    // ✅ 2. Mirror to Wix (async, don't block response)
+    // ✅ 2. Sync to Wix (non-blocking)
     axios.post(
       'https://www.deepfreediving.com/_functions/saveDiveLog',
       { ...logEntry, userId: safeUserId },
@@ -86,6 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     console.log(`✅ Dive log saved locally and syncing to Wix for user: ${safeUserId}, ID: ${id}`);
+
     return res.status(200).json({ success: true, id, saved: true });
 
   } catch (err: any) {

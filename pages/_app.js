@@ -1,4 +1,4 @@
-// _app.js
+// pages/_app.js
 import "../styles/globals.css";
 import { useEffect, useState } from "react";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -7,14 +7,15 @@ function MyApp({ Component, pageProps }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // ✅ 1. Initial theme detection from Wix or browser
-    const initialTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.classList.toggle("dark", initialTheme);
+    // ✅ 1. Detect system theme on first load
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", prefersDark);
 
-    // ✅ 2. Listen for theme updates from Wix bot-widget
+    // ✅ 2. Listen for theme updates from Wix
     const handleThemeChange = (event) => {
       if (event.data?.type === "THEME_CHANGE") {
-        document.documentElement.classList.toggle("dark", !!event.data.data.dark);
+        const isDark = !!event.data.data.dark;
+        document.documentElement.classList.toggle("dark", isDark);
       }
     };
 
@@ -28,7 +29,11 @@ function MyApp({ Component, pageProps }) {
   }, []);
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-500 dark:text-gray-300">
+        Loading...
+      </div>
+    );
   }
 
   return (

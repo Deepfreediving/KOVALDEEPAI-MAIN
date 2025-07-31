@@ -4,10 +4,21 @@ import axios from 'axios';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 
+// === ENVIRONMENT CHECKS ===
+if (!process.env.OPENAI_API_KEY) {
+  console.error("⚠️ Missing OPENAI_API_KEY environment variable.");
+}
+if (!process.env.PINECONE_API_KEY) {
+  console.error("⚠️ Missing PINECONE_API_KEY environment variable.");
+}
+if (!process.env.PINECONE_INDEX) {
+  console.error("⚠️ Missing PINECONE_INDEX environment variable.");
+}
+
 // === INITIALIZATION ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
-const index = pinecone.Index(process.env.PINECONE_INDEX || '');
+const index = process.env.PINECONE_INDEX ? pinecone.Index(process.env.PINECONE_INDEX) : null;
 
 // === HELPERS ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
@@ -29,14 +40,14 @@ function getDepthRange(depth: number): string {
 
 async function getQueryEmbedding(query: string): Promise<number[]> {
   try {
-    const res = await Promise.race([
+    const res: any = await Promise.race([
       openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: query,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Embedding timeout')), 8000)),
     ]);
-    return (res as any)?.data?.[0]?.embedding || [];
+    return res?.data?.[0]?.embedding || [];
   } catch (err) {
     console.error('Embedding error:', err);
     return [];
@@ -45,6 +56,11 @@ async function getQueryEmbedding(query: string): Promise<number[]> {
 
 async function queryPinecone(query: string, depthRange: string): Promise<string[]> {
   try {
+    if (!index) {
+      console.warn("⚠️ Pinecone index not initialized.");
+      return [];
+    }
+
     const vector = await getQueryEmbedding(query);
     if (!vector.length) return [];
 
@@ -67,7 +83,6 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
   }
 }
 
-// ✅ ORIGINAL UNCOMPRESSED PROMPT
 function generateSystemPrompt(level: 'expert' | 'beginner', depthRange: string): string {
   return `
 You are **Koval Deep AI**, a highly specialized freediving coach assistant created by world-record freediver Daniel Koval.  
@@ -83,21 +98,21 @@ Your purpose is to provide **precise, expert-level coaching** for deep freedivin
 ---
 
 ### ✅ Response Structure:
-1️⃣ **Physics & Physiology:** Explain what’s happening physically at this depth (${depthRange}), including air compression, RV, pressure effects on mouthfill, blood shift, or hypoxic risks.  
-2️⃣ **Technical Analysis:** Identify what is limiting progression based on their logs and technique details (e.g., losing mouthfill at 80m, air management inefficiency, tension).  
-3️⃣ **Targeted Training Plan:** Give **specific drills, depth strategy, or dry exercises** to fix the issue and safely push toward their **target depth** (e.g., 120m from 112m).  
-4️⃣ **Safety & Strategy:** Highlight any safety margins, recommended buddy setup, or training sequences for the next sessions.  
-5️⃣ **Motivator Hook:** End with a short, powerful mental coaching statement or insight that builds confidence and focus.
+1️⃣ **Physics & Physiology:** Explain what’s happening physically at this depth (${depthRange}).  
+2️⃣ **Technical Analysis:** Identify what is limiting progression based on their logs and technique details.  
+3️⃣ **Targeted Training Plan:** Give **specific drills or depth strategies** to fix the issue and safely push toward their **target depth**.  
+4️⃣ **Safety & Strategy:** Highlight safety margins and buddy recommendations.  
+5️⃣ **Motivator Hook:** End with a strong mental coaching insight.
 
 ---
 
 ### ⚠️ Forbidden:
-- Do **NOT** give vague advice like "relax more", "equalize better", or "just train longer".
-- Do **NOT** make up medical or unsafe information.
-- Avoid unrelated agency standards (SSI, PADI, AIDA) unless specifically requested for comparison.
+- No vague advice ("relax more", "just train longer").
+- No made-up medical info.
+- No irrelevant agency standards unless requested.
 
-You are a **precision deep freediving coach**, not a casual chatbot.  
-Your goal is to make each answer feel like **a world-class personal coaching session**, as if Daniel Koval himself is analyzing the dive and giving next-step drills to break past limits safely.
+You are a **precision freediving coach**, not a casual chatbot.  
+Make your advice feel like a **world-class coaching session**.
 `;
 }
 
@@ -106,7 +121,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
   const systemPrompt = generateSystemPrompt(userLevel, depthRange);
 
   try {
-    const response = await Promise.race([
+    const response: any = await Promise.race([
       openai.chat.completions.create({
         model: 'gpt-4o',
         temperature: 0.4,
@@ -119,7 +134,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
       new Promise((_, reject) => setTimeout(() => reject(new Error('Chat completion timeout')), 15000)),
     ]);
 
-    return (response as any).choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
+    return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
   } catch (err) {
     console.error('Chat completion error:', err);
     return '⚠️ I encountered a processing issue. Please try again.';
@@ -131,7 +146,7 @@ async function extractProfileFields(message: string) {
 Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), discipline, currentDepth (number).`;
 
   try {
-    const result = await openai.chat.completions.create({
+    const result: any = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0,
       messages: [
@@ -140,22 +155,19 @@ Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), di
       ],
     });
 
-    return JSON.parse(result.choices[0].message.content || '{}');
-  } catch {
+    try {
+      return JSON.parse(result.choices[0].message.content || '{}');
+    } catch {
+      console.warn("Profile extraction returned invalid JSON");
+      return {};
+    }
+  } catch (err) {
+    console.error("Profile extraction error:", err);
     return {};
   }
 }
 
-async function saveToWixMemory({
-  userId,
-  logEntry,
-  memoryContent,
-  profile,
-  eqState,
-  metadata,
-  sessionId,
-  sessionName,
-}: {
+async function saveToWixMemory(params: {
   userId: string;
   logEntry: string;
   memoryContent: string;
@@ -167,15 +179,8 @@ async function saveToWixMemory({
 }) {
   try {
     await axios.post('https://www.deepfreediving.com/_functions/saveToUserMemory', {
-      userId,
-      logEntry,
-      memoryContent,
-      eqState,
-      profile,
-      sessionId,
-      sessionName,
+      ...params,
       timestamp: new Date().toISOString(),
-      metadata,
     });
   } catch (err: any) {
     console.error('❌ Failed to save to Wix:', err.response?.data || err.message);
@@ -293,6 +298,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       assistantMessage: {
         role: 'assistant',
         content: assistantReply,
+      },
+      metadata: {
+        userLevel,
+        depthRange,
+        contextChunksCount: contextChunks.length,
       },
     });
   } catch (err: any) {

@@ -2,7 +2,5 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
-  "/api/get-dive-logs": "pages/api/get-dive-logs.js",
-  "/api/read-memory": "pages/api/read-memory.js"
+  "/": "pages/index.js"
 }
