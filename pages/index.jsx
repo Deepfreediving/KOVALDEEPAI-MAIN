@@ -283,8 +283,8 @@ export default function Index() {
   // 🔟 Keep theme in sync with Wix parent
   // ----------------------------
   useEffect(() => {
-    window.parent?.postMessage({ type: "THEME_CHANGE", data: { light: lightMode } }, "*");
-  }, [lightMode]);
+    window.parent?.postMessage({ type: "THEME_CHANGE", data: { dark: darkMode } }, "*");
+  }, [darkMode]);
 
   // ----------------------------
   // ✅ Shared Props
@@ -318,7 +318,7 @@ export default function Index() {
     setShowDiveJournalForm,
     threadId,
     bottomRef,
-    lightMode,
+    darkMode,
     setDarkMode,
   };
 
@@ -382,7 +382,7 @@ export default function Index() {
               <ChatMessages
                 messages={messages}
                 BOT_NAME={BOT_NAME}
-                lightMode={lightMode}
+                darkMode={darkMode}
                 loading={loading}
                 bottomRef={bottomRef}
               />
