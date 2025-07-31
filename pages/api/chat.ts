@@ -17,8 +17,17 @@ if (!process.env.PINECONE_INDEX) {
 
 // === INITIALIZATION ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
-const index = process.env.PINECONE_INDEX ? pinecone.Index(process.env.PINECONE_INDEX) : null;
+
+let index: any = null;
+try {
+  const pinecone = new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY!,
+  });
+  index = pinecone.index(process.env.PINECONE_INDEX!);
+  console.log("✅ Pinecone initialized successfully.");
+} catch (err) {
+  console.error("❌ Failed to initialize Pinecone:", err);
+}
 
 // === HELPERS ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
@@ -64,7 +73,7 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
     const vector = await getQueryEmbedding(query);
     if (!vector.length) return [];
 
-    const result = await index.query({
+    const result: any = await index.query({
       vector,
       topK: 8,
       includeMetadata: true,
@@ -75,8 +84,8 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
     });
 
     return result?.matches
-      ?.map((m) => m.metadata?.text)
-      .filter((t): t is string => typeof t === 'string' && t.length > 15) || [];
+      ?.map((m: any) => m.metadata?.text)
+      .filter((t: string): t is string => typeof t === 'string' && t.length > 15) || [];
   } catch (err) {
     console.error('Pinecone query error:', err);
     return [];
@@ -314,3 +323,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', // Increase if needed
+    },
+  },
+};

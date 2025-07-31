@@ -1,122 +1,69 @@
-// pages/api/analyze-upload-image.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+import fs from 'fs/promises';
+import path from 'path';
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { IncomingForm, Files, File } from "formidable";
-import fs from "fs";
-import path from "path";
-import { OpenAI } from "openai";
+const LOG_DIR = path.resolve('./data/diveLogs');
+const SAFE_USERID = /^[a-zA-Z0-9_-]+$/;
 
-export const config = {
-  api: {
-    bodyParser: false, // Required for file uploads
-  },
-};
-
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+interface DiveLog {
+  timestamp?: string | number;
+  [key: string]: any;
 }
 
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  console.error("❌ Missing OPENAI_API_KEY");
-  throw new Error("Missing OPENAI_API_KEY");
-}
-
-const openai = new OpenAI({ apiKey });
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    if (req.method === "OPTIONS") {
-      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-      return res.status(204).end();
-    }
-
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Only POST requests are allowed." });
-    }
-
-    const form = new IncomingForm({
-      uploadDir,
-      keepExtensions: true,
-      maxFileSize: 5 * 1024 * 1024, // 5 MB limit
-      multiples: false,
-      filter: ({ mimetype }) => ["image/jpeg", "image/png"].includes(mimetype || ""),
-    });
-
-    form.parse(req, async (err, fields, files: Files) => {
-      if (err) {
-        console.error("❌ Form parse error:", err);
-        return res.status(400).json({ error: "Failed to parse uploaded file." });
-      }
-
-      const fileEntry = extractUploadedFile(files);
-      if (!fileEntry?.filepath) {
-        return res.status(400).json({ error: "No valid image file uploaded." });
-      }
-
-      const filePath = fileEntry.filepath;
-      const mimeType = fileEntry.mimetype || "image/jpeg";
-
-      try {
-        const base64Image = fs.readFileSync(filePath, "base64");
-
-        const aiResponse = await openai.chat.completions.create({
-          model: "gpt-4o", // Multimodal model for image analysis
-          max_tokens: 800,
-          messages: [
-            {
-              role: "system",
-              content: "You are a professional freediving coach analyzing dive profiles.",
-            },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Please analyze this dive profile image and provide coaching feedback. Include observations on descent, ascent, and any visible inefficiencies.",
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: `data:${mimeType};base64,${base64Image}` },
-                },
-              ],
-            },
-          ],
-        });
-
-        const result = aiResponse.choices?.[0]?.message?.content?.trim();
-
-        // Cleanup temp file
-        fs.unlink(filePath, (unlinkErr) => {
-          if (unlinkErr) console.warn("⚠️ Failed to delete temp file:", unlinkErr.message);
-        });
-
-        return res.status(200).json({
-          success: true,
-          answer: result || "⚠️ Image uploaded, but no coaching feedback was returned.",
-        });
-
-      } catch (error: any) {
-        console.error("❌ OpenAI image analysis failed:", error?.message || error);
-
-        // Cleanup temp file on error
-        fs.unlink(filePath, () => {});
-        return res.status(500).json({
-          error: "Image analysis failed. Please try again or check image format.",
-        });
-      }
-    });
-  } catch (globalErr: any) {
-    console.error("❌ Unexpected server error:", globalErr.message || globalErr);
-    return res.status(500).json({ error: "Unexpected error while processing image." });
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+): Promise<void> {
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
   }
-}
 
-function extractUploadedFile(files: Files): File | undefined {
-  const file = files.image || Object.values(files)[0];
-  return Array.isArray(file) ? file[0] : file;
+  const { userId } = req.query;
+
+  // ✅ Validate userId format
+  if (!userId || typeof userId !== 'string' || !SAFE_USERID.test(userId)) {
+    res.status(400).json({ error: 'Missing or invalid userId' });
+    return;
+  }
+
+  const userPath = path.join(LOG_DIR, userId);
+
+  try {
+    // ✅ Check if directory exists
+    try {
+      await fs.access(userPath);
+    } catch {
+      res.status(200).json({ logs: [] });
+      return;
+    }
+
+    const files = await fs.readdir(userPath);
+    const logs: DiveLog[] = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          const filePath = path.join(userPath, file);
+          const content = await fs.readFile(filePath, 'utf8');
+          logs.push(JSON.parse(content));
+        } catch (parseErr) {
+          console.warn(`⚠️ Could not parse file ${file}:`, parseErr);
+        }
+      }
+    }
+
+    // ✅ Sort logs (most recent first)
+    logs.sort((a, b) => {
+      const dateA = new Date(a.timestamp || 0).getTime();
+      const dateB = new Date(b.timestamp || 0).getTime();
+      return dateB - dateA;
+    });
+
+    res.status(200).json({ logs });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('❌ Failed to read dive logs:', message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
