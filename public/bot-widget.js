@@ -3,7 +3,7 @@ class KovalBotElement extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
 
-    // Container
+    // Main container
     const container = document.createElement('div');
     container.style.width = '100%';
     container.style.height = '100%';
@@ -11,11 +11,11 @@ class KovalBotElement extends HTMLElement {
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
 
-    // Iframe for UI
+    // Iframe for Bot UI
     this.iframe = document.createElement('iframe');
     this.iframe.src = "https://kovaldeepai-main.vercel.app/embed";
     this.iframe.style.width = '100%';
-    this.iframe.style.height = '100%';
+    this.iframe.style.height = '500px'; // Default height (will auto-resize)
     this.iframe.style.border = 'none';
     this.iframe.style.overflow = 'hidden';
 
@@ -34,27 +34,26 @@ class KovalBotElement extends HTMLElement {
         console.warn("⚠️ Iframe not ready yet, retrying...");
       }
     };
-    // Try immediately and retry if iframe not yet ready
     attemptPost();
     setTimeout(attemptPost, 500);
   }
 
   /**
-   * Send a message to the bot iframe
+   * Send a chat message to the bot
    */
   sendMessage(message) {
     this.postToIframe("USER_MESSAGE", message);
   }
 
   /**
-   * Load dive logs for a user
+   * Load user's dive logs
    */
   loadDiveLogs(userId) {
     this.postToIframe("LOAD_LOGS", { userId });
   }
 
   /**
-   * Save a session and auto-refresh logs
+   * Save a session and refresh logs
    */
   async saveSession(sessionData) {
     try {
@@ -66,12 +65,11 @@ class KovalBotElement extends HTMLElement {
 
       const result = await response.json();
 
-      // ✅ Trigger custom event for external listeners
+      // Dispatch event for listeners
       window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: result }));
 
-      // ✅ Auto-refresh logs if userId is available
+      // Auto-refresh logs
       if (sessionData.userId) {
-        console.log("✅ Session saved, refreshing logs...");
         this.loadDiveLogs(sessionData.userId);
       }
     } catch (error) {
@@ -80,7 +78,7 @@ class KovalBotElement extends HTMLElement {
   }
 
   /**
-   * Retrieve member details from Wix or localStorage
+   * Retrieve member info from Wix or localStorage
    */
   getMemberDetails() {
     try {
@@ -98,15 +96,14 @@ class KovalBotElement extends HTMLElement {
   }
 
   /**
-   * Sends initial user info and theme to bot
+   * Sends theme and user data to the bot iframe
    */
   sendInitialData() {
-    // Theme detection
     const isDark = document.documentElement.classList.contains("theme-dark") ||
       window.matchMedia("(prefers-color-scheme: dark)").matches;
+
     this.postToIframe("THEME_CHANGE", { dark: isDark });
 
-    // Member info
     const memberDetails = this.getMemberDetails();
     if (memberDetails) {
       this.postToIframe("USER_AUTH", {
@@ -117,12 +114,12 @@ class KovalBotElement extends HTMLElement {
   }
 
   connectedCallback() {
-    // Wait for iframe to fully load before sending data
+    // Once iframe loads, send user info
     this.iframe.addEventListener("load", () => {
       this.sendInitialData();
     });
 
-    // Listen for messages from iframe
+    // Handle messages from the iframe
     window.addEventListener("message", (event) => {
       if (event.origin !== "https://kovaldeepai-main.vercel.app") return;
       if (!event.data) return;
@@ -153,10 +150,10 @@ class KovalBotElement extends HTMLElement {
   }
 }
 
-// ✅ Register custom element (must match Wix Tag Name)
+// ✅ Register custom element
 customElements.define('koa-bot', KovalBotElement);
 
-// ✅ Expose a global API (match <koa-bot> tag)
+// ✅ Expose a global API for external scripts
 window.KovalBot = {
   sendMessage: (msg) => document.querySelector('koa-bot')?.sendMessage(msg),
   loadDiveLogs: (userId) => document.querySelector('koa-bot')?.loadDiveLogs(userId),
