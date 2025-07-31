@@ -2,16 +2,30 @@
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-// ✅ Import your main app dynamically (avoids SSR issues)
+// ✅ Dynamically import the main bot app to avoid SSR issues
 const App = dynamic(() => import("./index"), { ssr: false });
 
 export default function Embed() {
   const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // ✅ Listen for messages from the bot widget
+    // ✅ Notify parent page to resize iframe dynamically
+    const adjustHeight = () => {
+      if (window.parent) {
+        window.parent.postMessage(
+          { type: "RESIZE_IFRAME", data: { height: document.body.scrollHeight } },
+          "*"
+        );
+      }
+    };
+
+    // Watch for DOM size changes to auto-fit height
+    const resizeObserver = new ResizeObserver(adjustHeight);
+    resizeObserver.observe(document.body);
+
+    // ✅ Listen for messages from parent widget
     const handleMessage = async (event) => {
-      // Only accept messages from same origin or your main domain
       const allowedOrigins = [
         window.location.origin,
         "https://kovaldeepai-main.vercel.app"
@@ -19,36 +33,91 @@ export default function Embed() {
       if (!allowedOrigins.includes(event.origin)) return;
 
       if (event.data?.type === "LOAD_LOGS" && event.data.data?.userId) {
+        setLoading(true);
         try {
           const res = await fetch(`/api/getDiveLogs?userId=${event.data.data.userId}`);
+          if (!res.ok) throw new Error(`API error: ${res.status}`);
           const data = await res.json();
-          setLogs(data.logs || []);
+
+          // ✅ Always continue loading bot even if no logs exist
+          if (Array.isArray(data.logs) && data.logs.length > 0) {
+            setLogs(data.logs);
+          } else {
+            console.info("ℹ️ No dive logs found for this user.");
+            setLogs([]);
+          }
         } catch (err) {
           console.error("❌ Failed to fetch dive logs:", err);
+          setLogs([]);
+        } finally {
+          setLoading(false);
+          adjustHeight();
         }
       }
     };
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      resizeObserver.disconnect();
+    };
   }, []);
 
   return (
-    <div style={{ width: "100%", height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      {/* Main Bot App */}
+    <div
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#fff",
+        overflow: "hidden",
+        fontFamily: "Arial, sans-serif"
+      }}
+    >
+      {/* ✅ Main Bot App */}
       <div style={{ flex: 1 }}>
         <App />
       </div>
 
-      {/* ✅ Dive Logs Section (appears if logs exist) */}
-      {logs.length > 0 && (
-        <div style={{ padding: "10px", background: "#111", color: "#fff", maxHeight: "200px", overflowY: "auto" }}>
-          <h3 style={{ margin: "0 0 5px" }}>Your Dive Logs</h3>
-          <ul style={{ listStyle: "none", padding: 0 }}>
+      {/* ✅ Loading State */}
+      {loading && (
+        <div style={{ padding: "10px", background: "#222", color: "#ccc" }}>
+          Loading dive logs...
+        </div>
+      )}
+
+      {/* ✅ Dive Logs Section */}
+      {!loading && logs.length > 0 && (
+        <div
+          style={{
+            padding: "10px",
+            background: "#111",
+            color: "#fff",
+            maxHeight: "220px",
+            overflowY: "auto",
+            borderTop: "2px solid #333"
+          }}
+        >
+          <h3 style={{ margin: "0 0 8px" }}>Your Dive Logs</h3>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {logs.map((log, idx) => (
-              <li key={idx} style={{ marginBottom: "6px", borderBottom: "1px solid #333", paddingBottom: "4px" }}>
-                <strong>{log.timestamp ? new Date(log.timestamp).toLocaleString() : "Unknown date"}:</strong>
-                <div>{log.logEntry || log.memoryContent}</div>
+              <li
+                key={idx}
+                style={{
+                  marginBottom: "8px",
+                  borderBottom: "1px solid #333",
+                  paddingBottom: "6px"
+                }}
+              >
+                <strong>
+                  {log.timestamp
+                    ? new Date(log.timestamp).toLocaleString()
+                    : "Unknown date"}
+                  :
+                </strong>
+                <div>{log.logEntry || log.memoryContent || "No details available"}</div>
               </li>
             ))}
           </ul>
