@@ -1,17 +1,15 @@
-// pages/_app.js
 import "../styles/globals.css";
 import { useEffect, useState } from "react";
 import ErrorBoundary from "../components/ErrorBoundary";
+import AppLoader from "../components/AppLoader";
 
 function MyApp({ Component, pageProps }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // ✅ 1. Detect system theme on first load
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     document.documentElement.classList.toggle("dark", prefersDark);
 
-    // ✅ 2. Listen for theme updates from Wix
     const handleThemeChange = (event) => {
       if (event.data?.type === "THEME_CHANGE") {
         const isDark = !!event.data.data.dark;
@@ -20,7 +18,6 @@ function MyApp({ Component, pageProps }) {
     };
 
     window.addEventListener("message", handleThemeChange);
-
     setIsLoaded(true);
 
     return () => {
@@ -38,7 +35,9 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <ErrorBoundary>
-      <Component {...pageProps} />
+      <AppLoader>
+        <Component {...pageProps} />
+      </AppLoader>
     </ErrorBoundary>
   );
 }
