@@ -18,6 +18,7 @@ class KovalBotElement extends HTMLElement {
     this.iframe.style.width = '100%';
     this.iframe.style.height = '100%';
     this.iframe.style.border = 'none';
+    this.iframe.style.overflow = 'hidden';
 
     container.appendChild(this.iframe);
     this.shadowRoot.appendChild(container);
@@ -27,20 +28,14 @@ class KovalBotElement extends HTMLElement {
    * Send a message to the bot iframe
    */
   sendMessage(message) {
-    this.iframe.contentWindow.postMessage({
-      type: 'USER_MESSAGE',
-      data: message
-    }, '*');
+    this.postToIframe("USER_MESSAGE", message);
   }
 
   /**
    * Load dive logs for a user
    */
   loadDiveLogs(userId) {
-    this.iframe.contentWindow.postMessage({
-      type: 'LOAD_LOGS',
-      data: { userId }
-    }, '*');
+    this.postToIframe("LOAD_LOGS", { userId });
   }
 
   /**
@@ -58,13 +53,59 @@ class KovalBotElement extends HTMLElement {
     });
   }
 
+  /**
+   * Helper to send messages to iframe
+   */
+  postToIframe(type, data) {
+    this.iframe?.contentWindow?.postMessage({ type, data }, "*");
+  }
+
   connectedCallback() {
-    // Listen for messages from iframe
+    // ✅ Listen for messages from iframe
     window.addEventListener("message", (event) => {
-      if (event.data && event.data.type === "BOT_RESPONSE") {
-        window.dispatchEvent(new CustomEvent("KovalBotResponse", { detail: event.data.data }));
+      if (!event.data) return;
+
+      switch (event.data.type) {
+        case "BOT_RESPONSE":
+          window.dispatchEvent(new CustomEvent("KovalBotResponse", { detail: event.data.data }));
+          break;
+
+        case "RESIZE_IFRAME":
+          if (event.data.data?.height) {
+            this.iframe.style.height = `${event.data.data.height}px`;
+          }
+          break;
       }
     });
+
+    // ✅ Detect theme automatically from Wix page
+    const detectTheme = () => {
+      const isDark = document.documentElement.classList.contains("theme-dark") ||
+                     window.matchMedia("(prefers-color-scheme: dark)").matches;
+      this.postToIframe("THEME_CHANGE", { dark: isDark });
+    };
+    detectTheme();
+
+    // ✅ Send Wix member details if available
+    const memberDetails = window?.wixEmbedsAPI?.getCurrentMember?.();
+    if (memberDetails) {
+      this.postToIframe("USER_AUTH", {
+        userId: memberDetails?.loginEmail || memberDetails?.id,
+        profile: memberDetails
+      });
+    } else {
+      // fallback: check localStorage
+      const localMember = localStorage.getItem("__wix.memberDetails");
+      if (localMember) {
+        try {
+          const parsed = JSON.parse(localMember);
+          this.postToIframe("USER_AUTH", {
+            userId: parsed.loginEmail || parsed.id,
+            profile: parsed
+          });
+        } catch (e) {}
+      }
+    }
   }
 }
 
