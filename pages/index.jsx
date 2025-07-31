@@ -99,7 +99,32 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 2️⃣ Fetch Wix Collection Data
+  // 2️⃣ Inject <koa-bot> widget if missing
+  // ----------------------------
+  useEffect(() => {
+    if (typeof window !== "undefined" && !document.querySelector("koa-bot")) {
+      const botElement = document.createElement("koa-bot");
+      document.body.appendChild(botElement);
+    }
+  }, []);
+
+  // ----------------------------
+  // 3️⃣ Handle "OpenBotIfNoMemories" event
+  // ----------------------------
+  useEffect(() => {
+    const openBotHandler = () => {
+      if (window.KovalBot) {
+        window.KovalBot.sendMessage(
+          "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
+        );
+      }
+    };
+    window.addEventListener("OpenBotIfNoMemories", openBotHandler);
+    return () => window.removeEventListener("OpenBotIfNoMemories", openBotHandler);
+  }, []);
+
+  // ----------------------------
+  // 4️⃣ Fetch Wix Collection Data
   // ----------------------------
   useEffect(() => {
     (async () => {
@@ -120,7 +145,7 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 3️⃣ Initialize AI Thread
+  // 5️⃣ Initialize AI Thread
   // ----------------------------
   useEffect(() => {
     if (!userId || threadId) return;
@@ -143,7 +168,7 @@ export default function Index() {
   }, [userId]);
 
   // ----------------------------
-  // 4️⃣ Load and Sync Dive Logs
+  // 6️⃣ Load and Sync Dive Logs
   // ----------------------------
   useEffect(() => {
     if (!userId) return;
@@ -181,7 +206,7 @@ export default function Index() {
   }, [userId]);
 
   // ----------------------------
-  // 5️⃣ Handle Dive Journal
+  // 7️⃣ Handle Dive Journal
   // ----------------------------
   const handleJournalSubmit = useCallback(
     (entry) => {
@@ -213,6 +238,26 @@ export default function Index() {
     },
     [userId, diveLogs]
   );
+
+  // ----------------------------
+  // 8️⃣ Handle Save Session + Sync with widget
+  // ----------------------------
+  const handleSaveSession = useCallback(() => {
+    const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
+    const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
+    localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+    localStorage.setItem("kovalSessionName", sessionName);
+    setSessionsList(updated);
+
+    if (window.KovalBot) {
+      window.KovalBot.saveSession({
+        userId,
+        sessionName,
+        messages,
+        timestamp: Date.now(),
+      });
+    }
+  }, [sessionName, sessionsList, messages, userId]);
 
   // ----------------------------
   // ✅ Shared Props
@@ -250,6 +295,15 @@ export default function Index() {
     setDarkMode,
   };
 
+  // ----------------------------
+  // 9️⃣ Keep theme in sync with widget
+  // ----------------------------
+  useEffect(() => {
+    if (window.KovalBot) {
+      window.postMessage({ type: "THEME_CHANGE", data: { dark: darkMode } }, "*");
+    }
+  }, [darkMode]);
+
   return (
     <div className={darkMode ? "dark" : ""}>
       <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
@@ -265,13 +319,7 @@ export default function Index() {
               setEditingSessionName(false);
               localStorage.setItem("kovalSessionName", name);
             }}
-            handleSaveSession={() => {
-              const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
-              const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
-              localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
-              localStorage.setItem("kovalSessionName", sessionName);
-              setSessionsList(updated);
-            }}
+            handleSaveSession={handleSaveSession}
             toggleDiveJournal={() => setShowDiveJournalForm((prev) => !prev)}
             handleSelectSession={(name) => {
               const found = sessionsList.find((s) => s.sessionName === name);
