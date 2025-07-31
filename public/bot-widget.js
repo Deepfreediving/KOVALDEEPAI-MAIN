@@ -3,28 +3,72 @@ class KovalBotElement extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
 
-    // Main container
+    // Main floating container
     const container = document.createElement('div');
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.border = 'none';
+    container.style.position = 'fixed';
+    container.style.bottom = '20px';
+    container.style.right = '20px';
+    container.style.zIndex = '99999';
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
+    container.style.alignItems = 'flex-end';
+
+    // Floating button
+    this.toggleBtn = document.createElement('button');
+    this.toggleBtn.textContent = '🤿 Chat';
+    this.toggleBtn.style.background = '#007bff';
+    this.toggleBtn.style.color = '#fff';
+    this.toggleBtn.style.border = 'none';
+    this.toggleBtn.style.padding = '10px 14px';
+    this.toggleBtn.style.borderRadius = '6px';
+    this.toggleBtn.style.cursor = 'pointer';
+    this.toggleBtn.style.fontSize = '14px';
+    this.toggleBtn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+    this.toggleBtn.addEventListener('click', () => this.toggleBot());
+
+    // Chat iframe container (hidden by default)
+    this.chatBox = document.createElement('div');
+    this.chatBox.style.width = '350px';
+    this.chatBox.style.height = '500px';
+    this.chatBox.style.background = '#fff';
+    this.chatBox.style.border = '1px solid #ccc';
+    this.chatBox.style.borderRadius = '8px';
+    this.chatBox.style.overflow = 'hidden';
+    this.chatBox.style.display = 'none';
+    this.chatBox.style.marginTop = '10px';
+    this.chatBox.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
 
     // Iframe for Bot UI
     this.iframe = document.createElement('iframe');
     this.iframe.src = "https://kovaldeepai-main.vercel.app/embed";
     this.iframe.style.width = '100%';
-    this.iframe.style.height = '500px'; // Default height (will auto-resize)
+    this.iframe.style.height = '100%';
     this.iframe.style.border = 'none';
     this.iframe.style.overflow = 'hidden';
 
-    container.appendChild(this.iframe);
+    this.chatBox.appendChild(this.iframe);
+    container.appendChild(this.toggleBtn);
+    container.appendChild(this.chatBox);
     this.shadowRoot.appendChild(container);
   }
 
   /**
-   * Helper to safely send messages to iframe
+   * ✅ Toggle chatbot open/close
+   */
+  toggleBot() {
+    const isOpen = this.chatBox.style.display === 'block';
+    this.chatBox.style.display = isOpen ? 'none' : 'block';
+  }
+
+  /**
+   * ✅ Force open bot (e.g., when no memories found)
+   */
+  openBot() {
+    this.chatBox.style.display = 'block';
+  }
+
+  /**
+   * ✅ Post message to iframe
    */
   postToIframe(type, data) {
     const attemptPost = () => {
@@ -38,23 +82,14 @@ class KovalBotElement extends HTMLElement {
     setTimeout(attemptPost, 500);
   }
 
-  /**
-   * Send a chat message to the bot
-   */
   sendMessage(message) {
     this.postToIframe("USER_MESSAGE", message);
   }
 
-  /**
-   * Load user's dive logs
-   */
   loadDiveLogs(userId) {
     this.postToIframe("LOAD_LOGS", { userId });
   }
 
-  /**
-   * Save a session and refresh logs
-   */
   async saveSession(sessionData) {
     try {
       const response = await fetch("https://kovaldeepai-main.vercel.app/api/save-session", {
@@ -62,13 +97,8 @@ class KovalBotElement extends HTMLElement {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sessionData),
       });
-
       const result = await response.json();
-
-      // Dispatch event for listeners
       window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: result }));
-
-      // Auto-refresh logs
       if (sessionData.userId) {
         this.loadDiveLogs(sessionData.userId);
       }
@@ -77,27 +107,19 @@ class KovalBotElement extends HTMLElement {
     }
   }
 
-  /**
-   * Retrieve member info from Wix or localStorage
-   */
   getMemberDetails() {
     try {
       if (window?.wixEmbedsAPI?.getCurrentMember) {
         return window.wixEmbedsAPI.getCurrentMember();
       }
       const localMember = localStorage.getItem("__wix.memberDetails");
-      if (localMember) {
-        return JSON.parse(localMember);
-      }
+      if (localMember) return JSON.parse(localMember);
     } catch (e) {
       console.warn("⚠️ Error fetching member details:", e);
     }
     return null;
   }
 
-  /**
-   * Sends theme and user data to the bot iframe
-   */
   sendInitialData() {
     const isDark = document.documentElement.classList.contains("theme-dark") ||
       window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -114,12 +136,10 @@ class KovalBotElement extends HTMLElement {
   }
 
   connectedCallback() {
-    // Once iframe loads, send user info
     this.iframe.addEventListener("load", () => {
       this.sendInitialData();
     });
 
-    // Handle messages from the iframe
     window.addEventListener("message", (event) => {
       if (event.origin !== "https://kovaldeepai-main.vercel.app") return;
       if (!event.data) return;
@@ -128,34 +148,31 @@ class KovalBotElement extends HTMLElement {
         case "BOT_RESPONSE":
           window.dispatchEvent(new CustomEvent("KovalBotResponse", { detail: event.data.data }));
           break;
-
         case "RESIZE_IFRAME":
           if (event.data.data?.height) {
             this.iframe.style.height = `${event.data.data.height}px`;
           }
           break;
-
         case "REQUEST_USER_DETAILS":
           this.sendInitialData();
           break;
       }
     });
 
-    // Handle wixEmbedsAPI readiness
     if (window.wixEmbedsAPI?.onReady) {
-      window.wixEmbedsAPI.onReady(() => {
-        this.sendInitialData();
-      });
+      window.wixEmbedsAPI.onReady(() => this.sendInitialData());
     }
+
+    // ✅ Listen for frontend "no memories found" event
+    window.addEventListener("OpenBotIfNoMemories", () => this.openBot());
   }
 }
 
-// ✅ Register custom element
 customElements.define('koa-bot', KovalBotElement);
 
-// ✅ Expose a global API for external scripts
 window.KovalBot = {
   sendMessage: (msg) => document.querySelector('koa-bot')?.sendMessage(msg),
   loadDiveLogs: (userId) => document.querySelector('koa-bot')?.loadDiveLogs(userId),
   saveSession: (data) => document.querySelector('koa-bot')?.saveSession(data),
+  openBot: () => document.querySelector('koa-bot')?.openBot()
 };
