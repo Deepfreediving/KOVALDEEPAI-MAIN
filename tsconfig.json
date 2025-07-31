@@ -1,22 +1,22 @@
 {
   "compilerOptions": {
-    "target": "es6",                         // Modern JS support
-    "lib": ["DOM", "DOM.Iterable", "ESNext"], // Browser + modern JS libs
-    "allowJs": false,                        // Enforce TypeScript only
-    "skipLibCheck": true,                    // Speeds up builds by skipping lib checks
-    "strict": true,                          // Enables full strict mode
-    "forceConsistentCasingInFileNames": true, // File casing consistency
-    "noEmit": true,                          // Don’t output JS files
-    "incremental": true,                     // Speed up rebuilds
-    "esModuleInterop": true,                 // For CommonJS module compatibility
-    "moduleResolution": "Node",             // Node-style module resolution
-    "resolveJsonModule": true,              // Allow importing JSON
-    "isolatedModules": true,                // Needed for ts-node/Next.js
-    "jsx": "preserve",                       // Keep JSX as-is for Next
-    "module": "commonjs",                    // CommonJS compatibility
-    "baseUrl": ".",                          // Root path
+    "target": "es6",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": true,                        // ✅ allow JavaScript files
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "module": "commonjs",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["*"],
       "@lib/*": ["lib/*"],
       "@utils/*": ["utils/*"],
       "@components/*": ["components/*"],
@@ -33,9 +33,13 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
     "next-env.d.ts",
     "types/**/*.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "next.config.js",
+    "vercel.json"
   ],
   "exclude": [
     "node_modules",

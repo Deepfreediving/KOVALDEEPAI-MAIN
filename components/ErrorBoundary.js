@@ -1,3 +1,5 @@
+"use client";  // ✅ Add this line
+
 import React, { Component } from "react";
 
 class ErrorBoundary extends Component {

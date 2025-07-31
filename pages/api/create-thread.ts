@@ -5,7 +5,8 @@ import { OpenAI } from 'openai';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || 'asst_WnbEd7Jxgf1z2U0ziNWi8yz9';
-const WIX_SITE_URL = process.env.WIX_SITE_URL || 'https://your-wix-site.com'; // ✅ Set this in .env
+const WIX_SITE_URL = process.env.WIX_SITE_URL || '';
+
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY || '' });
 
 type TextContent = {
@@ -17,12 +18,27 @@ type TextContent = {
 };
 
 /**
+ * ✅ Helper: Fetch with timeout
+ */
+async function fetchWithTimeout(url: string, ms = 6000): Promise<Response> {
+  return Promise.race([
+    fetch(url),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch request timed out')), ms))
+  ]) as Promise<Response>;
+}
+
+/**
  * ✅ Fetch user dive logs directly from Wix live endpoint
  */
 async function fetchWixDiveLogs(userId: string): Promise<string[]> {
+  if (!WIX_SITE_URL || WIX_SITE_URL.includes('your-wix-site')) {
+    console.warn('⚠️ WIX_SITE_URL not properly set. Skipping Wix logs fetch.');
+    return [];
+  }
+
   try {
     const url = `${WIX_SITE_URL}/_functions/userMemory?userId=${encodeURIComponent(userId)}`;
-    const res = await fetch(url, { method: 'GET' });
+    const res = await fetchWithTimeout(url, 6000);
 
     if (!res.ok) {
       console.warn(`⚠️ Wix fetch returned status ${res.status}`);
@@ -53,21 +69,24 @@ async function pollRunCompletion(threadId: string, runId: string, maxRetries = 2
 
     try {
       const updatedRun = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
+
       if (updatedRun.status === 'completed') return true;
-      if (updatedRun.status === 'failed') {
-        console.error('❌ Run failed:', updatedRun.last_error);
+
+      if (updatedRun.status === 'failed' || updatedRun.status === 'cancelled') {
+        console.error(`❌ Run ended with status: ${updatedRun.status}`, updatedRun.last_error);
         return false;
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn('⚠️ Polling error:', msg);
+      if (msg.includes('4') || msg.includes('Invalid')) return false;
     }
 
     retries++;
     delay = Math.min(delay * 1.5, 5000);
   }
 
-  console.warn('⚠️ Run did not complete within retries.');
+  console.warn('⚠️ Run did not complete within allowed retries.');
   return false;
 }
 
@@ -127,11 +146,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 6️⃣ Retrieve assistant's first message
     const messages = await openai.beta.threads.messages.list(thread.id);
-    const assistantMessage = messages.data.find((m) => m.role === 'assistant');
+    const assistantMessages = messages.data.filter((m) => m.role === 'assistant');
 
-    const textBlock = (assistantMessage?.content || []).find(
-      (c): c is TextContent => c.type === 'text' && !!c.text?.value
-    );
+    const textBlock = assistantMessages
+      .flatMap((m) => m.content)
+      .find((c): c is TextContent => c.type === 'text' && !!c.text?.value);
 
     return res.status(200).json({
       threadId: thread.id,

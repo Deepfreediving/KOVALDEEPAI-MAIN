@@ -19,10 +19,11 @@ const getPlugins = () => {
   return plugins;
 };
 
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true, // ✅ Faster builds using SWC
-  productionBrowserSourceMaps: false, // ✅ Don't ship source maps to production
+
+  // ✅ Recommended default; swcMinify is now always on in Next.js 15
+  productionBrowserSourceMaps: false,
 
   webpack(config, { isServer }) {
     // Aliases for cleaner imports
@@ -48,11 +49,24 @@ module.exports = {
   },
 
   env: {
+    // ✅ OpenAI
+    OPENAI_MODEL: process.env.OPENAI_MODEL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    OPENAI_API_BASE: process.env.OPENAI_API_URL || 'https://api.openai.com/v1',
+    OPENAI_API_URL: process.env.OPENAI_API_URL,
+    OPENAI_ORG: process.env.OPENAI_ORG,
+    OPENAI_API_BASE: process.env.OPENAI_API_BASE,
+    OPENAI_ASSISTANT_ID: process.env.OPENAI_ASSISTANT_ID,
+    OPENAI_PROJECT_ID: process.env.OPENAI_PROJECT_ID,
+
+    // ✅ Pinecone
     PINECONE_API_KEY: process.env.PINECONE_API_KEY,
-    PINECONE_INDEX: process.env.PINECONE_INDEX,
     PINECONE_HOST: process.env.PINECONE_HOST,
+    PINECONE_INDEX: process.env.PINECONE_INDEX,
+
+    // ✅ Wix API
+    WIX_API_KEY: process.env.WIX_API_KEY,
+    WIX_ACCOUNT_ID: process.env.WIX_ACCOUNT_ID,
+    WIX_CLIENT_ID: process.env.WIX_CLIENT_ID,
   },
 
   async redirects() {
@@ -89,7 +103,8 @@ module.exports = {
     ];
   },
 
-  experimental: {
+  // ✅ Updated to use "compiler" instead of deprecated "experimental"
+  compiler: {
     modularizeImports: {
       lodash: {
         transform: 'lodash/{{member}}',
@@ -97,3 +112,5 @@ module.exports = {
     },
   },
 };
+
+module.exports = nextConfig;

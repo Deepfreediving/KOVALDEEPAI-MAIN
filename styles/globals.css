@@ -1,11 +1,74 @@
-/* global.css */
+/* ==== Global Styles (globals.css) ==== */
+
+/* Tailwind base layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Add your global CSS styles here */
-body {
+/* ---- Base HTML & Body Styling ---- */
+html, body {
   margin: 0;
   padding: 0;
-  font-family: sans-serif; /* You can customize this to your preferred font */
+  min-height: 100%;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  background-color: #ffffff; /* Default light theme */
+  color: #000000; /* Default text color for light mode */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ---- Dark Mode Support ---- */
+.dark body {
+  background-color: #121212; /* Dark theme background */
+  color: #ffffff; /* Default text color for dark mode */
+}
+
+/* ---- Headings ---- */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  color: inherit;
+  margin-bottom: 0.5rem;
+}
+
+/* ---- Links ---- */
+a {
+  color: #1e90ff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Scrollbar Styling (Optional) ---- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* ---- Chat Container ---- */
+.chat-container {
+  background-color: #f9f9f9; /* Light mode default */
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat container dark mode */
+.dark .chat-container {
+  background-color: #1e1e1e;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }

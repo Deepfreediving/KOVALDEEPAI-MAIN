@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
 import fs from 'fs';
 import path from 'path';
+import { analyzeDiveLogText, generateDiveReport } from '../../utils/analyzeDiveLog';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -29,15 +30,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing log, threadId, or userId' });
     }
 
+    // ✅ 1. Generate raw text summary
     const summary = `
 Dive Log Summary for User ${userId}:
 - Date: ${safe(log.date)}
 - Discipline: ${safe(log.disciplineType)} – ${safe(log.discipline)}
 - Location: ${safe(log.location)}
-- Target Depth: ${safe(log.targetDepth)}
-- Reached Depth: ${safe(log.reachedDepth)}
-- Mouthfill Depth: ${safe(log.mouthfillDepth)}
-- Issue Depth: ${safe(log.issueDepth)}
+- Target Depth: ${safe(log.targetDepth)} m
+- Reached Depth: ${safe(log.reachedDepth)} m
+- Mouthfill Depth: ${safe(log.mouthfillDepth)} m
+- Issue Depth: ${safe(log.issueDepth)} m
 - Issue Comment: ${safe(log.issueComment)}
 - Duration/Distance: ${safe(log.durationOrDistance)}
 - Total Dive Time: ${safe(log.totalDiveTime)}
@@ -48,7 +50,18 @@ Dive Log Summary for User ${userId}:
 - Notes: ${safe(log.notes)}
 `;
 
-    // ✅ 1. Save to local memory
+    // ✅ 2. Analyze log and generate a coaching report
+    const textLog = `
+Reached Depth: ${log.reachedDepth}m
+Target Depth: ${log.targetDepth}m
+Mouthfill Depth: ${log.mouthfillDepth}m
+Issue Depth: ${log.issueDepth}m
+Notes: ${log.notes}
+    `;
+    const analysis = analyzeDiveLogText(textLog);
+    const coachingReport = generateDiveReport(analysis);
+
+    // ✅ 3. Save to local memory
     const userMemoryFile = path.join(MEMORY_DIR, `${userId}.json`);
     let userMemory = [];
     if (fs.existsSync(userMemoryFile)) {
@@ -59,13 +72,13 @@ Dive Log Summary for User ${userId}:
         userMemory = [];
       }
     }
-    userMemory.push({ ...log, threadId, timestamp: new Date().toISOString() });
+    userMemory.push({ ...log, threadId, coachingReport, timestamp: new Date().toISOString() });
     fs.writeFileSync(userMemoryFile, JSON.stringify(userMemory, null, 2));
 
-    // ✅ 2. Send to OpenAI Memory
+    // ✅ 4. Send both raw log and coaching summary to OpenAI Memory
     await openai.beta.threads.messages.create(threadId, {
       role: 'user',
-      content: `Here is a dive log entry:\n${summary}\nPlease keep this in memory and provide a coaching response.`,
+      content: `Here is a dive log entry:\n${summary}\n\nCoaching Analysis:\n${coachingReport}\n\nPlease store this for future coaching sessions.`,
       metadata: {
         type: 'diveLog',
         userId,
@@ -80,15 +93,16 @@ Dive Log Summary for User ${userId}:
     const messages = await openai.beta.threads.messages.list(threadId);
     const assistantMessage = messages.data.find(msg => msg.role === 'assistant') || {
       role: 'assistant',
-      content: "✅ Log received. No detailed response available yet.",
+      content: "✅ Log received and coaching report saved.",
     };
 
-    // ✅ 3. Mirror to Wix CMS
+    // ✅ 5. Mirror to Wix CMS (async)
     fetch('https://www.deepfreediving.com/_functions/saveToUserMemory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...log,
+        coachingReport,
         userId,
         threadId
       }),
@@ -99,6 +113,7 @@ Dive Log Summary for User ${userId}:
     return res.status(200).json({
       success: true,
       assistantMessage,
+      coachingReport,
     });
 
   } catch (err: any) {

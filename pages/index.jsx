@@ -11,28 +11,16 @@ export default function Index() {
   // ✅ State Management
   // ----------------------------
   const [sessionName, setSessionName] = useState(defaultSessionName);
-  const [sessionsList, setSessionsList] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("kovalSessionsList")) || [];
-    } catch {
-      return [];
-    }
-  });
+  const [sessionsList, setSessionsList] = useState([]);
   const [editingSessionName, setEditingSessionName] = useState(false);
   const [input, setInput] = useState("");
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [userId, setUserId] = useState(localStorage.getItem("kovalUser") || "");
-  const [threadId, setThreadId] = useState(localStorage.getItem("kovalThreadId") || null);
-  const [profile, setProfile] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("kovalProfile") || "{}");
-    } catch {
-      return {};
-    }
-  });
+  const [userId, setUserId] = useState("");
+  const [threadId, setThreadId] = useState(null);
+  const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
@@ -40,7 +28,9 @@ export default function Index() {
   const [wixData, setWixData] = useState([]);
   const bottomRef = useRef(null);
 
-  // LocalStorage helpers
+  // ----------------------------
+  // ✅ LocalStorage Helpers
+  // ----------------------------
   const storageKey = (uid) => `diveLogs-${uid}`;
   const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
   const getPendingSync = () => {
@@ -51,7 +41,21 @@ export default function Index() {
     }
   };
 
-  // Display name helper
+  // ✅ Load LocalStorage Data
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList")) || []);
+        setUserId(localStorage.getItem("kovalUser") || "");
+        setThreadId(localStorage.getItem("kovalThreadId") || null);
+        setProfile(JSON.parse(localStorage.getItem("kovalProfile") || "{}"));
+      } catch {
+        console.warn("⚠️ Failed to load from localStorage");
+      }
+    }
+  }, []);
+
+  // ✅ Display name helper
   const getDisplayName = () => {
     if (profile?.loginEmail) return profile.loginEmail;
     if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
@@ -139,7 +143,7 @@ export default function Index() {
   }, [userId]);
 
   // ----------------------------
-  // 4️⃣ Load and sync dive logs
+  // 4️⃣ Load and Sync Dive Logs
   // ----------------------------
   useEffect(() => {
     if (!userId) return;
@@ -286,7 +290,7 @@ export default function Index() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col h-screen">
           {/* Top Bar */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-2 flex justify-between items-center text-sm">
+          <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
             <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
               👤 {getDisplayName()}
             </div>
@@ -307,17 +311,22 @@ export default function Index() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4">
-            <ChatMessages
-              messages={messages}
-              BOT_NAME={BOT_NAME}
-              darkMode={darkMode}
-              loading={loading}
-              bottomRef={bottomRef}
-            />
+          <div className="flex-1 overflow-y-auto flex justify-center">
+            <div className="w-full max-w-3xl px-6 py-4">
+              <ChatMessages
+                messages={messages}
+                BOT_NAME={BOT_NAME}
+                darkMode={darkMode}
+                loading={loading}
+                bottomRef={bottomRef}
+              />
+            </div>
           </div>
 
-          <ChatBox {...sharedProps} />
+          {/* Chat Input */}
+          <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
+            <ChatBox {...sharedProps} />
+          </div>
         </div>
       </main>
     </div>
