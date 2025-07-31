@@ -65,7 +65,7 @@ export default function Index() {
     }
   }, []);
 
-  // ✅ Sync theme with DOM (add/remove class on <html>)
+  // ✅ Sync theme with DOM
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.documentElement.classList.toggle("dark", darkMode);
@@ -122,17 +122,19 @@ export default function Index() {
     return () => window.removeEventListener("OpenBotIfNoMemories", openBotHandler);
   }, []);
 
-  // ✅ Fetch Wix Collection Data
+  // ✅ Fetch Wix Collection Data (using secure proxy)
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/wixConnect");
+        const res = await fetch("/api/get-wix-data");
         if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
         const json = await res.json();
 
-        setWixData(json.data || []);
-        if (!json.data) {
-          setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ No data found from Wix collection." }]);
+        if (json.data && json.data.length > 0) {
+          setWixData(json.data);
+          setMessages((prev) => [...prev, { role: "assistant", content: "✅ Connected to Wix and retrieved data." }]);
+        } else {
+          setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Wix data is empty or not found." }]);
         }
       } catch (err) {
         console.error("❌ Failed to fetch Wix data:", err);
@@ -324,7 +326,7 @@ export default function Index() {
             <ul>
               {wixData.map((item) => (
                 <li key={item._id} className="text-sm">
-                  {item.data?.title || "Unnamed item"}
+                  {item.data?.title || item.title || "Unnamed item"}
                 </li>
               ))}
             </ul>
