@@ -1,56 +1,40 @@
 import { items } from '@wix/data';
-import { createClient, OAuthStrategy } from '@wix/sdk';
+import { createClient, ApiKeyStrategy } from '@wix/sdk';
 
 export default async function handler(req, res) {
-  if (!process.env.WIX_CLIENT_ID || !process.env.WIX_CLIENT_SECRET) {
-    return res.status(500).json({ error: "Missing Wix credentials" });
+  // Ensure the API key exists
+  if (!process.env.WIX_API_KEY) {
+    return res.status(500).json({ error: "Missing WIX_API_KEY in environment variables." });
   }
 
   try {
-    // Step 1: Get Access Token
-    const tokenResponse = await fetch("https://www.wixapis.com/oauth2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        accountId: process.env.WIX_ACCOUNT_ID,
-        clientId: process.env.WIX_CLIENT_ID,
-        clientSecret: process.env.WIX_CLIENT_SECRET,
-        grant_type: "client_credentials",
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      throw new Error(`Failed to retrieve access token: ${errorText}`);
-    }
-
-    const { access_token } = await tokenResponse.json();
-
-    // Step 2: Initialize Wix Client
+    // Initialize Wix client using API Key authentication
     const myWixClient = createClient({
       modules: { items },
-      auth: OAuthStrategy({
-        clientId: process.env.WIX_CLIENT_ID,
-        tokens: { accessToken: access_token },
+      auth: ApiKeyStrategy({
+        apiKey: process.env.WIX_API_KEY,
       }),
     });
 
-    // Step 3: Query Wix Collection
-    const dataCollectionId = req.query.collectionId || "Events/Schedules";
+    // Choose the collection dynamically or fallback to "userMemory"
+    const dataCollectionId = req.query.collectionId || "userMemory";
+
+    // Fetch data from the Wix collection
     const dataItemsList = await myWixClient.items
       .queryDataItems({ dataCollectionId })
       .find();
 
-    res.status(200).json({
+    // Return the data
+    return res.status(200).json({
       total: dataItemsList.items.length,
       data: dataItemsList.items,
     });
 
   } catch (error) {
-    console.error("❌ Wix API Error:", error);
-    res.status(500).json({
+    console.error("❌ Wix API Error:", error.message);
+    return res.status(500).json({
       error: "Failed to fetch data from Wix",
-      details: error.message || "Unknown error",
+      details: error.message || "Unknown error occurred.",
     });
   }
 }
