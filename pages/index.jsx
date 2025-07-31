@@ -18,12 +18,12 @@ export default function Index() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Light mode default
+  // ✅ Default light mode
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("kovalDarkMode");
       if (stored !== null) return stored === "true";
-      return false; // ✅ Default Light Mode
+      return false;
     }
     return false;
   });
@@ -65,10 +65,11 @@ export default function Index() {
     }
   }, []);
 
-  // ✅ Sync theme with DOM
+  // ✅ Sync theme with DOM (add/remove class on <html>)
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.documentElement.classList.toggle("dark", darkMode);
+      document.documentElement.classList.toggle("light", !darkMode);
     }
     localStorage.setItem("kovalDarkMode", darkMode);
   }, [darkMode]);
@@ -80,7 +81,7 @@ export default function Index() {
     return userId?.startsWith("Guest") ? "Guest User" : "User";
   };
 
-  // 1️⃣ Listen for widget messages
+  // ✅ Handle widget messages
   useEffect(() => {
     const handleWidgetMessages = (event) => {
       const { type, data } = event.data || {};
@@ -102,7 +103,7 @@ export default function Index() {
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // 2️⃣ Inject <koa-bot>
+  // ✅ Inject bot element
   useEffect(() => {
     if (typeof window !== "undefined" && !document.querySelector("koa-bot")) {
       const botElement = document.createElement("koa-bot");
@@ -110,7 +111,7 @@ export default function Index() {
     }
   }, []);
 
-  // 3️⃣ Handle "OpenBotIfNoMemories"
+  // ✅ Handle "OpenBotIfNoMemories"
   useEffect(() => {
     const openBotHandler = () => {
       if (window.KovalBot) {
@@ -121,7 +122,7 @@ export default function Index() {
     return () => window.removeEventListener("OpenBotIfNoMemories", openBotHandler);
   }, []);
 
-  // 4️⃣ Fetch Wix Collection Data
+  // ✅ Fetch Wix Collection Data
   useEffect(() => {
     (async () => {
       try {
@@ -140,7 +141,7 @@ export default function Index() {
     })();
   }, []);
 
-  // 5️⃣ Initialize AI Thread
+  // ✅ Initialize AI Thread
   useEffect(() => {
     if (!userId || threadId) return;
     (async () => {
@@ -161,7 +162,7 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // 6️⃣ Load and Sync Dive Logs
+  // ✅ Load and Sync Dive Logs
   useEffect(() => {
     if (!userId) return;
     const key = storageKey(userId);
@@ -197,7 +198,7 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // 7️⃣ Handle Dive Journal
+  // ✅ Handle Dive Journal
   const handleJournalSubmit = useCallback((entry) => {
     const key = storageKey(userId);
     const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
@@ -222,7 +223,7 @@ export default function Index() {
     setDiveLogs(updated);
   }, [userId, diveLogs]);
 
-  // 8️⃣ Handle Save Session
+  // ✅ Handle Save Session
   const handleSaveSession = useCallback(() => {
     const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
     const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
@@ -270,86 +271,84 @@ export default function Index() {
   }), [sessionName, sessionsList, messages, darkMode, diveLogs, input, files, loading, userId, profile, eqState, showDiveJournalForm, editLogIndex, threadId]);
 
   return (
-    <div className={darkMode ? "dark" : ""}>
-      <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
-        {/* Sidebar */}
-        <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
-          <Sidebar
-            {...sharedProps}
-            startNewSession={() => {
-              const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
-              setSessionName(name);
-              setMessages([]);
-              setFiles([]);
-              setEditingSessionName(false);
-              localStorage.setItem("kovalSessionName", name);
-            }}
-            handleSaveSession={handleSaveSession}
-            toggleDiveJournal={() => setShowDiveJournalForm((prev) => !prev)}
-            handleSelectSession={(name) => {
-              const found = sessionsList.find((s) => s.sessionName === name);
-              if (found) {
-                setSessionName(found.sessionName);
-                setMessages(found.messages || []);
-                setInput("");
-              }
-            }}
-            handleJournalSubmit={handleJournalSubmit}
-            handleEdit={handleEdit}
-            handleDelete={handleDelete}
-          />
+    <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
+      {/* Sidebar */}
+      <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
+        <Sidebar
+          {...sharedProps}
+          startNewSession={() => {
+            const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
+            setSessionName(name);
+            setMessages([]);
+            setFiles([]);
+            setEditingSessionName(false);
+            localStorage.setItem("kovalSessionName", name);
+          }}
+          handleSaveSession={handleSaveSession}
+          toggleDiveJournal={() => setShowDiveJournalForm((prev) => !prev)}
+          handleSelectSession={(name) => {
+            const found = sessionsList.find((s) => s.sessionName === name);
+            if (found) {
+              setSessionName(found.sessionName);
+              setMessages(found.messages || []);
+              setInput("");
+            }
+          }}
+          handleJournalSubmit={handleJournalSubmit}
+          handleEdit={handleEdit}
+          handleDelete={handleDelete}
+        />
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col h-screen">
+        {/* Top Bar */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
+          <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
+            👤 {getDisplayName()}
+          </div>
+
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+          >
+            {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+          </button>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col h-screen">
-          {/* Top Bar */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
-            <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
-              👤 {getDisplayName()}
-            </div>
-
-            {/* Theme Toggle Button */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-            >
-              {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
-            </button>
+        {/* Wix Data */}
+        {wixData.length > 0 && (
+          <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+            <h2 className="font-bold mb-1">📂 Wix Data:</h2>
+            <ul>
+              {wixData.map((item) => (
+                <li key={item._id} className="text-sm">
+                  {item.data?.title || "Unnamed item"}
+                </li>
+              ))}
+            </ul>
           </div>
+        )}
 
-          {/* Wix Data */}
-          {wixData.length > 0 && (
-            <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
-              <h2 className="font-bold mb-1">📂 Wix Data:</h2>
-              <ul>
-                {wixData.map((item) => (
-                  <li key={item._id} className="text-sm">
-                    {item.data?.title || "Unnamed item"}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto flex justify-center">
-            <div className="w-full max-w-3xl px-6 py-4">
-              <ChatMessages
-                messages={messages}
-                BOT_NAME={BOT_NAME}
-                darkMode={darkMode}
-                loading={loading}
-                bottomRef={bottomRef}
-              />
-            </div>
-          </div>
-
-          {/* Chat Input */}
-          <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
-            <ChatBox {...sharedProps} />
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto flex justify-center">
+          <div className="w-full max-w-3xl px-6 py-4">
+            <ChatMessages
+              messages={messages}
+              BOT_NAME={BOT_NAME}
+              darkMode={darkMode}
+              loading={loading}
+              bottomRef={bottomRef}
+            />
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Chat Input */}
+        <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
+          <ChatBox {...sharedProps} />
+        </div>
+      </div>
+    </main>
   );
 }
