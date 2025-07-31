@@ -21,8 +21,11 @@ const getPlugins = () => {
 
 module.exports = {
   reactStrictMode: true,
+  swcMinify: true, // ✅ Faster builds using SWC
+  productionBrowserSourceMaps: false, // ✅ Don't ship source maps to production
 
   webpack(config, { isServer }) {
+    // Aliases for cleaner imports
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
@@ -38,9 +41,10 @@ module.exports = {
   },
 
   images: {
-    domains: ['yourdomain.com'],
-    formats: ['image/webp'],
-    deviceSizes: [640, 750, 1080, 1200, 1920],
+    domains: ['yourdomain.com', 'assets.vercel.com'],
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [320, 640, 750, 1080, 1200, 1920],
+    minimumCacheTTL: 60, // Cache images for 1 minute on Vercel CDN
   },
 
   env: {
@@ -75,12 +79,21 @@ module.exports = {
       {
         source: '/:path*',
         headers: [
-          {
-            key: 'X-Custom-Header',
-            value: 'my-custom-value',
-          },
+          { key: 'X-Custom-Header', value: 'my-custom-value' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },
     ];
+  },
+
+  experimental: {
+    modularizeImports: {
+      lodash: {
+        transform: 'lodash/{{member}}',
+      },
+    },
   },
 };
