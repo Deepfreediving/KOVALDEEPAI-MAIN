@@ -17,7 +17,14 @@ export default function Index() {
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("kovalDarkMode");
+      if (stored !== null) return stored === "true";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
   const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
@@ -55,6 +62,14 @@ export default function Index() {
     }
   }, []);
 
+  // ✅ Keep HTML class in sync with theme
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", darkMode);
+    }
+    localStorage.setItem("kovalDarkMode", darkMode);
+  }, [darkMode]);
+
   // ✅ Display name helper
   const getDisplayName = () => {
     if (profile?.loginEmail) return profile.loginEmail;
@@ -63,15 +78,7 @@ export default function Index() {
   };
 
   // ----------------------------
-  // 1️⃣ Theme Detection on First Load
-  // ----------------------------
-  useEffect(() => {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setDarkMode(prefersDark);
-  }, []);
-
-  // ----------------------------
-  // 2️⃣ Listen for messages from widget
+  // 1️⃣ Listen for messages from widget
   // ----------------------------
   useEffect(() => {
     const handleWidgetMessages = (event) => {
@@ -88,7 +95,9 @@ export default function Index() {
           break;
 
         case "THEME_CHANGE":
-          setDarkMode(Boolean(data?.dark));
+          if (typeof data?.dark === "boolean") {
+            setDarkMode(data.dark);
+          }
           break;
 
         case "RESIZE_IFRAME":
@@ -107,7 +116,7 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 3️⃣ Inject <koa-bot> widget if missing
+  // 2️⃣ Inject <koa-bot> widget if missing
   // ----------------------------
   useEffect(() => {
     if (typeof window !== "undefined" && !document.querySelector("koa-bot")) {
@@ -117,7 +126,7 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 4️⃣ Handle "OpenBotIfNoMemories" event
+  // 3️⃣ Handle "OpenBotIfNoMemories" event
   // ----------------------------
   useEffect(() => {
     const openBotHandler = () => {
@@ -132,7 +141,7 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 5️⃣ Fetch Wix Collection Data
+  // 4️⃣ Fetch Wix Collection Data
   // ----------------------------
   useEffect(() => {
     (async () => {
@@ -165,7 +174,7 @@ export default function Index() {
   }, []);
 
   // ----------------------------
-  // 6️⃣ Initialize AI Thread
+  // 5️⃣ Initialize AI Thread
   // ----------------------------
   useEffect(() => {
     if (!userId || threadId) return;
@@ -188,7 +197,7 @@ export default function Index() {
   }, [userId]);
 
   // ----------------------------
-  // 7️⃣ Load and Sync Dive Logs
+  // 6️⃣ Load and Sync Dive Logs
   // ----------------------------
   useEffect(() => {
     if (!userId) return;
@@ -226,7 +235,7 @@ export default function Index() {
   }, [userId]);
 
   // ----------------------------
-  // 8️⃣ Handle Dive Journal
+  // 7️⃣ Handle Dive Journal
   // ----------------------------
   const handleJournalSubmit = useCallback(
     (entry) => {
@@ -260,7 +269,7 @@ export default function Index() {
   );
 
   // ----------------------------
-  // 9️⃣ Handle Save Session + Sync with widget
+  // 8️⃣ Handle Save Session
   // ----------------------------
   const handleSaveSession = useCallback(() => {
     const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
@@ -278,13 +287,6 @@ export default function Index() {
       });
     }
   }, [sessionName, sessionsList, messages, userId]);
-
-  // ----------------------------
-  // 🔟 Keep theme in sync with Wix parent
-  // ----------------------------
-  useEffect(() => {
-    window.parent?.postMessage({ type: "THEME_CHANGE", data: { dark: darkMode } }, "*");
-  }, [darkMode]);
 
   // ----------------------------
   // ✅ Shared Props
@@ -324,7 +326,7 @@ export default function Index() {
 
   return (
     <div className={darkMode ? "dark" : ""}>
-      <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white transition-colors duration-200">
+      <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
         {/* Sidebar */}
         <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
           <Sidebar
@@ -390,7 +392,7 @@ export default function Index() {
           </div>
 
           {/* Chat Input */}
-          <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700 bg-white dark:bg-black">
+          <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
             <ChatBox {...sharedProps} />
           </div>
         </div>
