@@ -21,12 +21,9 @@ const getPlugins = () => {
 
 const nextConfig = {
   reactStrictMode: true,
-
-  // ✅ Recommended default; swcMinify is now always on in Next.js 15
   productionBrowserSourceMaps: false,
 
   webpack(config, { isServer }) {
-    // Aliases for cleaner imports
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
@@ -45,11 +42,10 @@ const nextConfig = {
     domains: ['yourdomain.com', 'assets.vercel.com'],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [320, 640, 750, 1080, 1200, 1920],
-    minimumCacheTTL: 60, // Cache images for 1 minute on Vercel CDN
+    minimumCacheTTL: 60,
   },
 
   env: {
-    // ✅ OpenAI
     OPENAI_MODEL: process.env.OPENAI_MODEL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_API_URL: process.env.OPENAI_API_URL,
@@ -58,12 +54,10 @@ const nextConfig = {
     OPENAI_ASSISTANT_ID: process.env.OPENAI_ASSISTANT_ID,
     OPENAI_PROJECT_ID: process.env.OPENAI_PROJECT_ID,
 
-    // ✅ Pinecone
     PINECONE_API_KEY: process.env.PINECONE_API_KEY,
     PINECONE_HOST: process.env.PINECONE_HOST,
     PINECONE_INDEX: process.env.PINECONE_INDEX,
 
-    // ✅ Wix API
     WIX_API_KEY: process.env.WIX_API_KEY,
     WIX_ACCOUNT_ID: process.env.WIX_ACCOUNT_ID,
     WIX_CLIENT_ID: process.env.WIX_CLIENT_ID,
@@ -95,15 +89,18 @@ const nextConfig = {
         headers: [
           { key: 'X-Custom-Header', value: 'my-custom-value' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // ✅ Allow embedding in Wix iframe
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors *" },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'unsafe-none' },
         ],
       },
     ];
   },
 
-  // ✅ Updated to use "compiler" instead of deprecated "experimental"
   compiler: {
     modularizeImports: {
       lodash: {
