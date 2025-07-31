@@ -2,5 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/api/wixConnect": "pages/api/wixConnect.js",
   "/": "pages/index.js"
 }
