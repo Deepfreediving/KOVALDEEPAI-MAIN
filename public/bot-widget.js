@@ -30,9 +30,11 @@ class KovalBotElement extends HTMLElement {
     const attemptPost = () => {
       if (this.iframe?.contentWindow) {
         this.iframe.contentWindow.postMessage({ type, data }, "https://kovaldeepai-main.vercel.app");
+      } else {
+        console.warn("⚠️ Iframe not ready yet, retrying...");
       }
     };
-    // Try immediately and retry once if iframe not yet ready
+    // Try immediately and retry if iframe not yet ready
     attemptPost();
     setTimeout(attemptPost, 500);
   }
@@ -52,19 +54,29 @@ class KovalBotElement extends HTMLElement {
   }
 
   /**
-   * Save a session
+   * Save a session and auto-refresh logs
    */
-  saveSession(sessionData) {
-    fetch("https://kovaldeepai-main.vercel.app/api/saveSession", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sessionData)
-    })
-      .then(res => res.json())
-      .then(result => {
-        window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: result }));
-      })
-      .catch(console.error);
+  async saveSession(sessionData) {
+    try {
+      const response = await fetch("https://kovaldeepai-main.vercel.app/api/save-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sessionData),
+      });
+
+      const result = await response.json();
+
+      // ✅ Trigger custom event for external listeners
+      window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: result }));
+
+      // ✅ Auto-refresh logs if userId is available
+      if (sessionData.userId) {
+        console.log("✅ Session saved, refreshing logs...");
+        this.loadDiveLogs(sessionData.userId);
+      }
+    } catch (error) {
+      console.error("❌ Failed to save session:", error);
+    }
   }
 
   /**
@@ -80,7 +92,7 @@ class KovalBotElement extends HTMLElement {
         return JSON.parse(localMember);
       }
     } catch (e) {
-      console.warn("Error fetching member details:", e);
+      console.warn("⚠️ Error fetching member details:", e);
     }
     return null;
   }
