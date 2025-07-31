@@ -1,4 +1,6 @@
 {
+  "version": 2,
+  "framework": "nextjs",
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -9,10 +11,9 @@
       "destination": "/"
     }
   ],
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
     }
-  ]
+  }
 }
