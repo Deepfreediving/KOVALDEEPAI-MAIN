@@ -3,6 +3,8 @@ import { items } from '@wix/data';
 import { createClient, ApiKeyStrategy } from '@wix/sdk';
 
 export default async function handler(req, res) {
+  console.log("📡 [wixConnect] Incoming request:", req.method, req.query);
+
   // ✅ Allow only GET
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed. Use GET.' });
@@ -11,53 +13,71 @@ export default async function handler(req, res) {
   // ✅ Check environment variable
   const apiKey = process.env.WIX_API_KEY;
   if (!apiKey) {
-    console.error("❌ Missing WIX_API_KEY");
-    return res.status(500).json({ error: 'Server misconfiguration: missing WIX_API_KEY.' });
+    console.error("❌ [wixConnect] Missing WIX_API_KEY");
+    return res.status(500).json({ 
+      error: 'Server misconfiguration: missing WIX_API_KEY.' 
+    });
   }
 
+  let myWixClient;
   try {
     // ✅ Initialize client
-    const myWixClient = createClient({
+    console.log("🔑 [wixConnect] Initializing Wix Client...");
+    myWixClient = createClient({
       modules: { items },
       auth: ApiKeyStrategy({ apiKey }),
     });
+    console.log("✅ [wixConnect] Wix Client initialized successfully.");
+  } catch (clientError) {
+    console.error("❌ [wixConnect] Failed to create Wix client:", clientError);
+    return res.status(500).json({ 
+      error: 'Failed to initialize Wix client.', 
+      details: clientError?.message 
+    });
+  }
 
-    // ✅ Validate collectionId param
-    const dataCollectionId = (req.query.collectionId || 'userMemory').trim();
-    if (!dataCollectionId) {
-      return res.status(400).json({ error: 'Invalid collectionId parameter.' });
-    }
+  // ✅ Validate collectionId param
+  const dataCollectionId = (req.query.collectionId || 'userMemory').trim();
+  if (!dataCollectionId) {
+    console.error("⚠️ [wixConnect] Invalid or missing collectionId parameter.");
+    return res.status(400).json({ 
+      error: 'Invalid collectionId parameter.' 
+    });
+  }
 
-    // ✅ Perform query safely
-    let dataItemsList;
-    try {
-      dataItemsList = await myWixClient.items
-        .queryDataItems({
-          dataCollectionId,
-          paging: { limit: 100 },
-        })
-        .find();
-    } catch (queryError) {
-      console.error("❌ Wix SDK query failed:", queryError);
-      return res.status(502).json({ error: 'Failed to query Wix data collection.' });
-    }
+  console.log(`📂 [wixConnect] Querying collection: ${dataCollectionId}`);
+
+  try {
+    // ✅ Perform query
+    const dataItemsList = await myWixClient.items
+      .queryDataItems({
+        dataCollectionId,
+        paging: { limit: 100 },
+      })
+      .find();
+
+    console.log("✅ [wixConnect] Query successful. Items found:", dataItemsList?.items?.length || 0);
 
     // ✅ Check for empty results
     if (!dataItemsList?.items?.length) {
-      return res.status(404).json({ error: 'No data found in the specified collection.' });
+      return res.status(404).json({ 
+        error: 'No data found in the specified collection.',
+        collectionId: dataCollectionId
+      });
     }
 
-    // ✅ Return response
+    // ✅ Return successful response
     return res.status(200).json({
+      success: true,
       total: dataItemsList.items.length,
       data: dataItemsList.items,
     });
 
-  } catch (error) {
-    console.error("❌ Unexpected Wix API Error:", error);
-    return res.status(500).json({
-      error: 'Internal Server Error',
-      details: error?.message || 'Unknown error occurred.',
+  } catch (queryError) {
+    console.error("❌ [wixConnect] Wix SDK query failed:", queryError);
+    return res.status(502).json({ 
+      error: 'Failed to query Wix data collection.', 
+      details: queryError?.message 
     });
   }
 }
