@@ -6,7 +6,6 @@ export default function ChatBox({
   profile = {},
   eqState = {},
   setEqState,
-  darkMode,
   onUploadSuccess,
   messages,
   setMessages,
@@ -21,8 +20,11 @@ export default function ChatBox({
   const bottomRef = useRef(null);
   const [uploadMessage, setUploadMessage] = useState("");
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const handleFileChange = (e) => {
@@ -37,7 +39,7 @@ export default function ChatBox({
 
     setLoading(true);
 
-    // Upload and analyze images
+    // Handle image uploads
     if (files.length > 0) {
       try {
         for (const file of files) {
@@ -83,7 +85,7 @@ export default function ChatBox({
       }
     }
 
-    // Send chat message
+    // Handle text message
     if (trimmedInput) {
       const userMessage = { role: "user", content: trimmedInput };
       setMessages((prev) => [...prev, userMessage]);
@@ -144,35 +146,21 @@ export default function ChatBox({
   };
 
   return (
-    <main
-      className={`min-h-screen flex items-center justify-center px-4 ${
-        darkMode ? "bg-black text-white" : "bg-white text-gray-900"
-      }`}
-    >
-      <div
-        className={`w-full max-w-3xl h-screen flex flex-col rounded-xl shadow-lg border ${
-          darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
-        }`}
-      >
+    <main className="min-h-screen flex items-center justify-center px-4 bg-white text-gray-900">
+      <div className="w-full max-w-3xl flex flex-col rounded-xl shadow-lg border border-gray-300 bg-white">
         {/* Header */}
-        <div
-          className={`flex items-center justify-between px-6 py-4 border-b ${
-            darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
-          }`}
-        >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-100">
           <div className="flex items-center gap-4">
             <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
             <div>
               <h1 className="text-xl font-semibold">Koval Deep AI</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {profile?.nickname || userId}
-              </p>
+              <p className="text-xs text-gray-500">{profile?.nickname || userId}</p>
             </div>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+        <div className="flex-grow overflow-y-auto px-4 py-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-gray-400">
               Welcome to {BOT_NAME}! How can I assist you today?
@@ -183,11 +171,7 @@ export default function ChatBox({
               key={i}
               className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap ${
                 m.role === "assistant"
-                  ? darkMode
-                    ? "bg-gray-800 text-white self-start shadow"
-                    : "bg-teal-100 text-black self-start shadow"
-                  : darkMode
-                  ? "bg-blue-700 text-white self-end shadow"
+                  ? "bg-teal-100 text-black self-start shadow"
                   : "bg-blue-600 text-white self-end shadow"
               }`}
             >
@@ -195,9 +179,7 @@ export default function ChatBox({
               <div>{m.content}</div>
             </div>
           ))}
-          {loading && (
-            <div className="text-gray-400 italic">{BOT_NAME} is thinking...</div>
-          )}
+          {loading && <div className="text-gray-400 italic">{BOT_NAME} is thinking...</div>}
           <div ref={bottomRef} />
         </div>
 
@@ -207,19 +189,13 @@ export default function ChatBox({
             e.preventDefault();
             handleSubmit();
           }}
-          className={`w-full flex flex-col gap-3 p-4 border-t ${
-            darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
-          }`}
+          className="w-full flex flex-col gap-3 p-4 border-t border-gray-200 bg-gray-100"
         >
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message or upload dive images..."
-            className={`resize-none rounded-md p-3 text-sm h-20 shadow-md focus:outline-none ${
-              darkMode
-                ? "bg-gray-900 text-white placeholder-gray-500"
-                : "bg-white text-black placeholder-gray-400"
-            }`}
+            className="resize-none rounded-md p-3 text-sm h-20 shadow-md focus:outline-none bg-white text-black placeholder-gray-400"
             onKeyDown={handleKeyDown}
           />
 
@@ -251,11 +227,7 @@ export default function ChatBox({
             type="submit"
             disabled={loading || (!input.trim() && files.length === 0)}
             className={`mt-1 px-5 py-3 rounded-md font-semibold ${
-              loading
-                ? "opacity-50 cursor-not-allowed"
-                : darkMode
-                ? "bg-blue-500 hover:bg-blue-600"
-                : "bg-blue-600 hover:bg-blue-700"
+              loading ? "opacity-50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
             } text-white`}
           >
             {loading ? "Thinking..." : "Send"}
