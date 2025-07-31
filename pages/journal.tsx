@@ -1,101 +1,108 @@
-import { useState } from 'react';
+import React, { useState } from "react";
 
-export default function JournalEntryPage() {
-  const [form, setForm] = useState<{
-    date: string;
-    discipline: string;
-    diveTime: string;
-    maxDepth: string;
-    targetDepth: string;
-    success: boolean;
-    issueTags: string;
-    notes: string;
-    image: File | null;
-    video: File | null;
-  }>({
-    date: '',
-    discipline: '',
-    diveTime: '',
-    maxDepth: '',
-    targetDepth: '',
-    success: false,
-    issueTags: '',
-    notes: '',
-    image: null,
-    video: null,
+interface DiveLog {
+  date: string;
+  location: string;
+  depth: string;
+  notes: string;
+  localId?: string;
+}
+
+interface JournalProps {
+  userId: string;
+  onSave?: (log: DiveLog) => void;
+}
+
+export default function Journal({ userId, onSave }: JournalProps) {
+  const [entry, setEntry] = useState<DiveLog>({
+    date: "",
+    location: "",
+    depth: "",
+    notes: "",
+    localId: ""
   });
+  const [loading, setLoading] = useState(false);
 
+  // ✅ Handles input change
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const target = e.target as HTMLInputElement;
-    const { name, type, checked, value, files } = target;
-
-    if (type === 'file') {
-      setForm((prev) => ({ ...prev, [name]: files?.[0] || null }));
-    } else if (type === 'checkbox') {
-      setForm((prev) => ({ ...prev, [name]: checked }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
+    setEntry({ ...entry, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async () => {
-    const body = new FormData();
-
-    Object.entries(form).forEach(([key, val]) => {
-      if (typeof File !== 'undefined' && val instanceof File) {
-        body.append(key, val);
-      } else if (typeof val === 'boolean') {
-        body.append(key, val.toString());
-      } else if (val !== null && val !== undefined) {
-        body.append(key, val);
-      }
-    });
+  // ✅ Handles form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body,
+      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+
+      // ✅ Save to API
+      const res = await fetch("/api/save-dive-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, diveLog: newEntry }),
       });
 
-      if (res.ok) {
-        alert('Log submitted!');
-        // Reset form
-        setForm({
-          date: '',
-          discipline: '',
-          diveTime: '',
-          maxDepth: '',
-          targetDepth: '',
-          success: false,
-          issueTags: '',
-          notes: '',
-          image: null,
-          video: null,
-        });
-      } else {
-        alert('Submission failed.');
-      }
+      if (!res.ok) throw new Error("Failed to save dive log");
+
+      // ✅ Trigger onSave callback
+      if (onSave) onSave(newEntry);
+
+      // ✅ Reset form
+      setEntry({ date: "", location: "", depth: "", notes: "", localId: "" });
     } catch (err) {
-      console.error('Upload error:', err);
-      alert('An error occurred.');
+      console.error("❌ Error saving dive log:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 max-w-xl mx-auto">
-      <h2 className="text-xl font-bold mb-4">Dive Journal Entry</h2>
-      <input name="date" type="date" value={form.date} onChange={handleChange} className="mb-2 w-full" />
-      <input name="discipline" placeholder="Discipline" value={form.discipline} onChange={handleChange} className="mb-2 w-full" />
-      <input name="diveTime" placeholder="Dive Time" value={form.diveTime} onChange={handleChange} className="mb-2 w-full" />
-      <input name="maxDepth" placeholder="Max Depth" type="number" value={form.maxDepth} onChange={handleChange} className="mb-2 w-full" />
-      <input name="targetDepth" placeholder="Target Depth" type="number" value={form.targetDepth} onChange={handleChange} className="mb-2 w-full" />
-      <textarea name="issueTags" placeholder="Comma-separated tags" value={form.issueTags} onChange={handleChange} className="mb-2 w-full" />
-      <textarea name="notes" placeholder="Notes" value={form.notes} onChange={handleChange} className="mb-2 w-full" />
-      <label className="block mb-2">Image: <input name="image" type="file" accept="image/*" onChange={handleChange} /></label>
-      <label className="block mb-4">Video: <input name="video" type="file" accept="video/*" onChange={handleChange} /></label>
-      <button onClick={handleSubmit} className="mt-2 bg-blue-500 text-white p-2 rounded">Submit</button>
-    </div>
+    <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded shadow-md">
+      <input
+        type="date"
+        name="date"
+        value={entry.date}
+        onChange={handleChange}
+        className="block mb-2"
+        required
+      />
+      <input
+        type="text"
+        name="location"
+        placeholder="Location"
+        value={entry.location}
+        onChange={handleChange}
+        className="block mb-2"
+        required
+      />
+      <input
+        type="text"
+        name="depth"
+        placeholder="Depth (meters)"
+        value={entry.depth}
+        onChange={handleChange}
+        className="block mb-2"
+        required
+      />
+      <textarea
+        name="notes"
+        placeholder="Notes"
+        value={entry.notes}
+        onChange={handleChange}
+        className="block mb-2"
+        rows={3}
+      ></textarea>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        {loading ? "Saving..." : "Save Dive Log"}
+      </button>
+    </form>
   );
 }

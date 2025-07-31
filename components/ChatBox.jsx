@@ -21,23 +21,28 @@ export default function ChatBox({
   const bottomRef = useRef(null);
   const [uploadMessage, setUploadMessage] = useState("");
 
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Handle file selection
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files).slice(0, 3);
     setFiles(selected);
     setUploadMessage("");
   };
 
+  // Main message submit handler
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
+
+    // Prevent empty submissions
     if (!trimmedInput && files.length === 0) return;
 
     setLoading(true);
 
-    // Upload and analyze images
+    // ---------- IMAGE UPLOAD PROCESS ----------
     if (files.length > 0) {
       try {
         for (const file of files) {
@@ -55,19 +60,25 @@ export default function ChatBox({
             body: formData,
           });
 
-          const data = await res.json();
-
-          if (res.ok) {
-            const aiResponse = data.answer || "✅ Image uploaded.";
-            setMessages((prev) => [
-              ...prev,
-              { role: "user", content: `📤 Uploaded: ${file.name}` },
-              { role: "assistant", content: aiResponse },
-            ]);
-            onUploadSuccess?.("✅ Dive profile uploaded.");
-          } else {
-            throw new Error(data.error || "Image upload failed");
+          let data;
+          try {
+            data = await res.json();
+          } catch (parseErr) {
+            throw new Error("Invalid JSON response from server.");
           }
+
+          if (!res.ok) {
+            throw new Error(data?.error || `Upload failed with status ${res.status}`);
+          }
+
+          // Success message
+          const aiResponse = data.answer || "✅ Image uploaded.";
+          setMessages((prev) => [
+            ...prev,
+            { role: "user", content: `📤 Uploaded: ${file.name}` },
+            { role: "assistant", content: aiResponse },
+          ]);
+          onUploadSuccess?.("✅ Dive profile uploaded.");
         }
 
         setUploadMessage("✅ Image(s) uploaded and analyzed.");
@@ -75,7 +86,7 @@ export default function ChatBox({
         console.error("❌ Upload error:", err);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "⚠️ Failed to process image. Try again." },
+          { role: "assistant", content: `⚠️ Image upload failed: ${err.message}` },
         ]);
         setUploadMessage("❌ Upload error.");
       } finally {
@@ -83,7 +94,7 @@ export default function ChatBox({
       }
     }
 
-    // Send chat message
+    // ---------- CHAT MESSAGE PROCESS ----------
     if (trimmedInput) {
       const userMessage = { role: "user", content: trimmedInput };
       setMessages((prev) => [...prev, userMessage]);
@@ -96,7 +107,16 @@ export default function ChatBox({
           body: JSON.stringify({ message: trimmedInput, profile, eqState, userId }),
         });
 
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          throw new Error("Invalid JSON response from chat server.");
+        }
+
+        if (!res.ok) {
+          throw new Error(data?.error || `Chat API returned status ${res.status}`);
+        }
 
         if (data.type === "eq-followup") {
           setEqState?.((prev) => ({
@@ -112,7 +132,9 @@ export default function ChatBox({
             ...prev,
             {
               role: "assistant",
-              content: `🧠 Diagnosis: ${data.label}\n\nRecommended Drills:\n${data.drills.join("\n")}`,
+              content: `🧠 Diagnosis: ${data.label}\n\nRecommended Drills:\n${data.drills.join(
+                "\n"
+              )}`,
             },
           ]);
           setEqState?.({});
@@ -128,7 +150,10 @@ export default function ChatBox({
         console.error("❌ Chat error:", err);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "⚠️ Unable to respond. Please try again." },
+          {
+            role: "assistant",
+            content: `⚠️ Unable to respond. Server error: ${err.message}`,
+          },
         ]);
       }
     }
@@ -136,6 +161,7 @@ export default function ChatBox({
     setLoading(false);
   };
 
+  // Send message on Enter key
   const handleKeyDown = (e) => {
     if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey) {
       e.preventDefault();
@@ -242,6 +268,7 @@ export default function ChatBox({
                   src={URL.createObjectURL(file)}
                   alt={`Preview ${i}`}
                   className="w-16 h-16 object-cover rounded border shadow"
+                  onLoad={() => URL.revokeObjectURL(file)}
                 />
               ))}
             </div>
