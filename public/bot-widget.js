@@ -1,4 +1,3 @@
-// bot-widget.js
 class KovalBotElement extends HTMLElement {
   constructor() {
     super();
@@ -25,6 +24,20 @@ class KovalBotElement extends HTMLElement {
   }
 
   /**
+   * Helper to safely send messages to iframe
+   */
+  postToIframe(type, data) {
+    const attemptPost = () => {
+      if (this.iframe?.contentWindow) {
+        this.iframe.contentWindow.postMessage({ type, data }, "https://kovaldeepai-main.vercel.app");
+      }
+    };
+    // Try immediately and retry once if iframe not yet ready
+    attemptPost();
+    setTimeout(attemptPost, 500);
+  }
+
+  /**
    * Send a message to the bot iframe
    */
   sendMessage(message) {
@@ -47,22 +60,59 @@ class KovalBotElement extends HTMLElement {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sessionData)
     })
-    .then(res => res.json())
-    .then(result => {
-      window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: result }));
-    });
+      .then(res => res.json())
+      .then(result => {
+        window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: result }));
+      })
+      .catch(console.error);
   }
 
   /**
-   * Helper to send messages to iframe
+   * Retrieve member details from Wix or localStorage
    */
-  postToIframe(type, data) {
-    this.iframe?.contentWindow?.postMessage({ type, data }, "*");
+  getMemberDetails() {
+    try {
+      if (window?.wixEmbedsAPI?.getCurrentMember) {
+        return window.wixEmbedsAPI.getCurrentMember();
+      }
+      const localMember = localStorage.getItem("__wix.memberDetails");
+      if (localMember) {
+        return JSON.parse(localMember);
+      }
+    } catch (e) {
+      console.warn("Error fetching member details:", e);
+    }
+    return null;
+  }
+
+  /**
+   * Sends initial user info and theme to bot
+   */
+  sendInitialData() {
+    // Theme detection
+    const isDark = document.documentElement.classList.contains("theme-dark") ||
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    this.postToIframe("THEME_CHANGE", { dark: isDark });
+
+    // Member info
+    const memberDetails = this.getMemberDetails();
+    if (memberDetails) {
+      this.postToIframe("USER_AUTH", {
+        userId: memberDetails?.loginEmail || memberDetails?.id,
+        profile: memberDetails
+      });
+    }
   }
 
   connectedCallback() {
-    // ✅ Listen for messages from iframe
+    // Wait for iframe to fully load before sending data
+    this.iframe.addEventListener("load", () => {
+      this.sendInitialData();
+    });
+
+    // Listen for messages from iframe
     window.addEventListener("message", (event) => {
+      if (event.origin !== "https://kovaldeepai-main.vercel.app") return;
       if (!event.data) return;
 
       switch (event.data.type) {
@@ -75,46 +125,28 @@ class KovalBotElement extends HTMLElement {
             this.iframe.style.height = `${event.data.data.height}px`;
           }
           break;
+
+        case "REQUEST_USER_DETAILS":
+          this.sendInitialData();
+          break;
       }
     });
 
-    // ✅ Detect theme automatically from Wix page
-    const detectTheme = () => {
-      const isDark = document.documentElement.classList.contains("theme-dark") ||
-                     window.matchMedia("(prefers-color-scheme: dark)").matches;
-      this.postToIframe("THEME_CHANGE", { dark: isDark });
-    };
-    detectTheme();
-
-    // ✅ Send Wix member details if available
-    const memberDetails = window?.wixEmbedsAPI?.getCurrentMember?.();
-    if (memberDetails) {
-      this.postToIframe("USER_AUTH", {
-        userId: memberDetails?.loginEmail || memberDetails?.id,
-        profile: memberDetails
+    // Handle wixEmbedsAPI readiness
+    if (window.wixEmbedsAPI?.onReady) {
+      window.wixEmbedsAPI.onReady(() => {
+        this.sendInitialData();
       });
-    } else {
-      // fallback: check localStorage
-      const localMember = localStorage.getItem("__wix.memberDetails");
-      if (localMember) {
-        try {
-          const parsed = JSON.parse(localMember);
-          this.postToIframe("USER_AUTH", {
-            userId: parsed.loginEmail || parsed.id,
-            profile: parsed
-          });
-        } catch (e) {}
-      }
     }
   }
 }
 
-// Register custom element
-customElements.define('koval-bot', KovalBotElement);
+// ✅ Register custom element (must match Wix Tag Name)
+customElements.define('koa-bot', KovalBotElement);
 
-// Expose a global API
+// ✅ Expose a global API (match <koa-bot> tag)
 window.KovalBot = {
-  sendMessage: (msg) => document.querySelector('koval-bot')?.sendMessage(msg),
-  loadDiveLogs: (userId) => document.querySelector('koval-bot')?.loadDiveLogs(userId),
-  saveSession: (data) => document.querySelector('koval-bot')?.saveSession(data),
+  sendMessage: (msg) => document.querySelector('koa-bot')?.sendMessage(msg),
+  loadDiveLogs: (userId) => document.querySelector('koa-bot')?.loadDiveLogs(userId),
+  saveSession: (data) => document.querySelector('koa-bot')?.saveSession(data),
 };
