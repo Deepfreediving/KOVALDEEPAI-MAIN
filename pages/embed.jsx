@@ -6,12 +6,11 @@ import dynamic from "next/dynamic";
 const App = dynamic(() => import("./index"), { ssr: false });
 
 export default function Embed() {
-  const [logs, setLogs] = useState<Array<any>>([]);
+  const [logs, setLogs] = useState([]); // ✅ Fixed: removed <Array<any>>
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    // ✅ Function to adjust iframe height dynamically
     const adjustHeight = () => {
       if (window.parent) {
         window.parent.postMessage(
@@ -21,11 +20,9 @@ export default function Embed() {
       }
     };
 
-    // ✅ Observe DOM changes to trigger height adjustments
     const resizeObserver = new ResizeObserver(adjustHeight);
     resizeObserver.observe(document.body);
 
-    // ✅ Listen for messages from parent widget (external sites)
     const handleMessage = async (event) => {
       const allowedOrigins = [
         window.location.origin,
@@ -127,9 +124,7 @@ export default function Embed() {
                   :
                 </strong>
                 <div>
-                  {log.logEntry ||
-                    log.memoryContent ||
-                    "No details available"}
+                  {log.logEntry || log.memoryContent || "No details available"}
                 </div>
               </li>
             ))}
