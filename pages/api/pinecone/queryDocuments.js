@@ -1,6 +1,8 @@
 import { upsertData } from "@lib/pinecone"; // Import the Pinecone upsert function
+import handleCors from "@/utils/cors";
 
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
   if (req.method === "POST") {
     try {
       // Example data to be upserted to Pinecone

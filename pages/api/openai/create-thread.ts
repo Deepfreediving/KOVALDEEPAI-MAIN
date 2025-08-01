@@ -2,6 +2,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
+import handleCors from "@/utils/cors";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || 'asst_WnbEd7Jxgf1z2U0ziNWi8yz9';
@@ -94,6 +95,7 @@ async function pollRunCompletion(threadId: string, runId: string, maxRetries = 2
  * ✅ API handler
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }

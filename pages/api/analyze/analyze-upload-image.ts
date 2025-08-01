@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs/promises';
 import path from 'path';
+import handleCors from "@/utils/cors";
 
 const LOG_DIR = path.resolve('./data/diveLogs');
 const SAFE_USERID = /^[a-zA-Z0-9_-]+$/;
@@ -14,6 +15,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<void> {
+  if (await handleCors(req, res)) return;
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method Not Allowed' });
     return;

@@ -2,6 +2,7 @@
 
 import { OpenAI } from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
+import handleCors from "@/utils/cors";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
@@ -38,6 +39,7 @@ async function queryPinecone(query) {
 
 // ✅ Next.js API route handler
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

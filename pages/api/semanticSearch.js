@@ -1,5 +1,6 @@
 import { OpenAI } from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
+const handleCors = require('@/utils/cors').default;
 
 // Initialize OpenAI API client
 const openai = new OpenAI({
@@ -46,6 +47,7 @@ export async function semanticSearch(query) {
 
 // API handler to process requests
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }

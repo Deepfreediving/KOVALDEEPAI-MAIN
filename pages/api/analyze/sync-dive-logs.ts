@@ -2,6 +2,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
+import handleCors from "@/utils/cors";
 
 interface DiveLog {
   id: string;
@@ -9,6 +10,7 @@ interface DiveLog {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   // ✅ Allow only POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });

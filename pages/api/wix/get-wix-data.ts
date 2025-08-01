@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fetch from "node-fetch";
+import handleCors from "@/utils/handleCors";
 
 /**
- * Response type from Wix Data API
+ * Type definitions for Wix Data API response
  */
 interface WixItem {
   _id: string;
@@ -20,52 +21,68 @@ export default async function handler(
   res: NextApiResponse<WixApiResponse>
 ) {
   try {
-    // ✅ Ensure required environment variables
-    const apiKey = process.env.WIX_API_KEY;
-    const collectionId = process.env.WIX_DATA_COLLECTION_ID;
+    // ✅ Apply CORS handling first
+    await handleCors(req, res);
 
-    if (!apiKey || !collectionId) {
-      console.error("❌ Missing Wix environment variables");
-      return res.status(500).json({ success: false, error: "Wix API configuration is missing." });
+    // ✅ Validate required environment variables
+    const { WIX_API_KEY, WIX_DATA_COLLECTION_ID } = process.env;
+
+    if (!WIX_API_KEY || !WIX_DATA_COLLECTION_ID) {
+      console.error("❌ Missing required Wix environment variables.");
+      return res.status(500).json({
+        success: false,
+        error:
+          "Wix API configuration is missing. Ensure WIX_API_KEY and WIX_DATA_COLLECTION_ID are set.",
+      });
     }
 
-    // ✅ Build Wix Data API URL
-    const WIX_URL = `https://www.wixapis.com/data/v2/collections/${collectionId}/items`;
+    // ✅ Construct Wix Data API URL
+    const WIX_URL = `https://www.wixapis.com/data/v2/collections/${WIX_DATA_COLLECTION_ID}/items`;
 
     // ✅ Fetch data from Wix API
     const response = await fetch(WIX_URL, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${WIX_API_KEY}`,
         "Content-Type": "application/json",
       },
     });
 
+    // ✅ Handle non-200 HTTP responses
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`❌ Wix API request failed: ${response.status} ${response.statusText}`, errText);
-      return res.status(response.status).json({ success: false, error: "Wix API request failed." });
+      console.error(`❌ Wix API request failed: ${response.status} ${response.statusText}`);
+      console.error(`📜 Error details: ${errText}`);
+      return res.status(response.status).json({
+        success: false,
+        error: `Wix API request failed with status ${response.status}`,
+      });
     }
 
+    // ✅ Parse JSON response safely
     const result = await response.json();
+    const items: WixItem[] = Array.isArray(result?.items) ? result.items : [];
 
-    // ✅ Handle missing or malformed data
-    const items: WixItem[] = result?.items ?? [];
-    console.log(`✅ Retrieved ${items.length} items from Wix.`);
+    console.log(`✅ Successfully retrieved ${items.length} items from Wix.`);
 
     /**
-     * Optional Step (Future): Store data into Pinecone
-     * 
-     * If you plan to insert this data into Pinecone for search:
-     * 1. Import your Pinecone client
-     * 2. Transform 'items' into vector embeddings
-     * 3. Upsert to Pinecone index
+     * (Optional Future Feature) Upsert data into Pinecone
+     * ---------------------------------------------------
+     * import { upsertData } from "@/lib/pineconeClient";
+     * const vectors = await convertToEmbeddings(items);
+     * await upsertData(vectors);
      */
-    // await upsertToPinecone(items);
 
-    return res.status(200).json({ success: true, data: items });
+    // ✅ Send response to client
+    return res.status(200).json({
+      success: true,
+      data: items,
+    });
   } catch (error: any) {
-    console.error("❌ Error fetching Wix data:", error?.message || error);
-    return res.status(500).json({ success: false, error: "Failed to retrieve Wix data." });
+    console.error("❌ Unexpected error while fetching Wix data:", error?.message || error);
+    return res.status(500).json({
+      success: false,
+      error: "An unexpected server error occurred while retrieving Wix data.",
+    });
   }
 }

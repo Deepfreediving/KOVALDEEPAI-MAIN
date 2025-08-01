@@ -1,7 +1,9 @@
 import fs from "fs";
 import path from "path";
+const handleCors = require('@/utils/cors').default;
 
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
   const { filePath } = req.query; // Get the file path from the query parameter
 
   try {

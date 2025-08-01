@@ -3,6 +3,7 @@ import { OpenAI } from 'openai';
 import fs from 'fs';
 import path from 'path';
 import { analyzeDiveLogText, generateDiveReport } from '../../../utils/analyzeDiveLog';
+import handleCors from "@/utils/cors";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -38,6 +39,7 @@ interface DiveLog {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }

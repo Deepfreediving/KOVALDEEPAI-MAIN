@@ -12,7 +12,7 @@ async function runTest() {
     });
 
     const indexName = process.env.PINECONE_INDEX || '';
-    const index = pinecone.Index(indexName);
+    const index = pinecone.index(indexName);
 
     // Create OpenAI client
     const openai = new OpenAI({
