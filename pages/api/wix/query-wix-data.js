@@ -25,6 +25,7 @@ export default function Index() {
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
+  const [apiKey, setApiKey] = useState(null); // ✅ New state for WIX_API_KEY
   const bottomRef = useRef(null);
 
   // ----------------------------
@@ -43,6 +44,21 @@ export default function Index() {
     profile?.loginEmail ||
     profile?.contactDetails?.firstName ||
     (userId?.startsWith("Guest") ? "Guest User" : "User");
+
+  // ----------------------------
+  // ✅ Fetch WIX API Key from server
+  // ----------------------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/get-api-key");
+        const data = await res.json();
+        if (data?.key) setApiKey(data.key);
+      } catch (err) {
+        console.error("❌ Failed to load API key:", err);
+      }
+    })();
+  }, []);
 
   // ----------------------------
   // ✅ LocalStorage Load
@@ -92,7 +108,7 @@ export default function Index() {
     if (!document.querySelector("koa-bot")) {
       const botEl = document.createElement("koa-bot");
       document.body.appendChild(botEl);
-      return () => botEl.remove(); // cleanup on unmount
+      return () => botEl.remove();
     }
   }, []);
 
@@ -107,13 +123,16 @@ export default function Index() {
 
   // ✅ Init AI thread
   useEffect(() => {
-    if (!userId || threadId) return;
+    if (!userId || threadId || !apiKey) return;
     let isMounted = true;
     (async () => {
       try {
         const res = await fetch("/api/create-thread", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}` // ✅ Use WIX_API_KEY
+          },
           body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
         });
         const data = await res.json();
@@ -126,7 +145,7 @@ export default function Index() {
       }
     })();
     return () => { isMounted = false; };
-  }, [userId, threadId]);
+  }, [userId, threadId, apiKey]);
 
   // ✅ Load Dive Logs
   useEffect(() => {
@@ -138,10 +157,15 @@ export default function Index() {
     (async () => {
       try {
         const [remoteRes, memRes] = await Promise.all([
-          fetch(`/api/get-dive-logs?userId=${encodeURIComponent(userId)}`),
+          fetch(`/api/get-dive-logs?userId=${encodeURIComponent(userId)}`, {
+            headers: { "Authorization": `Bearer ${apiKey || ""}` }
+          }),
           fetch("/api/read-memory", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey || ""}`
+            },
             body: JSON.stringify({ userId }),
           }),
         ]);
@@ -159,7 +183,7 @@ export default function Index() {
         console.warn("⚠️ Dive log fetch failed. Using local only.", err);
       }
     })();
-  }, [userId]);
+  }, [userId, apiKey]);
 
   // ✅ Journal functions
   const handleJournalSubmit = useCallback((entry) => {
@@ -195,34 +219,13 @@ export default function Index() {
     window.KovalBot?.saveSession({ userId, sessionName, messages, timestamp: Date.now() });
   }, [sessionName, sessionsList, messages, userId]);
 
-  // ✅ Function to fetch Wix Data via server
-  const fetchWixData = useCallback(async (query) => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/query-wix-data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json();
-      console.log("✅ Wix Data:", data);
-      setMessages(prev => [...prev, { role: "assistant", content: `Wix Data fetched: ${JSON.stringify(data)}` }]);
-    } catch (err) {
-      console.error("Error fetching Wix data:", err);
-      setMessages(prev => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ✅ Memoized props
+  // ✅ Memorized props
   const sharedProps = useMemo(() => ({
     BOT_NAME, sessionName, setSessionName, sessionsList, setSessionsList,
     editingSessionName, setEditingSessionName, messages, setMessages, input,
     setInput, files, setFiles, loading, setLoading, userId, profile, setProfile,
     eqState, setEqState, diveLogs, setDiveLogs, editLogIndex, setEditLogIndex,
-    showDiveJournalForm, setShowDiveJournalForm, threadId, bottomRef, darkMode, setDarkMode,
-    fetchWixData
+    showDiveJournalForm, setShowDiveJournalForm, threadId, bottomRef, darkMode, setDarkMode
   }), [sessionName, sessionsList, messages, darkMode, diveLogs, input, files, loading, userId, profile, eqState, showDiveJournalForm, editLogIndex, threadId]);
 
   return (

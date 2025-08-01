@@ -1,16 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
 
 // ✅ Log missing environment variables early
-console.log('🔎 Checking required environment variables...');
+if (typeof window === 'undefined') {
+  console.log('🔎 Checking required environment variables...');
 
-if (!process.env.WIX_API_KEY) console.warn('⚠️ WIX_API_KEY is not set');
-if (!process.env.WIX_ACCOUNT_ID) console.warn('⚠️ WIX_ACCOUNT_ID is not set');
-if (!process.env.WIX_SITE_ID) console.warn('⚠️ WIX_SITE_ID is not set');
-if (!process.env.OPENAI_API_KEY) console.warn('⚠️ OPENAI_API_KEY is not set');
-if (!process.env.PINECONE_API_KEY) console.warn('⚠️ PINECONE_API_KEY is not set');
-if (!process.env.PINECONE_HOST) console.warn('⚠️ PINECONE_HOST is not set');
+  if (!process.env.WIX_API_KEY) console.warn('⚠️ WIX_API_KEY is not set');
+  if (!process.env.WIX_ACCOUNT_ID) console.warn('⚠️ WIX_ACCOUNT_ID is not set');
+  if (!process.env.WIX_SITE_ID) console.warn('⚠️ WIX_SITE_ID is not set');
+  if (!process.env.OPENAI_API_KEY) console.warn('⚠️ OPENAI_API_KEY is not set');
+  if (!process.env.PINECONE_API_KEY) console.warn('⚠️ PINECONE_API_KEY is not set');
+  if (!process.env.PINECONE_HOST) console.warn('⚠️ PINECONE_HOST is not set');
+}
 
-// ✅ Wix API Client
+// ✅ Wix API Client (server-side only)
 const wix: AxiosInstance = axios.create({
   baseURL: 'https://www.wixapis.com',
   headers: {
@@ -32,7 +34,9 @@ const openai: AxiosInstance = axios.create({
 
 // ✅ Pinecone API Client
 const pinecone: AxiosInstance = axios.create({
-  baseURL: process.env.PINECONE_HOST || 'https://controller.${process.env.PINECONE_ENVIRONMENT}.pinecone.io',
+  baseURL:
+    process.env.PINECONE_HOST ||
+    `https://controller.${process.env.PINECONE_ENVIRONMENT}.pinecone.io`,
   headers: {
     Authorization: `Bearer ${process.env.PINECONE_API_KEY || ''}`,
     'Content-Type': 'application/json',
@@ -47,7 +51,13 @@ export async function checkAllConnections(): Promise<Record<string, string>> {
 
   // ✅ Wix API Check
   try {
-    await wix.post('/v2/data/items/query', { data: {} });
+    if (typeof window === 'undefined') {
+      // Server-side call directly to Wix
+      await wix.post('/v2/data/items/query', { data: {} });
+    } else {
+      // Client-side: use local API proxy to avoid CORS and hide API key
+      await axios.post('/api/wix/wixProxy', { data: {} });
+    }
     status.wix = '✅ OK';
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.message || 'Unknown error';
