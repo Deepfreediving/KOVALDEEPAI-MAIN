@@ -14,7 +14,7 @@ export default function AppLoader({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [attempts, setAttempts] = useState(0);
 
-  // Retry configuration
+  // Retry config for OpenAI only
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 3000; // 3 seconds
 
@@ -23,15 +23,15 @@ export default function AppLoader({ children }: { children: React.ReactNode }) {
       const response = await checkAllConnections();
 
       const result: Status = {
-        wix: response.wix || '❌ Missing',
+        wix: response.wix || '⚠️ Unavailable',
         openai: response.openai || '❌ Missing',
-        pinecone: response.pinecone || '❌ Missing',
+        pinecone: response.pinecone || '⚠️ Unavailable',
       };
 
       setStatus(result);
 
-      // App only loads if all services return "✅ OK"
-      if (result.wix === '✅ OK' && result.openai === '✅ OK' && result.pinecone === '✅ OK') {
+      // ✅ OpenAI must be ready, others are optional
+      if (result.openai === '✅ OK') {
         setReady(true);
       } else if (attempts < MAX_RETRIES) {
         setAttempts(prev => prev + 1);
@@ -48,12 +48,13 @@ export default function AppLoader({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initConnections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!ready) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h3>Loading App...</h3>
+        <h3>Loading OpenAI Bot...</h3>
         {status && (
           <ul>
             <li>Wix: {status.wix}</li>
@@ -66,5 +67,16 @@ export default function AppLoader({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {/* Show warnings for optional services */}
+      {status && (
+        <div style={{ background: '#ffedcc', padding: '10px', marginBottom: '10px' }}>
+          {status.wix !== '✅ OK' && <p>⚠️ Wix service is unavailable. Some features may not work.</p>}
+          {status.pinecone !== '✅ OK' && <p>⚠️ Pinecone service is unavailable. Search features may be limited.</p>}
+        </div>
+      )}
+      {children}
+    </>
+  );
 }

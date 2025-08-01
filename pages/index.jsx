@@ -82,7 +82,7 @@ export default function Index() {
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // ✅ Inject bot
+  // ✅ Inject bot element
   useEffect(() => {
     if (!document.querySelector("koa-bot")) {
       document.body.appendChild(document.createElement("koa-bot"));
@@ -98,25 +98,7 @@ export default function Index() {
     return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
 
-  // ✅ Fetch Wix data
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/get-wix-data");
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        const json = await res.json();
-        setWixData(json.data || []);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: json.data?.length ? "✅ Connected to Wix and retrieved data." : "⚠️ Wix data is empty or not found." }
-        ]);
-      } catch {
-        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Failed to connect to Wix." }]);
-      }
-    })();
-  }, []);
-
-  // ✅ Init AI thread
+  // ✅ Init AI thread (Backend call only)
   useEffect(() => {
     if (!userId || threadId) return;
     (async () => {
@@ -199,7 +181,7 @@ export default function Index() {
     window.KovalBot?.saveSession({ userId, sessionName, messages, timestamp: Date.now() });
   }, [sessionName, sessionsList, messages, userId]);
 
-  // ✅ Memoized props
+  // ✅ Memorized props
   const sharedProps = useMemo(() => ({
     BOT_NAME, sessionName, setSessionName, sessionsList, setSessionsList,
     editingSessionName, setEditingSessionName, messages, setMessages, input,
@@ -250,14 +232,6 @@ export default function Index() {
             {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
           </button>
         </div>
-
-        {/* Wix Data */}
-        {wixData.length > 0 && (
-          <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
-            <h2 className="font-bold mb-1">📂 Wix Data:</h2>
-            <ul>{wixData.map((item) => <li key={item._id} className="text-sm">{item.data?.title || item.title || "Unnamed item"}</li>)}</ul>
-          </div>
-        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto flex justify-center">
