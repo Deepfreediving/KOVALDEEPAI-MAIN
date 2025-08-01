@@ -3,6 +3,9 @@ const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const isAnalyze = process.env.BUNDLE_ANALYZE === 'true';
 
+/**
+ * Dynamically load plugins (like bundle analyzer).
+ */
 const getPlugins = () => {
   const plugins = [];
 
@@ -23,6 +26,9 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
 
+  /**
+   * Webpack configuration
+   */
   webpack(config, { isServer }) {
     config.resolve.alias = {
       ...config.resolve.alias,
@@ -38,6 +44,9 @@ const nextConfig = {
     return config;
   },
 
+  /**
+   * Image Optimization
+   */
   images: {
     domains: ['yourdomain.com', 'assets.vercel.com'],
     formats: ['image/avif', 'image/webp'],
@@ -45,6 +54,9 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
 
+  /**
+   * Environment Variables
+   */
   env: {
     OPENAI_MODEL: process.env.OPENAI_MODEL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
@@ -61,8 +73,13 @@ const nextConfig = {
     WIX_API_KEY: process.env.WIX_API_KEY,
     WIX_ACCOUNT_ID: process.env.WIX_ACCOUNT_ID,
     WIX_CLIENT_ID: process.env.WIX_CLIENT_ID,
+    WIX_SITE_ID: process.env.WIX_SITE_ID,
+    WIX_DATA_COLLECTION_ID: process.env.WIX_DATA_COLLECTION_ID,
   },
 
+  /**
+   * Redirect old routes
+   */
   async redirects() {
     return [
       {
@@ -73,6 +90,9 @@ const nextConfig = {
     ];
   },
 
+  /**
+   * Rewrite API endpoints if necessary
+   */
   async rewrites() {
     return [
       {
@@ -82,6 +102,10 @@ const nextConfig = {
     ];
   },
 
+  /**
+   * ✅ Security & Embedding Headers
+   * Allows embedding in Wix iframe while keeping other headers secure
+   */
   async headers() {
     return [
       {
@@ -91,7 +115,6 @@ const nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          // ✅ Allow embedding in Wix iframe
           { key: 'X-Frame-Options', value: 'ALLOWALL' },
           { key: 'Content-Security-Policy', value: "frame-ancestors *" },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
@@ -101,6 +124,9 @@ const nextConfig = {
     ];
   },
 
+  /**
+   * Modular imports for optimization
+   */
   compiler: {
     modularizeImports: {
       lodash: {

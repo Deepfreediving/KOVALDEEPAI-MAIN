@@ -1,8 +1,11 @@
+// pages/api/verify.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Pinecone } from '@pinecone-database/pinecone';
 import OpenAI from 'openai';
+import handleCors from "@/utils/cors";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   try {
     const results: any = {
       environment: {},
@@ -23,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const indexName = process.env.PINECONE_INDEX || '';
-    const index = pinecone.Index(indexName);
+    const index = pinecone.index(indexName);
+
 
     // 3️⃣ Initialize OpenAI
     const openai = new OpenAI({

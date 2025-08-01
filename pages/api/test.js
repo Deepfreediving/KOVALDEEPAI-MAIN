@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 export default async function handler(req, res) {
+  if (require('@/utils/cors').default(req, res)) return;
   // Check if the OpenAI API key is missing or empty from environment variables
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === "") {
     return res.status(500).json({ error: "OPENAI_API_KEY is missing or empty" });
   }
-
   try {
     // Make a POST request to the correct OpenAI endpoint
     const response = await fetch("https://api.openai.com/v1/completions", {

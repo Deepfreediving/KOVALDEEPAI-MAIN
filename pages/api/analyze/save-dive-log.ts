@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import handleCors from "@/utils/cors";
 
 const LOG_DIR = path.resolve('./data/diveLogs');
 
@@ -13,7 +14,9 @@ if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   // ✅ Allow only POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });

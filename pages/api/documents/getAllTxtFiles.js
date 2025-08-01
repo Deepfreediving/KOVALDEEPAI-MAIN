@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
+const handleCors = require('@/utils/cors').default;
 
 export default async function handler(req, res) {
-  const directory = path.join(process.cwd(), "data"); // Set the directory path here
-
+  if (handleCors(req, res)) return;
   try {
     const files = fs.readdirSync(directory); // Read all files in the 'data' directory
     const txtFiles = files.filter((file) => file.endsWith(".txt")); // Filter only `.txt` files

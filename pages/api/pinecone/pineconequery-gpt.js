@@ -1,13 +1,14 @@
 require('dotenv').config();
 const { OpenAI } = require('openai');
 const { Pinecone } = require('@pinecone-database/pinecone');
+const handleCors = require('@/utils/cors').default;
 
 // Initialize OpenAI and Pinecone clients
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
 // Get the index
-const index = pinecone.Index(process.env.PINECONE_INDEX || 'koval-deep-ai');
+const index = pinecone.index(process.env.PINECONE_INDEX || 'koval-deep-ai');
 
 // Get embedding for the user's query
 async function getQueryEmbedding(query) {
@@ -80,6 +81,7 @@ async function askGPTWithContext(chunks, question) {
 
 // API handler
 module.exports = async function handler(req, res) {
+  if (handleCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }

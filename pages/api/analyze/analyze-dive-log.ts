@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { analyzeDiveLogText, generateDiveReport } from "../../../utils/analyzeDiveLog";
-
+import handleCors from "@/utils/cors";
 /**
  * @route   POST /api/analyze-dive-log
  * @desc    Analyze dive log text without saving it
  * @access  Public
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }

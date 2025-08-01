@@ -3,10 +3,12 @@ import { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
+import handleCors from "@/utils/cors";
 
 const MEMORY_DIR = path.resolve("./data/memoryLogs");
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (await handleCors(req, res)) return;
   // ✅ Only allow POST requests
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });

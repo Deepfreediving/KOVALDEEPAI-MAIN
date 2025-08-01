@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+  if (require('@/utils/cors').default(req, res)) return;
   const { code } = req.query;
 
   // Handle the OAuth response from Wix

@@ -63,7 +63,7 @@ async function embedAndUpsert() {
       throw new Error('❌ PINECONE_INDEX is not defined');
     }
     await pinecone.describeIndex(PINECONE_INDEX);
-    const index = pinecone.Index(PINECONE_INDEX);
+    const index = pinecone.index(PINECONE_INDEX);
 
     const dataDir = path.join(process.cwd(), 'data');
     if (!fs.existsSync(dataDir)) {

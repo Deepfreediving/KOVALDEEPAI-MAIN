@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Pinecone } from "@pinecone-database/pinecone";
+import handleCors from "@/utils/cors";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +14,7 @@ const indexName = process.env.PINECONE_INDEX;
 const index = pinecone.index(indexName);
 
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }

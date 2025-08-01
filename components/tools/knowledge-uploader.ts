@@ -5,7 +5,7 @@ import { Pinecone } from '@pinecone-database/pinecone';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
-const index = pinecone.Index(process.env.PINECONE_INDEX || '');
+const index = pinecone.index(process.env.PINECONE_INDEX || '');
 
 // === CONFIG ===
 const LESSONS_DIR = path.join(process.cwd(), 'data', 'koval-lessons');
