@@ -8,7 +8,7 @@ export default function Index() {
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
   // ----------------------------
-  // ✅ State Management
+  // ✅ State
   // ----------------------------
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -17,17 +17,7 @@ export default function Index() {
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // ✅ Default light mode
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("kovalDarkMode");
-      if (stored !== null) return stored === "true";
-      return false;
-    }
-    return false;
-  });
-
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("kovalDarkMode") === "true");
   const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
@@ -39,111 +29,94 @@ export default function Index() {
   const bottomRef = useRef(null);
 
   // ----------------------------
-  // ✅ LocalStorage Helpers
+  // ✅ Helpers
   // ----------------------------
   const storageKey = (uid) => `diveLogs-${uid}`;
-  const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
-  const getPendingSync = () => {
-    try {
-      return JSON.parse(localStorage.getItem("pendingSync") || "[]");
-    } catch {
-      return [];
-    }
+  const safeParse = (key, fallback) => {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+    catch { return fallback; }
   };
 
-  // ✅ Load Data
+  const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
+  const getPendingSync = () => safeParse("pendingSync", []);
+
+  const getDisplayName = () =>
+    profile?.loginEmail ||
+    profile?.contactDetails?.firstName ||
+    (userId?.startsWith("Guest") ? "Guest User" : "User");
+
+  // ----------------------------
+  // ✅ LocalStorage Load
+  // ----------------------------
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        setSessionsList(JSON.parse(localStorage.getItem("kovalSessionsList")) || []);
-        setUserId(localStorage.getItem("kovalUser") || "");
-        setThreadId(localStorage.getItem("kovalThreadId") || null);
-        setProfile(JSON.parse(localStorage.getItem("kovalProfile") || "{}"));
-      } catch {
-        console.warn("⚠️ Failed to load from localStorage");
-      }
-    }
+    setSessionsList(safeParse("kovalSessionsList", []));
+    setUserId(localStorage.getItem("kovalUser") || "");
+    setThreadId(localStorage.getItem("kovalThreadId") || null);
+    setProfile(safeParse("kovalProfile", {}));
   }, []);
 
-  // ✅ Sync theme with DOM
+  // ✅ Theme sync
   useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.documentElement.classList.toggle("dark", darkMode);
-      document.documentElement.classList.toggle("light", !darkMode);
-    }
+    document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("kovalDarkMode", darkMode);
   }, [darkMode]);
 
-  // ✅ Display name helper
-  const getDisplayName = () => {
-    if (profile?.loginEmail) return profile.loginEmail;
-    if (profile?.contactDetails?.firstName) return profile.contactDetails.firstName;
-    return userId?.startsWith("Guest") ? "Guest User" : "User";
-  };
-
-  // ✅ Handle widget messages
+  // ✅ Widget messages
   useEffect(() => {
-    const handleWidgetMessages = (event) => {
-      const { type, data } = event.data || {};
-      if (type === "USER_AUTH" && data?.userId) {
+    const handleWidgetMessages = ({ data }) => {
+      if (!data) return;
+      if (data.type === "USER_AUTH" && data.userId) {
         setUserId(data.userId);
         setProfile(data.profile || {});
         localStorage.setItem("kovalUser", data.userId);
         localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
       }
-      if (type === "THEME_CHANGE" && typeof data?.dark === "boolean") {
+      if (data.type === "THEME_CHANGE" && typeof data.dark === "boolean") {
         setDarkMode(data.dark);
       }
-      if (type === "RESIZE_IFRAME" && data?.height && window.parent) {
+      if (data.type === "RESIZE_IFRAME" && data.height && window.parent) {
         window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
       }
     };
-
     window.addEventListener("message", handleWidgetMessages);
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // ✅ Inject bot element
+  // ✅ Inject bot
   useEffect(() => {
-    if (typeof window !== "undefined" && !document.querySelector("koa-bot")) {
-      const botElement = document.createElement("koa-bot");
-      document.body.appendChild(botElement);
+    if (!document.querySelector("koa-bot")) {
+      document.body.appendChild(document.createElement("koa-bot"));
     }
   }, []);
 
   // ✅ Handle "OpenBotIfNoMemories"
   useEffect(() => {
-    const openBotHandler = () => {
-      if (window.KovalBot) {
-        window.KovalBot.sendMessage("Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?");
-      }
-    };
-    window.addEventListener("OpenBotIfNoMemories", openBotHandler);
-    return () => window.removeEventListener("OpenBotIfNoMemories", openBotHandler);
+    const handler = () => window.KovalBot?.sendMessage(
+      "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
+    );
+    window.addEventListener("OpenBotIfNoMemories", handler);
+    return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
 
-  // ✅ Fetch Wix Collection Data (using secure proxy)
+  // ✅ Fetch Wix data
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/get-wix-data");
-        if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const json = await res.json();
-
-        if (json.data && json.data.length > 0) {
-          setWixData(json.data);
-          setMessages((prev) => [...prev, { role: "assistant", content: "✅ Connected to Wix and retrieved data." }]);
-        } else {
-          setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Wix data is empty or not found." }]);
-        }
-      } catch (err) {
-        console.error("❌ Failed to fetch Wix data:", err);
-        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Failed to connect to Wix. Please try again later." }]);
+        setWixData(json.data || []);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: json.data?.length ? "✅ Connected to Wix and retrieved data." : "⚠️ Wix data is empty or not found." }
+        ]);
+      } catch {
+        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Failed to connect to Wix." }]);
       }
     })();
   }, []);
 
-  // ✅ Initialize AI Thread
+  // ✅ Init AI thread
   useEffect(() => {
     if (!userId || threadId) return;
     (async () => {
@@ -164,11 +137,11 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // ✅ Load and Sync Dive Logs
+  // ✅ Load Dive Logs
   useEffect(() => {
     if (!userId) return;
     const key = storageKey(userId);
-    const localLogs = JSON.parse(localStorage.getItem(key) || "[]");
+    const localLogs = safeParse(key, []);
     setDiveLogs(localLogs);
 
     (async () => {
@@ -184,14 +157,10 @@ export default function Index() {
 
         const remoteLogs = await remoteRes.json();
         const memData = await memRes.json();
-        const memoryLogs = memData?.memory || [];
+        const merged = [...localLogs, ...(remoteLogs || []), ...(memData?.memory || [])]
+          .reduce((map, log) => ({ ...map, [log.localId || log._id || log.id]: log }), {});
 
-        const merged = [...localLogs, ...(remoteLogs || []), ...memoryLogs].reduce((map, log) => {
-          map[log.localId || log._id || log.id] = log;
-          return map;
-        }, {});
         const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
-
         setDiveLogs(combined);
         localStorage.setItem(key, JSON.stringify(combined));
       } catch (err) {
@@ -200,7 +169,7 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // ✅ Handle Dive Journal
+  // ✅ Journal functions
   const handleJournalSubmit = useCallback((entry) => {
     const key = storageKey(userId);
     const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
@@ -213,11 +182,7 @@ export default function Index() {
     setMessages((prev) => [...prev, { role: "assistant", content: "📝 Dive log saved locally and queued for sync." }]);
   }, [userId, diveLogs]);
 
-  const handleEdit = useCallback((index) => {
-    setEditLogIndex(index);
-    setShowDiveJournalForm(true);
-  }, []);
-
+  const handleEdit = useCallback((index) => setEditLogIndex(index) || setShowDiveJournalForm(true), []);
   const handleDelete = useCallback((index) => {
     const key = storageKey(userId);
     const updated = diveLogs.filter((_, i) => i !== index);
@@ -225,51 +190,22 @@ export default function Index() {
     setDiveLogs(updated);
   }, [userId, diveLogs]);
 
-  // ✅ Handle Save Session
+  // ✅ Save session
   const handleSaveSession = useCallback(() => {
-    const filtered = sessionsList.filter((s) => s.sessionName !== sessionName);
-    const updated = [...filtered, { sessionName, messages, timestamp: Date.now() }];
+    const updated = [...sessionsList.filter((s) => s.sessionName !== sessionName), { sessionName, messages, timestamp: Date.now() }];
     localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
     localStorage.setItem("kovalSessionName", sessionName);
     setSessionsList(updated);
-
-    if (window.KovalBot) {
-      window.KovalBot.saveSession({ userId, sessionName, messages, timestamp: Date.now() });
-    }
+    window.KovalBot?.saveSession({ userId, sessionName, messages, timestamp: Date.now() });
   }, [sessionName, sessionsList, messages, userId]);
 
-  // ✅ Shared props (memoized for perf)
+  // ✅ Memoized props
   const sharedProps = useMemo(() => ({
-    BOT_NAME,
-    sessionName,
-    setSessionName,
-    sessionsList,
-    setSessionsList,
-    editingSessionName,
-    setEditingSessionName,
-    messages,
-    setMessages,
-    input,
-    setInput,
-    files,
-    setFiles,
-    loading,
-    setLoading,
-    userId,
-    profile,
-    setProfile,
-    eqState,
-    setEqState,
-    diveLogs,
-    setDiveLogs,
-    editLogIndex,
-    setEditLogIndex,
-    showDiveJournalForm,
-    setShowDiveJournalForm,
-    threadId,
-    bottomRef,
-    darkMode,
-    setDarkMode,
+    BOT_NAME, sessionName, setSessionName, sessionsList, setSessionsList,
+    editingSessionName, setEditingSessionName, messages, setMessages, input,
+    setInput, files, setFiles, loading, setLoading, userId, profile, setProfile,
+    eqState, setEqState, diveLogs, setDiveLogs, editLogIndex, setEditLogIndex,
+    showDiveJournalForm, setShowDiveJournalForm, threadId, bottomRef, darkMode, setDarkMode
   }), [sessionName, sessionsList, messages, darkMode, diveLogs, input, files, loading, userId, profile, eqState, showDiveJournalForm, editLogIndex, threadId]);
 
   return (
@@ -306,11 +242,7 @@ export default function Index() {
       <div className="flex-1 flex flex-col h-screen">
         {/* Top Bar */}
         <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
-          <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
-            👤 {getDisplayName()}
-          </div>
-
-          {/* Theme Toggle Button */}
+          <div className="text-gray-500 dark:text-gray-400 px-2 truncate">👤 {getDisplayName()}</div>
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
@@ -323,26 +255,14 @@ export default function Index() {
         {wixData.length > 0 && (
           <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
             <h2 className="font-bold mb-1">📂 Wix Data:</h2>
-            <ul>
-              {wixData.map((item) => (
-                <li key={item._id} className="text-sm">
-                  {item.data?.title || item.title || "Unnamed item"}
-                </li>
-              ))}
-            </ul>
+            <ul>{wixData.map((item) => <li key={item._id} className="text-sm">{item.data?.title || item.title || "Unnamed item"}</li>)}</ul>
           </div>
         )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto flex justify-center">
           <div className="w-full max-w-3xl px-6 py-4">
-            <ChatMessages
-              messages={messages}
-              BOT_NAME={BOT_NAME}
-              darkMode={darkMode}
-              loading={loading}
-              bottomRef={bottomRef}
-            />
+            <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
           </div>
         </div>
 
