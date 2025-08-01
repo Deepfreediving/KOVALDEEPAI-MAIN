@@ -25,7 +25,6 @@ export default function Index() {
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
-  const [wixData, setWixData] = useState([]);
   const bottomRef = useRef(null);
 
   // ----------------------------
@@ -65,27 +64,35 @@ export default function Index() {
   useEffect(() => {
     const handleWidgetMessages = ({ data }) => {
       if (!data) return;
-      if (data.type === "USER_AUTH" && data.userId) {
-        setUserId(data.userId);
-        setProfile(data.profile || {});
-        localStorage.setItem("kovalUser", data.userId);
-        localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
-      }
-      if (data.type === "THEME_CHANGE" && typeof data.dark === "boolean") {
-        setDarkMode(data.dark);
-      }
-      if (data.type === "RESIZE_IFRAME" && data.height && window.parent) {
-        window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
+      switch (data.type) {
+        case "USER_AUTH":
+          setUserId(data.userId);
+          setProfile(data.profile || {});
+          localStorage.setItem("kovalUser", data.userId);
+          localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
+          break;
+        case "THEME_CHANGE":
+          if (typeof data.dark === "boolean") setDarkMode(data.dark);
+          break;
+        case "RESIZE_IFRAME":
+          if (data.height && window.parent) {
+            window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
+          }
+          break;
+        default:
+          break;
       }
     };
     window.addEventListener("message", handleWidgetMessages);
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // ✅ Inject bot element
+  // ✅ Inject bot element once
   useEffect(() => {
     if (!document.querySelector("koa-bot")) {
-      document.body.appendChild(document.createElement("koa-bot"));
+      const botEl = document.createElement("koa-bot");
+      document.body.appendChild(botEl);
+      return () => botEl.remove(); // cleanup on unmount
     }
   }, []);
 
@@ -98,9 +105,10 @@ export default function Index() {
     return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
 
-  // ✅ Init AI thread (Backend call only)
+  // ✅ Init AI thread
   useEffect(() => {
     if (!userId || threadId) return;
+    let isMounted = true;
     (async () => {
       try {
         const res = await fetch("/api/create-thread", {
@@ -109,7 +117,7 @@ export default function Index() {
           body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
         });
         const data = await res.json();
-        if (data.threadId) {
+        if (isMounted && data.threadId) {
           setThreadId(data.threadId);
           localStorage.setItem("kovalThreadId", data.threadId);
         }
@@ -117,7 +125,8 @@ export default function Index() {
         console.error("❌ Thread init failed:", err);
       }
     })();
-  }, [userId]);
+    return () => { isMounted = false; };
+  }, [userId, threadId]);
 
   // ✅ Load Dive Logs
   useEffect(() => {
@@ -139,6 +148,7 @@ export default function Index() {
 
         const remoteLogs = await remoteRes.json();
         const memData = await memRes.json();
+
         const merged = [...localLogs, ...(remoteLogs || []), ...(memData?.memory || [])]
           .reduce((map, log) => ({ ...map, [log.localId || log._id || log.id]: log }), {});
 
@@ -164,7 +174,11 @@ export default function Index() {
     setMessages((prev) => [...prev, { role: "assistant", content: "📝 Dive log saved locally and queued for sync." }]);
   }, [userId, diveLogs]);
 
-  const handleEdit = useCallback((index) => setEditLogIndex(index) || setShowDiveJournalForm(true), []);
+  const handleEdit = useCallback((index) => {
+    setEditLogIndex(index);
+    setShowDiveJournalForm(true);
+  }, []);
+
   const handleDelete = useCallback((index) => {
     const key = storageKey(userId);
     const updated = diveLogs.filter((_, i) => i !== index);
