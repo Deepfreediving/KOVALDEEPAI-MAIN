@@ -12,6 +12,10 @@ if (!OPENAI_API_KEY || !PINECONE_API_KEY || !PINECONE_INDEX_NAME) {
   throw new Error('Missing required .env variables');
 }
 
+const app = express();
+app.use(cors({ origin: '*' }));
+app.use(express.json());
+
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
 const index = pinecone.index(PINECONE_INDEX_NAME);
@@ -34,11 +38,7 @@ async function queryPinecone(query) {
   return result.matches || [];
 }
 
-const handler = async (req, res) => {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
+app.post('/api/pineconeQuery', async (req, res) => {
   const { query } = req.body;
   if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Query must be a string' });
@@ -66,11 +66,6 @@ const handler = async (req, res) => {
     console.error('Handler error:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-};
+});
 
-const app = express();
-app.use(cors({ origin: '*' }));
-app.use(express.json());
-app.post('/api/query', handler);
-
-app.listen(3000, () => console.log('✅ Server running on port 3000'));
+module.exports = app;
