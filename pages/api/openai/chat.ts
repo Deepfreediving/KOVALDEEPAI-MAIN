@@ -3,31 +3,18 @@ import OpenAI from 'openai';
 import axios from 'axios';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
+import getEmbedding from '@/lib/getEmbedding';
+import { queryData } from '@/lib/queryData';   // ✅ FIXED IMPORT
 
 // === ENVIRONMENT CHECKS ===
-if (!process.env.OPENAI_API_KEY) {
-  console.error("⚠️ Missing OPENAI_API_KEY environment variable.");
-}
-if (!process.env.PINECONE_API_KEY) {
-  console.error("⚠️ Missing PINECONE_API_KEY environment variable.");
-}
-if (!process.env.PINECONE_INDEX) {
-  console.error("⚠️ Missing PINECONE_INDEX environment variable.");
-}
+if (!process.env.OPENAI_API_KEY) console.error("⚠️ Missing OPENAI_API_KEY");
+if (!process.env.PINECONE_API_KEY) console.error("⚠️ Missing PINECONE_API_KEY");
+if (!process.env.PINECONE_INDEX) console.error("⚠️ Missing PINECONE_INDEX");
 
 // === INITIALIZATION ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
-
-let index: any = null;
-try {
-  const pinecone = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY!,
-  });
-  index = pinecone.index(process.env.PINECONE_INDEX!);
-  console.log("✅ Pinecone initialized successfully.");
-} catch (err) {
-  console.error("❌ Failed to initialize Pinecone:", err);
-}
+const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
+const index = process.env.PINECONE_INDEX ? pinecone.index(process.env.PINECONE_INDEX) : null;
 
 // === HELPERS ===
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
@@ -47,30 +34,13 @@ function getDepthRange(depth: number): string {
   return `${rounded}m`;
 }
 
-async function getQueryEmbedding(query: string): Promise<number[]> {
-  try {
-    const res: any = await Promise.race([
-      openai.embeddings.create({
-        model: 'text-embedding-3-small',
-        input: query,
-      }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Embedding timeout')), 8000)),
-    ]);
-    return res?.data?.[0]?.embedding || [];
-  } catch (err) {
-    console.error('Embedding error:', err);
+async function queryPinecone(query: string, depthRange: string): Promise<string[]> {
+  if (!index) {
+    console.warn("⚠️ Pinecone index not initialized.");
     return [];
   }
-}
-
-async function queryPinecone(query: string, depthRange: string): Promise<string[]> {
   try {
-    if (!index) {
-      console.warn("⚠️ Pinecone index not initialized.");
-      return [];
-    }
-
-    const vector = await getQueryEmbedding(query);
+    const vector = await getEmbedding(query);
     if (!vector.length) return [];
 
     const result: any = await index.query({
@@ -98,30 +68,22 @@ You are **Koval Deep AI**, a highly specialized freediving coach assistant creat
 Your purpose is to provide **precise, expert-level coaching** for deep freediving based on real-world elite training methodology.
 
 ### 🎯 Primary Rules:
-- **Analyze diver context first**: Use their latest dive logs, PB depth, target depth, and any technical details they provide.
-- **Never reset to beginner mode** unless diver PB < 40m and logs confirm beginner level.
-- **Always coach for safe progression**, identifying bottlenecks that prevent deeper dives.
-- Use **technical, high-performance freediving language**, avoid filler advice like "practice more".
-- If the diver provides numbers (depth, equalization limits, mouthfill behavior, etc.), **diagnose and suggest next-step drills** that directly address the problem.
+- Analyze diver context first.
+- Never reset to beginner mode unless diver PB < 40m.
+- Always coach for safe progression.
+- Use technical, high-performance freediving language.
+- Avoid filler advice like "practice more".
 
 ---
 
 ### ✅ Response Structure:
-1️⃣ **Physics & Physiology:** Explain what’s happening physically at this depth (${depthRange}).  
-2️⃣ **Technical Analysis:** Identify what is limiting progression based on their logs and technique details.  
-3️⃣ **Targeted Training Plan:** Give **specific drills or depth strategies** to fix the issue and safely push toward their **target depth**.  
-4️⃣ **Safety & Strategy:** Highlight safety margins and buddy recommendations.  
-5️⃣ **Motivator Hook:** End with a strong mental coaching insight.
+1️⃣ **Physics & Physiology:** Explain what's happening physically at ${depthRange}.  
+2️⃣ **Technical Analysis:** Identify limitations based on logs.  
+3️⃣ **Targeted Training Plan:** Give specific drills or depth strategies to safely reach target depth.  
+4️⃣ **Safety & Strategy:** Highlight safety margins.  
+5️⃣ **Motivator Hook:** Strong mental coaching insight.
 
----
-
-### ⚠️ Forbidden:
-- No vague advice ("relax more", "just train longer").
-- No made-up medical info.
-- No irrelevant agency standards unless requested.
-
-You are a **precision freediving coach**, not a casual chatbot.  
-Make your advice feel like a **world-class coaching session**.
+⚠️ Forbidden: vague advice, made-up medical info, irrelevant standards.
 `;
 }
 
@@ -140,7 +102,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
           { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser input:\n${message}` },
         ],
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Chat completion timeout')), 15000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Chat timeout')), 15000)),
     ]);
 
     return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
@@ -160,16 +122,11 @@ Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), di
       temperature: 0,
       messages: [
         { role: 'system', content: 'You are a precise information extractor for freediving profiles.' },
-        { role: 'user', content: message },
+        { role: 'user', content: extractionPrompt + "\n\n" + message },
       ],
     });
 
-    try {
-      return JSON.parse(result.choices[0].message.content || '{}');
-    } catch {
-      console.warn("Profile extraction returned invalid JSON");
-      return {};
-    }
+    return JSON.parse(result.choices[0].message.content || '{}');
   } catch (err) {
     console.error("Profile extraction error:", err);
     return {};
@@ -232,7 +189,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     profile = {},
     eqState,
     diveLogs = [],
-    intakeCount = 0,
     uploadOnly,
     sessionId,
     sessionName,
@@ -240,10 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!message && uploadOnly) {
     return res.status(200).json({
-      assistantMessage: {
-        role: 'assistant',
-        content: '✅ Dive images uploaded. I’ll analyze them when relevant!',
-      },
+      assistantMessage: { role: 'assistant', content: '✅ Dive images uploaded. I’ll analyze them when relevant!' },
       metadata: { sessionType: 'upload-only' },
     });
   }
@@ -259,9 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Determine depth from logs, PB, or message
     const logDepth = diveLogs?.length ? parseFloat(diveLogs[diveLogs.length - 1]?.reachedDepth || 0) : undefined;
-    const depthRange = getDepthRange(
-      mergedProfile.currentDepth || mergedProfile.pb || logDepth || 10
-    );
+    const depthRange = getDepthRange(mergedProfile.currentDepth || mergedProfile.pb || logDepth || 10);
     const userLevel = detectUserLevel(mergedProfile);
 
     // Handle EQ follow-up
@@ -275,7 +226,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Build user context message
+    // Build user context
     let userContext = message;
     if (diveLogs?.length) {
       const lastLog = diveLogs[diveLogs.length - 1];
@@ -284,6 +235,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Query Pinecone
     const contextChunks = await queryPinecone(userContext, depthRange);
+
+    // Generate AI response
     const assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
 
     // Save to memory
@@ -304,30 +257,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     return res.status(200).json({
-      assistantMessage: {
-        role: 'assistant',
-        content: assistantReply,
-      },
-      metadata: {
-        userLevel,
-        depthRange,
-        contextChunksCount: contextChunks.length,
-      },
+      assistantMessage: { role: 'assistant', content: assistantReply },
+      metadata: { userLevel, depthRange, contextChunksCount: contextChunks.length },
     });
   } catch (err: any) {
-    console.error('❌ Error in /api/chat.ts:', {
-      error: err.message || err,
-      requestHeaders: req.headers,
-      body: req.body,
-    });
+    console.error('❌ Error in /api/chat.ts:', { error: err.message || err });
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
 
 export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb', // Increase if needed
-    },
-  },
+  api: { bodyParser: { sizeLimit: '10mb' } },
 };

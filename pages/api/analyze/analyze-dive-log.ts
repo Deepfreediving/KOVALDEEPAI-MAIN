@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { analyzeDiveLogText, generateDiveReport } from "../../utils/analyzeDiveLog";
+import { analyzeDiveLogText, generateDiveReport } from "../../../utils/analyzeDiveLog";
 
 /**
  * @route   POST /api/analyze-dive-log
