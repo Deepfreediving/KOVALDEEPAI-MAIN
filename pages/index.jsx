@@ -2,13 +2,14 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import ChatMessages from "../components/ChatMessages";
 import Sidebar from "../components/Sidebar";
 import ChatBox from "../components/ChatBox";
+import apiClient from "../utils/apiClient";
 
 export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
   // ----------------------------
-  // ✅ State
+  // State
   // ----------------------------
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -25,15 +26,24 @@ export default function Index() {
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
+  const [loadingConnections, setLoadingConnections] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState({
+    wix: "⏳ Checking...",
+    openai: "⏳ Checking...",
+    pinecone: "⏳ Checking...",
+  });
   const bottomRef = useRef(null);
 
   // ----------------------------
-  // ✅ Helpers
+  // Helpers
   // ----------------------------
   const storageKey = (uid) => `diveLogs-${uid}`;
   const safeParse = (key, fallback) => {
-    try { return JSON.parse(localStorage.getItem(key)) || fallback; }
-    catch { return fallback; }
+    try {
+      return JSON.parse(localStorage.getItem(key)) || fallback;
+    } catch {
+      return fallback;
+    }
   };
 
   const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
@@ -45,7 +55,7 @@ export default function Index() {
     (userId?.startsWith("Guest") ? "Guest User" : "User");
 
   // ----------------------------
-  // ✅ LocalStorage Load
+  // LocalStorage Initialization
   // ----------------------------
   useEffect(() => {
     setSessionsList(safeParse("kovalSessionsList", []));
@@ -54,13 +64,13 @@ export default function Index() {
     setProfile(safeParse("kovalProfile", {}));
   }, []);
 
-  // ✅ Theme sync
+  // Theme Sync
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("kovalDarkMode", darkMode);
   }, [darkMode]);
 
-  // ✅ Widget messages
+  // Widget Messages Listener
   useEffect(() => {
     const handleWidgetMessages = ({ data }) => {
       if (!data) return;
@@ -87,25 +97,49 @@ export default function Index() {
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // ✅ Inject bot element once
+  // Inject Bot Iframe
   useEffect(() => {
-    if (!document.querySelector("koa-bot")) {
-      const botEl = document.createElement("koa-bot");
-      document.body.appendChild(botEl);
-      return () => botEl.remove(); // cleanup on unmount
+    const existingIframe = document.querySelector("#KovalAIFrame");
+    if (!existingIframe) {
+      const iframe = document.createElement("iframe");
+      iframe.id = "KovalAIFrame";
+      iframe.src = "/koval-ai.html"; // ✅ Updated
+      iframe.style.cssText =
+        "width:100%;height:0;border:none;position:fixed;bottom:0;right:0;z-index:9999;";
+      document.body.appendChild(iframe);
+      return () => iframe.remove();
     }
   }, []);
 
-  // ✅ Handle "OpenBotIfNoMemories"
+  // Open Bot if No Memories
   useEffect(() => {
-    const handler = () => window.KovalBot?.sendMessage(
-      "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
-    );
+    const handler = () =>
+      window.KovalAI?.sendMessage?.(
+        "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
+      );
     window.addEventListener("OpenBotIfNoMemories", handler);
     return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
 
-  // ✅ Init AI thread
+  // Connection Check (Runs in background, non-blocking)
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const result = await apiClient.checkAllConnections();
+        if (isMounted) setConnectionStatus(result);
+      } catch (error) {
+        console.warn("⚠️ API connection check failed:", error);
+      } finally {
+        if (isMounted) setLoadingConnections(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Init AI Thread
   useEffect(() => {
     if (!userId || threadId) return;
     let isMounted = true;
@@ -125,10 +159,12 @@ export default function Index() {
         console.error("❌ Thread init failed:", err);
       }
     })();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [userId, threadId]);
 
-  // ✅ Load Dive Logs
+  // Load Dive Logs
   useEffect(() => {
     if (!userId) return;
     const key = storageKey(userId);
@@ -146,11 +182,13 @@ export default function Index() {
           }),
         ]);
 
-        const remoteLogs = await remoteRes.json();
-        const memData = await memRes.json();
+        const remoteLogs = (await remoteRes.json()) || [];
+        const memData = (await memRes.json())?.memory || [];
 
-        const merged = [...localLogs, ...(remoteLogs || []), ...(memData?.memory || [])]
-          .reduce((map, log) => ({ ...map, [log.localId || log._id || log.id]: log }), {});
+        const merged = [...localLogs, ...remoteLogs, ...memData].reduce(
+          (map, log) => ({ ...map, [log.localId || log._id || log.id]: log }),
+          {}
+        );
 
         const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
         setDiveLogs(combined);
@@ -161,41 +199,55 @@ export default function Index() {
     })();
   }, [userId]);
 
-  // ✅ Journal functions
-  const handleJournalSubmit = useCallback((entry) => {
-    const key = storageKey(userId);
-    const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
-    const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
-    setDiveLogs(updated);
-    localStorage.setItem(key, JSON.stringify(updated));
-    savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
-    setShowDiveJournalForm(false);
-    setEditLogIndex(null);
-    setMessages((prev) => [...prev, { role: "assistant", content: "📝 Dive log saved locally and queued for sync." }]);
-  }, [userId, diveLogs]);
+  // ----------------------------
+  // Journal Functions
+  // ----------------------------
+  const handleJournalSubmit = useCallback(
+    (entry) => {
+      const key = storageKey(userId);
+      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+      const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
+      setDiveLogs(updated);
+      localStorage.setItem(key, JSON.stringify(updated));
+      savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
+      setShowDiveJournalForm(false);
+      setEditLogIndex(null);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "📝 Dive log saved locally and queued for sync." },
+      ]);
+    },
+    [userId, diveLogs]
+  );
 
   const handleEdit = useCallback((index) => {
     setEditLogIndex(index);
     setShowDiveJournalForm(true);
   }, []);
 
-  const handleDelete = useCallback((index) => {
-    const key = storageKey(userId);
-    const updated = diveLogs.filter((_, i) => i !== index);
-    localStorage.setItem(key, JSON.stringify(updated));
-    setDiveLogs(updated);
-  }, [userId, diveLogs]);
+  const handleDelete = useCallback(
+    (index) => {
+      const key = storageKey(userId);
+      const updated = diveLogs.filter((_, i) => i !== index);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setDiveLogs(updated);
+    },
+    [userId, diveLogs]
+  );
 
-  // ✅ Save session
+  // Save Session
   const handleSaveSession = useCallback(() => {
-    const updated = [...sessionsList.filter((s) => s.sessionName !== sessionName), { sessionName, messages, timestamp: Date.now() }];
+    const updated = [
+      ...sessionsList.filter((s) => s.sessionName !== sessionName),
+      { sessionName, messages, timestamp: Date.now() },
+    ];
     localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
     localStorage.setItem("kovalSessionName", sessionName);
     setSessionsList(updated);
-    window.KovalBot?.saveSession({ userId, sessionName, messages, timestamp: Date.now() });
+    window.KovalAI?.saveSession?.({ userId, sessionName, messages, timestamp: Date.now() });
   }, [sessionName, sessionsList, messages, userId]);
 
-  // ✅ Function to fetch Wix Data via server
+  // Fetch Wix Data
   const fetchWixData = useCallback(async (query) => {
     try {
       setLoading(true);
@@ -205,26 +257,73 @@ export default function Index() {
         body: JSON.stringify({ query }),
       });
       const data = await res.json();
-      console.log("✅ Wix Data:", data);
-      setMessages(prev => [...prev, { role: "assistant", content: `Wix Data fetched: ${JSON.stringify(data)}` }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `Wix Data fetched: ${JSON.stringify(data)}` }]);
     } catch (err) {
       console.error("Error fetching Wix data:", err);
-      setMessages(prev => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // ✅ Memoized props
-  const sharedProps = useMemo(() => ({
-    BOT_NAME, sessionName, setSessionName, sessionsList, setSessionsList,
-    editingSessionName, setEditingSessionName, messages, setMessages, input,
-    setInput, files, setFiles, loading, setLoading, userId, profile, setProfile,
-    eqState, setEqState, diveLogs, setDiveLogs, editLogIndex, setEditLogIndex,
-    showDiveJournalForm, setShowDiveJournalForm, threadId, bottomRef, darkMode, setDarkMode,
-    fetchWixData
-  }), [sessionName, sessionsList, messages, darkMode, diveLogs, input, files, loading, userId, profile, eqState, showDiveJournalForm, editLogIndex, threadId]);
+  // ----------------------------
+  // Memorized Props
+  // ----------------------------
+  const sharedProps = useMemo(
+    () => ({
+      BOT_NAME,
+      sessionName,
+      setSessionName,
+      sessionsList,
+      setSessionsList,
+      editingSessionName,
+      setEditingSessionName,
+      messages,
+      setMessages,
+      input,
+      setInput,
+      files,
+      setFiles,
+      loading,
+      setLoading,
+      userId,
+      profile,
+      setProfile,
+      eqState,
+      setEqState,
+      diveLogs,
+      setDiveLogs,
+      editLogIndex,
+      setEditLogIndex,
+      showDiveJournalForm,
+      setShowDiveJournalForm,
+      threadId,
+      bottomRef,
+      darkMode,
+      setDarkMode,
+      fetchWixData,
+    }),
+    [
+      sessionName,
+      sessionsList,
+      messages,
+      darkMode,
+      diveLogs,
+      input,
+      files,
+      loading,
+      userId,
+      profile,
+      eqState,
+      showDiveJournalForm,
+      editLogIndex,
+      threadId,
+    ]
+  );
 
+  // ----------------------------
+  // Main Render
+  // ----------------------------
   return (
     <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
       {/* Sidebar */}
@@ -260,6 +359,7 @@ export default function Index() {
         {/* Top Bar */}
         <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
           <div className="text-gray-500 dark:text-gray-400 px-2 truncate">👤 {getDisplayName()}</div>
+
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
@@ -271,7 +371,13 @@ export default function Index() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto flex justify-center">
           <div className="w-full max-w-3xl px-6 py-4">
-            <ChatMessages messages={messages} BOT_NAME={BOT_NAME} darkMode={darkMode} loading={loading} bottomRef={bottomRef} />
+            <ChatMessages
+              messages={messages}
+              BOT_NAME={BOT_NAME}
+              darkMode={darkMode}
+              loading={loading}
+              bottomRef={bottomRef}
+            />
           </div>
         </div>
 
@@ -279,6 +385,13 @@ export default function Index() {
         <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
           <ChatBox {...sharedProps} />
         </div>
+      </div>
+
+      {/* ✅ Floating Emoji Dock */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4 text-2xl bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+        {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+        {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
       </div>
     </main>
   );

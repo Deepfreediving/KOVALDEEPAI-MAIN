@@ -1,4 +1,4 @@
-class KovalBotElement extends HTMLElement {
+class KovalAiElement extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -44,7 +44,7 @@ class KovalBotElement extends HTMLElement {
    * Save current session to local storage
    */
   saveSession(payload) {
-    localStorage.setItem("kovalbot_session", JSON.stringify(payload));
+    localStorage.setItem("koval_ai_session", JSON.stringify(payload));
   }
 
   /**
@@ -79,7 +79,7 @@ class KovalBotElement extends HTMLElement {
       });
     }
 
-    const savedSession = localStorage.getItem("kovalbot_session");
+    const savedSession = localStorage.getItem("koval_ai_session");
     if (savedSession) {
       this.postToIframe("LOAD_SAVED_SESSION", JSON.parse(savedSession));
     }
@@ -128,10 +128,10 @@ class KovalBotElement extends HTMLElement {
   }
 }
 
-customElements.define('koa-bot', KovalBotElement);
+customElements.define('koval-ai', KovalAiElement);
 
 // ✅ Allow external scripts to trigger bot methods
-window.KovalBot = {
-  loadUserData: (data) => document.querySelector('koa-bot')?.loadUserData(data),
-  saveSession: (data) => document.querySelector('koa-bot')?.saveSession(data),
+window.KovalAI = {
+  loadUserData: (data) => document.querySelector('koval-ai')?.loadUserData(data),
+  saveSession: (data) => document.querySelector('koval-ai')?.saveSession(data),
 };
