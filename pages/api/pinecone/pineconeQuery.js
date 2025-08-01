@@ -1,25 +1,22 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { OpenAI } = require('openai');
-const { Pinecone } = require('@pinecone-database/pinecone');
+// pages/api/pinecone/pineconeQuery.js
+
+import { OpenAI } from 'openai';
+import { Pinecone } from '@pinecone-database/pinecone';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX || 'koval-deep-ai';
 
 if (!OPENAI_API_KEY || !PINECONE_API_KEY || !PINECONE_INDEX_NAME) {
-  throw new Error('Missing required .env variables');
+  throw new Error('Missing required environment variables for Pinecone or OpenAI');
 }
 
-const app = express();
-app.use(cors({ origin: '*' }));
-app.use(express.json());
-
+// Initialize clients
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
 const index = pinecone.index(PINECONE_INDEX_NAME);
 
+// Generate embedding for the query
 async function getQueryEmbedding(query) {
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
@@ -28,6 +25,7 @@ async function getQueryEmbedding(query) {
   return response.data[0].embedding;
 }
 
+// Query Pinecone index
 async function queryPinecone(query) {
   const embedding = await getQueryEmbedding(query);
   const result = await index.query({
@@ -38,8 +36,14 @@ async function queryPinecone(query) {
   return result.matches || [];
 }
 
-app.post('/api/pineconeQuery', async (req, res) => {
+// ✅ Next.js API route handler
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   const { query } = req.body;
+
   if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Query must be a string' });
   }
@@ -52,6 +56,7 @@ app.post('/api/pineconeQuery', async (req, res) => {
     }
 
     const context = matches.map((m) => m.metadata?.text).join('\n\n');
+
     const answer = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
@@ -61,11 +66,9 @@ app.post('/api/pineconeQuery', async (req, res) => {
       temperature: 0.2,
     });
 
-    res.status(200).json({ answer: answer.choices[0].message.content.trim() });
+    return res.status(200).json({ answer: answer.choices[0].message.content.trim() });
   } catch (err) {
-    console.error('Handler error:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Pinecone query handler error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
-});
-
-module.exports = app;
+}
