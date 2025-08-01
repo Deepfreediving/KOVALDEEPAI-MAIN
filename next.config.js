@@ -123,17 +123,6 @@ const nextConfig = {
       },
     ];
   },
-
-  /**
-   * Modular imports for optimization
-   */
-  compiler: {
-    modularizeImports: {
-      lodash: {
-        transform: 'lodash/{{member}}',
-      },
-    },
-  },
 };
 
 module.exports = nextConfig;

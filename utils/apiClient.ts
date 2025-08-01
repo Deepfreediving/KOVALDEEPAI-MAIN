@@ -1,97 +1,54 @@
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 
-// ✅ Log missing environment variables early
-if (typeof window === 'undefined') {
-  console.log('🔎 Checking required environment variables...');
-
-  if (!process.env.WIX_API_KEY) console.warn('⚠️ WIX_API_KEY is not set');
-  if (!process.env.WIX_ACCOUNT_ID) console.warn('⚠️ WIX_ACCOUNT_ID is not set');
-  if (!process.env.WIX_SITE_ID) console.warn('⚠️ WIX_SITE_ID is not set');
-  if (!process.env.OPENAI_API_KEY) console.warn('⚠️ OPENAI_API_KEY is not set');
-  if (!process.env.PINECONE_API_KEY) console.warn('⚠️ PINECONE_API_KEY is not set');
-  if (!process.env.PINECONE_HOST) console.warn('⚠️ PINECONE_HOST is not set');
+export interface Status {
+  wix: string;
+  openai: string;
+  pinecone: string;
 }
 
-// ✅ Wix API Client (server-side only)
-const wix: AxiosInstance = axios.create({
-  baseURL: 'https://www.wixapis.com',
-  headers: {
-    Authorization: `Bearer ${process.env.WIX_API_KEY || ''}`,
-    'wix-account-id': process.env.WIX_ACCOUNT_ID || '',
-    'wix-site-id': process.env.WIX_SITE_ID || '',
-    'Content-Type': 'application/json',
-  },
-});
-
-// ✅ OpenAI API Client
-const openai: AxiosInstance = axios.create({
-  baseURL: process.env.OPENAI_API_URL || 'https://api.openai.com/v1',
-  headers: {
-    Authorization: `Bearer ${process.env.OPENAI_API_KEY || ''}`,
-    'Content-Type': 'application/json',
-  },
-});
-
-// ✅ Pinecone API Client
-const pinecone: AxiosInstance = axios.create({
-  baseURL:
-    process.env.PINECONE_HOST ||
-    `https://controller.${process.env.PINECONE_ENVIRONMENT}.pinecone.io`,
-  headers: {
-    Authorization: `Bearer ${process.env.PINECONE_API_KEY || ''}`,
-    'Content-Type': 'application/json',
-  },
-});
+/**
+ * ✅ Generic API request to your server-side handler
+ */
+async function sendRequest(service: string, action: string, data: any = {}): Promise<any> {
+  try {
+    const response = await axios.post('/api/apiHandler', {
+      service,
+      action,
+      data,
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error(`❌ ${service} request failed:`, error.message);
+    return null;
+  }
+}
 
 /**
- * ✅ Checks the status of all API connections and returns their results.
+ * ✅ Check all connections (Wix, OpenAI, Pinecone)
  */
-export async function checkAllConnections(): Promise<Record<string, string>> {
-  const status: Record<string, string> = {};
+export async function checkAllConnections(): Promise<Status> {
+  const status: Status = {
+    wix: '⏳ Checking...',
+    openai: '⏳ Checking...',
+    pinecone: '⏳ Checking...',
+  };
 
-  // ✅ Wix API Check
-  try {
-    if (typeof window === 'undefined') {
-      // Server-side call directly to Wix
-      await wix.post('/v2/data/items/query', { data: {} });
-    } else {
-      // Client-side: use local API proxy to avoid CORS and hide API key
-      await axios.post('/api/wix/wixProxy', { data: {} });
-    }
-    status.wix = '✅ OK';
-  } catch (err: any) {
-    const message = err?.response?.data?.message || err?.message || 'Unknown error';
-    console.warn('⚠️ Wix connection failed:', message);
-    status.wix = `❌ Failed: ${message}`;
-  }
+  // Test each service through your secured backend handler
+  const [wixRes, openaiRes, pineconeRes] = await Promise.all([
+    sendRequest('wix', 'check', { test: true }),
+    sendRequest('openai', 'check', { model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'ping' }] }),
+    sendRequest('pinecone', 'check', {}),
+  ]);
 
-  // ✅ OpenAI API Check
-  try {
-    await openai.get('/models');
-    status.openai = '✅ OK';
-  } catch (err: any) {
-    const message = err?.response?.data?.error?.message || err?.message || 'Unknown error';
-    console.warn('⚠️ OpenAI connection failed:', message);
-    status.openai = `❌ Failed: ${message}`;
-  }
-
-  // ✅ Pinecone API Check
-  try {
-    await pinecone.get('/databases');
-    status.pinecone = '✅ OK';
-  } catch (err: any) {
-    const message = err?.response?.data?.message || err?.message || 'Unknown error';
-    console.warn('⚠️ Pinecone connection failed:', message);
-    status.pinecone = `❌ Failed: ${message}`;
-  }
+  status.wix = wixRes?.success ? '✅ OK' : '⚠️ Failed';
+  status.openai = openaiRes?.success ? '✅ OK' : '⚠️ Failed';
+  status.pinecone = pineconeRes?.success ? '✅ OK' : '⚠️ Failed';
 
   return status;
 }
 
 const apiClient = {
-  wix,
-  openai,
-  pinecone,
+  sendRequest,
   checkAllConnections,
 };
 

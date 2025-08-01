@@ -42,7 +42,7 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
   }
   try {
     const vector = await getEmbedding(query);
-    if (!vector.length) return [];
+    if (!Array.isArray(vector) || vector.length === 0) return [];
 
     const result: any = await index.query({
       vector,
@@ -74,6 +74,7 @@ Your purpose is to provide **precise, expert-level coaching** for deep freedivin
 - Always coach for safe progression.
 - Use technical, high-performance freediving language.
 - Avoid filler advice like "practice more".
+- If unsure about physiological risks, advise consulting a certified freediving professional.
 
 ---
 
@@ -89,7 +90,7 @@ Your purpose is to provide **precise, expert-level coaching** for deep freedivin
 }
 
 async function askWithContext(contextChunks: string[], message: string, userLevel: 'expert' | 'beginner', depthRange: string) {
-  const context = contextChunks.join('\n\n');
+  const context = contextChunks.slice(0, 4).join('\n\n'); // ✅ Limit to top 4 chunks for performance
   const systemPrompt = generateSystemPrompt(userLevel, depthRange);
 
   try {
@@ -127,7 +128,13 @@ Return JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), di
       ],
     });
 
-    return JSON.parse(result.choices[0].message.content || '{}');
+    let extracted = {};
+    try {
+      extracted = JSON.parse(result.choices[0].message.content || '{}');
+    } catch (e) {
+      console.warn("Profile extraction parsing failed:", e);
+    }
+    return extracted;
   } catch (err) {
     console.error("Profile extraction error:", err);
     return {};
@@ -153,8 +160,6 @@ async function saveToWixMemory(params: {
     console.error('❌ Failed to save to Wix:', err.response?.data || err.message);
   }
 }
-
-// Removed local declaration of handleCors as it is already imported.
 
 // === MAIN HANDLER ===
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -186,7 +191,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Extract profile info
     const extractedProfile = await extractProfileFields(message);
-    const mergedProfile = { ...profile, ...extractedProfile };
+    const mergedProfile = {
+      ...profile,
+      ...Object.fromEntries(Object.entries(extractedProfile).filter(([_, v]) => v !== undefined && v !== null && v !== ''))
+    };
 
     // Determine depth from logs, PB, or message
     const logDepth = diveLogs?.length ? parseFloat(diveLogs[diveLogs.length - 1]?.reachedDepth || 0) : undefined;
@@ -217,22 +225,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Generate AI response
     const assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
 
-    // Save to memory
-    await saveToWixMemory({
-      userId,
-      logEntry: message,
-      memoryContent: assistantReply,
-      profile: mergedProfile,
-      eqState,
-      sessionId,
-      sessionName,
-      metadata: {
-        sessionType: 'training',
-        intentLabel: 'ai-response',
-        userLevel,
-        depthRange,
-      },
-    });
+    // Only save if response is valid
+    if (!assistantReply.startsWith("⚠️")) {
+      await saveToWixMemory({
+        userId,
+        logEntry: message,
+        memoryContent: assistantReply,
+        profile: mergedProfile,
+        eqState,
+        sessionId,
+        sessionName,
+        metadata: {
+          sessionType: 'training',
+          intentLabel: 'ai-response',
+          userLevel,
+          depthRange,
+        },
+      });
+    }
 
     return res.status(200).json({
       assistantMessage: { role: 'assistant', content: assistantReply },
