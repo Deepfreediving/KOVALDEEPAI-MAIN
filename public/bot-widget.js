@@ -2,8 +2,9 @@ class KovalBotElement extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this.wixTarget = this.getAttribute('wix-target'); // ✅ new attribute for Wix targeting
 
-    // Main container for iframe
+    // Main container
     const container = document.createElement('div');
     container.style.position = 'relative';
     container.style.width = '100%';
@@ -11,7 +12,7 @@ class KovalBotElement extends HTMLElement {
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
 
-    // Iframe for Bot UI (loads automatically)
+    // Bot iframe
     this.iframe = document.createElement('iframe');
     this.iframe.src = "https://kovaldeepai-main.vercel.app/embed";
     this.iframe.style.width = '100%';
@@ -24,76 +25,60 @@ class KovalBotElement extends HTMLElement {
   }
 
   /**
-   * ✅ Post message to iframe safely
+   * ✅ Safely post message to iframe
    */
   postToIframe(type, data) {
-    if (this.iframe?.contentWindow) {
-      this.iframe.contentWindow.postMessage({ type, data }, "https://kovaldeepai-main.vercel.app");
+    if (this.iframe && this.iframe.contentWindow) {
+      this.iframe.contentWindow.postMessage({ type, ...data }, "*");
     }
   }
 
   /**
-   * ✅ Load user data from Wix page into the bot
+   * Load user data from Wix and send to bot iframe
    */
   loadUserData(payload) {
-    this.postToIframe("LOAD_USER_DATA", payload);
+    this.postToIframe("USER_DATA", { payload });
   }
 
   /**
-   * ✅ Save session data to server and local storage
+   * Save current session to local storage
    */
-  async saveSession(sessionData) {
-    try {
-      // Save remotely
-      await fetch("https://kovaldeepai-main.vercel.app/api/save-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sessionData),
-      });
-
-      // Save locally for next session
-      localStorage.setItem("kovalbot_session", JSON.stringify(sessionData));
-
-      window.dispatchEvent(new CustomEvent("KovalBotSessionSaved", { detail: sessionData }));
-    } catch (error) {
-      console.error("❌ Failed to save session:", error);
-    }
+  saveSession(payload) {
+    localStorage.setItem("kovalbot_session", JSON.stringify(payload));
   }
 
   /**
-   * ✅ Get Wix member details
+   * Retrieve Wix member details (if available)
    */
   getMemberDetails() {
     try {
-      if (window?.wixEmbedsAPI?.getCurrentMember) {
-        return window.wixEmbedsAPI.getCurrentMember();
+      if (window.wixUsers && window.wixUsers.currentUser) {
+        return {
+          id: window.wixUsers.currentUser.id,
+          loginEmail: window.wixUsers.currentUser.loginEmail
+        };
       }
-      const localMember = localStorage.getItem("__wix.memberDetails");
-      if (localMember) return JSON.parse(localMember);
-    } catch (e) {
-      console.warn("⚠️ Error fetching member details:", e);
+    } catch (err) {
+      console.warn("⚠️ Unable to fetch Wix user details:", err);
     }
     return null;
   }
 
   /**
-   * ✅ Send initial data (auth, theme) to the bot
+   * Send initial data (theme, user info, cached session)
    */
   sendInitialData() {
-    const isDark = document.documentElement.classList.contains("theme-dark") ||
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-
+    const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     this.postToIframe("THEME_CHANGE", { dark: isDark });
 
     const memberDetails = this.getMemberDetails();
     if (memberDetails) {
       this.postToIframe("USER_AUTH", {
-        userId: memberDetails?.loginEmail || memberDetails?.id,
+        userId: memberDetails.loginEmail || memberDetails.id,
         profile: memberDetails
       });
     }
 
-    // If we have cached session, load it
     const savedSession = localStorage.getItem("kovalbot_session");
     if (savedSession) {
       this.postToIframe("LOAD_SAVED_SESSION", JSON.parse(savedSession));
@@ -101,35 +86,51 @@ class KovalBotElement extends HTMLElement {
   }
 
   connectedCallback() {
-    // When iframe is ready, send data
+    // ✅ Send BOT_READY event after iframe loads
     this.iframe.addEventListener("load", () => {
       this.sendInitialData();
-      window.parent.postMessage("BOT_READY", "*");
+      window.parent.postMessage({ type: "BOT_READY" }, "*");
     });
 
-    // Listen for messages from Wix frontend
-    window.addEventListener("message", (event) => {
+    /**
+     * Handle incoming messages from Wix or fallback listener
+     */
+    const handleMessage = (event) => {
       if (!event.data) return;
-
       switch (event.data.type) {
         case "USER_DATA":
           this.loadUserData(event.data.payload);
           break;
-
         case "SAVE_SESSION":
           this.saveSession(event.data.payload);
           break;
-
         case "REQUEST_USER_DETAILS":
           this.sendInitialData();
           break;
       }
-    });
+    };
+
+    // ✅ Prefer Wix $w.onMessage if available
+    if (this.wixTarget && window.$w) {
+      try {
+        const wixEl = $w(`#${this.wixTarget}`);
+        if (wixEl && typeof wixEl.onMessage === "function") {
+          wixEl.onMessage(handleMessage);
+          return;
+        }
+      } catch (err) {
+        console.warn("⚠️ Failed to attach Wix onMessage:", err);
+      }
+    }
+
+    // ✅ Fallback to standard message listener
+    window.addEventListener("message", handleMessage);
   }
 }
 
 customElements.define('koa-bot', KovalBotElement);
 
+// ✅ Allow external scripts to trigger bot methods
 window.KovalBot = {
   loadUserData: (data) => document.querySelector('koa-bot')?.loadUserData(data),
   saveSession: (data) => document.querySelector('koa-bot')?.saveSession(data),
