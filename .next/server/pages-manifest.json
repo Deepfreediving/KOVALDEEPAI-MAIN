@@ -3,5 +3,6 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/api/apiHandler": "pages/api/apiHandler.js"
+  "/api/apiHandler": "pages/api/apiHandler.js",
+  "/api/openai/chat": "pages/api/openai/chat.js"
 }
