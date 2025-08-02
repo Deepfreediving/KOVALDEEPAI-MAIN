@@ -34,7 +34,7 @@ export default function Embed() {
         setLoading(true);
         setErrorMsg("");
         try {
-          const res = await fetch(`/api/getDiveLogs?userId=${event.data.data.userId}`);
+          const res = await fetch(`/api/analyze/getDiveLogs?userId=${event.data.data.userId}`);
           if (!res.ok) throw new Error(`API error: ${res.status}`);
           const data = await res.json();
 

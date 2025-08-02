@@ -1,4 +1,4 @@
-// pages/api/create-thread.ts
+// pages/api/openai/create-thread.ts
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';

@@ -39,7 +39,7 @@ export default function Journal({ userId, onSave }: JournalProps) {
       const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
 
       // ✅ Save to API
-      const res = await fetch("/api/save-dive-log", {
+      const res = await fetch("/api/analyze/save-dive-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, diveLog: newEntry }),
