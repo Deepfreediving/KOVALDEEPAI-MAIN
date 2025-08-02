@@ -10,34 +10,45 @@ export interface VectorData {
 /**
  * ✅ Upsert vectors to Pinecone
  */
-export async function upsertVectors(vectors: VectorData[]) {
-  if (!Array.isArray(vectors) || vectors.length === 0) {
-    throw new Error("Vectors must be a non-empty array.");
+export async function upsertVectors(vectors: VectorData[]): Promise<any> {
+  try {
+    if (!Array.isArray(vectors) || vectors.length === 0) {
+      throw new Error("Vectors must be a non-empty array.");
+    }
+
+    const formattedVectors: PineconeRecord<RecordMetadata>[] = vectors.map((v) => ({
+      id: v.id,
+      values: v.values,
+      metadata: v.metadata ?? {},
+    }));
+
+    // ✅ Correct Pinecone upsert call
+    return await index.upsert(formattedVectors);
+  } catch (error: any) {
+    console.error("❌ Error in upsertVectors:", error.message || error);
+    throw new Error("Failed to upsert vectors to Pinecone.");
   }
-
-  const formattedVectors: PineconeRecord<RecordMetadata>[] = vectors.map((v) => ({
-    id: v.id,
-    values: v.values,
-    metadata: v.metadata ?? {},
-  }));
-
-  return await index.upsert(formattedVectors); // ✅ no more 'vectors:' wrapper
 }
 
 /**
  * ✅ Query vectors from Pinecone
  */
-export async function queryVectors(vector: number[], topK = 5) {
-  if (!Array.isArray(vector) || vector.length === 0) {
-    throw new Error("Query vector must be a non-empty array of numbers.");
+export async function queryVectors(vector: number[], topK = 5): Promise<PineconeRecord<RecordMetadata>[]> {
+  try {
+    if (!Array.isArray(vector) || vector.length === 0) {
+      throw new Error("Query vector must be a non-empty array of numbers.");
+    }
+
+    const response = await index.query({
+      vector,
+      topK,
+      includeMetadata: true,
+      includeValues: true,
+    });
+
+    return response.matches ?? [];
+  } catch (error: any) {
+    console.error("❌ Error in queryVectors:", error.message || error);
+    throw new Error("Failed to query Pinecone.");
   }
-
-  const response = await index.query({
-    vector,
-    topK,
-    includeMetadata: true,
-    includeValues: true,
-  });
-
-  return response.matches ?? [];
 }
