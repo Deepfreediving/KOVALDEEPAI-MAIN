@@ -2,13 +2,13 @@
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-// ✅ Dynamically import the main bot app to avoid SSR issues
 const App = dynamic(() => import("./index"), { ssr: false });
 
 export default function Embed() {
-  const [logs, setLogs] = useState([]); // ✅ Fixed: removed <Array<any>>
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [botIframe, setBotIframe] = useState(null);
 
   useEffect(() => {
     const adjustHeight = () => {
@@ -23,6 +23,21 @@ export default function Embed() {
     const resizeObserver = new ResizeObserver(adjustHeight);
     resizeObserver.observe(document.body);
 
+    const findBotIframe = () => {
+      const botElement = document.getElementById("kovalAiElement");
+      if (botElement && botElement.shadowRoot) {
+        const iframe = botElement.shadowRoot.querySelector("iframe");
+        if (iframe && iframe.contentWindow) {
+          setBotIframe(iframe.contentWindow);
+          // ✅ Notify Wix that bot is ready
+          window.parent?.postMessage({ type: "BOT_READY" }, "*");
+        }
+      }
+    };
+
+    // Retry finding iframe every 500ms until it loads
+    const iframeInterval = setInterval(findBotIframe, 500);
+
     const handleMessage = async (event) => {
       const allowedOrigins = [
         window.location.origin,
@@ -30,6 +45,12 @@ export default function Embed() {
       ];
       if (!allowedOrigins.includes(event.origin)) return;
 
+      // ✅ Forward AI_RESPONSE messages to bot iframe
+      if (event.data?.type === "AI_RESPONSE" && botIframe) {
+        botIframe.postMessage(event.data, "*");
+      }
+
+      // ✅ Load user logs
       if (event.data?.type === "LOAD_LOGS" && event.data.data?.userId) {
         setLoading(true);
         setErrorMsg("");
@@ -37,13 +58,7 @@ export default function Embed() {
           const res = await fetch(`/api/analyze/getDiveLogs?userId=${event.data.data.userId}`);
           if (!res.ok) throw new Error(`API error: ${res.status}`);
           const data = await res.json();
-
-          if (Array.isArray(data.logs)) {
-            setLogs(data.logs);
-          } else {
-            console.info("ℹ️ No valid dive logs found for this user.");
-            setLogs([]);
-          }
+          setLogs(Array.isArray(data.logs) ? data.logs : []);
         } catch (err) {
           console.error("❌ Failed to fetch dive logs:", err);
           setErrorMsg("Failed to load dive logs. Please try again later.");
@@ -60,8 +75,9 @@ export default function Embed() {
     return () => {
       window.removeEventListener("message", handleMessage);
       resizeObserver.disconnect();
+      clearInterval(iframeInterval);
     };
-  }, []);
+  }, [botIframe]);
 
   return (
     <div
@@ -75,26 +91,22 @@ export default function Embed() {
         fontFamily: "Arial, sans-serif",
       }}
     >
-      {/* ✅ Main Bot App */}
       <div style={{ flex: 1, overflowY: "auto" }}>
         <App />
       </div>
 
-      {/* ✅ Loading State */}
       {loading && (
         <div style={{ padding: "10px", background: "#222", color: "#ccc" }}>
           Loading dive logs...
         </div>
       )}
 
-      {/* ✅ Error State */}
       {!loading && errorMsg && (
         <div style={{ padding: "10px", background: "#300", color: "#fdd" }}>
           {errorMsg}
         </div>
       )}
 
-      {/* ✅ Dive Logs Section */}
       {!loading && logs.length > 0 && (
         <div
           style={{
