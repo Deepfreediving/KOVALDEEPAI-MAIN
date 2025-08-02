@@ -1,0 +1,40 @@
+🧭 Sink Phase Transition Protocol (Updated Format for Dive Planning)
+🔒 Core Rules (Always Apply)
+Packing Increases Buoyancy Depth: Any pack above full inhale shifts neutral deeper.
+Sink Phase Must Start at ≥2× Neutral Buoyancy (NB): Prevents inefficient sinking and extends blackout risk.
+Kick Count > Alarms: Rely on kick cycle tracking, not alarms. Watches can fail; your legs won’t.
+🧠 Required Diver Input
+Before recommending sink phase structure, confirm:
+Neutral Buoyancy Depth:
+“What depth are you neutral at with a full inhale only (no packing)?”
+Pack Count:
+“How many packs do you add?”
+“What is your max comfortable pack count?”
+Kick Strategy:
+“Do you track your kicks from 0m to neutral?”
+“Do you know your kick count from neutral to double neutral?”
+Sink Initiation:
+“Do you initiate sink at kick count or dive alarm?”
+📐 Dive Structure Template
+Descent:
+0m → NB: Strong kicks (count and memorize this phase)
+NB → 2×NB: Slim kicks (track phase change)
+At 2×NB:
+Stop kicking
+Enter sink phase
+Optional: drop arms
+Relax
+Equalize
+Begin reverse pack or take final mouthfill (if applicable)
+Ascent:
+Conserve legs
+Minimize kick count early
+Focus on relaxation and posture
+🔍 Diagnostic Tool: Signs of Structure Error
+Use these to identify when sink timing or buoyancy is off:
+--- TABLE ---
+Symptom | Cause | Fix
+Too slow sink / high dive time | Sink started too shallow | Recalculate NB, initiate sink ≥2× NB
+Mouthfill depletion mid-dive | Too early mouthfill / poor glottis lock | Retest pack count + adjust final mouthfill timing
+Tension during sink | Incorrect kick-to-sink transition | Focus on arm drop, soft palate control
+Confusion on when to sink | Relying on alarm instead of kick count | Build consistent kick-count habits

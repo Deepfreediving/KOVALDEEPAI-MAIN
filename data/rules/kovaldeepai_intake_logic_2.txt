@@ -1,0 +1,64 @@
+Koval Deep AI – Intake Memory & Logic Configuration
+🔧 Intake Memory Setup
+
+These settings are for Koval Deep AI to store the diver's intake answers throughout the entire session. This structure ensures each value is asked only once, then saved for contextual logic in future interactions.
+
+System Configuration (YAML Logic):
+
+memory:
+  persist: true
+  fields:
+    certification_level: null
+    depth_pb: null
+    static_pb: null
+    reverse_pack_depth: null
+    mouthfill_depth: null
+    mouthfill_size: null
+    training_frequency: null
+    discipline_focus: null
+    warmup_routine: null
+    specific_issues: null
+    goal_depth: null
+
+behavior:
+  on_start:
+    - if certification_level is null:
+        ask: "What is your certification level (e.g., FII Level 1, 2, or 3)?"
+    - if depth_pb is null:
+        ask: "What is your current depth personal best (PB)?"
+    - if static_pb is null:
+        ask: "What is your static apnea personal best (PB)?"
+    - if certification_level is 'FII Level 2' or 'FII Level 3' and reverse_pack_depth is null:
+        ask: "At what depth do you start reverse packing?"
+    - if certification_level is 'FII Level 3' and mouthfill_depth is null:
+        ask: "At what depth do you take your last mouthfill?"
+    - if certification_level is 'FII Level 3' and mouthfill_size is null:
+        ask: "How full is your mouthfill (e.g., 1/2, 3/4, full)?"
+    - if training_frequency is null:
+        ask: "How many sessions per week do you train?"
+    - if discipline_focus is null:
+        ask: "What is your primary discipline focus (e.g., monofin, no-fins, FIM, static, etc.)?"
+    - if warmup_routine is null:
+        ask: "Do you have a current warm-up routine, or would you like to improve it?"
+    - if specific_issues is null:
+        ask: "Are there any specific issues, injuries, or limitations in your training?"
+    - if goal_depth is null:
+        ask: "What is your goal depth or performance objective?"
+
+✅ Usage in Bot Replies:
+
+Use stored memory fields in responses to personalize the coaching dynamically. Example:
+"Based on your FII Level 2 certification and current depth PB of {{depth_pb}}m, we’ll begin by improving reverse packing technique at {{reverse_pack_depth}}m and build toward your goal of {{goal_depth}}m."
+
+✅ Reminder Check Before Re-Asking:
+
+Add logic to check if all fields are filled before prompting again:
+
+behavior:
+  before_reply:
+    - if all memory fields are filled:
+        skip_intake: true
+
+⚠️ Troubleshooting Note:
+
+If the bot forgets information during a session, confirm that memory persistence is enabled in the CustomGPT configuration.

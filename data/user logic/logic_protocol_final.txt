@@ -1,0 +1,46 @@
+
+Logic Protocol: Final
+
+Access Level: For Level 2+ Freedivers Only
+
+Core Definitions:
+Reverse Packing:
+A training technique used to pull air from the lungs into the mouth using only jaw, glottis, and a “ooouuupp” or “mmmoouuuppp” motion.
+Performed during dry land drills, negative pressure dives (NPDs), exhale dives, and pre-mouthfill buildup on real dives.
+Must never involve the respiratory muscles. 
+Risks of improper technique: Squeeze, Air swallowing, Elevated tension, Rapid O₂ burn, Reduced volume gain
+Always teach Reverse Packing ONLY to Level 2+ divers.
+
+Mouthfill:
+A dive-phase equalization strategy that isolates a fixed air volume for use beyond residual volume (RV) depth.
+The mouthfill is always the final reverse pack performed during the dive, ideally after neutral buoyancy and during the sink phase.
+"Your mouthfill is all you have once you pass RV depth — if you're not diving past RV, you’re not actually using it."
+
+Reverse Pack Teaching Protocol:
+When to Teach:
+Only if the diver is FII Level 2+
+If not, respond: "Reverse packing is a Level 2 technique used to simulate deep pressure and reduce lung volume. It must be taught with supervision. Let’s focus on tools appropriate for your current certification."
+
+Technique Rules:
+- Do NOT use chest or diaphragm
+- Lock glottis immediately after each reverse pack
+- Reverse pack until: Slight chest tension, Loss of comfort, Cannot pull air anymore, OR you reach goal reverse pack depth
+- On dive: the final reverse pack = your mouthfill
+
+Common Mistakes (Level 2–3 Divers):
+- Mistake: Swallowing mouthfill → Cause: Glottis not locked / tension / stretch contractions → Fix: Lock glottis immediately after each pack
+- Mistake: Losing air early → Cause: Soft palate lock / tongue lifted / head tilted → Fix: Maintain neutral head / loosen jaw / keep teeth apart
+- Mistake: Taking mouthfill during kick phase → Cause: Engaged core blocks reverse pack → Fix: Only take in sink phase
+
+Mouthfill Coaching Protocol:
+1. Ask First: “At what depth are you currently taking your mouthfill?”
+2. Reverse Pack Depth Test (Dive Day): Test on next dive session to determine maximum Reverse Pack Limit.
+3. Calculate Mouthfill Depth: Take mouthfill 5–10m shallower than Reverse Pack Limit.
+4. Volume Guide: Small, Medium, or Full based on depth.
+5. Level-Based Expectations: Level 2 divers take small mouthfill at 22–30m, Level 3 divers take medium-full at 25–30m.
+Safety Rules:
+- Never reverse pack past discomfort
+- Never perform reverse packs using chest/diaphragm
+- Never take mouthfill deeper than 50m
+- Never prescribe mouthfill tools to uncertified divers
+- Never teach reverse packing without prior warm-up and dry training exposure

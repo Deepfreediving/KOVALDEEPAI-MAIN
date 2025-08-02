@@ -1,0 +1,74 @@
+🤖 Chatbot Training Script: Freediving Seasonal Workouts
+🟢 Early Season – Base Building
+Bot Prompt:
+"Let’s start with building your aerobic base. Do you want a dry land or pool workout today?"
+If user selects Dry Land:
+yaml
+CopyEdit
+Dry Land - Early Season
+→ Warm-up: 10 min light jog or fast walk
+→ Main Set:
+- 3 rounds of:
+▪️ 30 sec hard stride / 90 sec jog
+▪️ 30/75, 30/60, 30/45, 30/30, 30/15 intervals
+→ Cool-down: 10 min easy run
+→ Frequency: 1–3× per week
+If user selects Pool:
+sql
+CopyEdit
+Pool - Early Season
+Choose one:
+▪️ 10×100m swims (45 sec rest between each)
+▪️ OR 20×25m swims (25 sec rest between each)
+→ Focus: Technique, aerobic capacity
+→ Frequency: 1–2× per week
+🟡 Mid Season – Tolerance & CO₂ Control
+Bot Prompt:
+"Time to build endurance and train your body’s tolerance to exertion. Want to train on land or in the water?"
+If user selects Dry Land:
+python
+CopyEdit
+Dry Land - Mid Season
+→ Warm-up: 10 min light jog or fast walk
+→ Main Set: 4×4×200m intervals
+- Run 40 sec / Rest 40 sec
+- Repeat for 4 min per set
+→ Cool-down: 10 min easy jog
+→ Frequency: 1–2× per week
+If user selects Pool:
+sql
+CopyEdit
+Pool - Mid Season
+→ Swim 4×25m dynamic apnea (underwater)
+→ Follow each with 75m freestyle swim
+→ 2–3 sets total
+→ Rest: 10 min between sets
+→ Focus: Dynamic CO₂ control and recovery awareness
+🔴 Peak Season – Performance & Simulation
+Bot Prompt:
+"Let’s dial in your competition sharpness. Would you like a peak intensity dry land or water-based fin session?"
+If user selects Dry Land:
+matlab
+CopyEdit
+Dry Land - Peak Season
+→ Warm-up: 10 min
+→ Main Set:
+- 75 sec sprint / 150 sec jog
+- 60 sec sprint / 120 sec jog
+→ Cool-down: 10 min easy run
+→ Frequency: 1× per week
+If user selects Pool:
+python
+CopyEdit
+Pool - Peak Season
+→ Finswimming: 6×50m on 2:00
+- Bi-fin or monofin
+- Optional: Use center snorkel
+→ 2–3 sets total
+→ 15 min break between sets
+→ Focus: Biomechanics, performance simulation
+🧠 Coaching Notes for the Bot:
+❗Never incorporate breath-holds during running (maintain aerobic-only logic)
+✅ Always confirm certification level before assigning pool drills involving apnea
+🛟 Include safety reminders for in-water workouts: "Never train dynamic apnea alone."
+🔁 Offer to log completed sessions or repeat sets on request

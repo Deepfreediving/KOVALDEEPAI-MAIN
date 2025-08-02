@@ -1,0 +1,137 @@
+🏋️‍♂️ BOT GUIDE: Gym Workout 1 — Lactate Threshold Training
+Type: High-Intensity Anaerobic Conditioning
+Max Frequency: 1x per week
+Duration: 30–45 minutes
+⚠️ Rule:
+This session should be logged as a high-intensity training session and should not be repeated more than once per week to avoid overtraining and fatigue.
+🔁 Warm-Up Phase
+Stretching Warm-Up:
+→ Full-body dynamic stretches, focusing on legs and lower back.
+Light Cardio Warm-Up (5–10 minutes):
+Stairmaster: Light climbing pace
+Bike: Easy spin at low resistance
+Goal: Raise heart rate gradually.
+🔥 Main Workout (30 Minutes Total)
+Phase 1 (10 min @ 70–75% Max Heart Rate)
+Increase resistance to a moderate gear or level
+Cadence should be medium to high — burning legs but manageable
+Sustain for 10 minutes without dropping cadence
+Phase 2 (10 min @ 80–85% Max Heart Rate)
+Increase intensity by 2 notches/gears
+Legs will be burning — this is your lactate threshold zone
+Cadence should slightly drop, but must remain stable throughout the 10 minutes
+Phase 3 (10 min @ 70–75% Max Heart Rate)
+Reduce resistance by 2 notches/gears
+Return to original cadence from Phase 1
+Body should feel relief but still experience mild burning → this trains lactate tolerance
+🧊 Cool-Down Phase
+Spin or light climb for 5–10 minutes to flush out lactic acid
+End with light static stretching focused on legs (quads, hamstrings, calves)
+🏋️ BOT GUIDE: Gym Workout 2 — Fat Burn + Strength Training
+Type: Low–Medium Intensity
+Max Frequency: 2–4x per week (based on recovery)
+🕓 Morning Fasted Cardio (Pre-Breakfast)
+Medium–fast walk for 20–40 minutes
+Performed on an empty stomach → body is already in fat-burning mode
+Purpose: Maximize fat oxidation and spike metabolism early
+🔁 Stretch & Refuel
+Light full-body stretch
+Eat a balanced breakfast after walk and stretch
+🏋️‍♀️ Strength Training (Later in the Day)
+Perform your weight training program from your gym coach
+Maintain moderate intensity — avoid max effort lifts unless specifically programmed
+End with stretching focused on muscle groups used during the session
+🧠 Bot Notes:
+Always track training intensity (high vs. low/medium) to avoid stacking multiple intense sessions too closely.
+This format helps freedivers balance gym load with in-water sessions without risking overtraining.
+🏊 BOT MODULE: Pool & Strength Training System
+🧠 SESSION CATEGORIES
+The bot must categorize each training day by primary focus:
+1️⃣   Technique Focus: “Kick & Pull Drill” (No Fins Only)
+Purpose: Improve stroke/kick isolation, balance, glide, and streamline
+Max Frequency: 2–3x per week (ideal warm-up set)
+Instructions:
+Perform these drills without fins to isolate movement:
+25m frog kick only – no arms
+25m arm pulls only – no kick
+25m dolphin kick only – no fins
+Breath-up:  1 min between each rep
+Repeat Cycle: 4–5 total rounds
+Warning - Training TOOL only for level 3+ freedivers
+2️⃣  Dive Time Simulation Drills (Monofin or Bi-fins)- Warning- Must Have Safety freediver to attempt tool! *Ask: “Do you have a safety freediver for pool workouts- if answer is yes and only yes, apply them with this training tool.”
+Purpose: Improve depth simulation, workload under contractions, Co2 and O₂ tolerance
+Max Frequency: 1x/week
+Tools: Monofin OR Bifins (never both on same day)
+🔁 Monofin Protocol
+25m slow dynamic apnea swim
+At wall: Hold a static for 1–2 minutes (must feel at least 3-4 contractions before return)
+On same breath, dynamic apnea returns 25m.
+6 recovery breaths with upper lungs off gassing co2.
+If you want to increase the challenge -  50m or 75m return
+Total dive time: 2:30–3:00 max
+Repeat 6–7 reps
+3:00 recovery between reps
+Notes:
+Focus: Kicking through contractions
+Increase return distance only if 50m becomes easy
+Do not combine with sprints or no-fins work
+🔁 Bi-fins Variation
+Follow same format, but expect shorter dive time (aim for ~2:30 total)
+Return swim: 25–50m only
+Maintain consistent rhythm and glide
+Focus on mimicking dive speed slightly slower, but streamlined
+3️⃣ Sprint Training (When Not Doing Simulations)
+Purpose: Improve technique, speed, power, and CO₂ tolerance
+Tools: Monofin (recommended)
+Monofin Sprint Protocol:
+50m sprints
+Focus on:
+Arm/head streamline
+Kick from shoulders, no knee bend
+Equal power in front and back kick
+Breath-up: Short rests to build mild CO₂ tolerance
+Bonus: Use sprints to improve kicking technique, streamlining, and technique efficiency as tiredness sets in- focus on feeling where you feel the most water drag on your body and improve technique.
+4️⃣ No Fins Focus – Glide & Stroke Efficiency
+Purpose: Master rhythm, glide, and transitions
+Instructions:
+Perform 25–50m repeats
+Focus on:
+Smooth frog kick + streamlined arm recovery
+Maximize glide after each pull
+Avoid rushing transitions (glide before pull / kick)
+Count strokes — aim for fewer strokes each rep
+Key Tip: Good transitions = efficient no-fins technique. Quality > distance.
+5️⃣ 💪 Strength Training (Gym)- (Tailored for no-fins only)
+Type: High-intensity strength + cardio
+Max Frequency: 1x/week only
+Strength Block:
+Legs:
+Squats, leg lifts, weighted lunges, leg press
+3 sets of 10 reps each
+Upper Body:
+Arm pull-down, lat pull-down
+3 sets of 10 reps each
+Conditioning Block:
+Stairmaster @ 70–80% HR for 20 min
+Cool down: 5 min easy pace
+Post-Workout Recovery:
+Full stretching routine
+Include: Packing stretches + Negative diaphragm stretches
+6️⃣ 🔻 End of Pool Session: NPD (Optional, Level 2+ Only)
+Do 3-5x Negative Pressure Dive (NPD) increasing reverse packs after each rep-at end of pool session
+NPD must follow your mouthfill and reverse pack logic
+Do not perform if fatigued or experiencing any throat/airway irritation
+*Bot-Please explain how NPD’s are done in the pool*
+🚨 BOT SAFETY RULES
+Respect all training frequency limits
+Remind diver: Always train with a buddy
+Never push to exhaustion
+Stay with in hypoxia limits
+Stop all if you do not feel well or feel hypoxic symptoms
+--- TABLE ---
+Focus Area | Type | Max Frequency
+Technique Drills | Low intensity | 2–3x/week
+Dive Simulation | Medium-high intensity | 1x/week
+Sprint Training | High intensity | 1x/week (alternate with simulations)
+Strength Training | High intensity | 1x/week only
+NPDs | Pool equalization tool | 2-3x per week (Rule- Pool NPD’s are only done at the end of every pool session)

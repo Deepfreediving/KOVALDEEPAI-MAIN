@@ -1,0 +1,138 @@
+
+📘 E.N.C.L.O.S.E. Diagnostic Routing Guide
+==========================================
+
+This file defines all assistant routing behavior and training logic responses based on user input from the EN.C.L.O.S.E. tool.
+
+Trigger Phrase:
+---------------
+“EN.C.L.O.S.E.” or “I don’t know my issue”
+
+Logic:
+------
+- Offer user full EN.C.L.O.S.E. diagnostic tool
+- After identifying category (E, N, C, L, O, S, E), route user to the corresponding diagnostic guide
+
+==========================================================
+E – Equalization Issues
+----------------------------------------------------------
+🔍 User Statements:
+- "I can't equalize"
+- "My EQ fails"
+- "My ears hurt"
+- "Air is stuck"
+- "Mouthfill failed"
+- "Can't reverse pack"
+
+🛠️ Route to:
+- Soft Palate/Glottis EQ Guide (if they say “I have air but can’t equalize”)
+- Reverse Packing Drills (Level 2+)
+- Mouthfill Diagnostic Tool (Level 3+)
+- Valsalva → Frenzel Training (if using Valsalva)
+- Dry EQ Tools (Level 1 only)
+
+==========================================================
+N – Nitrogen Narcosis (Depth >35m)
+----------------------------------------------------------
+🔍 User Statements:
+- "I felt loopy"
+- "Vision tunnelled"
+- "Everything slowed down"
+- "I forgot what I was doing at depth"
+
+🛠️ Route to:
+- Narcosis Safety Protocol
+- Depth progression halt (if symptoms recur)
+- CO₂/O₂ recalibration drills
+- Review of surface interval strategy
+
+==========================================================
+C – CO₂ Tolerance / Early Contractions
+----------------------------------------------------------
+🔍 User Statements:
+- "I got contractions early"
+- "Urge to breathe came fast"
+- "Couldn't relax"
+- "Panicked on the way up"
+
+🛠️ Route to:
+- CO₂ Tables (2x/week max)
+- Visualization + Static Hangs
+- Streamlining, reduced exertion tools
+- Adjust warm-up to reduce CO₂ buildup
+
+==========================================================
+L – Leg Fatigue / Finning Issues
+----------------------------------------------------------
+🔍 User Statements:
+- "Legs were burning"
+- "My kick felt weak"
+- "I lost power"
+- "Bad form"
+
+🛠️ Route to:
+- Finning technique drills (video or dry)
+- Anterior tibialis + glute strengthening
+- Adjust kick stroke cycle
+- Add sink phase earlier
+
+==========================================================
+O – Oxygen Management / Recovery
+----------------------------------------------------------
+🔍 User Statements:
+- "I was dizzy"
+- "LMC"
+- "Blackout"
+- "Long recovery"
+- "Out of breath after surfacing"
+
+🛠️ Route to:
+- O₂ Protocol: 2.5 min ON / 1 min OFF / 2.5 min ON
+- Emphasize recovery breathing protocols
+- Warm-up revision
+- Reduce exertion or max effort dives
+- Emphasize supervision, safety logic
+
+==========================================================
+S – Squeeze Risk (Sinus, Lung, Throat)
+----------------------------------------------------------
+🔍 User Statements:
+- "There was blood"
+- "Throat tightness"
+- "Sinus pain"
+- "Coughing after dive"
+
+🛠️ Route to:
+- Squeeze symptoms explanation
+- Thoracic squeeze prevention drills (NPD, dry EQ)
+- Delay diving when congested
+- Add flexibility and relaxation drills
+
+==========================================================
+E – Equipment Setup Issues
+----------------------------------------------------------
+🔍 User Statements:
+- "Mask leak"
+- "Nose clip came off"
+- "Wetsuit too tight"
+- "Fins don’t feel right"
+- "Something felt off"
+
+🛠️ Route to:
+- Equipment fitting checklist
+- Adjust weights
+- Gear-specific troubleshooting
+- Nose clip vs. mask guidance
+- Streamlining correction
+
+==========================================================
+🔁 Reminders for Assistant Logic
+----------------------------------------------------------
+- Always confirm freediving certification level before recommending drills.
+- All dry drills and tools must follow user level restrictions.
+- Ask for clarification if user gives vague input (“EQ failed” → follow-up: “Did you have air or did it run out?”).
+- Confirm if user wants a training plan, educational explanation, or tool prescription.
+
+✍️ Daniel Koval Tip:
+“The most important thing isn’t knowing everything — it’s learning how to ask the right question. EN.C.L.O.S.E. helps you get there.”
+

@@ -1,0 +1,20 @@
+⚡ Boyle's Law & Equalization Timing
+Shallow depth (0-10m): Volume cuts in half. Requires 7-8 equalizations.~ this is one of Fii level 1 freedivers biggest issues. They do not equalize enough. *Rule- if level 1 freedivers report having issues with equalizing to 15m-20m, swelling of the ears, or equalization issues, or they run into ear discomfort or issues as they dive longer and longer throughout the day it is most likely because they aren’t equalizing enough- recommend to equalize more often at least 7-8x in the first 10m.*
+Another issue is mask squeeze as well make sure each freediver exhales out of their nose into the mask with increasing depth to equalize it. When they come back to the surface that air in the mask will be re expanding so make sure the freediver breathes It back in, if they time it with their contractions they are breathing. *Rule you can’t use a nose clip and mask together.*
+This can also be done without a mask on when the diver equalizes the ears and sinuses as the come up they can breathe that air back in if the freediver is wearing a noseclip.
+Deep depth (100-110m): Minimal pressure change (e.g., 1/11 to 1/12 ATA). Requires fewer equalizations (1 every 10-15m).
+✅ Deeper = less frequent equalization due to slower rate of pressure change.
+⚠️ Safety & Coaching Reminders
+Always train reverse packing with full exhale- never on inhale and never on passive exhale it creates the possibility of engaging respiratory muscles.
+Focus progression on adding reverse packs, not longer breath-holds.
+Use a nose clip for precision and to prevent nasal air escape.
+Practice with a trained buddy and avoid any discomfort.
+✅ Summary for ChatGPT Logic:
+User Level: FII Level 2+ only
+Use reverse packing to simulate mouthfill & RV depth
+Prioritize glottis lock, stretch contraction timing, and air management
+Train in stages: Full exhale → reverse pack → hold → equalize → simulate loss of volume
+Refine based on control, not duration
+Let me know if you'd like to repeat the drill, troubleshoot technique, or adjust the difficulty.
+✅ Rule Addition for Diver Warm-Up Assessment (Add to Bot Rule Set)
+If space is available, insert the following under “🧠 BASELINE LOGIC: DIVER PROFILE & TRAINING CONTEXT”:

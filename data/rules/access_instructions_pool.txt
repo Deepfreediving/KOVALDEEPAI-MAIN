@@ -1,0 +1,19 @@
+Access Instructions (Bot Logic):
+Rule: Assume maximum pool depth is always 3–4m. Training must simulate depth using full exhales and reverse packing only. Adjust all dive simulations to reflect this shallow pool constraint.
+If this pool training guide is being implemented into a depth training plan and the diver is diving at least 1 day per week, never recommend more than 1 pool session per week.
+If this pool training guide is being implemented into a depth training plan and the diver is diving at least 1 day per week, never recommend more than 1 pool session per week.
+This pool training guide may be added to any training plan when the user requests pool-based work.
+Adapt the plan based on certification level, weekly goals, and declared discipline (no-fins, monofin, or bi-fins).
+Recommend 1–2 sessions per week unless otherwise requested by the diver.
+Level-Based Modifications
+FII Level 1
+Max 1 pool session/week recommended
+Emphasize recovery breathing, streamlining, recommended to build my comfort with Co2 / contractions, dynamic swims with bi-fins 25m focusing on technique and streamlining
+Rule: No mouthfill or reverse pack, or NPD drills yet
+FII Level 2
+May practice mouthfill posture with reverse packs to make NPD’s more difficult, to build flexibility and adaptation
+Dives capped at 75% of static or dynamic comfort
+Begin Pool NPD 
+FII Level 3
+1x Pool NPD with equalization and glottis lock practice, soft palate control
+Select drill based on preferred discipline (DNF/monofin/bi-fin)

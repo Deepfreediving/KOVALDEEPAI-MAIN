@@ -1,170 +1,405 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import ChatMessages from "../components/ChatMessages";
+import Sidebar from "../components/Sidebar";
+import ChatBox from "../components/ChatBox";
+import apiClient from "../utils/apiClient";
 
-export default function Chat() {
-  const [username, setUsername] = useState('');
-  const [input, setInput] = useState('');
+const API_ROUTES = {
+  CREATE_THREAD: "/api/openai/create-thread",
+  CHAT: "/api/openai/chat",
+  GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
+  READ_MEMORY: "/api/analyze/read-memory",
+  QUERY_WIX: "/api/wix/query-wix-data",
+};
+
+export default function Index() {
+  const BOT_NAME = "Koval AI";
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
+
+  // ----------------------------
+  // State
+  // ----------------------------
+  const [sessionName, setSessionName] = useState(defaultSessionName);
+  const [sessionsList, setSessionsList] = useState([]);
+  const [editingSessionName, setEditingSessionName] = useState(false);
+  const [input, setInput] = useState("");
+  const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [threadId, setThreadId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null); // For auto-scrolling
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("kovalDarkMode") === "true");
+  const [userId, setUserId] = useState("");
+  const [threadId, setThreadId] = useState(null);
+  const [profile, setProfile] = useState({});
+  const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
+  const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
+  const [diveLogs, setDiveLogs] = useState([]);
+  const [editLogIndex, setEditLogIndex] = useState(null);
+  const [loadingConnections, setLoadingConnections] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState({
+    wix: "⏳ Checking...",
+    openai: "⏳ Checking...",
+    pinecone: "⏳ Checking...",
+  });
+  const bottomRef = useRef(null);
 
-  // State to track initialization
-  const [isInitialized, setIsInitialized] = useState(false);
+  // ----------------------------
+  // Helpers
+  // ----------------------------
+  const storageKey = (uid) => `diveLogs-${uid}`;
+  const safeParse = (key, fallback) => {
+    try {
+      return JSON.parse(localStorage.getItem(key)) || fallback;
+    } catch {
+      return fallback;
+    }
+  };
 
-  // Retrieve or create threadId and username on mount
+  const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
+  const getPendingSync = () => safeParse("pendingSync", []);
+
+  const getDisplayName = () =>
+    profile?.loginEmail ||
+    profile?.contactDetails?.firstName ||
+    (userId?.startsWith("Guest") ? "Guest User" : "User");
+
+  // ----------------------------
+  // LocalStorage Initialization
+  // ----------------------------
   useEffect(() => {
-    const storedThreadId = localStorage.getItem('kovalThreadId');
-    const storedUsername = localStorage.getItem('kovalUser');
-    
-    if (storedUsername) {
-      setUsername(storedUsername);
-    } else {
-      // If no username in localStorage, prompt the user
-      const name = prompt("Please enter your name for a personalized experience:");
-      if (name) {
-        localStorage.setItem('kovalUser', name);
-        setUsername(name);
-      } else {
-        const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username
-        localStorage.setItem('kovalUser', newUser);
-        setUsername(newUser);
-      }
-    }
-
-    // Check if a threadId exists
-    if (!storedThreadId) {
-      const createThread = async () => {
-        try {
-          const response = await fetch('/api/create-thread', { method: 'POST' });
-          const data = await response.json();
-          if (data.threadId) {
-            setThreadId(data.threadId);  // Set the threadId if returned
-            localStorage.setItem('kovalThreadId', data.threadId); // Store threadId in localStorage
-          } else {
-            console.error('Thread creation failed: No threadId returned.');
-          }
-        } catch (err) {
-          console.error('Error creating thread:', err);
-        }
-      };
-      createThread();
-    } else {
-      setThreadId(storedThreadId); // Use the stored threadId
-    }
-
-    setIsInitialized(true); // Set initialization state
+    setSessionsList(safeParse("kovalSessionsList", []));
+    setUserId(localStorage.getItem("kovalUser") || "");
+    setThreadId(localStorage.getItem("kovalThreadId") || null);
+    setProfile(safeParse("kovalProfile", {}));
   }, []);
 
-  // Scroll to bottom of chat when new message is added
+  // Theme Sync
   useEffect(() => {
-    if (messages.length > 0) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("kovalDarkMode", darkMode);
+  }, [darkMode]);
+
+  // Widget Messages Listener
+  useEffect(() => {
+    const handleWidgetMessages = ({ data }) => {
+      if (!data) return;
+      switch (data.type) {
+        case "USER_AUTH":
+          setUserId(data.userId);
+          setProfile(data.profile || {});
+          localStorage.setItem("kovalUser", data.userId);
+          localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
+          break;
+        case "THEME_CHANGE":
+          if (typeof data.dark === "boolean") setDarkMode(data.dark);
+          break;
+        case "RESIZE_IFRAME":
+          if (data.height && window.parent) {
+            window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
+          }
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener("message", handleWidgetMessages);
+    return () => window.removeEventListener("message", handleWidgetMessages);
+  }, []);
+
+  // Inject Bot Iframe
+  useEffect(() => {
+    const existingIframe = document.querySelector("#KovalAIFrame");
+    if (!existingIframe) {
+      const iframe = document.createElement("iframe");
+      iframe.id = "KovalAIFrame";
+      iframe.src = "/koval-ai.html";
+      iframe.style.cssText =
+        "width:100%;height:0;border:none;position:fixed;bottom:0;right:0;z-index:9999;";
+      document.body.appendChild(iframe);
+      return () => iframe.remove();
     }
-  }, [messages]);
+  }, []);
 
-  // Handle message submission when Enter or Return is pressed
-  const handleKeyDown = (e) => {
-    if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
-      e.preventDefault(); // Prevent default behavior (new line in text area)
-      handleSubmit(); // Trigger form submission
-    }
-  };
+  // Open Bot if No Memories
+  useEffect(() => {
+    const handler = () =>
+      window.KovalAI?.sendMessage?.(
+        "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
+      );
+    window.addEventListener("OpenBotIfNoMemories", handler);
+    return () => window.removeEventListener("OpenBotIfNoMemories", handler);
+  }, []);
 
-  // Handle message submission
-  const handleSubmit = async () => {
-    const trimmedInput = input.trim();
-    if (!trimmedInput) return;
+  // Connection Check
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const result = await apiClient.checkAllConnections();
+        if (isMounted) setConnectionStatus(result);
+      } catch (error) {
+        console.warn("⚠️ API connection check failed:", error);
+      } finally {
+        if (isMounted) setLoadingConnections(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-    const userMessage = { role: 'user', content: trimmedInput };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setInput('');
-    setLoading(true);
+  // Init AI Thread
+  useEffect(() => {
+    if (!userId || threadId) return;
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await fetch(API_ROUTES.CREATE_THREAD, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
+        });
+        const data = await res.json();
+        if (isMounted && data.threadId) {
+          setThreadId(data.threadId);
+          localStorage.setItem("kovalThreadId", data.threadId);
+        }
+      } catch (err) {
+        console.error("❌ Thread init failed:", err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, threadId]);
 
-    const threadId = localStorage.getItem('kovalThreadId');
-    const username = localStorage.getItem('kovalUser') || 'Guest';
+  // Load Dive Logs
+  useEffect(() => {
+    if (!userId) return;
+    const key = storageKey(userId);
+    const localLogs = safeParse(key, []);
+    setDiveLogs(localLogs);
 
-    if (!threadId || !username) {
-      console.warn('Missing threadId or username');
-      return;
-    }
+    (async () => {
+      try {
+        const [remoteRes, memRes] = await Promise.all([
+          fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(userId)}`),
+          fetch(API_ROUTES.READ_MEMORY, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          }),
+        ]);
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmedInput,
-          thread_id: threadId,
-          username: username,
-        }),
-      });
+        const remoteLogs = (await remoteRes.json()) || [];
+        const memData = (await memRes.json())?.memory || [];
 
-      const data = await res.json();
-      const assistantMessage = data?.assistantMessage ?? {
-        role: 'assistant',
-        content: '⚠️ Something went wrong. Please try again.',
-      };
+        const merged = [...localLogs, ...remoteLogs, ...memData].reduce(
+          (map, log) => ({ ...map, [log.localId || log._id || log.id]: log }),
+          {}
+        );
 
-      setMessages((prev) => [...prev, assistantMessage]);
+        const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
+        setDiveLogs(combined);
+        localStorage.setItem(key, JSON.stringify(combined));
+      } catch (err) {
+        console.warn("⚠️ Dive log fetch failed. Using local only.", err);
+      }
+    })();
+  }, [userId]);
 
-    } catch (err) {
-      console.error('Error fetching assistant response:', err);
+  // ----------------------------
+  // Journal Functions
+  // ----------------------------
+  const handleJournalSubmit = useCallback(
+    (entry) => {
+      const key = storageKey(userId);
+      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+      const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
+      setDiveLogs(updated);
+      localStorage.setItem(key, JSON.stringify(updated));
+      savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
+      setShowDiveJournalForm(false);
+      setEditLogIndex(null);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
+        { role: "assistant", content: "📝 Dive log saved locally and queued for sync." },
       ]);
+    },
+    [userId, diveLogs]
+  );
+
+  const handleEdit = useCallback((index) => {
+    setEditLogIndex(index);
+    setShowDiveJournalForm(true);
+  }, []);
+
+  const handleDelete = useCallback(
+    (index) => {
+      const key = storageKey(userId);
+      const updated = diveLogs.filter((_, i) => i !== index);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setDiveLogs(updated);
+    },
+    [userId, diveLogs]
+  );
+
+  // Save Session
+  const handleSaveSession = useCallback(() => {
+    const updated = [
+      ...sessionsList.filter((s) => s.sessionName !== sessionName),
+      { sessionName, messages, timestamp: Date.now() },
+    ];
+    localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+    localStorage.setItem("kovalSessionName", sessionName);
+    setSessionsList(updated);
+    window.KovalAI?.saveSession?.({ userId, sessionName, messages, timestamp: Date.now() });
+  }, [sessionName, sessionsList, messages, userId]);
+
+  // Fetch Wix Data
+  const fetchWixData = useCallback(async (query) => {
+    try {
+      setLoading(true);
+      const res = await fetch(API_ROUTES.QUERY_WIX, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      setMessages((prev) => [...prev, { role: "assistant", content: `Wix Data fetched: ${JSON.stringify(data)}` }]);
+    } catch (err) {
+      console.error("Error fetching Wix data:", err);
+      setMessages((prev) => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
     } finally {
-      setLoading(false);  // End loading
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const isThreadReady = threadId && username;
+  // ----------------------------
+  // Memorized Props
+  // ----------------------------
+  const sharedProps = useMemo(
+    () => ({
+      BOT_NAME,
+      sessionName,
+      setSessionName,
+      sessionsList,
+      setSessionsList,
+      editingSessionName,
+      setEditingSessionName,
+      messages,
+      setMessages,
+      input,
+      setInput,
+      files,
+      setFiles,
+      loading,
+      setLoading,
+      userId,
+      profile,
+      setProfile,
+      eqState,
+      setEqState,
+      diveLogs,
+      setDiveLogs,
+      editLogIndex,
+      setEditLogIndex,
+      showDiveJournalForm,
+      setShowDiveJournalForm,
+      threadId,
+      bottomRef,
+      darkMode,
+      setDarkMode,
+      fetchWixData,
+    }),
+    [
+      sessionName,
+      sessionsList,
+      messages,
+      darkMode,
+      diveLogs,
+      input,
+      files,
+      loading,
+      userId,
+      profile,
+      eqState,
+      showDiveJournalForm,
+      editLogIndex,
+      threadId,
+    ]
+  );
 
+  // ----------------------------
+  // Main Render
+  // ----------------------------
   return (
-    <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-3xl h-screen flex flex-col border border-gray-700 rounded-xl overflow-hidden shadow-lg bg-white">
-        {/* Header */}
-        <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
-          <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
-          <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
-          {username && <span className="text-white text-sm">Hello, {username}!</span>}
-        </div>
+    <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
+      {/* Sidebar */}
+      <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700 flex flex-col justify-between">
+        <Sidebar
+          {...sharedProps}
+          startNewSession={() => {
+            const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
+            setSessionName(name);
+            setMessages([]);
+            setFiles([]);
+            setEditingSessionName(false);
+            localStorage.setItem("kovalSessionName", name);
+          }}
+          handleSaveSession={handleSaveSession}
+          toggleDiveJournal={() => setShowDiveJournalForm((prev) => !prev)}
+          handleSelectSession={(name) => {
+            const found = sessionsList.find((s) => s.sessionName === name);
+            if (found) {
+              setSessionName(found.sessionName);
+              setMessages(found.messages || []);
+              setInput("");
+            }
+          }}
+          handleJournalSubmit={handleJournalSubmit}
+          handleEdit={handleEdit}
+          handleDelete={handleDelete}
+        />
 
-        {/* Messages Section */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center text-gray-400">
-              <p>Welcome to Koval Deep AI! How can I assist you today?</p>
-            </div>
-          )}
-          {messages.map((m, i) => (
-            <div key={i} className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${m.role === 'assistant' ? 'bg-teal-800 text-white self-start shadow-md' : 'bg-blue-600 text-white self-end shadow-lg'}`}>
-              <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
-              <div>{m.content}</div>
-            </div>
-          ))}
-          {loading && <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>}
-          <div ref={bottomRef} />
+        {/* ✅ Connection Status Dock */}
+        <div className="mt-4 mb-4 mx-4 flex space-x-4 text-xl bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+          {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+          {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
         </div>
+      </div>
 
-        {/* Input Section */}
-        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
-            className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={handleKeyDown}
-          />
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col h-screen">
+        {/* Top Bar */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
+          <div className="text-gray-500 dark:text-gray-400 px-2 truncate">👤 {getDisplayName()}</div>
+
           <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading || !isThreadReady || input.trim() === ""}
+            onClick={() => setDarkMode(!darkMode)}
+            className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
           >
-            {loading ? 'Thinking...' : 'Send'}
+            {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
           </button>
-        </form>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto flex justify-center">
+          <div className="w-full max-w-3xl px-6 py-4">
+            <ChatMessages
+              messages={messages}
+              BOT_NAME={BOT_NAME}
+              darkMode={darkMode}
+              loading={loading}
+              bottomRef={bottomRef}
+            />
+          </div>
+        </div>
+
+        {/* Chat Input */}
+        <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
+          <ChatBox {...sharedProps} />
+        </div>
       </div>
     </main>
   );

@@ -1,0 +1,51 @@
+🧠 BLACKOUT LOGIC: Hypercapnia vs. Hypocapnia
+🔴 Hypercapnia Blackout Logic (High CO₂ Blackout)
+Trigger: CO₂ levels spike too high for the body to manage. This is often seen in:
+Spearfishers doing multiple dives in a short window without proper surface recovery.
+Deep competitive freedivers who fail to relax at residual volume (RV) when they experience stretch receptor contractions at depth, this leads to contractions all the way down in their dive causing lung squeeze and huge lung flooding, plus increased build up of co2.
+Bot Instruction:
+When a user asks about deep fatigue, squeezing, or blackout near the bottom:
+Rule- First and foremost always recommend standard surface interval times
+Ask:
+“Have you been doing repeated dives without full surface recovery?”
+“Are you diving deep after already doing several working dives?”
+Evaluate CO₂ recovery:
+“How many recovery breaths are you taking between dives?”
+“Are you resting at least 2x dive time , or 8 minutes beyond 25m on the surface?”
+Apply Dalton’s Law Logic:
+“At depth, CO₂ becomes more potent due to increased partial pressure. If CO₂ from your last dive is still in your system, it can spike dangerously at depth — this often leads to a bottom blackout.”
+Spearo Rule:
+“If your buddy shot a fish in a cave and just came up — don’t let them dive again right away. You go. Let them recover.”
+Technique Misuse:
+“Are you tensing or squeezing during contractions at depth? Overreacting to stretch receptors can increase O₂ use and fast-track CO₂ overload + intense lung squeeze.”
+Safety Tip:
+Hypercapnia BOs often happen deep. Rescues from depth are extremely difficult. Prevention through surface recovery and team awareness is essential.
+🔵 Hypocapnia Blackout Logic (Low CO₂ Blackout)
+Trigger: Over breathing removes too much CO₂, delaying the urge to breathe and suppressing the Mammalian Dive Reflex (MDR).
+Common in:
+Spearos nervous or diving outside comfort zone
+Competitive freedivers doing long “purge” breaths or hyperventilation
+Divers doing forceful exhale + packing with stress or doubts
+Bot Instruction:
+When a user says they had no contractions and blacked out unexpectedly:
+Ask:
+“Did you do forceful purges or over breathe before your dive?”
+“Were you nervous, stressed, or trying for a new PB?”
+Identify breathing pattern:
+“How long did you exhale before your final breath?”
+“Was it a calm passive exhale, or a forceful purge?”
+Explain the Physiology:
+“CO₂ is essential — it’s the signal that triggers contractions and strengthens your dive reflex. Without it, your urge to breathe gets delayed, and blackouts can happen with no warning.”
+Highlight Whiteout Risk:
+“Packing after overbreathing impedes blood return to the heart — this can cause a surface BO or faint before the dive even starts. We call this a ‘whiteout.’ It’s not dangerous long-term but is a huge red flag for technique correction.”
+Fix the Pattern:
+“Replace forceful purge breaths with passive 10-second exhales.”
+“If you experience no contractions, we need to reintroduce CO₂ training or adjust your breathe-up pattern.”
+Safety Tip:
+“Contractions are your friend. They are your body’s early warning system. If you’re not getting them, the body isn’t warning you — and that’s dangerous.”
+⚠️ GENERAL BLACKOUT SAFETY INTEGRATION:
+Always ask: “Did this occur at depth, on ascent, or at the surface?”
+Always remind: “Never dive alone. BOs can be silent and fatal without trained supervision.”
+If hypercapnia suspected: Recommend full rest and no diving for 24–48h, use oximeter or check for cyanotic lips.
+If squeeze occurred with BO: Enforce squeeze protocol and cancel all dives for the day.
+If hypocapnia whiteout occurred: Allow return to diving same day with full correction to breathing and mental stress pattern.

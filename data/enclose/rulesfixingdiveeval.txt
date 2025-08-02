@@ -1,0 +1,68 @@
+1. ❌ Error: Recommending 2–3 dives to 85–95m
+Fix:
+✅ Only 1 dive per session to 75–85% of max depth is allowed.
+✅ This must be a test or target dive with full recovery after.
+✅ Never recommend multiple deep dives in a session unless specifically requested.
+
+2. ❌ Error: Incorrect surface interval recommendation (4:30–5:00 min)
+Fix:
+✅ Follow strict interval rules:
+>40m but <60m → 12 min surface interval (optional +5 min O₂)
+≥60m → 16 min surface interval (optional +5 min O₂)
+✅ O₂ protocol = 2.5 min on / 1 min off / 2.5 min on — never exceed 5 min total.
+✅ Never use O₂ while hyperventilating or before recovery breathing is completed.
+
+3. ❌ Error: Recommending long hangs (20–30m) after deep dives
+Fix:
+✅ Never recommend repetitive dives or hangs after a deep dive (>RV).
+✅ Risk of lung squeeze is increased due to plasma fill — must allow full lung re-expansion.
+✅ Emphasize single deep dive → full recovery → no additional compression dives.
+
+4. ❌ Error: Implying that LMC and blackout are fully preventable
+Fix:
+✅ Revise to: “LMC and blackout may not be preventable, but with proper direct supervision and safety protocols, they can be managed safely without long-term consequences.”
+✅ Always enforce “1 up, 1 down”, 30-second observation, and triple OK check.
+
+5. ❌ Error: Misuse of rescue terminology — Blow-Tap-Talk labeled as a position
+Fix:
+✅ Clarify:
+Doe-se-doe = position (arm across neck, airway protected, face supported)
+Blow-Tap-Talk = stimulation method after airway is secure
+✅ Use only after transitioning into Doe-se-doe.
+
+6. ❌ Error: Advising against full-exhale NPDs to 40–50m by default
+Fix:
+✅ Rule: Full exhale NPDs to 40–50m are valid for advanced Level 2+ divers working on mouthfill pressure adaptation.
+✅ However, offer safer alternatives (20–30m NPDs with reverse packing) if fatigue, risk, or time is a concern.
+✅ Let diver choose based on energy balance and adaptation phase.
+
+7. ❌ Error: Lacking mouthfill technique or diagnostic logic
+Fix:
+✅ Always ask:
+"Are you having any issues with mouthfill, equalization, soft palate, or glottis control?"
+✅ If yes → trigger checklist guide for evaluation
+✅ Include volume assessment, technique (glottis lock, tongue control), pressure sensitivity, and red-flag symptoms like air swallowing or disappearing mouthfill.
+
+8. ❌ Error: Unverified soft palate/swallowing protocols
+Fix:
+✅ Soft palate locking must be linked to involuntary override near RV or air swallowing due to contraction onset.
+✅ Tools like Glottis & Soft Palate Simulation and Reverse Packing must be recommended for re-training control.
+
+9. ❌ Error: Suggesting mouthfill is disappearing or failing without evaluation
+Fix:
+✅ Always ask:
+“At what depth are you taking your mouthfill?”
+“How full is your mouthfill?”
+“Where are you running out of air?”
+“Are you swallowing it or losing pressure?”
+✅ Use these answers to determine if the issue is:
+Volume too small or too shallow
+Poor glottis lock
+Contractions overriding mouthfill hold
+
+10. ❌ Error: General misuse or compression of tools in training plan
+Fix:
+✅ Every tool must be offered as:
+A named clickable reference (e.g., “Type ‘Reverse Packing Drill’ to open full instructions.”)
+OR presented in full detail with medical-grade structure if not clickable.
+✅ Must never truncate or compress tool instructions if the tool is referenced in a plan.

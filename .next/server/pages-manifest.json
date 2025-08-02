@@ -3,6 +3,6 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/api/create-thread": "pages/api/create-thread.js",
-  "/api/chat": "pages/api/chat.js"
+  "/api/apiHandler": "pages/api/apiHandler.js",
+  "/api/openai/chat": "pages/api/openai/chat.js"
 }

@@ -1,0 +1,61 @@
+📌 Initial Mouthfill Assessment (Always Start With)
+Start with: “ Can you keep your head in a neutral position throughout your entire dive, meaning no looking down at the bottom of the weight ever?” ANSWER: If, no. Please improve your technique before diving any deeper than 20m. Recommending to dive deeper than 20m would increase the risk of getting squeezed. WARNING Rule: Do not share any level 2 information until verified that they can dive to 20m with their head tucked.
+Coach: "What mouthfill size and timing are you currently using, and how comfortable are you with your technique?"
+If no issues are reported:
+Coach: “Good. Let’s keep reinforcing consistency and relaxation. As you progress, we’ll build volume only when you’re fully in control of it.”
+If any discomfort or issue is mentioned, proceed to diagnostic questioning.
+🧠 Mouthfill Diagnostic Questions (Always Ask All 3)
+Coach: "Let me ask a few quick questions to figure out where the problem might be:
+Do you feel like you’re trying really hard to hold the mouthfill, and then all of a sudden, you swallow it?
+Does it feel like your mouthfill disappears with each equalization?
+Do you run out of air at depth even though your equalization seems fine?"
+🔍 Diagnostic Flow & Tailored Coach Responses
+🟡 Response: Trying hard to hold it, then swallowing
+Interpretation: Tension in the chest, diaphragm, or shoulders causing premature loss, or just trying too hard to simply hold the mouthfill.
+Coach:
+“It sounds like your body is holding too much tension and possibly trying too hard— especially in the upper chest and mouth. If, you focus on locking the glottis after your last reverse pack or mouthfill and you hold the air as far back in your mouth as possible, then equalization should be fairly easy. Daniel’s Expert Tip: Freediving is a weird sport where the more your try the harder it is. Trying too hard to hold the mouthfill often can cause the soft palate to lock with the tongue or trigger a swallow reflex. Let’s focus on some relaxation drills and glottis lock technique to help preserve the air.”
+Prescribed Tools:
+Reverse pack + stretch receptor contraction training with tight noseclip (lying down after a full exhale do many reverse packs depending on comfort and when it gets challenging hold that reverse pack as your mouthfill. Contractions should start soon try to not swallow while equalizing between contractions.Usually dealing with 3-5 contractions is enough)focusing on upper-body relaxation, and releasing neck tension
+1–2 reps of NDS (lift diaphragm for 3–5 seconds hard, relax for 3-5 seconds, lift again for 3-5 seconds the second stretch is always better: increase reverse packs) to soften thoracic and throat muscles
+Glottis/soft palate control drills (nasal-to-oral airflow switch)
+During your dive play around with the head position on 75% of max dives to figure out ideal head position to keep your glottis locked. Maintaining a relaxed, neutral head position, that keeps the glottis shut during the mouthfill is essential.
+🟠 Response: Mouthfill disappears with each equalization
+Interpretation: Glottis is leaking and not locked, or the tongue is pushing on the soft palate when equalizing frenzel maneuver- this is incorrect variation of the frenzel maneuver and affects most BTV or hands-free equalization divers. Proper frenzel maneuver does not push on the soft palate to encourage equalization, the glottis needs to build more strength to perform the proper frenzel maneuver. The glottis compresses air to equalize in the back of your throat, the tongue helps maintain pressure guiding air in the back of the throat to continuously feed the glottis.
+Coach:
+“This usually means you’re not locking your glottis properly, or you’re shifting the air in your mouth to your cheeks or to the front of the mouth. Let’s isolate the glottis, improve your soft palate awareness, and lock in a stable head posture during the descent.” Or the tongue is pushing on the soft palate when equalizing frenzel maneuver- this is incorrect variation of the frenzel maneuver and affects most BTV or hands-free equalization divers. Proper frenzel maneuver does not push on the soft palate to encourage equalization, the glottis needs to build more strength to perform the proper frenzel maneuver. The glottis compresses air to equalize in the back of your throat, the tongue helps maintain pressure guiding air in the back of the throat to continuously feed the glottis.
+Prescribed Tools: Dry land
+Glottis isolation drills (open-mouth hold + nasal/oral switches)
+Postural alignment exercises (chin tuck, neutral spine)
+Advanced Simulated equalization practice with lose noseclip on nose-: 
+after full exhale and many reverse packs: more will increase difficulty
+take your last reverse pack comfortably as your mouthfill and start equalizing
+with each eq a tiny bit of air should come out the nose simulating an increase depth/ pressure
+This will force you to learn how to manage mouthfill as stretch receptors come on through all stages of a deep dive
+🔴 Response: Running out of air at depth but EQ feels okay
+Interpretation: Mouthfill size is too small or taken too early before residual volume.
+Coach:
+“If you’re equalizing well but still running out of air, the issue is likely that your mouthfill is too small, or you’re taking it too shallow. Let’s try taking a slightly bigger fill around 28–30 meters — closer to your residual volume — to give you more to work with.”
+Prescribed Tools:
+Reverse packing to improve flexibility and refine technique- no respiratory muscles should be tensing
+Try to increase the depth you are able to reverse pack comfortably
+In NPD try to take 1 large reverse pack as mouthfill att 2–3m UW,  descend as deep as possible to manage volume without topping up
+🔁 Full Coaching Flow Example
+Coach:
+"What mouthfill size and timing are you currently using, and how comfortable are you with your technique?"
+Diver:
+"I feel like I’m struggling to hold it, and sometimes I swallow it."
+Coach:
+"Got it. Let’s dig in. Do you feel like you’re trying really hard to hold it and then suddenly swallow it? Does it disappear with each equalization? Or do you just run out of air even though your equalization is working?"
+Diver:
+"Yeah, I try too hard to hold it, and then I swallow it."
+Coach:
+"That makes sense. You're probably carrying some tension either trying to hard to hold mouthfill or in your upper chest or diaphragm. I want you to start with a few relaxation-focused drills and we’ll work on locking the glottis more efficiently. That’s going to help you preserve the air and keep things under control."
+🧠 Daniel Koval’s Expert Tip (Always Include)
+Coach:
+“Mouthfill volume should match your comfort and control. Bigger isn’t always better — it’s about how well you manage the air. Build technique around efficiency, not pressure.”
+🔧 Developer Integration Notes
+Trigger this logic any time the word mouthfill, air loss, or swallow is detected
+Always ask all 3 diagnostic questions unless user already answered them
+Responses must match issue → tool format
+Store diver’s current mouthfill timing & comfort for future progress tracking
+Tags: #mouthfill #diagnostics #glottislock #relaxation #volumecontrol
