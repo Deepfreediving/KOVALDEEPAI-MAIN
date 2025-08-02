@@ -4,6 +4,9 @@ class KovalAiElement extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.wixTarget = this.getAttribute('wix-target'); // ✅ new attribute for Wix targeting
 
+    // Define allowed iframe origin
+    this.ALLOWED_ORIGIN = "https://kovaldeepai-main.vercel.app";
+
     // Main container
     const container = document.createElement('div');
     container.style.position = 'relative';
@@ -14,7 +17,8 @@ class KovalAiElement extends HTMLElement {
 
     // Bot iframe
     this.iframe = document.createElement('iframe');
-    this.iframe.src = "https://kovaldeepai-main.vercel.app/embed";
+    this.iframe.src = `${this.ALLOWED_ORIGIN}/embed`;
+    this.iframe.allow = 'microphone; camera; fullscreen';
     this.iframe.style.width = '100%';
     this.iframe.style.height = '100%';
     this.iframe.style.border = 'none';
@@ -27,16 +31,20 @@ class KovalAiElement extends HTMLElement {
   /**
    * ✅ Safely post message to iframe
    */
-  postToIframe(type, data) {
+  postToIframe(type, data = {}) {
     if (this.iframe && this.iframe.contentWindow) {
-      this.iframe.contentWindow.postMessage({ type, ...data }, "*");
+      this.iframe.contentWindow.postMessage({ type, ...data }, this.ALLOWED_ORIGIN);
     }
   }
 
   /**
    * Load user data from Wix and send to bot iframe
    */
-  loadUserData(payload) {
+  loadUserData(payload = {}) {
+    if (!payload || typeof payload !== "object") {
+      console.warn("⚠️ Invalid payload received in loadUserData:", payload);
+      return;
+    }
     this.postToIframe("USER_DATA", { payload });
   }
 
@@ -44,7 +52,11 @@ class KovalAiElement extends HTMLElement {
    * Save current session to local storage
    */
   saveSession(payload) {
-    localStorage.setItem("koval_ai_session", JSON.stringify(payload));
+    try {
+      localStorage.setItem("koval_ai_session", JSON.stringify(payload));
+    } catch (err) {
+      console.warn("⚠️ Failed to save session:", err);
+    }
   }
 
   /**
@@ -81,7 +93,11 @@ class KovalAiElement extends HTMLElement {
 
     const savedSession = localStorage.getItem("koval_ai_session");
     if (savedSession) {
-      this.postToIframe("LOAD_SAVED_SESSION", JSON.parse(savedSession));
+      try {
+        this.postToIframe("LOAD_SAVED_SESSION", JSON.parse(savedSession));
+      } catch (err) {
+        console.warn("⚠️ Failed to parse saved session:", err);
+      }
     }
   }
 
@@ -89,14 +105,21 @@ class KovalAiElement extends HTMLElement {
     // ✅ Send BOT_READY event after iframe loads
     this.iframe.addEventListener("load", () => {
       this.sendInitialData();
-      window.parent.postMessage({ type: "BOT_READY" }, "*");
+      window.parent.postMessage({ type: "BOT_READY" }, this.ALLOWED_ORIGIN);
     });
 
     /**
-     * Handle incoming messages from Wix or fallback listener
+     * Handle incoming messages from Wix or iframe
      */
     const handleMessage = (event) => {
       if (!event.data) return;
+
+      // Validate origin
+      if (event.origin !== this.ALLOWED_ORIGIN && !event.data.fromWix) {
+        console.warn("⚠️ Blocked message from unauthorized origin:", event.origin);
+        return;
+      }
+
       switch (event.data.type) {
         case "USER_DATA":
           this.loadUserData(event.data.payload);
@@ -107,6 +130,9 @@ class KovalAiElement extends HTMLElement {
         case "REQUEST_USER_DETAILS":
           this.sendInitialData();
           break;
+        case "FIREBASE_ERROR":
+          console.error("🔥 Firebase Error:", event.data.error);
+          break;
       }
     };
 
@@ -115,7 +141,7 @@ class KovalAiElement extends HTMLElement {
       try {
         const wixEl = $w(`#${this.wixTarget}`);
         if (wixEl && typeof wixEl.onMessage === "function") {
-          wixEl.onMessage(handleMessage);
+          wixEl.onMessage((msg) => handleMessage({ data: msg, fromWix: true }));
           return;
         }
       } catch (err) {
