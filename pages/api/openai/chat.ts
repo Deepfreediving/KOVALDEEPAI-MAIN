@@ -221,7 +221,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
   } catch (err: any) {
-    console.error('❌ Fatal error in /api/chat:', err);
+    console.error('❌ Fatal error in /api/openai/chat:', err);
     return res.status(200).json({
       assistantMessage: { role: 'assistant', content: "⚠️ I'm having temporary issues, but I’m still here to chat with you!" },
       metadata: { fallback: true },

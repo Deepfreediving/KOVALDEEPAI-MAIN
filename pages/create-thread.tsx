@@ -12,7 +12,7 @@ export default function CreateThread() {
     setStatus('⏳ Creating AI thread...');
 
     try {
-      const response = await fetch('/api/create-thread', {
+      const response = await fetch('/api/openai/create-thread', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, displayName }),

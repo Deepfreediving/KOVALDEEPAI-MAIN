@@ -25,6 +25,7 @@ export default function DiveJournalForm({ onSubmit }) {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [aiFeedback, setAiFeedback] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -44,37 +45,71 @@ export default function DiveJournalForm({ onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setAiFeedback("");
 
-    if (imageFile) {
-      try {
-        const compressed = await imageCompression(imageFile, {
-          maxSizeMB: 0.5,
-          maxWidthOrHeight: 1280,
-          useWebWorker: true,
-        });
+    try {
+      // Step 1️⃣ Save dive log first
+      const saveLogRes = await fetch('/api/analyze/save-dive-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-        const formData = new FormData();
-        formData.append('image', compressed);
+      const saveLogData = await saveLogRes.json();
 
-        const res = await fetch('/api/upload-dive-image', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await res.json();
-        setAiFeedback(res.ok && data.answer ? data.answer : "⚠️ Image uploaded, but no feedback returned.");
-      } catch (err) {
-        console.error("❌ Failed to upload image", err);
-        setAiFeedback("❌ Upload failed.");
+      if (!saveLogRes.ok || !saveLogData?._id) {
+        throw new Error("Failed to save dive log.");
       }
+
+      const diveLogId = saveLogData._id;
+
+      // Step 2️⃣ Upload image if present
+      if (imageFile) {
+        try {
+          const compressed = await imageCompression(imageFile, {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1280,
+            useWebWorker: true,
+          });
+
+          const formData = new FormData();
+          formData.append('image', compressed);
+          formData.append('diveLogId', diveLogId); // link image to saved log
+
+          const uploadRes = await fetch('/api/openai/upload-dive-image', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const uploadData = await uploadRes.json();
+          setAiFeedback(
+            uploadRes.ok && uploadData?.message
+              ? uploadData.message
+              : "⚠️ Image uploaded, but no feedback returned."
+          );
+        } catch (err) {
+          console.error("❌ Failed to upload image", err);
+          setAiFeedback("❌ Upload failed.");
+        }
+      } else {
+        setAiFeedback("✅ Dive log saved successfully.");
+      }
+
+      // Step 3️⃣ Trigger callback for UI update
+      onSubmit({ ...form, _id: diveLogId });
+
+      // ✅ Clear form state
+      setForm(initialFormState);
+      setImageFile(null);
+      setImagePreview(null);
+
+    } catch (error) {
+      console.error("❌ Error submitting dive log:", error);
+      setAiFeedback("❌ Could not save dive log.");
+    } finally {
+      setLoading(false);
     }
-
-    onSubmit(form); // Submit dive log data
-
-    // ✅ Clear form & image state
-    setForm(initialFormState);
-    setImageFile(null);
-    setImagePreview(null);
   };
 
   return (
@@ -112,8 +147,8 @@ export default function DiveJournalForm({ onSubmit }) {
         <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover border rounded" />
       )}
 
-      <button type="submit" className="mt-2 bg-blue-600 text-white px-4 py-1 rounded">
-        Save Dive
+      <button type="submit" disabled={loading} className="mt-2 bg-blue-600 text-white px-4 py-1 rounded">
+        {loading ? "Saving..." : "Save Dive"}
       </button>
 
       {aiFeedback && (

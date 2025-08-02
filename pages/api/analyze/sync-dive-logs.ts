@@ -1,4 +1,4 @@
-// pages/api/sync-dive-logs.ts
+// pages/api/analyze/sync-dive-logs.ts
 
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";

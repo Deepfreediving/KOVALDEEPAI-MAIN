@@ -1,29 +1,17 @@
-// pages/api/save-dive-log.ts
-
+// pages/api/analyze/save-dive-log.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
-import path from 'path';
 import axios from 'axios';
-import handleCors from "@/utils/cors";
-
-const LOG_DIR = path.resolve('./data/diveLogs');
-
-// ✅ Ensure log directory exists on startup
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
-}
-
+import handleCors from '@/utils/cors';
+import { saveLogEntry } from '@/utils/diveLogHelpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (await handleCors(req, res)) return;
-  // ✅ Allow only POST
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // Extract and sanitize data
     const {
       userId = '',
       date = '',
@@ -44,18 +32,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       surfaceProtocol = '',
     } = req.body || {};
 
-    // ✅ Validate required fields
     if (!userId || !date || !discipline) {
       return res.status(400).json({ error: 'Missing required fields: userId, date, or discipline' });
     }
 
-    const safeUserId = path.basename(userId); // Prevent directory traversal
-    const id = uuidv4();
-
-    // ✅ Construct log entry
-    const logEntry = {
-      id,
-      userId: safeUserId,
+    const { id, logEntry } = await saveLogEntry(userId, {
       date: new Date(date).toISOString(),
       disciplineType,
       discipline,
@@ -71,35 +52,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       notes,
       totalDiveTime,
       issueComment,
-      surfaceProtocol,
-      timestamp: new Date().toISOString(),
-      source: 'save-dive-log.ts',
-    };
-
-    // ✅ 1. Save locally (organized by user folder)
-    const userLogDir = path.join(LOG_DIR, safeUserId);
-    if (!fs.existsSync(userLogDir)) {
-      fs.mkdirSync(userLogDir, { recursive: true });
-    }
-
-    const filePath = path.join(userLogDir, `${id}.json`);
-    await fs.promises.writeFile(filePath, JSON.stringify(logEntry, null, 2));
-
-    // ✅ 2. Sync to Wix (non-blocking)
-    axios.post(
-      'https://www.deepfreediving.com/_functions/saveDiveLog',
-      { ...logEntry, userId: safeUserId },
-      { headers: { 'Content-Type': 'application/json' } }
-    ).catch(err => {
-      console.error(`⚠️ Failed to sync dive log ${id} to Wix:`, err.response?.data || err.message);
+      surfaceProtocol
     });
 
-    console.log(`✅ Dive log saved locally and syncing to Wix for user: ${safeUserId}, ID: ${id}`);
+    // ✅ Sync to Wix (non-blocking)
+    axios.post('https://www.deepfreediving.com/_functions/saveDiveLog', {
+      ...logEntry,
+      userId,
+    }).catch(err => console.error(`⚠️ Wix sync failed for log ${id}:`, err.message));
 
-    return res.status(200).json({ success: true, id, saved: true });
+    return res.status(200).json({ success: true, id });
 
-  } catch (err: any) {
-    console.error('❌ Error saving dive log:', err.message || err);
+  } catch (error: any) {
+    console.error('❌ Error saving dive log:', error.message);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }

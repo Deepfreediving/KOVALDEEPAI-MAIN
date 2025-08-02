@@ -1,4 +1,4 @@
-// pages/api/memory/read-memory.ts
+// pages/api/analyze/read-memory.ts
 import { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
