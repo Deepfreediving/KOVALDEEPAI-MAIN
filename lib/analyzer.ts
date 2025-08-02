@@ -1,36 +1,47 @@
 // lib/analyzer.ts
 import { DiveJournalEntry } from "@/components/models/journal";
 
-// Define known issue clusters by depth
-const issueByDepthMap: Record<string, string[]> = {
-  "30-35": ["MF timing", "mental hesitation"],
-  "35-40": ["MF runs out", "RP volume too small", "mouthfill too early"],
-  "40-45": ["EQ fatigue", "glottis leak"],
-  "45-50": ["lung squeeze warning", "soft palate locking"],
-};
+// Centralized depth range config
+const depthBuckets: { range: string; min: number; max: number; issues: string[] }[] = [
+  { range: "30-35", min: 30, max: 35, issues: ["MF timing", "mental hesitation"] },
+  { range: "35-40", min: 35, max: 40, issues: ["MF runs out", "RP volume too small", "mouthfill too early"] },
+  { range: "40-45", min: 40, max: 45, issues: ["EQ fatigue", "glottis leak"] },
+  { range: "45-50", min: 45, max: 50, issues: ["lung squeeze warning", "soft palate locking"] },
+];
 
+/**
+ * Detects the most common depth ranges in the dive logs.
+ */
 export function detectCommonIssueDepths(logs: DiveJournalEntry[]) {
+  if (!Array.isArray(logs)) return [];
+
   const buckets: Record<string, number> = {};
 
   logs.forEach((entry) => {
-    const d = entry.maxDepth;
-    const bucket = getDepthBucket(d);
-    if (bucket) buckets[bucket] = (buckets[bucket] || 0) + 1;
+    if (!entry || typeof entry.maxDepth !== "number") return;
+    const bucket = getDepthBucket(entry.maxDepth);
+    if (bucket) {
+      buckets[bucket] = (buckets[bucket] || 0) + 1;
+    }
   });
 
   return Object.entries(buckets)
-    .sort((a, b) => b[1] - a[1]) // most frequent first
+    .sort((a, b) => b[1] - a[1])
     .map(([range, count]) => ({ range, count }));
 }
 
+/**
+ * Returns the matching depth range for a given depth.
+ */
 function getDepthBucket(depth: number): string | null {
-  if (depth >= 30 && depth < 35) return "30-35";
-  if (depth >= 35 && depth < 40) return "35-40";
-  if (depth >= 40 && depth < 45) return "40-45";
-  if (depth >= 45 && depth < 50) return "45-50";
-  return null;
+  const match = depthBuckets.find((b) => depth >= b.min && depth < b.max);
+  return match ? match.range : null;
 }
 
+/**
+ * Suggests root cause tags for a given depth range.
+ */
 export function suggestRootCauseTags(depthRange: string): string[] {
-  return issueByDepthMap[depthRange] || [];
+  const match = depthBuckets.find((b) => b.range === depthRange);
+  return match ? match.issues : [];
 }
