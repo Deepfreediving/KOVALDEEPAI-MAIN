@@ -2,7 +2,7 @@ import { useState } from 'react';
 import imageCompression from 'browser-image-compression';
 
 export default function DiveJournalForm({ onSubmit }) {
-  const [form, setForm] = useState({
+  const initialFormState = {
     date: '',
     disciplineType: 'depth',
     discipline: '',
@@ -19,8 +19,9 @@ export default function DiveJournalForm({ onSubmit }) {
     attemptType: '',
     surfaceProtocol: '',
     notes: '',
-  });
+  };
 
+  const [form, setForm] = useState(initialFormState);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [aiFeedback, setAiFeedback] = useState("");
@@ -61,11 +62,7 @@ export default function DiveJournalForm({ onSubmit }) {
         });
 
         const data = await res.json();
-        if (res.ok && data.answer) {
-          setAiFeedback(data.answer);
-        } else {
-          setAiFeedback("⚠️ Image uploaded, but no feedback returned.");
-        }
+        setAiFeedback(res.ok && data.answer ? data.answer : "⚠️ Image uploaded, but no feedback returned.");
       } catch (err) {
         console.error("❌ Failed to upload image", err);
         setAiFeedback("❌ Upload failed.");
@@ -73,6 +70,9 @@ export default function DiveJournalForm({ onSubmit }) {
     }
 
     onSubmit(form); // Submit dive log data
+
+    // ✅ Clear form & image state
+    setForm(initialFormState);
     setImageFile(null);
     setImagePreview(null);
   };
@@ -86,10 +86,10 @@ export default function DiveJournalForm({ onSubmit }) {
       </select>
       <input name="discipline" placeholder="Discipline" value={form.discipline} onChange={handleChange} />
       <input name="location" placeholder="Location" value={form.location} onChange={handleChange} />
-      <input name="targetDepth" placeholder="Target Depth (m)" value={form.targetDepth} onChange={handleChange} />
-      <input name="reachedDepth" placeholder="Reached Depth (m)" value={form.reachedDepth} onChange={handleChange} />
-      <input name="mouthfillDepth" placeholder="Mouthfill Depth (m)" value={form.mouthfillDepth} onChange={handleChange} />
-      <input name="issueDepth" placeholder="Issue Depth (m)" value={form.issueDepth} onChange={handleChange} />
+      <input name="targetDepth" placeholder="Target Depth (m)" type="number" value={form.targetDepth} onChange={handleChange} />
+      <input name="reachedDepth" placeholder="Reached Depth (m)" type="number" value={form.reachedDepth} onChange={handleChange} />
+      <input name="mouthfillDepth" placeholder="Mouthfill Depth (m)" type="number" value={form.mouthfillDepth} onChange={handleChange} />
+      <input name="issueDepth" placeholder="Issue Depth (m)" type="number" value={form.issueDepth} onChange={handleChange} />
       <textarea name="issueComment" placeholder="Issue Comments" value={form.issueComment} onChange={handleChange} />
       <input name="durationOrDistance" placeholder="Distance/Duration" value={form.durationOrDistance} onChange={handleChange} />
       <input name="totalDiveTime" placeholder="Total Dive Time (mm:ss)" value={form.totalDiveTime} onChange={handleChange} />

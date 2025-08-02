@@ -4,6 +4,14 @@ import Sidebar from "../components/Sidebar";
 import ChatBox from "../components/ChatBox";
 import apiClient from "../utils/apiClient";
 
+const API_ROUTES = {
+  CREATE_THREAD: "/api/openai/create-thread",
+  CHAT: "/api/openai/chat",
+  GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
+  READ_MEMORY: "/api/analyze/read-memory",
+  QUERY_WIX: "/api/wix/query-wix-data",
+};
+
 export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
@@ -103,7 +111,7 @@ export default function Index() {
     if (!existingIframe) {
       const iframe = document.createElement("iframe");
       iframe.id = "KovalAIFrame";
-      iframe.src = "/koval-ai.html"; // ✅ Updated
+      iframe.src = "/koval-ai.html";
       iframe.style.cssText =
         "width:100%;height:0;border:none;position:fixed;bottom:0;right:0;z-index:9999;";
       document.body.appendChild(iframe);
@@ -121,7 +129,7 @@ export default function Index() {
     return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
 
-  // Connection Check (Runs in background, non-blocking)
+  // Connection Check
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -145,7 +153,7 @@ export default function Index() {
     let isMounted = true;
     (async () => {
       try {
-        const res = await fetch("/api/create-thread", {
+        const res = await fetch(API_ROUTES.CREATE_THREAD, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
@@ -174,8 +182,8 @@ export default function Index() {
     (async () => {
       try {
         const [remoteRes, memRes] = await Promise.all([
-          fetch(`/api/get-dive-logs?userId=${encodeURIComponent(userId)}`),
-          fetch("/api/read-memory", {
+          fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(userId)}`),
+          fetch(API_ROUTES.READ_MEMORY, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId }),
@@ -251,7 +259,7 @@ export default function Index() {
   const fetchWixData = useCallback(async (query) => {
     try {
       setLoading(true);
-      const res = await fetch("/api/query-wix-data", {
+      const res = await fetch(API_ROUTES.QUERY_WIX, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
@@ -327,7 +335,7 @@ export default function Index() {
   return (
     <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
       {/* Sidebar */}
-      <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700">
+      <div className="w-[320px] h-screen overflow-y-auto border-r border-gray-300 dark:border-gray-700 flex flex-col justify-between">
         <Sidebar
           {...sharedProps}
           startNewSession={() => {
@@ -352,6 +360,13 @@ export default function Index() {
           handleEdit={handleEdit}
           handleDelete={handleDelete}
         />
+
+        {/* ✅ Connection Status Dock */}
+        <div className="mt-4 mb-4 mx-4 flex space-x-4 text-xl bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+          {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+          {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
+        </div>
       </div>
 
       {/* Main Chat Area */}
@@ -385,13 +400,6 @@ export default function Index() {
         <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700">
           <ChatBox {...sharedProps} />
         </div>
-      </div>
-
-      {/* ✅ Floating Emoji Dock */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4 text-2xl bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-        {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
-        {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
-        {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
       </div>
     </main>
   );

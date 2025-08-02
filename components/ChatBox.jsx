@@ -17,32 +17,41 @@ export default function ChatBox({
   loading,
   setLoading,
 }) {
-  const BOT_NAME = "Koval AI";
+  const BOT_NAME = "koval-ai";
   const bottomRef = useRef(null);
+  const containerRef = useRef(null);
   const [uploadMessage, setUploadMessage] = useState("");
 
-  // Auto-scroll to bottom when messages change
+  // ✅ Smooth Auto-scroll if user is near bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const container = containerRef.current;
+    if (!container) return;
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loading]);
 
-  // Handle file selection
+  // ✅ File selection (limit 3 images)
   const handleFileChange = (e) => {
-    const selected = Array.from(e.target.files).slice(0, 3);
+    const selected = Array.from(e.target.files);
+    if (selected.length > 3) {
+      setUploadMessage("⚠️ You can only upload up to 3 images.");
+      return;
+    }
     setFiles(selected);
     setUploadMessage("");
   };
 
-  // Main message submit handler
+  // ✅ Send message or upload images
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
-
-    // Prevent empty submissions
     if (!trimmedInput && files.length === 0) return;
 
     setLoading(true);
 
-    // ---------- IMAGE UPLOAD PROCESS ----------
+    // ----------- IMAGE UPLOAD -----------
     if (files.length > 0) {
       try {
         for (const file of files) {
@@ -55,32 +64,25 @@ export default function ChatBox({
           const formData = new FormData();
           formData.append("image", compressed);
 
-          const res = await fetch("/api/upload-dive-image", {
+          const res = await fetch("/api/openai/upload-dive-image", {
             method: "POST",
             body: formData,
           });
 
-          let data;
-          try {
-            data = await res.json();
-          } catch (parseErr) {
-            throw new Error("Invalid JSON response from server.");
-          }
+          const data = await res.json().catch(() => ({}));
 
           if (!res.ok) {
-            throw new Error(data?.error || `Upload failed with status ${res.status}`);
+            throw new Error(data?.error || `Upload failed (${res.status})`);
           }
 
-          // Success message
-          const aiResponse = data.answer || "✅ Image uploaded.";
           setMessages((prev) => [
             ...prev,
             { role: "user", content: `📤 Uploaded: ${file.name}` },
-            { role: "assistant", content: aiResponse },
+            { role: "assistant", content: data.answer || "✅ Image uploaded successfully." },
           ]);
+
           onUploadSuccess?.("✅ Dive profile uploaded.");
         }
-
         setUploadMessage("✅ Image(s) uploaded and analyzed.");
       } catch (err) {
         console.error("❌ Upload error:", err);
@@ -94,29 +96,28 @@ export default function ChatBox({
       }
     }
 
-    // ---------- CHAT MESSAGE PROCESS ----------
+    // ----------- CHAT MESSAGE -----------
     if (trimmedInput) {
-      const userMessage = { role: "user", content: trimmedInput };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
       setInput("");
 
       try {
-        const res = await fetch("/api/chat", {
+        const res = await fetch("/api/openai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: trimmedInput, profile, eqState, userId }),
         });
 
-        let data;
+        // Gracefully handle non-JSON errors
+        const textResponse = await res.text();
+        let data = {};
         try {
-          data = await res.json();
-        } catch (parseErr) {
-          throw new Error("Invalid JSON response from chat server.");
+          data = JSON.parse(textResponse);
+        } catch {
+          data = { error: textResponse || "Unexpected server error." };
         }
 
-        if (!res.ok) {
-          throw new Error(data?.error || `Chat API returned status ${res.status}`);
-        }
+        if (!res.ok) throw new Error(data?.error || `Chat API error (${res.status})`);
 
         if (data.type === "eq-followup") {
           setEqState?.((prev) => ({
@@ -152,7 +153,10 @@ export default function ChatBox({
           ...prev,
           {
             role: "assistant",
-            content: `⚠️ Unable to respond. Server error: ${err.message}`,
+            content:
+              err.message.includes("404")
+                ? "⚠️ Chat service unavailable (404). Please check the server route."
+                : `⚠️ Unable to respond: ${err.message}`,
           },
         ]);
       }
@@ -161,7 +165,7 @@ export default function ChatBox({
     setLoading(false);
   };
 
-  // Send message on Enter key
+  // ✅ Send on Enter (no shift)
   const handleKeyDown = (e) => {
     if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey) {
       e.preventDefault();
@@ -189,7 +193,7 @@ export default function ChatBox({
           <div className="flex items-center gap-4">
             <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
             <div>
-              <h1 className="text-xl font-semibold">Koval Deep AI</h1>
+              <h1 className="text-xl font-semibold">koval-ai Deep Chat</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {profile?.nickname || userId}
               </p>
@@ -198,7 +202,7 @@ export default function ChatBox({
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+        <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-gray-400">
               Welcome to {BOT_NAME}! How can I assist you today?
@@ -221,9 +225,7 @@ export default function ChatBox({
               <div>{m.content}</div>
             </div>
           ))}
-          {loading && (
-            <div className="text-gray-400 italic">{BOT_NAME} is thinking...</div>
-          )}
+          {loading && <div className="text-gray-400 italic">{BOT_NAME} is thinking...</div>}
           <div ref={bottomRef} />
         </div>
 
@@ -262,15 +264,18 @@ export default function ChatBox({
 
           {files.length > 0 && (
             <div className="flex gap-2 mt-2">
-              {files.map((file, i) => (
-                <img
-                  key={i}
-                  src={URL.createObjectURL(file)}
-                  alt={`Preview ${i}`}
-                  className="w-16 h-16 object-cover rounded border shadow"
-                  onLoad={() => URL.revokeObjectURL(file)}
-                />
-              ))}
+              {files.map((file, i) => {
+                const objectURL = URL.createObjectURL(file);
+                return (
+                  <img
+                    key={i}
+                    src={objectURL}
+                    alt={`Preview ${i}`}
+                    className="w-16 h-16 object-cover rounded border shadow"
+                    onLoad={() => URL.revokeObjectURL(objectURL)}
+                  />
+                );
+              })}
             </div>
           )}
 

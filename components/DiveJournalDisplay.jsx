@@ -1,23 +1,31 @@
 import { useEffect, useState } from "react";
 
-export default function DiveJournalDisplay({ userId }) {
+export default function DiveJournalDisplay({ userId, darkMode }) {
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(`diveLogs-${userId}`);
-    if (stored) {
-      setLogs(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem(`diveLogs-${userId}`);
+      if (stored) {
+        setLogs(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error("❌ Failed to parse stored dive logs:", error);
+      setLogs([]);
     }
   }, [userId]);
 
   if (!logs.length) return null;
 
   return (
-    <div className="p-4 border-t mt-4">
+    <div className={`p-4 border-t mt-4 rounded-md ${darkMode ? "bg-gray-800 text-white border-gray-700" : "bg-gray-50 border-gray-200"}`}>
       <h2 className="text-lg font-semibold mb-2">📘 Dive Journal Logs</h2>
       <ul className="space-y-4">
         {logs.map((log, i) => (
-          <li key={i} className="border p-3 rounded bg-gray-50">
+          <li
+            key={i}
+            className={`border p-3 rounded ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"}`}
+          >
             <p><strong>Date:</strong> {log.date}</p>
             <p><strong>Discipline:</strong> {log.disciplineType} – {log.discipline}</p>
             {log.location && <p><strong>Location:</strong> {log.location}</p>}
@@ -32,7 +40,7 @@ export default function DiveJournalDisplay({ userId }) {
             {log.attemptType && <p><strong>Attempt Type:</strong> {log.attemptType}</p>}
             {log.exit && <p><strong>Exit:</strong> {log.exit}</p>}
             {log.surfaceProtocol && <p><strong>Surface Protocol:</strong> {log.surfaceProtocol}</p>}
-            {log.notes && <p className="text-sm text-gray-600 mt-1"><strong>Notes:</strong> {log.notes}</p>}
+            {log.notes && <p className="text-sm mt-1"><strong>Notes:</strong> {log.notes}</p>}
           </li>
         ))}
       </ul>
