@@ -5,17 +5,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const redirectUri = `${process.env.BASE_URL}/api/wix/oauth/callback`;
 
-    // ✅ Build Wix OAuth authorization URL
+    // ✅ Build Wix OAuth authorization URL using correct ENV vars
     const authUrl = `https://www.wix.com/oauth/authorize?response_type=code&client_id=${
-      process.env.WIX_CLIENT_ID
+      process.env.WIX_OAUTH_CLIENT_ID
     }&redirect_uri=${encodeURIComponent(redirectUri)}&scope=wix-data.read-write%20offline_access`;
 
     console.log("🔗 Redirecting user to Wix OAuth URL:", authUrl);
 
     // ✅ Redirect user to Wix's authorization page
-    res.redirect(authUrl);
+    return res.redirect(authUrl);
+
   } catch (error: any) {
     console.error("❌ OAuth Start Error:", error.message);
-    res.status(500).json({ error: "Failed to initiate Wix OAuth flow" });
+    return res.status(500).json({ error: "Failed to initiate Wix OAuth flow" });
   }
 }
