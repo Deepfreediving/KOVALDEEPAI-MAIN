@@ -1,18 +1,26 @@
-import { createClient, OAuthStrategy } from "@wix/sdk";
+import { createClient, OAuthStrategy, TokenRole } from "@wix/sdk";
 import { items } from "@wix/data";
+
+const ACCESS_TOKEN = process.env.WIX_ACCESS_TOKEN || "FAKE_ACCESS_TOKEN";
+const REFRESH_TOKEN = process.env.WIX_REFRESH_TOKEN || "FAKE_REFRESH_TOKEN";
+
+// ✅ Warn if tokens are missing
+if (ACCESS_TOKEN.startsWith("FAKE") || REFRESH_TOKEN.startsWith("FAKE")) {
+  console.warn("⚠️ WARNING: Using placeholder Wix tokens. Run OAuth flow to get real ones.");
+}
 
 const wixClient = createClient({
   modules: { items },
   auth: OAuthStrategy({
-    clientId: process.env.WIX_CLIENT_ID!,
+    clientId: process.env.WIX_CLIENT_ID || "",
     tokens: {
       accessToken: {
-        value: process.env.WIX_ACCESS_TOKEN!,
+        value: ACCESS_TOKEN,
         expiresAt: Date.now() + 3600 * 1000,
       },
       refreshToken: {
-        value: process.env.WIX_REFRESH_TOKEN!,
-        role: "USER", // ✅ Correct token role
+        value: REFRESH_TOKEN,
+        role: "OWNER" as TokenRole,
       },
     },
   }),
@@ -28,7 +36,7 @@ export async function fetchUserMemory(userId: string) {
     const query = await wixClient.items.query(COLLECTION_ID).eq("userId", userId).find();
     return query.items[0] || null;
   } catch (error: any) {
-    console.error("❌ fetchUserMemory error:", error.message);
+    console.warn("⚠️ fetchUserMemory failed (using local only):", error.message);
     return null;
   }
 }
@@ -64,7 +72,7 @@ export async function saveUserMemory(userId: string, newData: any) {
 
     return true;
   } catch (error: any) {
-    console.error("❌ saveUserMemory error:", error.message);
+    console.warn("⚠️ saveUserMemory failed (using local only):", error.message);
     return false;
   }
 }
