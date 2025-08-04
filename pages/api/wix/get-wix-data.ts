@@ -21,11 +21,11 @@ export default async function handler(
   res: NextApiResponse<WixApiResponse>
 ) {
   try {
-    // ✅ Apply CORS handling first
+    // ✅ Apply CORS handling
     await handleCors(req, res);
 
     // ✅ Validate required environment variables
-    const { WIX_API_KEY, WIX_DATA_COLLECTION_ID } = process.env;
+    const { WIX_API_KEY, WIX_DATA_COLLECTION_ID, NODE_ENV } = process.env;
 
     if (!WIX_API_KEY || !WIX_DATA_COLLECTION_ID) {
       console.error("❌ Missing required Wix environment variables.");
@@ -36,8 +36,27 @@ export default async function handler(
       });
     }
 
+    // ✅ If running locally without a valid API, return mock data
+    if (NODE_ENV === "development" && !WIX_API_KEY.startsWith("prod_")) {
+      console.warn("⚠️ Using mock Wix data (DEV fallback).");
+      return res.status(200).json({
+        success: true,
+        data: [
+          { _id: "mock1", name: "Sample Item 1", description: "This is mock data." },
+          { _id: "mock2", name: "Sample Item 2", description: "This is mock data." },
+        ],
+      });
+    }
+
     // ✅ Construct Wix Data API URL
-    const WIX_URL = `https://www.wixapis.com/data/v2/collections/${WIX_DATA_COLLECTION_ID}/items`;
+    const baseURL = `https://www.wixapis.com/data/v2/collections/${WIX_DATA_COLLECTION_ID}/items`;
+
+    // ✅ Support optional query parameters (e.g., filtering)
+    const queryString = req.query.q
+      ? `?q=${encodeURIComponent(req.query.q as string)}`
+      : "";
+
+    const WIX_URL = `${baseURL}${queryString}`;
 
     // ✅ Fetch data from Wix API
     const response = await fetch(WIX_URL, {
@@ -65,19 +84,12 @@ export default async function handler(
 
     console.log(`✅ Successfully retrieved ${items.length} items from Wix.`);
 
-    /**
-     * (Optional Future Feature) Upsert data into Pinecone
-     * ---------------------------------------------------
-     * import { upsertData } from "@/lib/pineconeClient";
-     * const vectors = await convertToEmbeddings(items);
-     * await upsertData(vectors);
-     */
-
     // ✅ Send response to client
     return res.status(200).json({
       success: true,
       data: items,
     });
+
   } catch (error: any) {
     console.error("❌ Unexpected error while fetching Wix data:", error?.message || error);
     return res.status(500).json({
