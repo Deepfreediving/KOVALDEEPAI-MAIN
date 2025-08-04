@@ -1,3 +1,4 @@
+import { useState } from "react";
 import FilePreview from "./FilePreview";
 
 export default function ChatInput({
@@ -11,18 +12,23 @@ export default function ChatInput({
   loading,
   darkMode,
 }) {
-  // Unified file handler if no parent handler is passed
+  const [error, setError] = useState("");
+
+  // Unified file handler
   const onFilesChange = (e) => {
     const selected = Array.from(e.target.files);
 
     if (selected.length > 3) {
-      alert("⚠️ You can only upload up to 3 images at a time.");
+      setError("⚠️ You can only upload up to 3 images at a time.");
     }
 
-    // Filter out non-image files just in case
-    const imageFiles = selected.filter((file) =>
-      ["image/png", "image/jpeg"].includes(file.type)
-    );
+    const imageFiles = selected.filter((file) => {
+      if (!["image/png", "image/jpeg"].includes(file.type)) {
+        setError("❌ Only PNG and JPEG files are allowed.");
+        return false;
+      }
+      return true;
+    });
 
     setFiles(imageFiles.slice(0, 3));
   };
@@ -37,7 +43,6 @@ export default function ChatInput({
         darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
       }`}
     >
-      {/* Accessible Label for Screen Readers */}
       <label htmlFor="chatInput" className="sr-only">
         Message
       </label>
@@ -65,6 +70,9 @@ export default function ChatInput({
         className="text-sm"
         aria-label="Upload image files"
       />
+
+      {/* Error Message */}
+      {error && <p className="text-xs text-red-500">{error}</p>}
 
       {/* Warning Message */}
       {files.length >= 3 && (

@@ -79,7 +79,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
   const response: any = await openai.chat.completions.create({
     model: 'gpt-4o',
     temperature: 0.4,
-    max_tokens: 800,
+    max_tokens: 1200, // ✅ Increased max tokens
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser input:\n${message}` },
