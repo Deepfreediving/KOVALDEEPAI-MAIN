@@ -11,24 +11,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(404).json({ authenticated: false, message: 'No tokens found' });
   }
 
-  const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf-8'));
+  let tokens;
+  try {
+    tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf-8'));
+  } catch (err) {
+    fs.unlinkSync(tokensPath);
+    return res.status(500).json({ authenticated: false, message: 'Invalid token file' });
+  }
 
-  // Check if token is expired
   const isExpired = Date.now() > tokens.expiresAt;
 
-  // If expired, try to refresh
   if (isExpired && tokens.refreshToken) {
     try {
       const refreshResponse = await axios.post('https://www.wix.com/oauth/access', {
         grant_type: 'refresh_token',
         refresh_token: tokens.refreshToken,
-        client_id: process.env.WIX_CLIENT_ID,
-        client_secret: process.env.WIX_CLIENT_SECRET,
+        client_id: process.env.WIX_OAUTH_CLIENT_ID,
+        client_secret: process.env.WIX_OAUTH_CLIENT_SECRET,
       });
 
       const { access_token, refresh_token, expires_in } = refreshResponse.data;
 
-      // Save new tokens
       const newTokens = {
         accessToken: access_token,
         refreshToken: refresh_token || tokens.refreshToken,
@@ -39,6 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ authenticated: true, refreshed: true });
     } catch (error: any) {
       console.error("❌ Failed to refresh token:", error.response?.data || error.message);
+      fs.unlinkSync(tokensPath);
       return res.status(500).json({ authenticated: false, error: 'Token refresh failed' });
     }
   }

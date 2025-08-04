@@ -7,13 +7,15 @@ import path from 'path';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code, error } = req.query;
 
+  // Handle OAuth errors returned from Wix
   if (error) {
     console.error("❌ Wix OAuth Error:", error);
     return res.status(400).json({ error: `OAuth error: ${error}` });
   }
 
+  // Check if the authorization code exists
   if (!code) {
-    return res.status(400).json({ error: 'Missing authorization code' });
+    return res.status(400).json({ error: 'Missing authorization code from Wix' });
   }
 
   try {
@@ -23,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         grant_type: 'authorization_code',
         code,
-        client_id: process.env.WIX_CLIENT_ID,
-        client_secret: process.env.WIX_CLIENT_SECRET,
+        client_id: process.env.WIX_OAUTH_CLIENT_ID,        // ✅ Fixed
+        client_secret: process.env.WIX_OAUTH_CLIENT_SECRET, // ✅ Fixed
         redirect_uri: `${process.env.BASE_URL}/api/wix/oauth/callback`,
       },
       { headers: { 'Content-Type': 'application/json' } }
@@ -32,33 +34,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-    // ✅ Validate tokens
+    // Validate tokens
     if (!access_token || !refresh_token) {
       console.error('❌ Invalid token response from Wix:', tokenResponse.data);
       return res.status(500).json({ error: 'Invalid token response from Wix' });
     }
 
-    // ✅ Store tokens securely (currently local file for demo)
+    // Save tokens locally (for demo; consider secure storage in production)
     const tokensPath = path.join(process.cwd(), 'wix-tokens.json');
     fs.writeFileSync(
       tokensPath,
       JSON.stringify({
         accessToken: access_token,
         refreshToken: refresh_token,
-        expiresAt: Date.now() + expires_in * 1000, // store expiration timestamp
+        expiresAt: Date.now() + expires_in * 1000,
       }, null, 2)
     );
 
     console.log('✅ Wix Tokens Saved:', {
-      accessToken: access_token.substring(0, 8) + '...', 
+      accessToken: access_token.substring(0, 8) + '...',
       refreshToken: refresh_token.substring(0, 8) + '...',
     });
 
-    // Redirect user to success page on Wix site
+    // Redirect user to success page on your Wix site
     return res.redirect('https://www.deepfreediving.com/large-koval-deep-ai-page?auth=success');
 
   } catch (err: any) {
     console.error('❌ OAuth Callback Error:', err.response?.data || err.message);
-    return res.status(500).json({ error: 'Failed to complete Wix OAuth flow' });
+    return res.status(500).json({
+      error: 'Failed to complete Wix OAuth flow',
+      details: err.response?.data || err.message,
+    });
   }
 }
