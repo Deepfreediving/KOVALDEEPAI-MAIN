@@ -1,11 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
-import axios from 'axios';
 import { Pinecone } from '@pinecone-database/pinecone';
+import handleCors from '@/utils/cors';
 import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
 import getEmbedding from '@/lib/getEmbedding';
-import handleCors from "@/utils/cors";
-import { queryData } from '@/lib/queryData';
+import { fetchUserMemory, saveUserMemory } from '@/lib/userMemoryManager';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
@@ -79,7 +78,7 @@ async function askWithContext(contextChunks: string[], message: string, userLeve
   const response: any = await openai.chat.completions.create({
     model: 'gpt-4o',
     temperature: 0.4,
-    max_tokens: 1200, // ✅ Increased max tokens
+    max_tokens: 1200,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser input:\n${message}` },
@@ -113,14 +112,17 @@ async function extractProfileFields(message: string) {
   }
 }
 
-async function saveToWixMemory(params: any) {
+async function saveConversationToMemory(userId: string, message: string, assistantReply: string, profile: any, eqState: any, sessionId?: string, sessionName?: string) {
   try {
-    await axios.post('https://www.deepfreediving.com/_functions/saveToUserMemory', {
-      ...params,
-      timestamp: new Date().toISOString(),
+    await saveUserMemory(userId, {
+      logs: [{ userMessage: message, assistantReply, timestamp: new Date().toISOString() }],
+      profile,
+      eqState,
+      sessionId,
+      sessionName,
     });
   } catch (err: any) {
-    console.warn('⚠️ Failed to save to Wix:', err.response?.data || err.message);
+    console.warn('⚠️ Failed to save user memory:', err.message);
   }
 }
 
@@ -142,11 +144,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Message must be a non-empty string.' });
     }
 
-    // Extract and merge profile
-    let mergedProfile = { ...profile };
+    // Load memory
+    const pastMemory = await fetchUserMemory(userId);
+
+    // Merge profile
+    let mergedProfile = { ...pastMemory?.profile, ...profile };
     try {
       const extractedProfile = await extractProfileFields(message);
-      mergedProfile = { ...profile, ...Object.fromEntries(Object.entries(extractedProfile).filter(([_, v]) => v !== undefined && v !== null && v !== '')) };
+      mergedProfile = { ...mergedProfile, ...Object.fromEntries(Object.entries(extractedProfile).filter(([_, v]) => v !== undefined && v !== null && v !== '')) };
     } catch (err) {
       console.warn("Profile extraction skipped due to error:", err);
     }
@@ -170,13 +175,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Build user context with dive log
     let userContext = message;
     if (diveLogs?.length) {
       const lastLog = diveLogs[diveLogs.length - 1];
       userContext += `\n\nHere is my most recent dive log: ${JSON.stringify(lastLog)}. Evaluate this dive and help me progress safely toward ${mergedProfile.targetDepth || 120}m.`;
     }
 
-    // Query Pinecone safely
+    // Query Pinecone
     let contextChunks: string[] = [];
     try {
       contextChunks = await queryPinecone(userContext, depthRange);
@@ -184,7 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("Pinecone query failed:", err);
     }
 
-    // OpenAI fallback logic
+    // Ask AI
     let assistantReply = "⚠️ I'm having trouble responding right now, but I'm still online and will try again soon.";
     try {
       assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
@@ -197,22 +203,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Save to Wix memory safely
-    try {
-      if (!assistantReply.startsWith("⚠️")) {
-        await saveToWixMemory({
-          userId,
-          logEntry: message,
-          memoryContent: assistantReply,
-          profile: mergedProfile,
-          eqState,
-          sessionId,
-          sessionName,
-          metadata: { sessionType: 'training', intentLabel: 'ai-response', userLevel, depthRange },
-        });
-      }
-    } catch (err) {
-      console.warn("Wix save failed:", err);
+    // Save memory
+    if (!assistantReply.startsWith("⚠️")) {
+      await saveConversationToMemory(userId, message, assistantReply, mergedProfile, eqState, sessionId, sessionName);
     }
 
     return res.status(200).json({
