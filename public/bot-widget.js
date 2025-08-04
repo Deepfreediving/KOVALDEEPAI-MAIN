@@ -2,30 +2,44 @@ class KovalAiElement extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.wixTarget = this.getAttribute('wix-target'); // ✅ new attribute for Wix targeting
+    this.wixTarget = this.getAttribute('wix-target');
 
-    // Define allowed iframe origin
+    // Allowed iframe origin
     this.ALLOWED_ORIGIN = "https://kovaldeepai-main.vercel.app";
 
-    // Main container
+    // ==== Main Container ====
     const container = document.createElement('div');
     container.style.position = 'relative';
     container.style.width = '100%';
     container.style.height = '100%';
+    container.style.minHeight = '700px';
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
+    container.style.overflow = 'hidden';
+    container.style.borderRadius = '10px';
+    container.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
+    container.style.backgroundColor = '#fff';
 
-    // Bot iframe
+    // ==== Bot Iframe ====
     this.iframe = document.createElement('iframe');
     this.iframe.src = `${this.ALLOWED_ORIGIN}/embed`;
     this.iframe.allow = 'microphone; camera; fullscreen';
     this.iframe.style.width = '100%';
     this.iframe.style.height = '100%';
     this.iframe.style.border = 'none';
+    this.iframe.style.display = 'block';
     this.iframe.style.overflow = 'hidden';
 
+    // Append iframe
     container.appendChild(this.iframe);
     this.shadowRoot.appendChild(container);
+
+    // Resize observer for responsiveness
+    this.resizeObserver = new ResizeObserver(() => {
+      this.iframe.style.height = `${this.offsetHeight}px`;
+      this.iframe.style.width = `${this.offsetWidth}px`;
+    });
+    this.resizeObserver.observe(this);
   }
 
   /**
@@ -49,7 +63,7 @@ class KovalAiElement extends HTMLElement {
   }
 
   /**
-   * Save current session to local storage
+   * Save current session locally
    */
   saveSession(payload) {
     try {
@@ -77,7 +91,7 @@ class KovalAiElement extends HTMLElement {
   }
 
   /**
-   * Send initial data (theme, user info, cached session)
+   * Send initial theme, user info, cached session to iframe
    */
   sendInitialData() {
     const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -109,7 +123,7 @@ class KovalAiElement extends HTMLElement {
     });
 
     /**
-     * Handle incoming messages from Wix or iframe
+     * Handle incoming messages
      */
     const handleMessage = (event) => {
       if (!event.data) return;
@@ -129,6 +143,9 @@ class KovalAiElement extends HTMLElement {
           break;
         case "REQUEST_USER_DETAILS":
           this.sendInitialData();
+          break;
+        case "NO_LOGS":
+          console.log("ℹ️ No dive logs found for this user");
           break;
         case "FIREBASE_ERROR":
           console.error("🔥 Firebase Error:", event.data.error);
@@ -152,11 +169,17 @@ class KovalAiElement extends HTMLElement {
     // ✅ Fallback to standard message listener
     window.addEventListener("message", handleMessage);
   }
+
+  disconnectedCallback() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+  }
 }
 
 customElements.define('koval-ai', KovalAiElement);
 
-// ✅ Allow external scripts to trigger bot methods
+// ✅ Allow external scripts to call bot methods
 window.KovalAI = {
   loadUserData: (data) => document.querySelector('koval-ai')?.loadUserData(data),
   saveSession: (data) => document.querySelector('koval-ai')?.saveSession(data),
