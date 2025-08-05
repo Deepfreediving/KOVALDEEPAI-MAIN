@@ -1,59 +1,134 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
+import handleCors from '@/utils/cors';
 
+// ✅ Environment variables with validation
 const WIX_API_KEY = process.env.WIX_API_KEY;
 const WIX_ACCOUNT_ID = process.env.WIX_ACCOUNT_ID;
 const WIX_SITE_ID = process.env.WIX_SITE_ID;
-
-const WIX_OAUTH_CLIENT_ID = process.env.WIX_OAUTH_CLIENT_ID;
-const WIX_OAUTH_CLIENT_SECRET = process.env.WIX_OAUTH_CLIENT_SECRET;
-const BASE_URL = process.env.BASE_URL;
-
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const PINECONE_HOST = process.env.PINECONE_HOST;
-const PINECONE_INDEX = process.env.PINECONE_INDEX;
-const PINECONE_ENVIRONMENT = process.env.PINECONE_ENVIRONMENT;
 
-/**
- * ✅ Helper: Safe API calls with proper error handling
- */
-async function safeRequest(promise: Promise<any>) {
+// ✅ Input validation helper
+function validateInput(service: string, action: string, data: any): { isValid: boolean; error?: string } {
+  if (!service || typeof service !== 'string') {
+    return { isValid: false, error: 'Service name is required' };
+  }
+  
+  if (!action || typeof action !== 'string') {
+    return { isValid: false, error: 'Action is required' };
+  }
+  
+  // Service-specific validations
+  if (service === 'wix' && action === 'queryData') {
+    if (!data?.collectionId || typeof data.collectionId !== 'string') {
+      return { isValid: false, error: 'Collection ID is required for Wix queries' };
+    }
+  }
+  
+  if (service === 'openai' && action === 'chat') {
+    if (!data?.messages || !Array.isArray(data.messages)) {
+      return { isValid: false, error: 'Messages array is required for OpenAI chat' };
+    }
+  }
+  
+  return { isValid: true };
+}
+
+// ✅ Safe API request wrapper with better error handling
+async function safeRequest(promise: Promise<any>, serviceName: string) {
   try {
     const res = await promise;
     return { success: true, data: res.data };
   } catch (error: any) {
-    console.error('❌ API Error:', error.response?.data || error.message);
-    return { success: false, error: error.message };
+    console.error(`❌ ${serviceName} API Error:`, error.response?.data || error.message);
+    
+    // ✅ Better error categorization
+    let errorMessage = 'API request failed';
+    let statusCode = 500;
+    
+    if (error.response?.status === 401) {
+      errorMessage = 'Authentication failed';
+      statusCode = 401;
+    } else if (error.response?.status === 429) {
+      errorMessage = 'Rate limit exceeded';
+      statusCode = 429;
+    } else if (error.response?.status === 400) {
+      errorMessage = 'Invalid request data';
+      statusCode = 400;
+    }
+    
+    return { 
+      success: false, 
+      error: errorMessage,
+      statusCode,
+      details: error.response?.data?.message || error.message
+    };
   }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
-  const { service, action, data } = req.body;
-
-  // ✅ Local dev mode: mock non-OpenAI services
-  if (process.env.NODE_ENV === 'development' && service !== 'openai') {
-    console.log(`⚠️ Mocking response for ${service} in development mode...`);
-    return res.status(200).json({ success: true, data: `${service} mock response OK` });
-  }
-
+  const startTime = Date.now();
+  
   try {
+    // ✅ CORS handling (matching your other APIs)
+    if (await handleCors(req, res)) return;
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ 
+        success: false, 
+        error: 'Method Not Allowed',
+        message: 'Only POST requests are allowed'
+      });
+    }
+
+    const { service, action, data } = req.body;
+
+    // ✅ Input validation
+    const validation = validateInput(service, action, data);
+    if (!validation.isValid) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Validation Error',
+        message: validation.error
+      });
+    }
+
+    // ✅ Development mode with better logging
+    if (process.env.NODE_ENV === 'development' && service !== 'openai') {
+      console.log(`⚠️ Development mode: Mocking ${service}/${action}`);
+      return res.status(200).json({ 
+        success: true, 
+        data: { message: `${service} mock response OK`, action, timestamp: new Date().toISOString() },
+        metadata: { mock: true, processingTime: Date.now() - startTime }
+      });
+    }
+
+    console.log(`🚀 Processing ${service}/${action} request`);
+
     switch (service) {
       /**
-       * ✅ WIX API - Supports both static and dynamic tokens
+       * ✅ WIX API - Enhanced with better auth handling
        */
       case 'wix': {
-        // Token priority: 1) Passed token from frontend (dynamic) 2) Static API key
+        // Token priority: dynamic token > static API key
         const authToken = data?.token 
           ? `Bearer ${data.token}`
           : WIX_API_KEY;
 
         if (!authToken) {
-          return res.status(400).json({ success: false, error: 'Missing Wix API token or API key' });
+          return res.status(401).json({ 
+            success: false, 
+            error: 'Authentication Required',
+            message: 'Missing Wix API token or API key'
+          });
+        }
+
+        if (!WIX_ACCOUNT_ID || !WIX_SITE_ID) {
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Configuration Error',
+            message: 'Wix account/site configuration missing'
+          });
         }
 
         const wixClient = axios.create({
@@ -64,37 +139,66 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             'wix-site-id': WIX_SITE_ID,
             'Content-Type': 'application/json',
           },
+          timeout: 10000
         });
 
         if (action === 'check') {
           const response = await safeRequest(
-            wixClient.post('/wix-data/v2/items/query', { data: {} })
+            wixClient.get('/wix-data/v2/collections'),
+            'Wix'
           );
-          return res.status(200).json(response);
+          
+          if (!response.success) {
+            return res.status(response.statusCode || 500).json(response);
+          }
+          
+          return res.status(200).json({
+            success: true,
+            data: { status: 'connected', collections: response.data?.collections?.length || 0 },
+            metadata: { processingTime: Date.now() - startTime }
+          });
         }
 
-        // Example: querying data from a collection
         if (action === 'queryData') {
           const response = await safeRequest(
             wixClient.post('/wix-data/v2/items/query', {
-              data: {
-                collectionId: data.collectionId,
-                query: data.query || {},
-              },
-            })
+              collectionId: data.collectionId,
+              query: data.query || {},
+            }),
+            'Wix'
           );
-          return res.status(200).json(response);
+          
+          if (!response.success) {
+            return res.status(response.statusCode || 500).json(response);
+          }
+          
+          return res.status(200).json({
+            success: true,
+            data: response.data,
+            metadata: { 
+              collectionId: data.collectionId,
+              processingTime: Date.now() - startTime 
+            }
+          });
         }
 
-        break;
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Invalid Action',
+          message: `Action '${action}' not supported for Wix service`
+        });
       }
 
       /**
-       * ✅ OPENAI API
+       * ✅ OPENAI API - Enhanced with model validation
        */
       case 'openai': {
         if (!OPENAI_API_KEY) {
-          return res.status(400).json({ success: false, error: 'Missing OpenAI API key' });
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Configuration Error',
+            message: 'OpenAI API key not configured'
+          });
         }
 
         const openaiClient = axios.create({
@@ -103,66 +207,100 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             Authorization: `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
+          timeout: 30000
         });
 
         if (action === 'check') {
           const response = await safeRequest(
             openaiClient.post('/chat/completions', {
-              model: data?.model || 'gpt-4o-mini',
-              messages: data?.messages || [{ role: 'user', content: 'ping' }],
-              max_tokens: 10,
-            })
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: 'ping' }],
+              max_tokens: 5,
+            }),
+            'OpenAI'
           );
-          return res.status(200).json(response);
+          
+          if (!response.success) {
+            return res.status(response.statusCode || 500).json(response);
+          }
+          
+          return res.status(200).json({
+            success: true,
+            data: { status: 'connected', model: 'gpt-4o-mini' },
+            metadata: { processingTime: Date.now() - startTime }
+          });
         }
 
-        break;
+        if (action === 'chat') {
+          const response = await safeRequest(
+            openaiClient.post('/chat/completions', {
+              model: data?.model || 'gpt-4o-mini',
+              messages: data.messages,
+              max_tokens: data?.maxTokens || 150,
+              temperature: data?.temperature || 0.7,
+            }),
+            'OpenAI'
+          );
+          
+          if (!response.success) {
+            return res.status(response.statusCode || 500).json(response);
+          }
+          
+          return res.status(200).json({
+            success: true,
+            data: response.data,
+            metadata: { 
+              model: data?.model || 'gpt-4o-mini',
+              processingTime: Date.now() - startTime 
+            }
+          });
+        }
+
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Invalid Action',
+          message: `Action '${action}' not supported for OpenAI service`
+        });
       }
 
       /**
-       * ✅ PINECONE API
+       * ✅ PINECONE - Redirects to your existing APIs
        */
       case 'pinecone': {
-        if (!PINECONE_API_KEY || !PINECONE_HOST || !PINECONE_INDEX) {
-          return res.status(400).json({ success: false, error: 'Missing Pinecone environment variables' });
-        }
-
-        const pineconeClient = axios.create({
-          baseURL: PINECONE_HOST,
-          headers: {
-            'Api-Key': PINECONE_API_KEY,
-            'Content-Type': 'application/json',
-          },
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Service Deprecated',
+          message: 'Use /api/pinecone or /api/semanticSearch instead'
         });
-
-        if (action === 'check') {
-          const response = await safeRequest(
-            pineconeClient.get(`/describe_index_stats`)
-          );
-          return res.status(200).json(response);
-        }
-
-        if (action === 'query') {
-          const response = await safeRequest(
-            pineconeClient.post(`/query`, {
-              namespace: data?.namespace || '',
-              topK: data?.topK || 5,
-              vector: data?.vector || [],
-            })
-          );
-          return res.status(200).json(response);
-        }
-
-        break;
       }
 
       default:
-        return res.status(400).json({ success: false, error: 'Invalid service specified' });
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Invalid Service',
+          message: `Service '${service}' is not supported. Available: wix, openai`
+        });
     }
 
-    return res.status(400).json({ success: false, error: 'Invalid action or service' });
   } catch (error: any) {
-    console.error('❌ Handler Error:', error.message);
-    return res.status(500).json({ success: false, error: error.message });
+    const processingTime = Date.now() - startTime;
+    console.error('❌ API Handler Error:', error);
+    
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred',
+      metadata: {
+        processingTime,
+        timestamp: new Date().toISOString()
+      }
+    });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: '2mb' },
+    responseLimit: false
+  }
+};

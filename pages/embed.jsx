@@ -1,10 +1,8 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
-import dynamic from "next/dynamic";
+
 import ChatMessages from "../components/ChatMessages";
 import ChatInput from "../components/ChatInput";
-
-const App = dynamic(() => import("./index"), { ssr: false });
 
 export default function Embed() {
   // ✅ Core state for embed-only functionality
