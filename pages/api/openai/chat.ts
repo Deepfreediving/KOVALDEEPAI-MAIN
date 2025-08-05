@@ -40,24 +40,38 @@ function getDepthRange(depth: number): string {
 
 // ✅ Simplified Pinecone query
 async function queryPinecone(query: string): Promise<string[]> {
-  if (!index || !query?.trim()) {
-    console.warn("⚠️ Pinecone not available or empty query");
+  if (!query?.trim()) {
+    console.warn("⚠️ Empty query for Pinecone");
     return [];
   }
 
   try {
-    const vector = await getEmbedding(query);
-    if (!vector?.length) return [];
-
-    const result = await index.query({
-      vector,
-      topK: 5,
-      includeMetadata: true,
-      filter: { approvedBy: { "$eq": "Koval" } }
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+      
+    const response = await fetch(`${baseUrl}/api/pinecone/queryDocuments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: query,
+        topK: 5,
+        filter: { approvedBy: { "$eq": "Koval" } }
+      })
     });
 
-    const chunks = result?.matches
-      ?.map((m: any) => m.metadata?.text)
+    if (!response.ok) {
+      throw new Error(`Pinecone query failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Pinecone query failed');
+    }
+
+    const chunks = result.matches
+      ?.map((match: any) => match.metadata?.text)
       .filter((text: string) => text && text.length > 10) || [];
 
     console.log(`✅ Found ${chunks.length} relevant chunks`);
