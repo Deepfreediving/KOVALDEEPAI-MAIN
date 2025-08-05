@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Pinecone } from "@pinecone-database/pinecone";
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

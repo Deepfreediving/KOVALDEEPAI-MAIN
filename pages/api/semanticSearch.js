@@ -1,6 +1,6 @@
 import { OpenAI } from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
-import handleCors from '@/utils/cors';
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
 
 // ✅ Environment validation
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;

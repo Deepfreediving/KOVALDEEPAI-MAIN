@@ -2,7 +2,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || 'asst_WnbEd7Jxgf1z2U0ziNWi8yz9';

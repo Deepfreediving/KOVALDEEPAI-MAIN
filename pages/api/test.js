@@ -1,6 +1,7 @@
-/* eslint-disable no-unused-vars */
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED
+
 export default async function handler(req, res) {
-  if (require('@/utils/cors').default(req, res)) return;
+  if (handleCors(req, res)) return;
   // Check if the OpenAI API key is missing or empty from environment variables
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === "") {
     return res.status(500).json({ error: "OPENAI_API_KEY is missing or empty" });

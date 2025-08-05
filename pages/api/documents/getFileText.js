@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-const handleCors = require('@/utils/cors').default;
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from require to import
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;

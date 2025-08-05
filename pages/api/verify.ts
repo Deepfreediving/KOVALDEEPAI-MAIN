@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { Pinecone } from '@pinecone-database/pinecone';
 import OpenAI from 'openai';
 import axios from 'axios';
-import handleCors from '@/utils/cors';
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (await handleCors(req, res)) return;
