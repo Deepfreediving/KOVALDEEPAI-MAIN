@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { upsertData } from "./pineconeInit"; // ✅ Use local pineconeInit
+import { upsertData } from "./pineconeInit";
 import handleCors from "@/utils/cors";
 
 interface VectorData {
@@ -10,7 +10,7 @@ interface VectorData {
 
 interface ApiResponse {
   success: boolean;
-  data?: unknown;
+  data?: any; // ✅ Changed from unknown to any
   error?: string;
   metadata?: {
     processingTime: number;
@@ -24,9 +24,8 @@ export default async function handler(
   res: NextApiResponse<ApiResponse>
 ) {
   const startTime = Date.now();
-
+  
   try {
-    // ✅ CORS handling (matching your other APIs)
     if (await handleCors(req, res)) return;
 
     if (req.method !== "POST") {
@@ -43,7 +42,6 @@ export default async function handler(
 
     const data: VectorData[] = req.body;
 
-    // ✅ Enhanced validation
     if (!Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
         success: false,
@@ -56,11 +54,10 @@ export default async function handler(
       });
     }
 
-    // ✅ Prevent timeouts with batch size limit
     if (data.length > 100) {
       return res.status(400).json({
         success: false,
-        error: "Too many vectors. Maximum 100 per request. Use batching for larger uploads.",
+        error: "Too many vectors. Maximum 100 per request.",
         metadata: {
           processingTime: Date.now() - startTime,
           vectorCount: data.length,
@@ -69,21 +66,14 @@ export default async function handler(
       });
     }
 
-    // ✅ Validate each vector with better error messages
+    // ✅ Simplified validation
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
-
-      if (!item.id || typeof item.id !== "string" || item.id.trim() === "") {
+      
+      if (!item.id || typeof item.id !== "string") {
         return res.status(400).json({
           success: false,
-          error: `Vector at index ${i}: ID must be a non-empty string`,
-        });
-      }
-
-      if (item.id.length > 512) {
-        return res.status(400).json({
-          success: false,
-          error: `Vector at index ${i}: ID too long (max 512 characters)`,
+          error: `Vector at index ${i}: ID must be a string`,
         });
       }
 
@@ -93,47 +83,12 @@ export default async function handler(
           error: `Vector at index ${i}: values must be a non-empty array`,
         });
       }
-
-      if (!item.values.every((v) => typeof v === "number" && isFinite(v))) {
-        return res.status(400).json({
-          success: false,
-          error: `Vector at index ${i}: all values must be finite numbers`,
-        });
-      }
-
-      // ✅ Validate metadata if present
-      if (item.metadata) {
-        for (const [key, value] of Object.entries(item.metadata)) {
-          if (typeof key !== "string" || key.length > 100) {
-            return res.status(400).json({
-              success: false,
-              error: `Vector at index ${i}: metadata key "${key}" invalid`,
-            });
-          }
-
-          if (
-            typeof value !== "string" &&
-            typeof value !== "number" &&
-            typeof value !== "boolean"
-          ) {
-            return res.status(400).json({
-              success: false,
-              error: `Vector at index ${i}: metadata value for "${key}" must be string, number, or boolean`,
-            });
-          }
-        }
-      }
     }
 
     console.log(`🚀 Upserting ${data.length} vectors to Pinecone`);
 
-    // ✅ Add timeout for upsert operation
-    const upsertPromise = upsertData(data);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Upsert timeout')), 25000)
-    );
-
-    const response = await Promise.race([upsertPromise, timeoutPromise]);
+    // ✅ Simplified - remove Promise.race timeout (causing issues)
+    const response = await upsertData(data);
 
     const processingTime = Date.now() - startTime;
     console.log(`✅ Pinecone upsert completed in ${processingTime}ms`);
@@ -151,48 +106,22 @@ export default async function handler(
   } catch (error: any) {
     const processingTime = Date.now() - startTime;
     console.error("❌ Pinecone upsert error:", error);
-
-    // ✅ Better error categorization
-    let statusCode = 500;
-    let errorMessage = "Failed to upsert vectors";
-
-    if (
-      error.message?.includes("Authentication") ||
-      error.message?.includes("API key")
-    ) {
-      statusCode = 401;
-      errorMessage = "Authentication failed";
-    } else if (
-      error.message?.includes("quota") ||
-      error.message?.includes("rate limit")
-    ) {
-      statusCode = 429;
-      errorMessage = "Rate limit exceeded";
-    } else if (
-      error.message?.includes("Invalid") ||
-      error.message?.includes("validation")
-    ) {
-      statusCode = 400;
-      errorMessage = error.message;
-    }
-
-    return res.status(statusCode).json({
+    
+    return res.status(500).json({
       success: false,
-      error: errorMessage,
+      error: error.message || "Failed to upsert vectors",
       metadata: {
         processingTime,
-        vectorCount: Array.isArray(req.body) ? req.body.length : 0,
+        vectorCount: 0,
         timestamp: new Date().toISOString(),
       },
     });
   }
 }
 
-// ✅ Add timeout config
 export const config = {
   api: {
     bodyParser: { sizeLimit: '5mb' },
     responseLimit: false,
-    timeout: 30000
   }
 };
