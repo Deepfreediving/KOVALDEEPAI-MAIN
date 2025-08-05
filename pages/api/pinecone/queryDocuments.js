@@ -1,83 +1,74 @@
-import handleCors from '@/utils/handleCors'; // ✅ KEEP ONLY THIS ONE
+import handleCors from '@/utils/handleCors';
 import { queryData } from "./pineconeInit";
 
 export default async function handler(req, res) {
-  const startTime = Date.now();
-  
   try {
-    // ✅ Use handleCors
-    if (handleCors(req, res)) return; // Early exit for OPTIONS
+    if (handleCors(req, res)) return;
     
     if (req.method !== "POST") {
       return res.status(405).json({ 
         success: false, 
-        error: "Method Not Allowed",
-        message: "Only POST requests are allowed"
+        error: "Method Not Allowed"
       });
     }
 
-    const { queryVector, topK = 5, filter } = req.body;
+    const { query, queryVector, topK = 5, filter } = req.body;
 
-    // ✅ Enhanced validation
-    if (!Array.isArray(queryVector) || queryVector.length === 0) {
+    let finalVector = queryVector;
+
+    // ✅ If text query provided, convert to vector
+    if (query && !queryVector) {
+      try {
+        const baseUrl = req.headers.host?.includes('localhost') 
+          ? 'http://localhost:3000' 
+          : `https://${req.headers.host}`;
+          
+        const response = await fetch(`${baseUrl}/api/openai/embeddings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: query })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create embedding');
+        }
+
+        const embeddingResult = await response.json();
+        finalVector = embeddingResult.embedding;
+      } catch (embeddingError) {
+        console.error('❌ Embedding error:', embeddingError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to create embedding"
+        });
+      }
+    }
+
+    if (!Array.isArray(finalVector) || finalVector.length === 0) {
       return res.status(400).json({
         success: false, 
-        error: "Query vector is required and must be a non-empty array"
-      });
-    }
-
-    if (topK < 1 || topK > 100) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "topK must be between 1 and 100"
+        error: "Query vector or text query is required"
       });
     }
 
     console.log(`🔍 Querying Pinecone with topK=${topK}`);
-
-    const options = { topK };
-    if (filter) options.filter = filter;
     
-    const response = await queryData(queryVector, options);
+    const response = await queryData(finalVector, { topK, filter });
     const matches = response.matches || [];
-
-    const processingTime = Date.now() - startTime;
-    console.log(`✅ Query completed in ${processingTime}ms, found ${matches.length} matches`);
 
     return res.status(200).json({ 
       success: true, 
       matches,
-      metadata: {
-        processingTime,
-        matchCount: matches.length,
-        topK,
-        timestamp: new Date().toISOString()
-      }
+      query: query || 'vector query',
+      totalMatches: matches.length
     });
 
   } catch (error) {
-    const processingTime = Date.now() - startTime;
-    console.error("❌ Error querying Pinecone:", error.message);
-    
-    // ✅ Better error categorization
-    let statusCode = 500;
-    let errorMessage = "Failed to query documents";
-
-    if (error.message?.includes('Authentication') || error.message?.includes('API key')) {
-      statusCode = 401;
-      errorMessage = "Authentication failed";
-    } else if (error.message?.includes('quota') || error.message?.includes('rate limit')) {
-      statusCode = 429;
-      errorMessage = "Rate limit exceeded";
-    }
-
-    return res.status(statusCode).json({ 
+    console.error("❌ Pinecone query error:", error);
+    return res.status(500).json({ 
       success: false, 
-      error: errorMessage,
-      metadata: {
-        processingTime,
-        timestamp: new Date().toISOString()
-      }
+      error: "Query failed",
+      message: error.message
     });
   }
 }
