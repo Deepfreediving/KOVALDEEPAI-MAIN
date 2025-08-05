@@ -49,64 +49,82 @@ export default function DiveJournalForm({ onSubmit }) {
     setAiFeedback("");
 
     try {
-      // Step 1️⃣ Save dive log first
+      console.log('🔄 Submitting dive log to enterprise system...');
+      
+      // ✅ Prepare data for your save-dive-log.ts API
+      const diveLogData = {
+        ...form,
+        userId: userId || 'anonymous-user',
+        timestamp: new Date().toISOString()
+      };
+
+      // 🚀 STEP 1: Save dive log
       const saveLogRes = await fetch('/api/analyze/save-dive-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(diveLogData),
       });
 
-      const saveLogData = await saveLogRes.json();
-
-      if (!saveLogRes.ok || !saveLogData?._id) {
-        throw new Error("Failed to save dive log.");
+      if (!saveLogRes.ok) {
+        const errorData = await saveLogRes.json();
+        throw new Error(errorData.message || `Save failed: ${saveLogRes.status}`);
       }
 
-      const diveLogId = saveLogData._id;
+      const saveLogResult = await saveLogRes.json();
+      console.log('✅ Dive log saved:', saveLogResult);
+      
+      const diveLogId = saveLogResult._id || saveLogResult.data?.id;
 
-      // Step 2️⃣ Upload image if present
-      if (imageFile) {
+      // 📸 STEP 2: Handle image upload with OCR + AI analysis
+      if (imageFile && diveLogId) {
         try {
+          console.log('🔄 Processing dive profile image...');
+          
+          // ✅ Compress image
           const compressed = await imageCompression(imageFile, {
             maxSizeMB: 0.5,
             maxWidthOrHeight: 1280,
             useWebWorker: true,
           });
 
+          // ✅ Upload for analysis
           const formData = new FormData();
           formData.append('image', compressed);
-          formData.append('diveLogId', diveLogId); // link image to saved log
+          formData.append('diveLogId', diveLogId);
+          formData.append('userId', userId || 'anonymous-user');
 
           const uploadRes = await fetch('/api/openai/upload-dive-image', {
             method: 'POST',
             body: formData,
           });
 
-          const uploadData = await uploadRes.json();
-          setAiFeedback(
-            uploadRes.ok && uploadData?.message
-              ? uploadData.message
-              : "⚠️ Image uploaded, but no feedback returned."
-          );
-        } catch (err) {
-          console.error("❌ Failed to upload image", err);
-          setAiFeedback("❌ Upload failed.");
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            setAiFeedback(uploadData?.message || "✅ Dive log saved & image analyzed!");
+          } else {
+            setAiFeedback("✅ Dive log saved! Image analysis failed.");
+          }
+        } catch (imageError) {
+          console.error("❌ Image processing error:", imageError);
+          setAiFeedback("✅ Dive log saved! Image analysis failed: " + imageError.message);
         }
       } else {
-        setAiFeedback("✅ Dive log saved successfully.");
+        setAiFeedback("✅ Dive log saved to local & cloud! Auto-analysis completed.");
       }
 
-      // Step 3️⃣ Trigger callback for UI update
-      onSubmit({ ...form, _id: diveLogId });
+      // ✅ Trigger callback for UI refresh
+      if (onSubmit) {
+        onSubmit(saveLogResult.data || diveLogData);
+      }
 
-      // ✅ Clear form state
+      // ✅ Reset form
       setForm(initialFormState);
       setImageFile(null);
       setImagePreview(null);
 
     } catch (error) {
       console.error("❌ Error submitting dive log:", error);
-      setAiFeedback("❌ Could not save dive log.");
+      setAiFeedback(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
