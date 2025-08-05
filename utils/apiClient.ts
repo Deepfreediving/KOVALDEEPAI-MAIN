@@ -7,19 +7,37 @@ export interface Status {
 }
 
 /**
+ * ✅ Helper to get Wix installation token from localStorage
+ */
+function getWixToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('wixAppToken');
+  }
+  return null;
+}
+
+/**
  * ✅ Generic API request to your server-side handler
+ * Automatically attaches wixAppToken if available
  */
 async function sendRequest(service: string, action: string, data: any = {}): Promise<any> {
   try {
+    const token = getWixToken();
+
     const response = await axios.post('/api/apiHandler', {
       service,
       action,
       data,
+      token, // 🔹 attach token for backend auth
     });
+
     return response.data;
   } catch (error: any) {
     console.error(`❌ ${service} request failed:`, error.message);
-    return null;
+    return {
+      success: false,
+      message: error.message,
+    };
   }
 }
 

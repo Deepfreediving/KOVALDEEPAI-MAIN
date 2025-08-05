@@ -8,7 +8,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ✅ Build Wix OAuth authorization URL using correct ENV vars
     const authUrl = `https://www.wix.com/oauth/authorize?response_type=code&client_id=${
       process.env.WIX_OAUTH_CLIENT_ID
-    }&redirect_uri=${encodeURIComponent(redirectUri)}&scope=wix-data.read-write%20offline_access`;
+    }&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(
+      'wix-data.read-write offline_access'
+    )}`;
 
     console.log("🔗 Redirecting user to Wix OAuth URL:", authUrl);
 

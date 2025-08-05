@@ -4,6 +4,11 @@ import axios from 'axios';
 const WIX_API_KEY = process.env.WIX_API_KEY;
 const WIX_ACCOUNT_ID = process.env.WIX_ACCOUNT_ID;
 const WIX_SITE_ID = process.env.WIX_SITE_ID;
+
+const WIX_OAUTH_CLIENT_ID = process.env.WIX_OAUTH_CLIENT_ID;
+const WIX_OAUTH_CLIENT_SECRET = process.env.WIX_OAUTH_CLIENT_SECRET;
+const BASE_URL = process.env.BASE_URL;
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_HOST = process.env.PINECONE_HOST;
@@ -18,7 +23,7 @@ async function safeRequest(promise: Promise<any>) {
     const res = await promise;
     return { success: true, data: res.data };
   } catch (error: any) {
-    console.error('❌ API Error:', error.message);
+    console.error('❌ API Error:', error.response?.data || error.message);
     return { success: false, error: error.message };
   }
 }
@@ -30,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { service, action, data } = req.body;
 
-  // ✅ Local dev mode: Mock Wix/Pinecone to prevent CORS errors
+  // ✅ Local dev mode: mock non-OpenAI services
   if (process.env.NODE_ENV === 'development' && service !== 'openai') {
     console.log(`⚠️ Mocking response for ${service} in development mode...`);
     return res.status(200).json({ success: true, data: `${service} mock response OK` });
@@ -39,17 +44,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     switch (service) {
       /**
-       * ✅ WIX API
+       * ✅ WIX API - Supports both static and dynamic tokens
        */
       case 'wix': {
-        if (!WIX_API_KEY || !WIX_ACCOUNT_ID || !WIX_SITE_ID) {
-          return res.status(400).json({ success: false, error: 'Missing Wix environment variables' });
+        // Token priority: 1) Passed token from frontend (dynamic) 2) Static API key
+        const authToken = data?.token 
+          ? `Bearer ${data.token}`
+          : WIX_API_KEY;
+
+        if (!authToken) {
+          return res.status(400).json({ success: false, error: 'Missing Wix API token or API key' });
         }
 
         const wixClient = axios.create({
           baseURL: 'https://www.wixapis.com',
           headers: {
-            Authorization: WIX_API_KEY,
+            Authorization: authToken,
             'wix-account-id': WIX_ACCOUNT_ID,
             'wix-site-id': WIX_SITE_ID,
             'Content-Type': 'application/json',
@@ -59,6 +69,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (action === 'check') {
           const response = await safeRequest(
             wixClient.post('/wix-data/v2/items/query', { data: {} })
+          );
+          return res.status(200).json(response);
+        }
+
+        // Example: querying data from a collection
+        if (action === 'queryData') {
+          const response = await safeRequest(
+            wixClient.post('/wix-data/v2/items/query', {
+              data: {
+                collectionId: data.collectionId,
+                query: data.query || {},
+              },
+            })
           );
           return res.status(200).json(response);
         }
@@ -113,14 +136,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         if (action === 'check') {
-          // ✅ Attempt to describe the Pinecone index
           const response = await safeRequest(
             pineconeClient.get(`/describe_index_stats`)
           );
           return res.status(200).json(response);
         }
 
-        // Example: query embeddings
         if (action === 'query') {
           const response = await safeRequest(
             pineconeClient.post(`/query`, {
