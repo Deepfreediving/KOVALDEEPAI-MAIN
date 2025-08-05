@@ -276,16 +276,18 @@ async function saveConversationToMemory(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const startTime = Date.now();
   
-  // ✅ Move embedMode extraction outside try block
+  // ✅ Initialize embedMode with a default value
   let embedMode = false;
-  
+
   try {
-    // CORS handling
+    // ✅ CORS handling
     if (await handleCors(req, res)) return;
-    
-    // Method validation
+
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method Not Allowed' });
+      return res.status(405).json({ 
+        error: 'Method Not Allowed',
+        message: 'Only POST requests are allowed'
+      });
     }
 
     // Input validation
@@ -302,7 +304,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } = req.body;
 
     // ✅ Set embedMode for use in catch block
-    embedMode = requestEmbedMode;
+    let embedMode = requestEmbedMode || false; // Initialize embedMode with a default value
 
     // Validate required fields
     if (!message && !uploadOnly) {
@@ -471,9 +473,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-export const config = { 
-  api: { 
-    bodyParser: { sizeLimit: '10mb' },
-    responseLimit: false 
-  } 
+// ✅ Add timeout config
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: '5mb' },
+    responseLimit: false,
+    timeout: 35000 // 35 seconds (slightly longer than OpenAI timeout)
+  }
 };
