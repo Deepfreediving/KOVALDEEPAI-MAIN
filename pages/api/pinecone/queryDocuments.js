@@ -1,16 +1,13 @@
-import handleCors from "@/utils/cors";
-import { queryData } from "./pineconeInit"; // ✅ Fixed - use local file
-import handleCorsOptions from '@/utils/handleCors'; // ✅ ADD if not present
+import handleCors from '@/utils/handleCors'; // ✅ KEEP ONLY THIS ONE
+import { queryData } from "./pineconeInit";
 
 export default async function handler(req, res) {
   const startTime = Date.now();
   
   try {
-    // ✅ ADD CORS handling
-    await handleCors(req, res);
+    // ✅ Use handleCors
+    if (handleCors(req, res)) return; // Early exit for OPTIONS
     
-    if (req.method === 'OPTIONS') return;
-
     if (req.method !== "POST") {
       return res.status(405).json({ 
         success: false, 
@@ -23,7 +20,7 @@ export default async function handler(req, res) {
 
     // ✅ Enhanced validation
     if (!Array.isArray(queryVector) || queryVector.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         error: "Query vector is required and must be a non-empty array"
       });
@@ -38,7 +35,6 @@ export default async function handler(req, res) {
 
     console.log(`🔍 Querying Pinecone with topK=${topK}`);
 
-    // ✅ Use your existing pineconeInit function
     const options = { topK };
     if (filter) options.filter = filter;
     
