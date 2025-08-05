@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { upsertData } from "./pineconeInit";
+import { upsertData } from "./pineconeInit"; // ✅ Use local pineconeInit
 import handleCors from "@/utils/cors";
 
 interface VectorData {
@@ -56,11 +56,11 @@ export default async function handler(
       });
     }
 
-    // ✅ Limit batch size to prevent timeouts
-    if (data.length > 1000) {
+    // ✅ Prevent timeouts with batch size limit
+    if (data.length > 100) {
       return res.status(400).json({
         success: false,
-        error: "Too many vectors. Maximum 1000 per request",
+        error: "Too many vectors. Maximum 100 per request. Use batching for larger uploads.",
         metadata: {
           processingTime: Date.now() - startTime,
           vectorCount: data.length,
@@ -127,8 +127,13 @@ export default async function handler(
 
     console.log(`🚀 Upserting ${data.length} vectors to Pinecone`);
 
-    // ✅ Use your existing pineconeInit function
-    const response = await upsertData(data);
+    // ✅ Add timeout for upsert operation
+    const upsertPromise = upsertData(data);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Upsert timeout')), 25000)
+    );
+
+    const response = await Promise.race([upsertPromise, timeoutPromise]);
 
     const processingTime = Date.now() - startTime;
     console.log(`✅ Pinecone upsert completed in ${processingTime}ms`);
@@ -139,9 +144,10 @@ export default async function handler(
       metadata: {
         processingTime,
         vectorCount: data.length,
-        timestamp: new Date().toISOString(),
-      },
+        timestamp: new Date().toISOString()
+      }
     });
+
   } catch (error: any) {
     const processingTime = Date.now() - startTime;
     console.error("❌ Pinecone upsert error:", error);
@@ -182,9 +188,11 @@ export default async function handler(
   }
 }
 
+// ✅ Add timeout config
 export const config = {
   api: {
-    bodyParser: { sizeLimit: "10mb" },
+    bodyParser: { sizeLimit: '5mb' },
     responseLimit: false,
-  },
+    timeout: 30000
+  }
 };
