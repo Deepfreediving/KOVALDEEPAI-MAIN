@@ -1,88 +1,190 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { upsertVectors, VectorData } from "@/lib/pineconeService";
+import { upsertData } from "./pineconeInit";
 import handleCors from "@/utils/cors";
+
+interface VectorData {
+  id: string;
+  values: number[];
+  metadata?: Record<string, string | number | boolean>;
+}
 
 interface ApiResponse {
   success: boolean;
   data?: unknown;
   error?: string;
+  metadata?: {
+    processingTime: number;
+    vectorCount: number;
+    timestamp: string;
+  };
 }
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ApiResponse>
 ) {
-  if (await handleCors(req, res)) return;
-
-  if (req.method !== "POST") {
-    return res
-      .status(405)
-      .json({ success: false, error: "Method Not Allowed" });
-  }
+  const startTime = Date.now();
 
   try {
-    const data: VectorData[] = req.body;
+    // ✅ CORS handling (matching your other APIs)
+    if (await handleCors(req, res)) return;
 
-    // ✅ Validate input array
-    if (!Array.isArray(data) || data.length === 0) {
-      return res.status(400).json({
+    if (req.method !== "POST") {
+      return res.status(405).json({
         success: false,
-        error: "Request body must be a non-empty array of vectors.",
+        error: "Method Not Allowed",
+        metadata: {
+          processingTime: Date.now() - startTime,
+          vectorCount: 0,
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
-    // ✅ Validate each vector
-    for (const item of data) {
-      if (!item.id || typeof item.id !== "string") {
+    const data: VectorData[] = req.body;
+
+    // ✅ Enhanced validation
+    if (!Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Request body must be a non-empty array of vectors",
+        metadata: {
+          processingTime: Date.now() - startTime,
+          vectorCount: 0,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // ✅ Limit batch size to prevent timeouts
+    if (data.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        error: "Too many vectors. Maximum 1000 per request",
+        metadata: {
+          processingTime: Date.now() - startTime,
+          vectorCount: data.length,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // ✅ Validate each vector with better error messages
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+
+      if (!item.id || typeof item.id !== "string" || item.id.trim() === "") {
         return res.status(400).json({
           success: false,
-          error: "Each vector must include a valid 'id' (string).",
+          error: `Vector at index ${i}: ID must be a non-empty string`,
         });
       }
 
-      if (
-        !Array.isArray(item.values) ||
-        !item.values.every((v) => typeof v === "number")
-      ) {
+      if (item.id.length > 512) {
         return res.status(400).json({
           success: false,
-          error: "Each vector must include 'values' as an array of numbers.",
+          error: `Vector at index ${i}: ID too long (max 512 characters)`,
         });
       }
 
-      // ✅ Validate metadata
+      if (!Array.isArray(item.values) || item.values.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: `Vector at index ${i}: values must be a non-empty array`,
+        });
+      }
+
+      if (!item.values.every((v) => typeof v === "number" && isFinite(v))) {
+        return res.status(400).json({
+          success: false,
+          error: `Vector at index ${i}: all values must be finite numbers`,
+        });
+      }
+
+      // ✅ Validate metadata if present
       if (item.metadata) {
-        const invalidMeta = Object.values(item.metadata).some(
-          (value) =>
+        for (const [key, value] of Object.entries(item.metadata)) {
+          if (typeof key !== "string" || key.length > 100) {
+            return res.status(400).json({
+              success: false,
+              error: `Vector at index ${i}: metadata key "${key}" invalid`,
+            });
+          }
+
+          if (
             typeof value !== "string" &&
             typeof value !== "number" &&
             typeof value !== "boolean"
-        );
-        if (invalidMeta) {
-          return res.status(400).json({
-            success: false,
-            error:
-              "Metadata values must be of type string, number, or boolean only.",
-          });
+          ) {
+            return res.status(400).json({
+              success: false,
+              error: `Vector at index ${i}: metadata value for "${key}" must be string, number, or boolean`,
+            });
+          }
         }
       }
     }
 
-    console.log("📌 Upserting vectors to Pinecone:", data.length, "items");
+    console.log(`🚀 Upserting ${data.length} vectors to Pinecone`);
 
-    const response = await upsertVectors(data);
+    // ✅ Use your existing pineconeInit function
+    const response = await upsertData(data);
 
-    console.log("✅ Pinecone upsert successful");
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ Pinecone upsert completed in ${processingTime}ms`);
 
     return res.status(200).json({
       success: true,
       data: response,
+      metadata: {
+        processingTime,
+        vectorCount: data.length,
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error: any) {
-    console.error("❌ Error during Pinecone upsert:", error.message || error);
-    return res.status(500).json({
+    const processingTime = Date.now() - startTime;
+    console.error("❌ Pinecone upsert error:", error);
+
+    // ✅ Better error categorization
+    let statusCode = 500;
+    let errorMessage = "Failed to upsert vectors";
+
+    if (
+      error.message?.includes("Authentication") ||
+      error.message?.includes("API key")
+    ) {
+      statusCode = 401;
+      errorMessage = "Authentication failed";
+    } else if (
+      error.message?.includes("quota") ||
+      error.message?.includes("rate limit")
+    ) {
+      statusCode = 429;
+      errorMessage = "Rate limit exceeded";
+    } else if (
+      error.message?.includes("Invalid") ||
+      error.message?.includes("validation")
+    ) {
+      statusCode = 400;
+      errorMessage = error.message;
+    }
+
+    return res.status(statusCode).json({
       success: false,
-      error: `Failed to upsert data: ${error.message || "Unknown error"}`,
+      error: errorMessage,
+      metadata: {
+        processingTime,
+        vectorCount: Array.isArray(req.body) ? req.body.length : 0,
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: "10mb" },
+    responseLimit: false,
+  },
+};
