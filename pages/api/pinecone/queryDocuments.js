@@ -13,7 +13,6 @@ export default async function handler(req, res) {
     }
 
     const { query, queryVector, topK = 5, filter } = req.body;
-
     let finalVector = queryVector;
 
     // ✅ If text query provided, convert to vector
