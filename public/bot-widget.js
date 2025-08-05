@@ -4,33 +4,39 @@ class KovalAiElement extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.wixTarget = this.getAttribute('wix-target');
 
-    // Allowed iframe origin
-    this.ALLOWED_ORIGIN = "https://kovaldeepai-main.vercel.app";
+    // ✅ Multiple allowed origins (trusted sources only)
+    this.ALLOWED_ORIGINS = [
+      "https://kovaldeepai-main.vercel.app",
+      "https://www.deepfreediving.com"
+    ];
 
     // ==== Main Container ====
     const container = document.createElement('div');
-    container.style.position = 'relative';
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.minHeight = '700px';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.overflow = 'hidden';
-    container.style.borderRadius = '10px';
-    container.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
-    container.style.backgroundColor = '#fff';
+    Object.assign(container.style, {
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      minHeight: '700px',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      borderRadius: '10px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+      backgroundColor: '#fff'
+    });
 
     // ==== Bot Iframe ====
     this.iframe = document.createElement('iframe');
-    this.iframe.src = `${this.ALLOWED_ORIGIN}/embed`;
+    this.iframe.src = `${this.ALLOWED_ORIGINS[0]}/embed`;
     this.iframe.allow = 'microphone; camera; fullscreen';
-    this.iframe.style.width = '100%';
-    this.iframe.style.height = '100%';
-    this.iframe.style.border = 'none';
-    this.iframe.style.display = 'block';
-    this.iframe.style.overflow = 'hidden';
+    Object.assign(this.iframe.style, {
+      width: '100%',
+      height: '100%',
+      border: 'none',
+      display: 'block',
+      overflow: 'hidden'
+    });
 
-    // Append iframe
     container.appendChild(this.iframe);
     this.shadowRoot.appendChild(container);
 
@@ -43,68 +49,33 @@ class KovalAiElement extends HTMLElement {
   }
 
   /**
-   * ✅ Safely post message to iframe
+   * ✅ Securely post message to iframe
    */
   postToIframe(type, data = {}) {
     if (this.iframe && this.iframe.contentWindow) {
-      this.iframe.contentWindow.postMessage({ type, ...data }, this.ALLOWED_ORIGIN);
+      this.iframe.contentWindow.postMessage({ type, ...data }, this.ALLOWED_ORIGINS[0]);
     }
   }
 
   /**
-   * Load user data from Wix and send to bot iframe
-   */
-  loadUserData(payload = {}) {
-    if (!payload || typeof payload !== "object") {
-      console.warn("⚠️ Invalid payload received in loadUserData:", payload);
-      return;
-    }
-    this.postToIframe("USER_DATA", { payload });
-  }
-
-  /**
-   * Save current session locally
-   */
-  saveSession(payload) {
-    try {
-      localStorage.setItem("koval_ai_session", JSON.stringify(payload));
-    } catch (err) {
-      console.warn("⚠️ Failed to save session:", err);
-    }
-  }
-
-  /**
-   * Retrieve Wix member details (if available)
-   */
-  getMemberDetails() {
-    try {
-      if (window.wixUsers && window.wixUsers.currentUser) {
-        return {
-          id: window.wixUsers.currentUser.id,
-          loginEmail: window.wixUsers.currentUser.loginEmail
-        };
-      }
-    } catch (err) {
-      console.warn("⚠️ Unable to fetch Wix user details:", err);
-    }
-    return null;
-  }
-
-  /**
-   * Send initial theme, user info, cached session to iframe
+   * ✅ Send initial data (theme, user info, saved session)
    */
   sendInitialData() {
     const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     this.postToIframe("THEME_CHANGE", { dark: isDark });
 
-    const memberDetails = this.getMemberDetails();
-    if (memberDetails) {
+    // Wix member details
+    if (window.wixUsers && window.wixUsers.currentUser) {
       this.postToIframe("USER_AUTH", {
-        userId: memberDetails.loginEmail || memberDetails.id,
-        profile: memberDetails
+        userId: window.wixUsers.currentUser.loginEmail || window.wixUsers.currentUser.id,
+        profile: {
+          id: window.wixUsers.currentUser.id,
+          loginEmail: window.wixUsers.currentUser.loginEmail
+        }
       });
     }
 
+    // Saved session
     const savedSession = localStorage.getItem("koval_ai_session");
     if (savedSession) {
       try {
@@ -115,50 +86,69 @@ class KovalAiElement extends HTMLElement {
     }
   }
 
+  /**
+   * ✅ Load user data dynamically
+   */
+  loadUserData(payload = {}) {
+    if (!payload || typeof payload !== "object") return;
+    this.postToIframe("USER_DATA", { payload });
+  }
+
+  /**
+   * ✅ Save session locally
+   */
+  saveSession(payload) {
+    try {
+      localStorage.setItem("koval_ai_session", JSON.stringify(payload));
+    } catch (err) {
+      console.warn("⚠️ Failed to save session:", err);
+    }
+  }
+
+  /**
+   * ✅ Handle incoming messages safely
+   */
+  handleMessage(event) {
+    if (!event.data) return;
+
+    // ✅ Only allow messages from trusted origins or Wix internal
+    if (!this.ALLOWED_ORIGINS.includes(event.origin) && !event.data.fromWix) {
+      console.warn("⚠️ Blocked message from unauthorized origin:", event.origin);
+      return;
+    }
+
+    switch (event.data.type) {
+      case "USER_DATA":
+        this.loadUserData(event.data.payload);
+        break;
+      case "SAVE_SESSION":
+        this.saveSession(event.data.payload);
+        break;
+      case "REQUEST_USER_DETAILS":
+        this.sendInitialData();
+        break;
+      case "NO_LOGS":
+        console.log("ℹ️ No dive logs found for this user");
+        break;
+      case "FIREBASE_ERROR":
+        console.error("🔥 Firebase Error:", event.data.error);
+        break;
+    }
+  }
+
   connectedCallback() {
-    // ✅ Send BOT_READY event after iframe loads
+    // ✅ Send BOT_READY event once iframe is loaded
     this.iframe.addEventListener("load", () => {
       this.sendInitialData();
-      window.parent.postMessage({ type: "BOT_READY" }, this.ALLOWED_ORIGIN);
+      window.parent.postMessage({ type: "BOT_READY" }, this.ALLOWED_ORIGINS[0]);
     });
 
-    /**
-     * Handle incoming messages
-     */
-    const handleMessage = (event) => {
-      if (!event.data) return;
-
-      // Validate origin
-      if (event.origin !== this.ALLOWED_ORIGIN && !event.data.fromWix) {
-        console.warn("⚠️ Blocked message from unauthorized origin:", event.origin);
-        return;
-      }
-
-      switch (event.data.type) {
-        case "USER_DATA":
-          this.loadUserData(event.data.payload);
-          break;
-        case "SAVE_SESSION":
-          this.saveSession(event.data.payload);
-          break;
-        case "REQUEST_USER_DETAILS":
-          this.sendInitialData();
-          break;
-        case "NO_LOGS":
-          console.log("ℹ️ No dive logs found for this user");
-          break;
-        case "FIREBASE_ERROR":
-          console.error("🔥 Firebase Error:", event.data.error);
-          break;
-      }
-    };
-
-    // ✅ Prefer Wix $w.onMessage if available
+    // Wix-specific listener
     if (this.wixTarget && window.$w) {
       try {
         const wixEl = $w(`#${this.wixTarget}`);
         if (wixEl && typeof wixEl.onMessage === "function") {
-          wixEl.onMessage((msg) => handleMessage({ data: msg, fromWix: true }));
+          wixEl.onMessage((msg) => this.handleMessage({ data: msg, fromWix: true }));
           return;
         }
       } catch (err) {
@@ -166,8 +156,8 @@ class KovalAiElement extends HTMLElement {
       }
     }
 
-    // ✅ Fallback to standard message listener
-    window.addEventListener("message", handleMessage);
+    // ✅ Fallback to window listener
+    window.addEventListener("message", (event) => this.handleMessage(event));
   }
 
   disconnectedCallback() {

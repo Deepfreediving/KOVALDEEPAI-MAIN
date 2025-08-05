@@ -1,8 +1,8 @@
-// pages/api/wix/oauth/callback.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import querystring from 'querystring';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code, error } = req.query;
@@ -13,23 +13,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: `OAuth error: ${error}` });
   }
 
-  // Check if the authorization code exists
-  if (!code) {
-    return res.status(400).json({ error: 'Missing authorization code from Wix' });
+  // Ensure the authorization code exists
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid authorization code from Wix' });
   }
 
   try {
-    // Exchange authorization code for tokens
+    // ✅ Exchange authorization code for access/refresh tokens
     const tokenResponse = await axios.post(
       'https://www.wix.com/oauth/access',
-      {
+      querystring.stringify({
         grant_type: 'authorization_code',
         code,
-        client_id: process.env.WIX_OAUTH_CLIENT_ID,        // ✅ Fixed
-        client_secret: process.env.WIX_OAUTH_CLIENT_SECRET, // ✅ Fixed
+        client_id: process.env.WIX_OAUTH_CLIENT_ID,
+        client_secret: process.env.WIX_OAUTH_CLIENT_SECRET,
         redirect_uri: `${process.env.BASE_URL}/api/wix/oauth/callback`,
-      },
-      { headers: { 'Content-Type': 'application/json' } }
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
@@ -40,15 +40,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Invalid token response from Wix' });
     }
 
-    // Save tokens locally (for demo; consider secure storage in production)
+    // Save tokens locally (for demo only – replace with DB or secrets manager in production)
     const tokensPath = path.join(process.cwd(), 'wix-tokens.json');
     fs.writeFileSync(
       tokensPath,
-      JSON.stringify({
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        expiresAt: Date.now() + expires_in * 1000,
-      }, null, 2)
+      JSON.stringify(
+        {
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          expiresAt: Date.now() + expires_in * 1000,
+        },
+        null,
+        2
+      )
     );
 
     console.log('✅ Wix Tokens Saved:', {
@@ -56,8 +60,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       refreshToken: refresh_token.substring(0, 8) + '...',
     });
 
-    // Redirect user to success page on your Wix site
-    return res.redirect('https://www.deepfreediving.com/large-koval-deep-ai-page?auth=success');
+    // ✅ Redirect user back to your Wix site or a success page
+    return res.redirect(
+      'https://www.deepfreediving.com/large-koval-deep-ai-page?auth=success'
+    );
 
   } catch (err: any) {
     console.error('❌ OAuth Callback Error:', err.response?.data || err.message);

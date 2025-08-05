@@ -1,11 +1,10 @@
-import { useRef } from "react";
 import DiveJournalForm from "./DiveJournalForm";
 
 export default function Sidebar({
   sessionName,
-  sessionsList,
+  sessionsList = [],
   showDiveJournalForm,
-  diveLogs,
+  diveLogs = [],
   toggleDiveJournal,
   handleSelectSession,
   handleDeleteSession,
@@ -33,34 +32,42 @@ export default function Sidebar({
         {/* Sessions */}
         <div>
           <h2 className="text-lg font-semibold mb-2">🗂️ Sessions</h2>
-          <button onClick={startNewSession} className="text-blue-600 underline mb-3">
+          <button
+            onClick={startNewSession}
+            className="text-blue-600 underline mb-3"
+            aria-label="Start a new session"
+          >
             ➕ New Session
           </button>
-          <ul className="space-y-2">
-            {sessionsList.map((s, i) => (
-              <li key={i} className="flex justify-between items-center">
-                <button
-                  className={`text-left flex-1 px-2 py-1 rounded ${
-                    s.sessionName === sessionName
-                      ? "bg-blue-100 dark:bg-blue-700"
-                      : darkMode
-                      ? "hover:bg-gray-800"
-                      : "hover:bg-gray-200"
-                  }`}
-                  onClick={() => handleSelectSession(s.sessionName)}
-                >
-                  {s.sessionName}
-                </button>
-                <button
-                  onClick={() => handleDeleteSession(i)}
-                  className="text-red-500 text-xs ml-2"
-                  title="Delete session"
-                >
-                  ❌
-                </button>
-              </li>
-            ))}
-          </ul>
+          {sessionsList.length > 0 ? (
+            <ul className="space-y-2">
+              {sessionsList.map((s, i) => (
+                <li key={s.id || i} className="flex justify-between items-center">
+                  <button
+                    className={`text-left flex-1 px-2 py-1 rounded ${
+                      s.sessionName === sessionName
+                        ? "bg-blue-100 dark:bg-blue-700"
+                        : darkMode
+                        ? "hover:bg-gray-800"
+                        : "hover:bg-gray-200"
+                    }`}
+                    onClick={() => handleSelectSession(s.sessionName)}
+                  >
+                    {s.sessionName}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSession(i)}
+                    className="text-red-500 text-xs ml-2"
+                    title="Delete session"
+                  >
+                    ❌
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm italic text-gray-500">No sessions available</p>
+          )}
         </div>
 
         {/* Dive Journal */}
@@ -90,32 +97,36 @@ export default function Sidebar({
           ) : (
             <div className="mt-4">
               <h3 className="font-semibold mb-2">📒 Dive Logs</h3>
-              <ul className="space-y-2">
-                {diveLogs.map((log, i) => (
-                  <li
-                    key={i}
-                    className={`border p-2 rounded text-sm ${
-                      darkMode ? "bg-gray-800 text-white" : "bg-white text-black"
-                    }`}
-                  >
-                    <strong>{log.date}</strong> – {log.disciplineType}: {log.targetDepth}m
-                    <div className="flex justify-end space-x-2 mt-1">
-                      <button
-                        onClick={() => handleEdit(i)}
-                        className="text-blue-500 text-xs"
-                      >
-                        🖊️ Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(i)}
-                        className="text-red-500 text-xs"
-                      >
-                        🗑️ Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {diveLogs.length > 0 ? (
+                <ul className="space-y-2">
+                  {diveLogs.map((log, i) => (
+                    <li
+                      key={log.id || i}
+                      className={`border p-2 rounded text-sm ${
+                        darkMode ? "bg-gray-800 text-white" : "bg-white text-black"
+                      }`}
+                    >
+                      <strong>{log.date}</strong> – {log.disciplineType}: {log.targetDepth}m
+                      <div className="flex justify-end space-x-2 mt-1">
+                        <button
+                          onClick={() => handleEdit(i)}
+                          className="text-blue-500 text-xs"
+                        >
+                          🖊️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(i)}
+                          className="text-red-500 text-xs"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm italic text-gray-500">No dive logs yet</p>
+              )}
             </div>
           )}
         </div>
@@ -132,14 +143,20 @@ export default function Sidebar({
 
         {/* ✅ Connection Status Dock */}
         <div className="flex space-x-4 text-xl justify-center bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && (
-            <span title="Data Connected">🌲</span>
-          )}
-          {!loadingConnections && connectionStatus.openai?.includes("✅") && (
-            <span title="AI Connected">🤖</span>
-          )}
-          {!loadingConnections && connectionStatus.wix?.includes("✅") && (
-            <span title="Site Data Connected">🌀</span>
+          {loadingConnections ? (
+            <span className="text-sm italic text-gray-500">Checking connections...</span>
+          ) : (
+            <>
+              {connectionStatus.pinecone?.includes("✅") && (
+                <span title="Data Connected">🌲</span>
+              )}
+              {connectionStatus.openai?.includes("✅") && (
+                <span title="AI Connected">🤖</span>
+              )}
+              {connectionStatus.wix?.includes("✅") && (
+                <span title="Site Data Connected">🌀</span>
+              )}
+            </>
           )}
         </div>
       </div>
