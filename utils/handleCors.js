@@ -1,39 +1,3 @@
-import handleCors from '@/utils/handleCors';
-
-/**
- * ✅ Simple, synchronous CORS handler
- */
-export async function handler(req, res) {
-  if (handleCors(req, res)) return;
-  
-  try {
-    // Test simple query
-    const response = await fetch(`${req.headers.origin || 'http://localhost:3000'}/api/pinecone/queryDocuments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: 'freediving safety',
-        topK: 3
-      })
-    });
-
-    const result = await response.json();
-    
-    return res.status(200).json({
-      success: response.ok,
-      pineconeStatus: response.ok ? 'connected' : 'failed',
-      data: result
-    });
-    
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      pineconeStatus: 'error',
-      error: error.message
-    });
-  }
-}
-
 /**
  * ✅ Simple, synchronous CORS handler
  */
