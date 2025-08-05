@@ -1,12 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
-import handleCors from '@/utils/cors';
-import { getNextEQQuestion, evaluateEQAnswers } from '@/lib/coaching/eqEngine';
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
 import getEmbedding from '@/lib/getEmbedding';
 import { fetchUserMemory, saveUserMemory } from '@/lib/userMemoryManager';
 
-// ✅ Validate environment variables
+// ✅ Environment validation
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX = process.env.PINECONE_INDEX;
@@ -19,465 +18,237 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY || '' });
 const pinecone = PINECONE_API_KEY ? new Pinecone({ apiKey: PINECONE_API_KEY }) : null;
 const index = pinecone && PINECONE_INDEX ? pinecone.index(PINECONE_INDEX) : null;
 
-// ✅ Improved numeric PB parsing with bounds checking
+// ✅ Simple user level detection
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
   try {
-    const pbRaw = profile?.pb || profile?.personalBestDepth || 0;
-    const numericPB = parseFloat(pbRaw.toString().replace(/[^\d.]/g, '')) || 0;
-    const certLevel = (profile?.certLevel || '').toLowerCase();
+    const pb = parseFloat(profile?.pb || 0);
     const isInstructor = Boolean(profile?.isInstructor);
-
-    if (isInstructor || certLevel.includes('instructor')) return 'expert';
-    if (numericPB >= 80 && numericPB <= 300) return 'expert'; // ✅ Added upper bound check
+    
+    if (isInstructor || pb > 80) return 'expert';
     return 'beginner';
-  } catch (error) {
-    console.warn('⚠️ Error detecting user level:', error);
+  } catch {
     return 'beginner';
   }
 }
 
+// ✅ Simple depth range
 function getDepthRange(depth: number): string {
-  if (!depth || isNaN(depth) || depth < 0) return '10m';
-  if (depth > 300) return '100m'; // ✅ Cap extreme values
-  const rounded = Math.floor(depth / 10) * 10;
-  return `${rounded}m`;
+  if (!depth || depth <= 0) return '10m';
+  if (depth > 100) return '100m';
+  return `${Math.floor(depth / 10) * 10}m`;
 }
 
-// ✅ Enhanced Pinecone query with better error handling
-async function queryPinecone(query: string, depthRange: string): Promise<string[]> {
-  if (!index) {
-    console.warn("⚠️ Pinecone index not initialized.");
-    return [];
-  }
-
-  if (!query || query.trim().length < 3) {
-    console.warn("⚠️ Query too short for Pinecone");
+// ✅ Simplified Pinecone query
+async function queryPinecone(query: string): Promise<string[]> {
+  if (!index || !query?.trim()) {
+    console.warn("⚠️ Pinecone not available or empty query");
     return [];
   }
 
   try {
     const vector = await getEmbedding(query);
-    if (!Array.isArray(vector) || vector.length === 0) {
-      console.warn("⚠️ Invalid embedding vector");
-      return [];
-    }
+    if (!vector?.length) return [];
 
-    // Primary query with depth filter
-    let result: any = await index.query({
+    const result = await index.query({
       vector,
-      topK: 8,
+      topK: 5,
       includeMetadata: true,
-      filter: { 
-        approvedBy: { "$eq": "Koval" }, 
-        depthRange: { "$in": [depthRange, "all"] } 
-      },
+      filter: { approvedBy: { "$eq": "Koval" } }
     });
-
-    // Fallback query without depth filter
-    if (!result?.matches?.length) {
-      console.log(`ℹ️ No matches for ${depthRange}, trying without depth filter`);
-      result = await index.query({
-        vector,
-        topK: 8,
-        includeMetadata: true,
-        filter: { approvedBy: { "$eq": "Koval" } },
-      });
-    }
 
     const chunks = result?.matches
       ?.map((m: any) => m.metadata?.text)
-      .filter((t: string): t is string => typeof t === 'string' && t.length > 15) || [];
+      .filter((text: string) => text && text.length > 10) || [];
 
-    console.log(`✅ Pinecone returned ${chunks.length} relevant chunks`);
+    console.log(`✅ Found ${chunks.length} relevant chunks`);
     return chunks;
 
-  } catch (err: any) {
-    console.error('❌ Pinecone query error:', err.message);
+  } catch (error: any) {
+    console.error('❌ Pinecone query failed:', error.message);
     return [];
   }
 }
 
-function generateSystemPrompt(level: 'expert' | 'beginner', depthRange: string): string {
-  return `
-You are **Koval Deep AI**, a freediving coaching assistant powered by Daniel Koval's real training data.
+// ✅ Simple system prompt
+function generateSystemPrompt(level: 'expert' | 'beginner'): string {
+  return `You are Koval Deep AI, a freediving coach powered by Daniel Koval's training expertise.
 
-### 🎯 Rules:
-- Provide expert-level freediving coaching advice ONLY from the given Koval knowledge base.
-- Do NOT invent information not in context.
-- Prioritize safety, progressive depth adaptation, and realistic training goals.
-- Tailor tone and advice to a ${level}-level freediver targeting ${depthRange} depths.
+🎯 Guidelines:
+- Provide ${level}-level freediving advice based on the knowledge provided
+- Focus on safety, technique, and progressive training
+- Keep responses under 600 words
+- Be encouraging and practical
 
-### ✅ Response Format:
-1️⃣ Physics & Physiology at ${depthRange}  
-2️⃣ Technical Analysis  
-3️⃣ Targeted Training Plan  
-4️⃣ Safety & Strategy  
-5️⃣ Motivator Hook
-
-Keep responses under 800 words, actionable, and encouraging.
-`;
+If you don't have specific information, say so honestly and offer general safety advice.`;
 }
 
-// ✅ Enhanced retry logic with proper error handling
+// ✅ Simplified OpenAI request
 async function askWithContext(
   contextChunks: string[], 
   message: string, 
-  userLevel: 'expert' | 'beginner', 
-  depthRange: string
+  userLevel: 'expert' | 'beginner'
 ): Promise<string> {
-  const context = contextChunks.length
-    ? contextChunks.slice(0, 5).join('\n\n')
-    : "No relevant Koval knowledge found for this query. Reply with 'I don't have specific data on this yet, but I can offer general freediving safety advice.'";
-
-  const systemPrompt = generateSystemPrompt(userLevel, depthRange);
-
+  
   if (!OPENAI_API_KEY) {
     return "⚠️ OpenAI is not configured. Please check the API settings.";
   }
 
-  let lastError: any = null;
-  const maxAttempts = 3;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`🤖 OpenAI attempt ${attempt}/${maxAttempts}`);
-      
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        temperature: 0.3,
-        max_tokens: 1200,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'system',
-            content: `Knowledge Base:\n${context}\n\nOnly answer based on this knowledge. If information is missing, say: "I don't have specific data on this yet."`,
-          },
-          { role: 'user', content: message },
-        ],
-      });
-
-      const content = response?.choices?.[0]?.message?.content?.trim();
-      
-      if (!content) {
-        throw new Error('Empty response from OpenAI');
-      }
-
-      console.log(`✅ OpenAI responded successfully on attempt ${attempt}`);
-      return content;
-
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`⚠️ OpenAI attempt ${attempt} failed:`, err.message);
-
-      // Don't retry on certain errors
-      if (err.status === 401 || err.status === 403) {
-        return "⚠️ Authentication error with OpenAI. Please check API key.";
-      }
-
-      if (err.status === 429) {
-        return "⚠️ Too many requests. Please wait a moment and try again.";
-      }
-
-      // Wait before retry (exponential backoff)
-      if (attempt < maxAttempts) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`⏳ Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  console.error(`❌ All OpenAI attempts failed. Last error:`, lastError?.message);
-  return "⚠️ I'm having trouble responding right now. Please try again in a moment.";
-}
-
-// ✅ Safe JSON parsing for profile extraction
-async function extractProfileFields(message: string): Promise<Record<string, any>> {
-  if (!OPENAI_API_KEY) {
-    console.warn('⚠️ Cannot extract profile - OpenAI not configured');
-    return {};
-  }
+  const context = contextChunks.length
+    ? contextChunks.slice(0, 3).join('\n\n')
+    : "No specific knowledge found. Provide general freediving safety advice.";
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      temperature: 0,
-      max_tokens: 300,
+      model: 'gpt-4o-mini', // ✅ Use faster, cheaper model
+      temperature: 0.7,
+      max_tokens: 800,
       messages: [
-        { 
-          role: 'system', 
-          content: 'Extract freediving profile info from user message. Return valid JSON only with these exact keys: pb, certLevel, focus, isInstructor, discipline, currentDepth. Use null for missing values.' 
-        },
-        { role: 'user', content: message },
-      ],
+        { role: 'system', content: generateSystemPrompt(userLevel) },
+        { role: 'system', content: `Knowledge Base:\n${context}` },
+        { role: 'user', content: message }
+      ]
     });
 
-    let content = response.choices[0].message.content || '{}';
+    const content = response?.choices?.[0]?.message?.content?.trim();
     
-    // Clean and extract JSON
-    content = content.replace(/```json|```/g, '').trim();
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) {
-      console.log('ℹ️ No profile data found in message');
-      return {};
+    if (!content) {
+      throw new Error('Empty response from OpenAI');
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    return content;
+
+  } catch (error: any) {
+    console.error('❌ OpenAI error:', error.message);
     
-    // Validate extracted data
-    const cleaned: Record<string, any> = {};
-    if (typeof parsed.pb === 'number' && parsed.pb > 0 && parsed.pb <= 300) cleaned.pb = parsed.pb;
-    if (typeof parsed.certLevel === 'string' && parsed.certLevel.length > 0) cleaned.certLevel = parsed.certLevel;
-    if (typeof parsed.focus === 'string' && parsed.focus.length > 0) cleaned.focus = parsed.focus;
-    if (typeof parsed.isInstructor === 'boolean') cleaned.isInstructor = parsed.isInstructor;
-    if (typeof parsed.discipline === 'string' && parsed.discipline.length > 0) cleaned.discipline = parsed.discipline;
-    if (typeof parsed.currentDepth === 'number' && parsed.currentDepth > 0 && parsed.currentDepth <= 300) cleaned.currentDepth = parsed.currentDepth;
-
-    console.log(`✅ Extracted profile fields:`, Object.keys(cleaned));
-    return cleaned;
-
-  } catch (err: any) {
-    console.warn("⚠️ Profile extraction failed:", err.message);
-    return {};
+    if (error.status === 401) {
+      return "⚠️ Authentication error. Please check API configuration.";
+    }
+    if (error.status === 429) {
+      return "⚠️ Too many requests. Please wait a moment and try again.";
+    }
+    
+    return "⚠️ I'm having trouble responding right now. Please try again.";
   }
 }
 
-// ✅ Enhanced memory saving with error handling
-async function saveConversationToMemory(
-  userId: string, 
-  message: string, 
-  assistantReply: string, 
-  profile: any, 
-  eqState: any, 
-  sessionId?: string, 
-  sessionName?: string
-): Promise<boolean> {
-  try {
-    await saveUserMemory(userId, {
-      logs: [{ 
-        userMessage: message.slice(0, 1000), // Limit length
-        assistantReply: assistantReply.slice(0, 2000), 
-        timestamp: new Date().toISOString() 
-      }],
-      profile,
-      eqState,
-      sessionId,
-      sessionName,
-    });
-    console.log(`✅ Memory saved for user ${userId}`);
-    return true;
-  } catch (err: any) {
-    console.warn('⚠️ Failed to save user memory:', err.message);
-    return false;
-  }
-}
-
+// ✅ Main handler - simplified
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const startTime = Date.now();
-  
-  // ✅ Initialize embedMode with a default value
-  let embedMode = false;
 
   try {
-    // ✅ CORS handling
-    if (await handleCors(req, res)) return;
+    // ✅ UPDATED: Use handleCors.js (now returns Promise)
+    await handleCors(req, res);
+    
+    if (req.method === 'OPTIONS') return; // Early exit for preflight
 
     if (req.method !== 'POST') {
       return res.status(405).json({ 
         error: 'Method Not Allowed',
-        message: 'Only POST requests are allowed'
+        message: 'Only POST requests allowed'
       });
     }
 
-    // Input validation
+    // ✅ Extract and validate input
     const { 
       message, 
       userId = 'guest', 
       profile = {}, 
-      eqState = {}, 
-      diveLogs = [], 
-      uploadOnly = false, 
-      sessionId, 
-      sessionName,
-      embedMode: requestEmbedMode = false  // ✅ Rename to avoid conflict
+      embedMode = false 
     } = req.body;
 
-    // ✅ Set embedMode for use in catch block
-    let embedMode = requestEmbedMode || false; // Initialize embedMode with a default value
-
-    // Validate required fields
-    if (!message && !uploadOnly) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    if (message && (typeof message !== 'string' || message.trim().length === 0)) {
-      return res.status(400).json({ error: 'Message must be a non-empty string' });
-    }
-
-    if (message && message.length > 5000) {
-      return res.status(400).json({ error: 'Message too long (max 5000 characters)' });
-    }
-
-    // Handle upload-only requests
-    if (uploadOnly) {
-      return res.status(200).json({
-        assistantMessage: { 
-          role: 'assistant', 
-          content: '✅ Dive images uploaded successfully! I\'ll analyze them when relevant to our conversation.' 
-        },
-        metadata: { 
-          sessionType: 'upload-only',
-          processingTime: Date.now() - startTime 
-        },
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ 
+        error: 'Invalid message',
+        message: 'Message is required and must be a non-empty string'
       });
     }
 
-    console.log(`🚀 Processing chat request for user: ${userId}`);
+    if (message.length > 2000) {
+      return res.status(400).json({ 
+        error: 'Message too long',
+        message: 'Maximum 2000 characters allowed'
+      });
+    }
 
-    // Load user memory
+    console.log(`🚀 Processing chat for user: ${userId}`);
+
+    // ✅ Load user memory (with fallback)
     let pastMemory: any = {};
     try {
       pastMemory = await fetchUserMemory(userId) || {};
-    } catch (err: any) {
-      console.warn('⚠️ Failed to load user memory:', err.message);
+    } catch (error) {
+      console.warn('⚠️ Could not load user memory:', error);
     }
 
-    // ✅ Safe profile merging
-    let mergedProfile = { ...pastMemory?.profile };
-    
-    // Merge provided profile
-    Object.entries(profile).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        mergedProfile[key] = value;
-      }
-    });
-
-    // Extract profile from message
-    const extractedProfile = await extractProfileFields(message);
-    Object.assign(mergedProfile, extractedProfile);
-
-    // Preserve instructor status
-    if (pastMemory?.profile?.isInstructor) {
-      mergedProfile.isInstructor = true;
-    }
-
-    // Determine user characteristics
-    const logDepth = Array.isArray(diveLogs) && diveLogs.length 
-      ? parseFloat(diveLogs[diveLogs.length - 1]?.reachedDepth || 0) 
-      : undefined;
-      
-    const depthRange = getDepthRange(
-      mergedProfile.currentDepth || mergedProfile.pb || logDepth || 10
-    );
+    // ✅ Merge profiles
+    const mergedProfile = { ...pastMemory?.profile, ...profile };
     const userLevel = detectUserLevel(mergedProfile);
+    const depthRange = getDepthRange(mergedProfile.pb || mergedProfile.currentDepth || 10);
 
-    console.log(`👤 User profile: ${userLevel} level, ${depthRange} range`);
+    console.log(`👤 User: ${userLevel} level, ${depthRange} target`);
 
-    // Build conversation history
-    const historyContext = pastMemory?.logs
-      ?.slice(-3)
-      .map((l: any) => `User: ${l.userMessage}\nAssistant: ${l.assistantReply}`)
-      .join("\n\n") || "";
+    // ✅ Query knowledge base
+    const contextChunks = await queryPinecone(message);
 
-    // Handle EQ assessments
-    if (eqState?.currentDepth) {
-      try {
-        const followup = getNextEQQuestion(eqState);
-        if (followup.type === 'question') {
-          return res.status(200).json({ 
-            type: 'eq-followup', 
-            key: followup.key, 
-            question: followup.question,
-            metadata: { processingTime: Date.now() - startTime }
-          });
-        } else if (followup.type === 'diagnosis-ready') {
-          const result = evaluateEQAnswers(eqState.answers);
-          return res.status(200).json({ 
-            type: 'eq-diagnosis', 
-            label: result.label, 
-            drills: result.drills,
-            metadata: { processingTime: Date.now() - startTime }
-          });
-        }
-      } catch (err: any) {
-        console.warn("⚠️ EQ assessment failed:", err.message);
-      }
-    }
+    // ✅ Generate response
+    const assistantReply = await askWithContext(contextChunks, message, userLevel);
 
-    // Build enhanced user context
-    let userContext = historyContext ? `${historyContext}\n\nCurrent message: ${message}` : message;
-    
-    if (Array.isArray(diveLogs) && diveLogs.length > 0) {
-      const lastLog = diveLogs[diveLogs.length - 1];
-      userContext += `\n\nMost recent dive log: ${JSON.stringify(lastLog)}. Please evaluate this dive and help me progress safely toward ${mergedProfile.targetDepth || 120}m.`;
-    }
-
-    // Query knowledge base
-    let contextChunks: string[] = [];
-    try {
-      contextChunks = await queryPinecone(userContext, depthRange);
-    } catch (err: any) {
-      console.warn("⚠️ Knowledge base query failed:", err.message);
-    }
-
-    // Generate AI response
-    const assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
-
-    // Save conversation to memory (only if successful response)
+    // ✅ Save to memory (if not error response)
     if (!assistantReply.startsWith("⚠️")) {
-      await saveConversationToMemory(
-        userId, 
-        message, 
-        assistantReply, 
-        mergedProfile, 
-        eqState, 
-        sessionId, 
-        sessionName
-      );
+      try {
+        await saveUserMemory(userId, {
+          logs: [{ 
+            userMessage: message.slice(0, 500),
+            assistantReply: assistantReply.slice(0, 1000),
+            timestamp: new Date().toISOString()
+          }],
+          profile: mergedProfile
+        });
+        console.log(`✅ Memory saved for ${userId}`);
+      } catch (error) {
+        console.warn('⚠️ Memory save failed:', error);
+      }
     }
 
     const processingTime = Date.now() - startTime;
     console.log(`✅ Chat completed in ${processingTime}ms`);
 
     return res.status(200).json({
-      assistantMessage: { role: 'assistant', content: assistantReply },
+      assistantMessage: { 
+        role: 'assistant', 
+        content: assistantReply 
+      },
       metadata: { 
         userLevel, 
         depthRange, 
-        contextChunksCount: contextChunks.length,
+        contextChunks: contextChunks.length,
         processingTime,
-        embedMode  // ✅ Now accessible
-      },
+        embedMode
+      }
     });
 
-  } catch (err: any) {
+  } catch (error: any) {
     const processingTime = Date.now() - startTime;
-    console.error('❌ Fatal error in /api/openai/chat:', err);
+    console.error('❌ Fatal error in chat API:', error);
     
-    // Return proper error status for debugging
-    const status = err.status || 500;
-    const errorMessage = embedMode  // ✅ Now accessible in catch block
-      ? "⚠️ I'm having temporary issues, but I'm still here to help you!"
-      : "⚠️ Something went wrong on our end. Please try again in a moment.";
-
-    return res.status(status).json({
-      assistantMessage: { role: 'assistant', content: errorMessage },
+    return res.status(500).json({
+      assistantMessage: { 
+        role: 'assistant', 
+        content: "⚠️ I'm having technical difficulties. Please try again in a moment." 
+      },
       metadata: { 
         error: true, 
         processingTime,
-        errorType: err.name || 'UnknownError',
-        embedMode  // ✅ Now accessible
-      },
+        errorType: error.name || 'UnknownError'
+      }
     });
   }
 }
 
-// ✅ Add timeout config
 export const config = {
   api: {
-    bodyParser: { sizeLimit: '5mb' },
+    bodyParser: { sizeLimit: '2mb' },
     responseLimit: false,
-    timeout: 35000 // 35 seconds (slightly longer than OpenAI timeout)
+    timeout: 30000 // 30 seconds
   }
 };

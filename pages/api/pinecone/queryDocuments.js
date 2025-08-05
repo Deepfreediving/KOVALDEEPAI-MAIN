@@ -1,11 +1,15 @@
 import handleCors from "@/utils/cors";
 import { queryData } from "./pineconeInit"; // ✅ Fixed - use local file
+import handleCorsOptions from '@/utils/handleCors'; // ✅ ADD if not present
 
 export default async function handler(req, res) {
   const startTime = Date.now();
   
   try {
-    if (await handleCors(req, res)) return;
+    // ✅ ADD CORS handling
+    await handleCors(req, res);
+    
+    if (req.method === 'OPTIONS') return;
 
     if (req.method !== "POST") {
       return res.status(405).json({ 
