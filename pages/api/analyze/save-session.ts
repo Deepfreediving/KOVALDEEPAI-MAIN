@@ -2,7 +2,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -25,13 +25,14 @@ interface MemoryLog {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (await handleCors(req, res)) return;
-  // ✅ Allow only POST
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
   try {
+    // ✅ Use handleCors
+    if (handleCors(req, res)) return; // Early exit for OPTIONS
+    
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
     const { userId, sessionName, profile, eqState, messages, timestamp } = req.body;
 
     // ✅ Validate inputs
@@ -90,8 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({ success: true, saved: results });
 
-  } catch (err: any) {
-    console.error("❌ Save session error:", err.response?.data || err.message);
-    return res.status(500).json({ error: "Failed to save session to Wix." });
+  } catch (error) {
+    console.error('❌ Save session error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

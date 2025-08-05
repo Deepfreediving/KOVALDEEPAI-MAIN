@@ -2,7 +2,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { queryVectors } from "@/lib/pineconeService"; // ✅ Should internally handle PINECONE_HOST
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 import OpenAI from "openai";
 
 const openai = new OpenAI({

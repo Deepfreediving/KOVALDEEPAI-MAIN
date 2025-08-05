@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
-import handleCors from '@/utils/cors';
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (await handleCors(req, res)) return;

@@ -1,17 +1,17 @@
 // pages/api/analyze/save-dive-log.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
-import handleCors from '@/utils/cors';
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
 import { saveLogEntry } from '@/utils/diveLogHelpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // ✅ Handle CORS preflight
-    if (await handleCors(req, res)) return;
+    // ✅ Use handleCors
+    if (handleCors(req, res)) return; // Early exit for OPTIONS
 
     // ✅ Allow only POST
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method Not Allowed' });
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const {

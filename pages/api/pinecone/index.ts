@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { upsertData, queryData } from "./pineconeInit";
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

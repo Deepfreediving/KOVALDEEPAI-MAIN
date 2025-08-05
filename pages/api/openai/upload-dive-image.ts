@@ -3,7 +3,7 @@ import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import handleCors from '@/utils/cors';
+import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
 
 export const config = {
   api: {
