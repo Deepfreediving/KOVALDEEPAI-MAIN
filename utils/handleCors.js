@@ -3,7 +3,7 @@ import handleCors from '@/utils/handleCors';
 /**
  * ✅ Simple, synchronous CORS handler
  */
-export default async function handler(req, res) {
+export async function handler(req, res) {
   if (handleCors(req, res)) return;
   
   try {
@@ -99,5 +99,6 @@ function isOriginAllowed(origin) {
          (origin.includes('vercel.app') && origin.includes('kovaldeepai'));
 }
 
-// ✅ Exports
-export { handleCors, quickCors, isOriginAllowed };
+// ✅ Single export section
+export default handleCors;
+export { quickCors, isOriginAllowed };

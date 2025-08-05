@@ -45,7 +45,7 @@ try {
   throw new Error(`Pinecone setup failed: ${error.message}`);
 }
 
-// ✅ Export functions
+// ✅ Export functions (ONLY ONCE)
 export async function queryData(vector, options = {}) {
   try {
     if (!index) {
