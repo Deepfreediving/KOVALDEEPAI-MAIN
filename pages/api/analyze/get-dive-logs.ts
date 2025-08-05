@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs/promises";
 import path from "path";
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 
 const LOG_DIR = path.resolve("./data/diveLogs");
 const SAFE_USERID = /^[a-zA-Z0-9_-]+$/;
@@ -20,11 +20,12 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ApiResponse>
 ): Promise<void> {
-  if (await handleCors(req, res)) return;
   try {
+    // ✅ Use handleCors
+    if (handleCors(req, res)) return; // Early exit for OPTIONS
+
     if (req.method !== "GET") {
-      res.status(405).json({ error: "Method Not Allowed" });
-      return;
+      return res.status(405).json({ error: "Method not allowed" });
     }
 
     const { userId } = req.query;
@@ -75,9 +76,8 @@ export default async function handler(
     });
 
     res.status(200).json({ logs });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("❌ Failed to read dive logs:", message);
-    res.status(500).json({ error: "Internal Server Error" });
+  } catch (error) {
+    console.error("❌ Get dive logs error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

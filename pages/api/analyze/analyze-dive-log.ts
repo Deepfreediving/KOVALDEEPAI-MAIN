@@ -1,18 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { analyzeDiveLogText, generateDiveReport } from "../../../utils/analyzeDiveLog";
-import handleCors from "@/utils/cors";
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 /**
  * @route   POST /api/analyze/analyze-dive-log
  * @desc    Analyze dive log text without saving it
  * @access  Public
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (await handleCors(req, res)) return;
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
   try {
+    // ✅ Use handleCors
+    if (handleCors(req, res)) return; // Early exit for OPTIONS
+
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
     const { text = "" } = req.body;
 
     if (!text || typeof text !== "string") {
@@ -28,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       coachingReport,
     });
   } catch (error: any) {
-    console.error("❌ Error analyzing dive log:", error.message || error);
-    return res.status(500).json({ error: "Failed to analyze dive log." });
+    console.error("❌ Analyze dive log error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
