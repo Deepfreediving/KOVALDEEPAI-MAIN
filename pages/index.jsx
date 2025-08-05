@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import ChatMessages from "../components/ChatMessages";
 import Sidebar from "../components/Sidebar";
 import ChatBox from "../components/ChatBox";
-import apiClient from "../utils/apiClient";
+// ✅ Fix: Remove or create proper apiClient import
+// import apiClient from "../utils/apiClient";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
@@ -10,6 +11,31 @@ const API_ROUTES = {
   GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
   READ_MEMORY: "/api/analyze/read-memory",
   QUERY_WIX: "/api/wix/query-wix-data",
+};
+
+// ✅ Add safe API client
+const apiClient = {
+  async checkAllConnections({ signal } = {}) {
+    try {
+      const checks = await Promise.allSettled([
+        fetch('/api/health/openai', { signal }),
+        fetch('/api/health/pinecone', { signal }),
+        fetch('/api/health/wix', { signal })
+      ]);
+
+      return {
+        openai: checks[0].status === 'fulfilled' && checks[0].value.ok ? '✅ Connected' : '❌ Disconnected',
+        pinecone: checks[1].status === 'fulfilled' && checks[1].value.ok ? '✅ Connected' : '❌ Disconnected',
+        wix: checks[2].status === 'fulfilled' && checks[2].value.ok ? '✅ Connected' : '❌ Disconnected',
+      };
+    } catch (error) {
+      return {
+        openai: '❌ Error',
+        pinecone: '❌ Error', 
+        wix: '❌ Error'
+      };
+    }
+  }
 };
 
 export default function Index() {
@@ -26,7 +52,14 @@ export default function Index() {
   const [files, setFiles] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("kovalDarkMode") === "true");
+  const [darkMode, setDarkMode] = useState(() => {
+    // ✅ Fix: Safe localStorage access
+    try {
+      return localStorage.getItem("kovalDarkMode") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState(null);
   const [profile, setProfile] = useState({});
@@ -48,13 +81,21 @@ export default function Index() {
   const storageKey = (uid) => `diveLogs-${uid}`;
   const safeParse = (key, fallback) => {
     try {
-      return JSON.parse(localStorage.getItem(key)) || fallback;
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : fallback;
     } catch {
       return fallback;
     }
   };
 
-  const savePendingSync = (logs) => localStorage.setItem("pendingSync", JSON.stringify(logs));
+  const savePendingSync = (logs) => {
+    try {
+      localStorage.setItem("pendingSync", JSON.stringify(logs));
+    } catch (error) {
+      console.warn('⚠️ Failed to save pending sync:', error);
+    }
+  };
+  
   const getPendingSync = () => safeParse("pendingSync", []);
 
   const getDisplayName = () =>
@@ -66,52 +107,77 @@ export default function Index() {
   // LocalStorage Initialization
   // ----------------------------
   useEffect(() => {
-    setSessionsList(safeParse("kovalSessionsList", []));
-    setUserId(localStorage.getItem("kovalUser") || "");
-    setThreadId(localStorage.getItem("kovalThreadId") || null);
-    setProfile(safeParse("kovalProfile", {}));
+    try {
+      setSessionsList(safeParse("kovalSessionsList", []));
+      setUserId(localStorage.getItem("kovalUser") || "");
+      setThreadId(localStorage.getItem("kovalThreadId") || null);
+      setProfile(safeParse("kovalProfile", {}));
+    } catch (error) {
+      console.warn('⚠️ Failed to load from localStorage:', error);
+    }
   }, []);
 
   // Theme Sync
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
-    localStorage.setItem("kovalDarkMode", darkMode);
+    try {
+      document.documentElement.classList.toggle("dark", darkMode);
+      localStorage.setItem("kovalDarkMode", darkMode);
+    } catch (error) {
+      console.warn('⚠️ Failed to save dark mode:', error);
+    }
   }, [darkMode]);
 
   // Widget Messages Listener
   useEffect(() => {
     const handleWidgetMessages = ({ data }) => {
-      if (!data) return;
-      switch (data.type) {
-        case "USER_AUTH":
-          setUserId(data.userId);
-          setProfile(data.profile || {});
-          localStorage.setItem("kovalUser", data.userId);
-          localStorage.setItem("kovalProfile", JSON.stringify(data.profile || {}));
-          break;
-        case "THEME_CHANGE":
-          if (typeof data.dark === "boolean") setDarkMode(data.dark);
-          break;
-        case "RESIZE_IFRAME":
-          if (data.height && window.parent) {
-            window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
-          }
-          break;
-        default:
-          break;
+      if (!data?.type) return;
+      
+      try {
+        switch (data.type) {
+          case "USER_AUTH":
+            if (data.userId) {
+              setUserId(data.userId);
+              localStorage.setItem("kovalUser", data.userId);
+            }
+            if (data.profile) {
+              setProfile(data.profile);
+              localStorage.setItem("kovalProfile", JSON.stringify(data.profile));
+            }
+            break;
+            
+          case "THEME_CHANGE":
+            if (typeof data.dark === "boolean") {
+              setDarkMode(data.dark);
+            }
+            break;
+            
+          case "RESIZE_IFRAME":
+            if (data.height && window.parent !== window) {
+              window.parent.postMessage({ type: "WIDGET_RESIZE", height: data.height }, "*");
+            }
+            break;
+            
+          default:
+            console.log('🔄 Unhandled widget message:', data.type);
+        }
+      } catch (error) {
+        console.warn('⚠️ Error handling widget message:', error);
       }
     };
+
     window.addEventListener("message", handleWidgetMessages);
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // Inject Bot Iframe with cleanup
+  // ✅ Fix: Remove dangerous iframe injection
+  // This was likely causing conflicts - remove it or make it safer
+  /*
   useEffect(() => {
     const existingIframe = document.querySelector("#KovalAIFrame");
     if (existingIframe) return;
     const iframe = document.createElement("iframe");
     iframe.id = "KovalAIFrame";
-    iframe.src = "/koval-ai.html";
+    iframe.src = "/koval-ai.html"; // ⚠️ This could load Firebase again
     iframe.style.cssText =
       "width:100%;height:0;border:none;position:fixed;bottom:0;right:0;z-index:9999;";
     document.body.appendChild(iframe);
@@ -119,13 +185,20 @@ export default function Index() {
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
     };
   }, []);
+  */
 
   // Open Bot if No Memories
   useEffect(() => {
-    const handler = () =>
-      window.KovalAI?.sendMessage?.(
-        "Hi, I noticed you don’t have any saved memories yet. Would you like me to help you get started?"
-      );
+    const handler = () => {
+      try {
+        window.KovalAI?.sendMessage?.(
+          "Hi, I noticed you don't have any saved memories yet. Would you like me to help you get started?"
+        );
+      } catch (error) {
+        console.warn('⚠️ Error sending bot message:', error);
+      }
+    };
+    
     window.addEventListener("OpenBotIfNoMemories", handler);
     return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
@@ -133,47 +206,74 @@ export default function Index() {
   // Connection Check with AbortController
   useEffect(() => {
     const controller = new AbortController();
+    
     (async () => {
       try {
         const result = await apiClient.checkAllConnections({ signal: controller.signal });
-        setConnectionStatus(result);
+        if (!controller.signal.aborted) {
+          setConnectionStatus(result);
+        }
       } catch (error) {
-        if (error.name !== "AbortError") console.warn("⚠️ API connection check failed:", error);
+        if (error.name !== "AbortError") {
+          console.warn("⚠️ API connection check failed:", error);
+          setConnectionStatus({
+            wix: "❌ Error",
+            openai: "❌ Error",
+            pinecone: "❌ Error",
+          });
+        }
       } finally {
-        setLoadingConnections(false);
+        if (!controller.signal.aborted) {
+          setLoadingConnections(false);
+        }
       }
     })();
+    
     return () => controller.abort();
   }, []);
 
   // Init AI Thread safely
   useEffect(() => {
     if (!userId || threadId || localStorage.getItem("kovalThreadId")) return;
+    
     const controller = new AbortController();
+    
     (async () => {
       try {
         const res = await fetch(API_ROUTES.CREATE_THREAD, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
+          body: JSON.stringify({ 
+            username: userId, 
+            displayName: getDisplayName(),
+            timestamp: Date.now()
+          }),
           signal: controller.signal,
         });
-        if (!res.ok) throw new Error("Failed to create thread");
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
         const data = await res.json();
-        if (data.threadId) {
+        if (data.threadId && !controller.signal.aborted) {
           setThreadId(data.threadId);
           localStorage.setItem("kovalThreadId", data.threadId);
         }
       } catch (err) {
-        if (err.name !== "AbortError") console.error("❌ Thread init failed:", err);
+        if (err.name !== "AbortError") {
+          console.error("❌ Thread init failed:", err);
+        }
       }
     })();
+    
     return () => controller.abort();
   }, [userId, threadId]);
 
   // Load Dive Logs
   useEffect(() => {
     if (!userId) return;
+    
     const controller = new AbortController();
     const key = storageKey(userId);
     const localLogs = safeParse(key, []);
@@ -181,8 +281,10 @@ export default function Index() {
 
     (async () => {
       try {
-        const [remoteRes, memRes] = await Promise.all([
-          fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(userId)}`, { signal: controller.signal }),
+        const [remoteRes, memRes] = await Promise.allSettled([
+          fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(userId)}`, { 
+            signal: controller.signal 
+          }),
           fetch(API_ROUTES.READ_MEMORY, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -191,10 +293,15 @@ export default function Index() {
           }),
         ]);
 
-        if (!remoteRes.ok && !memRes.ok) throw new Error("Failed to fetch logs");
+        const remoteLogs = remoteRes.status === 'fulfilled' && remoteRes.value.ok 
+          ? await remoteRes.value.json() || []
+          : [];
+          
+        const memData = memRes.status === 'fulfilled' && memRes.value.ok
+          ? (await memRes.value.json())?.memory || []
+          : [];
 
-        const remoteLogs = (await remoteRes.json()) || [];
-        const memData = (await memRes.json())?.memory || [];
+        if (controller.signal.aborted) return;
 
         const merged = [...localLogs, ...remoteLogs, ...memData].reduce((map, log) => {
           const key = log.localId || log._id || log.id;
@@ -206,9 +313,16 @@ export default function Index() {
 
         const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
         setDiveLogs(combined);
-        localStorage.setItem(key, JSON.stringify(combined));
+        
+        try {
+          localStorage.setItem(key, JSON.stringify(combined));
+        } catch (error) {
+          console.warn('⚠️ Failed to save dive logs to localStorage:', error);
+        }
       } catch (err) {
-        if (err.name !== "AbortError") console.warn("⚠️ Dive log fetch failed. Using local only.", err);
+        if (err.name !== "AbortError") {
+          console.warn("⚠️ Dive log fetch failed. Using local only.", err);
+        }
       }
     })();
 
@@ -220,18 +334,28 @@ export default function Index() {
   // ----------------------------
   const handleJournalSubmit = useCallback(
     (entry) => {
-      const key = storageKey(userId);
-      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
-      const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
-      setDiveLogs(updated);
-      localStorage.setItem(key, JSON.stringify(updated));
-      savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
-      setShowDiveJournalForm(false);
-      setEditLogIndex(null);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "📝 Dive log saved locally and queued for sync." },
-      ]);
+      try {
+        const key = storageKey(userId);
+        const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+        const updated = [...diveLogs.filter((l) => l.localId !== newEntry.localId), newEntry];
+        
+        setDiveLogs(updated);
+        localStorage.setItem(key, JSON.stringify(updated));
+        savePendingSync([...getPendingSync(), { userId, diveLog: newEntry, timestamp: new Date() }]);
+        setShowDiveJournalForm(false);
+        setEditLogIndex(null);
+        
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "📝 Dive log saved locally and queued for sync." },
+        ]);
+      } catch (error) {
+        console.error('❌ Failed to save dive log:', error);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "❌ Failed to save dive log. Please try again." },
+        ]);
+      }
     },
     [userId, diveLogs]
   );
@@ -243,29 +367,40 @@ export default function Index() {
 
   const handleDelete = useCallback(
     (index) => {
-      const key = storageKey(userId);
-      const updated = diveLogs.filter((_, i) => i !== index);
-      localStorage.setItem(key, JSON.stringify(updated));
-      setDiveLogs(updated);
+      try {
+        const key = storageKey(userId);
+        const updated = diveLogs.filter((_, i) => i !== index);
+        localStorage.setItem(key, JSON.stringify(updated));
+        setDiveLogs(updated);
+      } catch (error) {
+        console.error('❌ Failed to delete dive log:', error);
+      }
     },
     [userId, diveLogs]
   );
 
   // Save Session
   const handleSaveSession = useCallback(() => {
-    const updated = [
-      ...sessionsList.filter((s) => s.sessionName !== sessionName),
-      { sessionName, messages, timestamp: Date.now() },
-    ];
-    localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
-    localStorage.setItem("kovalSessionName", sessionName);
-    setSessionsList(updated);
-    window.KovalAI?.saveSession?.({ userId, sessionName, messages, timestamp: Date.now() });
+    try {
+      const updated = [
+        ...sessionsList.filter((s) => s.sessionName !== sessionName),
+        { sessionName, messages, timestamp: Date.now() },
+      ];
+      
+      localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+      localStorage.setItem("kovalSessionName", sessionName);
+      setSessionsList(updated);
+      
+      window.KovalAI?.saveSession?.({ userId, sessionName, messages, timestamp: Date.now() });
+    } catch (error) {
+      console.error('❌ Failed to save session:', error);
+    }
   }, [sessionName, sessionsList, messages, userId]);
 
   // Fetch Wix Data
   const fetchWixData = useCallback(async (query) => {
     const controller = new AbortController();
+    
     try {
       setLoading(true);
       const res = await fetch(API_ROUTES.QUERY_WIX, {
@@ -274,13 +409,23 @@ export default function Index() {
         body: JSON.stringify({ query }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error("Failed to fetch Wix data");
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Failed to fetch Wix data`);
+      }
+      
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: `Wix Data fetched: ${JSON.stringify(data)}` }]);
+      setMessages((prev) => [...prev, { 
+        role: "assistant", 
+        content: `✅ Wix Data fetched: ${JSON.stringify(data, null, 2)}` 
+      }]);
     } catch (err) {
       if (err.name !== "AbortError") {
-        console.error("Error fetching Wix data:", err);
-        setMessages((prev) => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
+        console.error("❌ Error fetching Wix data:", err);
+        setMessages((prev) => [...prev, { 
+          role: "assistant", 
+          content: `❌ Failed to fetch Wix data: ${err.message}` 
+        }]);
       }
     } finally {
       setLoading(false);
