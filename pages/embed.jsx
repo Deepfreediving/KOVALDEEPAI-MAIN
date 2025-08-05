@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from "react";
-
 import ChatMessages from "../components/ChatMessages";
 import ChatInput from "../components/ChatInput";
 
@@ -16,6 +15,7 @@ export default function Embed() {
   const [eqState, setEqState] = useState({});
   const [darkMode, setDarkMode] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [mounted, setMounted] = useState(false); // ✅ SSR safety
   
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
@@ -23,9 +23,19 @@ export default function Embed() {
   const [errorMsg, setErrorMsg] = useState("");
   const [botIframe, setBotIframe] = useState(null);
 
+  // ✅ SSR Safety - Mount detection
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // ✅ Initialize from URL parameters and notify parent
   useEffect(() => {
+    if (!mounted) return; // ✅ Prevent SSR issues
+
     try {
+      // ✅ Safe window access
+      if (typeof window === "undefined") return;
+      
       const params = new URLSearchParams(window.location.search);
       
       // Extract user info from URL
@@ -41,15 +51,26 @@ export default function Embed() {
         source: source
       });
 
-      // Auto-detect dark mode
-      setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      // ✅ Safe dark mode detection
+      try {
+        if (window.matchMedia) {
+          setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+        }
+      } catch (mediaError) {
+        console.warn('⚠️ Media query not supported:', mediaError);
+        setDarkMode(false);
+      }
 
-      // Notify parent window we're ready
-      if (window.parent !== window) {
-        window.parent.postMessage({
-          type: 'embed_ready',
-          data: { userId: wixUserId, userName: wixUserName }
-        }, '*');
+      // ✅ Safe parent notification
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'embed_ready',
+            data: { userId: wixUserId, userName: wixUserName }
+          }, '*');
+        }
+      } catch (postMessageError) {
+        console.warn('⚠️ PostMessage failed:', postMessageError);
       }
 
       setIsReady(true);
@@ -57,53 +78,60 @@ export default function Embed() {
       
     } catch (error) {
       console.error('❌ Embed initialization error:', error);
-      setIsReady(true); // Still show chat even if params fail
+      setIsReady(true); // ✅ Always show chat even if params fail
     }
-  }, []);
+  }, [mounted]);
 
-  // ✅ Auto-scroll to bottom
+  // ✅ Auto-scroll to bottom with error handling
   useEffect(() => {
     try {
-      if (bottomRef.current) {
+      if (bottomRef.current && mounted) {
         bottomRef.current.scrollIntoView({ behavior: "smooth" });
       }
     } catch (error) {
       console.warn('⚠️ Auto-scroll error:', error);
     }
-  }, [messages, loading]);
+  }, [messages, loading, mounted]);
 
-  // ✅ Listen for messages from parent (bot-widget.js)
+  // ✅ Listen for messages from parent with safe error handling
   useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+
     const handleParentMessage = (event) => {
-      if (!event.data?.type) return;
+      try {
+        if (!event.data?.type) return;
 
-      console.log('📥 Received from parent:', event.data.type);
+        console.log('📥 Received from parent:', event.data.type);
 
-      switch (event.data.type) {
-        case 'USER_AUTH':
-          if (event.data.userId) setUserId(event.data.userId);
-          if (event.data.profile) setProfile(prev => ({ ...prev, ...event.data.profile }));
-          break;
-          
-        case 'THEME_CHANGE':
-          setDarkMode(event.data.dark || false);
-          break;
-          
-        case 'LOAD_SAVED_SESSION':
-          // Handle saved session if needed
-          if (event.data.messages) setMessages(event.data.messages);
-          break;
-          
-        default:
-          console.log('🔄 Unhandled parent message:', event.data.type);
+        switch (event.data.type) {
+          case 'USER_AUTH':
+            if (event.data.userId) setUserId(event.data.userId);
+            if (event.data.profile) setProfile(prev => ({ ...prev, ...event.data.profile }));
+            break;
+            
+          case 'THEME_CHANGE':
+            setDarkMode(event.data.dark || false);
+            break;
+            
+          case 'LOAD_SAVED_SESSION':
+            if (event.data.messages && Array.isArray(event.data.messages)) {
+              setMessages(event.data.messages);
+            }
+            break;
+            
+          default:
+            console.log('🔄 Unhandled parent message:', event.data.type);
+        }
+      } catch (error) {
+        console.warn('⚠️ Parent message handling error:', error);
       }
     };
 
     window.addEventListener('message', handleParentMessage);
     return () => window.removeEventListener('message', handleParentMessage);
-  }, []);
+  }, [mounted]);
 
-  // ✅ File upload handler
+  // ✅ File upload handler with validation
   const handleFileChange = (e) => {
     try {
       const selected = Array.from(e.target.files || []);
@@ -111,13 +139,24 @@ export default function Embed() {
         alert("⚠️ You can only upload up to 3 images.");
         return;
       }
-      setFiles(selected);
+      
+      // ✅ Validate file types
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const validFiles = selected.filter(file => validTypes.includes(file.type));
+      
+      if (validFiles.length !== selected.length) {
+        alert("⚠️ Only image files (JPG, PNG, GIF, WebP) are allowed.");
+        return;
+      }
+      
+      setFiles(validFiles);
     } catch (error) {
       console.error('❌ File selection error:', error);
+      alert("⚠️ Error selecting files. Please try again.");
     }
   };
 
-  // ✅ Send message handler
+  // ✅ Send message handler with comprehensive error handling
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
@@ -126,19 +165,34 @@ export default function Embed() {
     setLoading(true);
 
     try {
-      // Handle file uploads first
+      // ✅ Handle file uploads first with timeout
       if (files.length > 0) {
         for (const file of files) {
           try {
             const formData = new FormData();
             formData.append("image", file);
 
+            // ✅ Add timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
             const uploadRes = await fetch("/api/openai/upload-dive-image", {
               method: "POST",
               body: formData,
+              signal: controller.signal
             });
 
-            const uploadData = await uploadRes.json().catch(() => ({}));
+            clearTimeout(timeoutId);
+
+            let uploadData = {};
+            try {
+              const textResponse = await uploadRes.text();
+              if (textResponse.trim()) {
+                uploadData = JSON.parse(textResponse);
+              }
+            } catch (parseError) {
+              console.warn('⚠️ Upload response parse error:', parseError);
+            }
 
             if (uploadRes.ok) {
               setMessages(prev => [
@@ -147,24 +201,32 @@ export default function Embed() {
                 { role: "assistant", content: uploadData.answer || "✅ Image uploaded successfully." }
               ]);
             } else {
-              throw new Error(uploadData?.error || 'Upload failed');
+              throw new Error(uploadData?.error || `Upload failed (${uploadRes.status})`);
             }
           } catch (uploadError) {
             console.error('❌ Upload error:', uploadError);
+            const errorMessage = uploadError.name === 'AbortError' 
+              ? 'Upload timeout - please try a smaller file'
+              : uploadError.message;
+            
             setMessages(prev => [
               ...prev,
               { role: "user", content: `📤 Failed: ${file.name}` },
-              { role: "assistant", content: `⚠️ Upload failed: ${uploadError.message}` }
+              { role: "assistant", content: `⚠️ Upload failed: ${errorMessage}` }
             ]);
           }
         }
         setFiles([]);
       }
 
-      // Handle chat message
+      // ✅ Handle chat message with timeout
       if (trimmedInput) {
         setMessages(prev => [...prev, { role: "user", content: trimmedInput }]);
         setInput("");
+
+        // ✅ Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
         const chatRes = await fetch("/api/openai/chat", {
           method: "POST",
@@ -177,9 +239,12 @@ export default function Embed() {
             embedMode: true,
             timestamp: Date.now()
           }),
+          signal: controller.signal
         });
 
-        // Safe JSON parsing
+        clearTimeout(timeoutId);
+
+        // ✅ Safe JSON parsing with fallback
         let chatData = {};
         try {
           const textResponse = await chatRes.text();
@@ -201,7 +266,7 @@ export default function Embed() {
           throw new Error(chatData?.error || `Chat API error (${chatRes.status})`);
         }
 
-        // Handle different response types
+        // ✅ Handle different response types safely
         if (chatData.type === "eq-followup") {
           setEqState(prev => ({
             ...prev,
@@ -223,102 +288,155 @@ export default function Embed() {
           }]);
         }
 
-        // Notify parent of new message
-        if (window.parent !== window && chatData.assistantMessage?.content) {
-          window.parent.postMessage({
-            type: 'new_message',
-            data: { message: 'New message from Koval AI' }
-          }, '*');
+        // ✅ Safe parent notification
+        try {
+          if (window.parent !== window && chatData.assistantMessage?.content) {
+            window.parent.postMessage({
+              type: 'new_message',
+              data: { message: 'New message from Koval AI' }
+            }, '*');
+          }
+        } catch (postMessageError) {
+          console.warn('⚠️ Parent notification failed:', postMessageError);
         }
       }
     } catch (error) {
       console.error("❌ Chat error:", error);
+      const errorMessage = error.name === 'AbortError' 
+        ? 'Request timeout - please try again'
+        : error.message || 'Unknown error';
+      
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: `⚠️ Unable to respond: ${error.message || 'Unknown error'}`
+        content: `⚠️ Unable to respond: ${errorMessage}`
       }]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Handle Enter key
+  // ✅ Handle Enter key safely
   const handleKeyDown = (e) => {
-    if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey && !loading) {
-      e.preventDefault();
-      handleSubmit();
+    try {
+      if ((e.key === "Enter" || e.key === "Return") && !e.shiftKey && !loading) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    } catch (error) {
+      console.warn('⚠️ Keydown handler error:', error);
     }
   };
 
-  // ✅ Logs and bot iframe handling
+  // ✅ Logs and bot iframe handling with comprehensive error handling
   useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+
     const adjustHeight = () => {
-      if (window.parent) {
-        window.parent.postMessage(
-          { type: "RESIZE_IFRAME", data: { height: document.body.scrollHeight } },
-          "*"
-        );
+      try {
+        if (window.parent && document.body) {
+          window.parent.postMessage(
+            { type: "RESIZE_IFRAME", data: { height: document.body.scrollHeight } },
+            "*"
+          );
+        }
+      } catch (error) {
+        console.warn('⚠️ Height adjustment failed:', error);
       }
     };
 
-    const resizeObserver = new ResizeObserver(adjustHeight);
-    resizeObserver.observe(document.body);
+    let resizeObserver;
+    try {
+      if (window.ResizeObserver && document.body) {
+        resizeObserver = new ResizeObserver(adjustHeight);
+        resizeObserver.observe(document.body);
+      }
+    } catch (error) {
+      console.warn('⚠️ ResizeObserver not available:', error);
+    }
 
     const findBotIframe = () => {
-      const botElement = document.getElementById("kovalAiElement");
-      if (botElement && botElement.shadowRoot) {
-        const iframe = botElement.shadowRoot.querySelector("iframe");
-        if (iframe && iframe.contentWindow) {
-          setBotIframe(iframe.contentWindow);
-          // ✅ Notify Wix that bot is ready
-          window.parent?.postMessage({ type: "BOT_READY" }, "*");
+      try {
+        const botElement = document.getElementById("kovalAiElement");
+        if (botElement && botElement.shadowRoot) {
+          const iframe = botElement.shadowRoot.querySelector("iframe");
+          if (iframe && iframe.contentWindow) {
+            setBotIframe(iframe.contentWindow);
+            if (window.parent) {
+              window.parent.postMessage({ type: "BOT_READY" }, "*");
+            }
+          }
         }
+      } catch (error) {
+        console.warn('⚠️ Bot iframe detection failed:', error);
       }
     };
 
-    // Retry finding iframe every 500ms until it loads
     const iframeInterval = setInterval(findBotIframe, 500);
 
     const handleMessage = async (event) => {
-      const allowedOrigins = [
-        window.location.origin,
-        "https://kovaldeepai-main.vercel.app"
-      ];
-      if (!allowedOrigins.includes(event.origin)) return;
+      try {
+        const allowedOrigins = [
+          window.location.origin,
+          "https://koval-deep-ai.vercel.app",
+          "https://kovaldeepai-main.vercel.app"
+        ];
+        if (!allowedOrigins.includes(event.origin)) return;
 
-      // ✅ Forward AI_RESPONSE messages to bot iframe
-      if (event.data?.type === "AI_RESPONSE" && botIframe) {
-        botIframe.postMessage(event.data, "*");
-      }
-
-      // ✅ Load user logs
-      if (event.data?.type === "LOAD_LOGS" && event.data.data?.userId) {
-        setLoading(true);
-        setErrorMsg("");
-        try {
-          const res = await fetch(`/api/analyze/getDiveLogs?userId=${event.data.data.userId}`);
-          if (!res.ok) throw new Error(`API error: ${res.status}`);
-          const data = await res.json();
-          setLogs(Array.isArray(data.logs) ? data.logs : []);
-        } catch (err) {
-          console.error("❌ Failed to fetch dive logs:", err);
-          setErrorMsg("Failed to load dive logs. Please try again later.");
-          setLogs([]);
-        } finally {
-          setLoading(false);
-          adjustHeight();
+        if (event.data?.type === "AI_RESPONSE" && botIframe) {
+          botIframe.postMessage(event.data, "*");
         }
+
+        if (event.data?.type === "LOAD_LOGS" && event.data.data?.userId) {
+          setLoading(true);
+          setErrorMsg("");
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const res = await fetch(`/api/analyze/getDiveLogs?userId=${event.data.data.userId}`, {
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            
+            const data = await res.json();
+            setLogs(Array.isArray(data.logs) ? data.logs : []);
+          } catch (err) {
+            console.error("❌ Failed to fetch dive logs:", err);
+            const errorMessage = err.name === 'AbortError'
+              ? "Request timeout - please try again"
+              : "Failed to load dive logs. Please try again later.";
+            setErrorMsg(errorMessage);
+            setLogs([]);
+          } finally {
+            setLoading(false);
+            adjustHeight();
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Message handler error:', error);
       }
     };
 
     window.addEventListener("message", handleMessage);
 
     return () => {
-      window.removeEventListener("message", handleMessage);
-      resizeObserver.disconnect();
-      clearInterval(iframeInterval);
+      try {
+        window.removeEventListener("message", handleMessage);
+        if (resizeObserver) resizeObserver.disconnect();
+        clearInterval(iframeInterval);
+      } catch (error) {
+        console.warn('⚠️ Cleanup error:', error);
+      }
     };
-  }, [botIframe]);
+  }, [botIframe, mounted]);
+
+  // ✅ Early return for SSR safety
+  if (!mounted) {
+    return null; // Prevent SSR hydration mismatch
+  }
 
   // ✅ Loading state
   if (!isReady) {
@@ -334,24 +452,13 @@ export default function Embed() {
 
   return (
     <div className={`h-screen flex flex-col ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-black'}`}>
-      {/* ✅ Minimal Header */}
+      {/* ✅ Simplified Header with Safe Logo */}
       <div className={`px-4 py-3 border-b flex items-center justify-between shrink-0 ${
         darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'
       }`}>
         <div className="flex items-center gap-3">
-          <img 
-            src="/deeplogo.jpg" 
-            alt="Koval AI" 
-            className="w-8 h-8 rounded-full"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-          <div 
-            className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 items-center justify-center text-white text-sm font-bold hidden"
-            style={{ display: 'none' }}
-          >
+          {/* ✅ Safe logo with fallback */}
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
             🤿
           </div>
           <div>
@@ -362,10 +469,16 @@ export default function Embed() {
           </div>
         </div>
         
-        {/* Close button for iframe */}
-        {window.parent !== window && (
+        {/* ✅ Safe close button */}
+        {mounted && typeof window !== "undefined" && window.parent !== window && (
           <button
-            onClick={() => window.parent.postMessage({ type: 'close_chat' }, '*')}
+            onClick={() => {
+              try {
+                window.parent.postMessage({ type: 'close_chat' }, '*');
+              } catch (error) {
+                console.warn('⚠️ Close message failed:', error);
+              }
+            }}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             title="Close chat"
           >
@@ -400,6 +513,7 @@ export default function Embed() {
         />
       </div>
 
+      {/* ✅ Safe logs display */}
       {loading && (
         <div style={{ padding: "10px", background: "#222", color: "#ccc" }}>
           Loading dive logs...
