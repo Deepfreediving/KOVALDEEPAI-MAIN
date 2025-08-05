@@ -1,5 +1,7 @@
+// 📂 pages/api/query.ts
+
 import type { NextApiRequest, NextApiResponse } from "next";
-import { queryVectors } from "@/lib/pineconeService";
+import { queryVectors } from "@/lib/pineconeService"; // ✅ Should internally handle PINECONE_HOST
 import handleCors from "@/utils/cors";
 import OpenAI from "openai";
 
@@ -23,14 +25,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ 1. Convert query text to embedding
     const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small", // Use "text-embedding-3-large" for more accuracy
+      model: "text-embedding-3-small", // Use "text-embedding-3-large" for higher accuracy
       input: query,
     });
 
     const queryVector = embeddingResponse.data[0].embedding;
 
-    // ✅ 2. Query Pinecone index
+    // ✅ 2. Query Pinecone index (pineconeService must handle PINECONE_HOST)
     const matches = await queryVectors(queryVector, topK);
+
+    if (!matches || matches.length === 0) {
+      return res.status(200).json({ success: true, matches: [], message: "No results found." });
+    }
 
     return res.status(200).json({ success: true, matches });
   } catch (error: any) {

@@ -10,14 +10,15 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
 const index = process.env.PINECONE_INDEX ? pinecone.index(process.env.PINECONE_INDEX) : null;
 
+// ✅ Improved numeric PB parsing
 function detectUserLevel(profile: any): 'expert' | 'beginner' {
-  const pb = profile?.pb || profile?.personalBestDepth;
+  const pbRaw = profile?.pb || profile?.personalBestDepth || 0;
+  const numericPB = parseFloat(pbRaw.toString().replace(/[^\d.]/g, '')) || 0;
   const certLevel = profile?.certLevel || '';
   const isInstructor = profile?.isInstructor;
-  const numericPB = typeof pb === 'string' ? parseFloat(pb.replace(/[^\d.]/g, '')) : pb;
 
-  if (numericPB && numericPB >= 80) return 'expert';
   if (isInstructor || certLevel.toLowerCase().includes('instructor')) return 'expert';
+  if (numericPB >= 80) return 'expert';
   return 'beginner';
 }
 
@@ -27,6 +28,7 @@ function getDepthRange(depth: number): string {
   return `${rounded}m`;
 }
 
+// ✅ Safe Pinecone query with improved filter
 async function queryPinecone(query: string, depthRange: string): Promise<string[]> {
   if (!index) {
     console.warn("⚠️ Pinecone index not initialized.");
@@ -36,12 +38,22 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
     const vector = await getEmbedding(query);
     if (!Array.isArray(vector) || vector.length === 0) return [];
 
-    const result: any = await index.query({
+    let result: any = await index.query({
       vector,
       topK: 8,
       includeMetadata: true,
-      filter: { approvedBy: 'Koval', depthRange: { $in: [depthRange, 'all'] } },
+      filter: { approvedBy: { "$eq": "Koval" }, depthRange: { "$in": [depthRange, "all"] } },
     });
+
+    if (!result?.matches?.length) {
+      console.warn("⚠️ Pinecone returned no matches, retrying without depth filter.");
+      result = await index.query({
+        vector,
+        topK: 8,
+        includeMetadata: true,
+        filter: { approvedBy: { "$eq": "Koval" } },
+      });
+    }
 
     return result?.matches
       ?.map((m: any) => m.metadata?.text)
@@ -54,15 +66,15 @@ async function queryPinecone(query: string, depthRange: string): Promise<string[
 
 function generateSystemPrompt(level: 'expert' | 'beginner', depthRange: string): string {
   return `
-You are **Koval Deep AI**, a specialized freediving coach assistant created by world-record freediver Daniel Koval.
+You are **Koval Deep AI**, a freediving coaching assistant powered by Daniel Koval's real training data.
 
 ### 🎯 Rules:
-- Provide expert-level coaching advice for deep freediving.
-- Analyze diver context first.
-- Always prioritize safety and progressive training.
-- Avoid filler or vague advice.
+- Provide expert-level freediving coaching advice ONLY from the given Koval knowledge base.
+- Do NOT invent information not in context.
+- Prioritize safety, progressive depth adaptation, and realistic training goals.
+- Tailor tone and advice to a ${level}-level freediver.
 
-### ✅ Response Structure:
+### ✅ Response Format:
 1️⃣ Physics & Physiology at ${depthRange}  
 2️⃣ Technical Analysis  
 3️⃣ Targeted Training Plan  
@@ -71,41 +83,61 @@ You are **Koval Deep AI**, a specialized freediving coach assistant created by w
 `;
 }
 
+// ✅ Retry logic for OpenAI requests
 async function askWithContext(contextChunks: string[], message: string, userLevel: 'expert' | 'beginner', depthRange: string) {
-  const context = contextChunks.slice(0, 4).join('\n\n');
+  const context = contextChunks.length
+    ? contextChunks.slice(0, 5).join('\n\n')
+    : "No relevant Koval knowledge found for this query. Reply with 'I don’t have data on this yet.'";
+
   const systemPrompt = generateSystemPrompt(userLevel, depthRange);
 
-  const response: any = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    temperature: 0.4,
-    max_tokens: 1200,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Relevant Koval knowledge:\n${context}\n\nUser input:\n${message}` },
-    ],
-  });
+  let attempts = 0;
+  while (attempts < 2) {
+    try {
+      const response: any = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        temperature: 0.3,
+        max_tokens: 1200,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'system',
+            content: `Knowledge Base:\n${context}\n\nOnly answer based on this. If information is missing, say: "I don’t have data on this yet."`,
+          },
+          { role: 'user', content: message },
+        ],
+      });
 
-  return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
+      return response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
+    } catch (err) {
+      console.warn(`OpenAI call attempt ${attempts + 1} failed:`, err);
+      await new Promise((res) => setTimeout(res, 500 * (attempts + 1)));
+      attempts++;
+    }
+  }
+  return "⚠️ I'm having trouble responding right now, but I'm still online and will try again soon.";
 }
 
+// ✅ Safe JSON parsing for profile extraction
 async function extractProfileFields(message: string) {
   try {
     const result: any = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0,
       messages: [
-        { role: 'system', content: 'You are a precise information extractor for freediving profiles.' },
-        { role: 'user', content: `Extract freediving profile info from this message.\nReturn JSON with keys: pb (number), certLevel, focus, isInstructor (boolean), discipline, currentDepth (number).\n\n${message}` },
+        { role: 'system', content: 'Extract freediving profile info from message. Return valid JSON only.' },
+        {
+          role: 'user',
+          content: `Keys: pb (number), certLevel, focus, isInstructor (boolean), discipline, currentDepth (number)\n\n${message}`,
+        },
       ],
     });
 
-    let extracted = {};
-    try {
-      extracted = JSON.parse(result.choices[0].message.content || '{}');
-    } catch (e) {
-      console.warn("Profile extraction parsing failed:", e);
-    }
-    return extracted;
+    let content = result.choices[0].message.content || '{}';
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return {};
+
+    return JSON.parse(jsonMatch[0]);
   } catch (err) {
     console.error("Profile extraction error:", err);
     return {};
@@ -147,18 +179,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Load memory
     const pastMemory = await fetchUserMemory(userId);
 
-    // Merge profile
-    let mergedProfile = { ...pastMemory?.profile, ...profile };
-    try {
-      const extractedProfile = await extractProfileFields(message);
-      mergedProfile = { ...mergedProfile, ...Object.fromEntries(Object.entries(extractedProfile).filter(([_, v]) => v !== undefined && v !== null && v !== '')) };
-    } catch (err) {
-      console.warn("Profile extraction skipped due to error:", err);
-    }
+    // ✅ Safe merge of profile fields
+    let mergedProfile = { ...pastMemory?.profile };
+    Object.entries(profile).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') mergedProfile[k] = v;
+    });
+
+    const extractedProfile = await extractProfileFields(message);
+    Object.entries(extractedProfile).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') mergedProfile[k] = v;
+    });
+
+    if (pastMemory?.profile?.isInstructor) mergedProfile.isInstructor = true;
 
     const logDepth = diveLogs?.length ? parseFloat(diveLogs[diveLogs.length - 1]?.reachedDepth || 0) : undefined;
     const depthRange = getDepthRange(mergedProfile.currentDepth || mergedProfile.pb || logDepth || 10);
     const userLevel = detectUserLevel(mergedProfile);
+
+    // ✅ Reload past conversation logs for context
+    const historyContext = pastMemory?.logs
+      ?.slice(-3)
+      .map((l: { userMessage: string; assistantReply: string }) => `User: ${l.userMessage}\nAssistant: ${l.assistantReply}`)
+      .join("\n\n") || "";
 
     // EQ follow-up
     if (eqState?.currentDepth) {
@@ -175,8 +217,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Build user context with dive log
-    let userContext = message;
+    // Build user context with dive log + history
+    let userContext = historyContext ? `${historyContext}\n\nCurrent message: ${message}` : message;
     if (diveLogs?.length) {
       const lastLog = diveLogs[diveLogs.length - 1];
       userContext += `\n\nHere is my most recent dive log: ${JSON.stringify(lastLog)}. Evaluate this dive and help me progress safely toward ${mergedProfile.targetDepth || 120}m.`;
@@ -191,17 +233,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Ask AI
-    let assistantReply = "⚠️ I'm having trouble responding right now, but I'm still online and will try again soon.";
-    try {
-      assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
-    } catch (err) {
-      console.error("OpenAI main call failed, retrying without context:", err);
-      try {
-        assistantReply = await askWithContext([], message, userLevel, depthRange);
-      } catch (err2) {
-        console.error("OpenAI fallback call failed:", err2);
-      }
-    }
+    const assistantReply = await askWithContext(contextChunks, userContext, userLevel, depthRange);
 
     // Save memory
     if (!assistantReply.startsWith("⚠️")) {

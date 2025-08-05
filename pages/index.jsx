@@ -105,18 +105,19 @@ export default function Index() {
     return () => window.removeEventListener("message", handleWidgetMessages);
   }, []);
 
-  // Inject Bot Iframe
+  // Inject Bot Iframe with cleanup
   useEffect(() => {
     const existingIframe = document.querySelector("#KovalAIFrame");
-    if (!existingIframe) {
-      const iframe = document.createElement("iframe");
-      iframe.id = "KovalAIFrame";
-      iframe.src = "/koval-ai.html";
-      iframe.style.cssText =
-        "width:100%;height:0;border:none;position:fixed;bottom:0;right:0;z-index:9999;";
-      document.body.appendChild(iframe);
-      return () => iframe.remove();
-    }
+    if (existingIframe) return;
+    const iframe = document.createElement("iframe");
+    iframe.id = "KovalAIFrame";
+    iframe.src = "/koval-ai.html";
+    iframe.style.cssText =
+      "width:100%;height:0;border:none;position:fixed;bottom:0;right:0;z-index:9999;";
+    document.body.appendChild(iframe);
+    return () => {
+      if (document.body.contains(iframe)) document.body.removeChild(iframe);
+    };
   }, []);
 
   // Open Bot if No Memories
@@ -129,52 +130,51 @@ export default function Index() {
     return () => window.removeEventListener("OpenBotIfNoMemories", handler);
   }, []);
 
-  // Connection Check
+  // Connection Check with AbortController
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
     (async () => {
       try {
-        const result = await apiClient.checkAllConnections();
-        if (isMounted) setConnectionStatus(result);
+        const result = await apiClient.checkAllConnections({ signal: controller.signal });
+        setConnectionStatus(result);
       } catch (error) {
-        console.warn("⚠️ API connection check failed:", error);
+        if (error.name !== "AbortError") console.warn("⚠️ API connection check failed:", error);
       } finally {
-        if (isMounted) setLoadingConnections(false);
+        setLoadingConnections(false);
       }
     })();
-    return () => {
-      isMounted = false;
-    };
+    return () => controller.abort();
   }, []);
 
-  // Init AI Thread
+  // Init AI Thread safely
   useEffect(() => {
-    if (!userId || threadId) return;
-    let isMounted = true;
+    if (!userId || threadId || localStorage.getItem("kovalThreadId")) return;
+    const controller = new AbortController();
     (async () => {
       try {
         const res = await fetch(API_ROUTES.CREATE_THREAD, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: userId, displayName: getDisplayName() }),
+          signal: controller.signal,
         });
+        if (!res.ok) throw new Error("Failed to create thread");
         const data = await res.json();
-        if (isMounted && data.threadId) {
+        if (data.threadId) {
           setThreadId(data.threadId);
           localStorage.setItem("kovalThreadId", data.threadId);
         }
       } catch (err) {
-        console.error("❌ Thread init failed:", err);
+        if (err.name !== "AbortError") console.error("❌ Thread init failed:", err);
       }
     })();
-    return () => {
-      isMounted = false;
-    };
+    return () => controller.abort();
   }, [userId, threadId]);
 
   // Load Dive Logs
   useEffect(() => {
     if (!userId) return;
+    const controller = new AbortController();
     const key = storageKey(userId);
     const localLogs = safeParse(key, []);
     setDiveLogs(localLogs);
@@ -182,29 +182,37 @@ export default function Index() {
     (async () => {
       try {
         const [remoteRes, memRes] = await Promise.all([
-          fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(userId)}`),
+          fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(userId)}`, { signal: controller.signal }),
           fetch(API_ROUTES.READ_MEMORY, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId }),
+            signal: controller.signal,
           }),
         ]);
+
+        if (!remoteRes.ok && !memRes.ok) throw new Error("Failed to fetch logs");
 
         const remoteLogs = (await remoteRes.json()) || [];
         const memData = (await memRes.json())?.memory || [];
 
-        const merged = [...localLogs, ...remoteLogs, ...memData].reduce(
-          (map, log) => ({ ...map, [log.localId || log._id || log.id]: log }),
-          {}
-        );
+        const merged = [...localLogs, ...remoteLogs, ...memData].reduce((map, log) => {
+          const key = log.localId || log._id || log.id;
+          if (!map[key] || new Date(log.date) > new Date(map[key].date)) {
+            map[key] = log;
+          }
+          return map;
+        }, {});
 
         const combined = Object.values(merged).sort((a, b) => new Date(b.date) - new Date(a.date));
         setDiveLogs(combined);
         localStorage.setItem(key, JSON.stringify(combined));
       } catch (err) {
-        console.warn("⚠️ Dive log fetch failed. Using local only.", err);
+        if (err.name !== "AbortError") console.warn("⚠️ Dive log fetch failed. Using local only.", err);
       }
     })();
+
+    return () => controller.abort();
   }, [userId]);
 
   // ----------------------------
@@ -257,18 +265,23 @@ export default function Index() {
 
   // Fetch Wix Data
   const fetchWixData = useCallback(async (query) => {
+    const controller = new AbortController();
     try {
       setLoading(true);
       const res = await fetch(API_ROUTES.QUERY_WIX, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
+        signal: controller.signal,
       });
+      if (!res.ok) throw new Error("Failed to fetch Wix data");
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: `Wix Data fetched: ${JSON.stringify(data)}` }]);
     } catch (err) {
-      console.error("Error fetching Wix data:", err);
-      setMessages((prev) => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
+      if (err.name !== "AbortError") {
+        console.error("Error fetching Wix data:", err);
+        setMessages((prev) => [...prev, { role: "assistant", content: "❌ Failed to fetch Wix data." }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -363,9 +376,9 @@ export default function Index() {
 
         {/* ✅ Connection Status Dock */}
         <div className="mt-4 mb-4 mx-4 flex space-x-4 text-xl bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
-          {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
-          {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
+          {!loadingConnections && connectionStatus.pinecone?.startsWith("✅") && <span title="Data Connected">🌲</span>}
+          {!loadingConnections && connectionStatus.openai?.startsWith("✅") && <span title="AI Connected">🤖</span>}
+          {!loadingConnections && connectionStatus.wix?.startsWith("✅") && <span title="Site Data Connected">🌀</span>}
         </div>
       </div>
 
