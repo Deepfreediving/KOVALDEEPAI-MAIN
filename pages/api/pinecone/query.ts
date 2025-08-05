@@ -11,8 +11,8 @@ const openai = new OpenAI({
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // ✅ Handle CORS (not async)
-    if (await handleCors(req, res)) return;
+    // ✅ Fix CORS handling - NOT async!
+    if (handleCors(req, res)) return;
 
     if (req.method !== "POST") {
       return res.status(405).json({ success: false, error: "Method Not Allowed" });
