@@ -37,7 +37,7 @@ export default async function handler(req, res) {
 /**
  * ✅ Simple, synchronous CORS handler
  */
-export function handleCors(req, res) {
+function handleCors(req, res) {
   const allowedOrigins = [
     'https://www.deepfreediving.com',
     'https://kovaldeepai-main.vercel.app',
@@ -77,14 +77,14 @@ export function handleCors(req, res) {
 }
 
 // ✅ Quick CORS setup for simple cases
-export function quickCors(res, allowedOrigin = 'https://www.deepfreediving.com') {
+function quickCors(res, allowedOrigin = 'https://www.deepfreediving.com') {
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
 // ✅ Check if origin is allowed
-export function isOriginAllowed(origin) {
+function isOriginAllowed(origin) {
   if (!origin) return false;
   
   const allowedOrigins = [
@@ -98,3 +98,6 @@ export function isOriginAllowed(origin) {
          (isDev && origin.includes('localhost')) ||
          (origin.includes('vercel.app') && origin.includes('kovaldeepai'));
 }
+
+// ✅ Exports
+export { handleCors, quickCors, isOriginAllowed };
