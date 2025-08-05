@@ -1,75 +1,210 @@
-// pages/api/analyze/sync-dive-logs.ts
+// REPLACE the entire file with this corrected version:
 
-import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
+import fs from 'fs';
+import path from 'path';
+import handleCors from '@/utils/handleCors';
+import { NextApiRequest, NextApiResponse } from 'next';
 
-interface DiveLog {
+const DIVE_LOGS_DIR = path.join(process.cwd(), 'dive-logs');
+
+// Ensure directory exists
+if (!fs.existsSync(DIVE_LOGS_DIR)) {
+  fs.mkdirSync(DIVE_LOGS_DIR, { recursive: true });
+}
+
+interface WixLog {
+  uniqueKey?: string;
+  _id: string;
+  date: string;
+  discipline: string;
+  disciplineType: string;
+  location: string;
+  targetDepth: number;
+  reachedDepth: number;
+  notes?: string;
+  timestamp?: string;
+}
+
+interface LocalLog {
   id: string;
-  [key: string]: any;
+  date: string;
+  discipline: string;
+  disciplineType: string;
+  location: string;
+  targetDepth: number;
+  reachedDepth: number;
+  notes?: string;
+  timestamp?: string;
+  syncedToWix?: boolean;
+  wixId?: string;
+  wixSyncedAt?: string;
+  totalDiveTime?: string;
+  mouthfillDepth?: number;
+  exit?: string;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (handleCors(req, res)) return;
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { userId, localLogs = [] }: { userId: string; localLogs: LocalLog[] } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
   try {
-    // ✅ Use handleCors
-    if (handleCors(req, res)) return; // Early exit for OPTIONS
-
-    // ✅ Allow only POST
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
+    console.log(`🔄 Syncing dive logs for user ${userId}...`);
+    
+    // 📦 STEP 1: Load current local logs
+    const filePath = path.join(DIVE_LOGS_DIR, `${userId}.json`);
+    let currentLogs: LocalLog[] = [];
+    
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      currentLogs = JSON.parse(fileContent);
     }
 
-    const { userId, localLogs = [] }: { userId: string; localLogs: DiveLog[] } = req.body;
+    // 🌐 STEP 2: Sync with Wix backend
+    let wixLogs: LocalLog[] = [];
+    let uploadedCount = 0;
 
-    // ✅ Validate inputs
-    if (!userId || typeof userId !== "string") {
-      return res.status(400).json({ error: "Missing or invalid userId" });
-    }
+    try {
+      console.log('🌐 Fetching from Wix diveLogs backend...');
+      
+      // ✅ CORRECTED: Use diveLogs endpoint, not userMemory
+      const wixFetchResponse = await fetch(`https://www.deepfreediving.com/_functions/diveLogs?userId=${userId}`, {
+        method: 'GET',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
-    if (!Array.isArray(localLogs)) {
-      return res.status(400).json({ error: "Invalid localLogs array" });
-    }
-
-    const WIX_BASE_URL = process.env.WIX_BASE_URL || "https://www.deepfreediving.com/_functions";
-
-    // 1️⃣ Fetch logs from Wix
-    const wixResponse = await axios.post(`${WIX_BASE_URL}/getDiveLogs`, { userId });
-    const wixLogs: DiveLog[] = Array.isArray(wixResponse.data?.logs) ? wixResponse.data.logs : [];
-
-    // 2️⃣ Create a set of Wix log IDs for quick lookup
-    const wixIds = new Set(wixLogs.map((log) => log.id));
-
-    // 3️⃣ Identify logs missing in Wix
-    const newLogs = localLogs.filter((log) => log && log.id && !wixIds.has(log.id));
-
-    // 4️⃣ Upload missing logs to Wix
-    for (const log of newLogs) {
-      try {
-        await axios.post(`${WIX_BASE_URL}/saveDiveLog`, { ...log, userId }, {
-          headers: { "Content-Type": "application/json" },
-        });
-        console.log(`✅ Uploaded missing log to Wix: ${log.id}`);
-      } catch (uploadErr: any) {
-        console.warn(`⚠️ Failed to upload log ${log.id}:`, uploadErr.response?.data || uploadErr.message);
+      if (wixFetchResponse.ok) {
+        const wixData = await wixFetchResponse.json();
+        if (wixData.success && wixData.data) {
+          // Transform Wix format to local format
+          wixLogs = wixData.data.map((log: WixLog) => ({
+            id: log.uniqueKey || log._id,
+            date: log.date,
+            discipline: log.discipline,
+            disciplineType: log.disciplineType,
+            location: log.location,
+            targetDepth: log.targetDepth,
+            reachedDepth: log.reachedDepth,
+            notes: log.notes || '',
+            timestamp: log.timestamp || new Date().toISOString(),
+            syncedToWix: true,
+            wixId: log._id,
+            wixSyncedAt: new Date().toISOString()
+          }));
+          
+          console.log(`✅ Fetched ${wixLogs.length} logs from Wix diveLogs collection`);
+        }
       }
+
+      // Upload local logs that aren't synced yet
+      const unSyncedLogs = localLogs.filter((log: LocalLog) => !log.syncedToWix);
+      
+      for (const log of unSyncedLogs) {
+        try {
+          console.log(`🔄 Uploading log ${log.id} to Wix diveLogs collection...`);
+          
+          // ✅ CORRECTED: Use diveLogs endpoint, not userMemory
+          const wixUploadResponse = await fetch('https://www.deepfreediving.com/_functions/diveLogs', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              userId,
+              diveLog: {
+                id: log.id,
+                date: log.date,
+                disciplineType: log.disciplineType,
+                discipline: log.discipline,
+                location: log.location,
+                targetDepth: log.targetDepth,
+                reachedDepth: log.reachedDepth,
+                notes: log.notes || '',
+                totalDiveTime: log.totalDiveTime,
+                mouthfillDepth: log.mouthfillDepth,
+                exit: log.exit
+              }
+            })
+          });
+
+          if (wixUploadResponse.ok) {
+            const uploadData = await wixUploadResponse.json();
+            if (uploadData.success) {
+              // Mark as synced
+              log.syncedToWix = true;
+              log.wixId = uploadData.data?.[0]?._id;
+              log.wixSyncedAt = new Date().toISOString();
+              uploadedCount++;
+              console.log(`✅ Uploaded log ${log.id} to Wix diveLogs collection`);
+            }
+          }
+        } catch (uploadError) {
+          console.warn(`⚠️ Failed to upload log ${log.id}:`, uploadError instanceof Error ? uploadError.message : String(uploadError));
+        }
+      }
+
+    } catch (wixError) {
+      console.warn('⚠️ Wix sync failed:', wixError instanceof Error ? wixError.message : String(wixError));
     }
 
-    // 5️⃣ Merge all logs uniquely by ID
-    const mergedMap = new Map<string, DiveLog>();
-    [...wixLogs, ...newLogs].forEach((log) => {
-      if (log?.id) mergedMap.set(log.id, log);
+    // 🔄 STEP 3: Merge and deduplicate logs
+    const allLogs: LocalLog[] = [...localLogs, ...wixLogs];
+    const uniqueLogs = allLogs.reduce((acc: LocalLog[], log: LocalLog) => {
+      const existingIndex = acc.findIndex((existing: LocalLog) => 
+        existing.id === log.id || 
+        existing.wixId === log.wixId ||
+        (existing.date === log.date && existing.targetDepth === log.targetDepth)
+      );
+      
+      if (existingIndex === -1) {
+        acc.push(log);
+      } else {
+        // Keep the one with more complete data
+        if (log.syncedToWix && !acc[existingIndex].syncedToWix) {
+          acc[existingIndex] = { ...acc[existingIndex], ...log };
+        }
+      }
+      
+      return acc;
+    }, []);
+
+    // Sort by date (newest first)
+    uniqueLogs.sort((a: LocalLog, b: LocalLog) => {
+      const dateA = new Date(a.date || a.timestamp || 0).getTime();
+      const dateB = new Date(b.date || b.timestamp || 0).getTime();
+      return dateB - dateA;
     });
 
-    const mergedLogs = Array.from(mergedMap.values());
+    // 💾 STEP 4: Save merged logs locally
+    fs.writeFileSync(filePath, JSON.stringify(uniqueLogs, null, 2));
+
+    console.log(`✅ Sync completed: ${uniqueLogs.length} total logs, ${uploadedCount} uploaded to Wix`);
 
     return res.status(200).json({
       success: true,
-      logs: mergedLogs,
-      uploadedCount: newLogs.length,
+      message: `Sync completed: ${uniqueLogs.length} total logs, ${uploadedCount} uploaded to Wix`,
+      logs: uniqueLogs,
+      uploadedCount,
+      totalCount: uniqueLogs.length
     });
 
   } catch (error) {
-    console.error("❌ Sync dive logs error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error('❌ Sync failed:', error);
+    return res.status(500).json({
+      error: 'Sync failed',
+      message: error instanceof Error ? error.message : String(error)
+    });
   }
 }

@@ -1,13 +1,13 @@
 // pages/api/analyze/save-dive-log.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
-import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
-import { saveLogEntry } from '@/utils/diveLogHelpers';
+import handleCors from '@/utils/handleCors';
+import { saveLogEntry } from '@/utils/diveLogHelpers'; // KEEP this import!
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // ✅ Use handleCors
-    if (handleCors(req, res)) return; // Early exit for OPTIONS
+    // ✅ Handle CORS
+    if (handleCors(req, res)) return;
 
     // ✅ Allow only POST
     if (req.method !== 'POST') {
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const {
-      userId = '',
+      userId = 'anonymous',
       date = '',
       disciplineType = '',
       discipline = '',
@@ -34,63 +34,104 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       surfaceProtocol = '',
     } = req.body || {};
 
-    // ✅ Validate required fields
-    if (!userId || !date || !discipline) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        requiredFields: ['userId', 'date', 'discipline'],
-      });
+    console.log('💾 Starting dual save process for dive log...');
+
+    // 🚀 STEP 1: Save to LOCAL FILES first (super fast for AI)
+    const localLogData = {
+      id: `dive_${userId}_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      userId,
+      date,
+      disciplineType,
+      discipline,
+      location,
+      targetDepth: parseFloat(targetDepth) || 0,
+      reachedDepth: parseFloat(reachedDepth) || 0,
+      mouthfillDepth: parseFloat(mouthfillDepth) || 0,
+      issueDepth: parseFloat(issueDepth) || 0,
+      squeeze,
+      exit,
+      durationOrDistance,
+      attemptType,
+      notes,
+      totalDiveTime,
+      issueComment,
+      surfaceProtocol,
+      syncedToWix: false, // Track sync status
+      source: 'dive-journal-form'
+    };
+
+    const localResult = await saveLogEntry(userId, localLogData);
+    console.log('✅ Local save completed:', localResult.id);
+
+    // 🌐 STEP 2: Sync to Wix (background) - ENHANCED
+    try {
+      console.log('🌐 Syncing to Wix backend...');
+      
+      // Transform data for your Wix http-diveLogs.jsw format
+      const wixDiveLogData = {
+        userId,
+        diveLog: {
+          id: localLogData.id,
+          date: localLogData.date,
+          disciplineType: localLogData.disciplineType,
+          discipline: localLogData.discipline,
+          location: localLogData.location,
+          targetDepth: localLogData.targetDepth,
+          reachedDepth: localLogData.reachedDepth,
+          notes: localLogData.notes,
+          totalDiveTime: localLogData.totalDiveTime,
+          mouthfillDepth: localLogData.mouthfillDepth,
+          exit: localLogData.exit
+        }
+      };
+
+      const wixResponse = await axios.post(
+        'https://www.deepfreediving.com/_functions/diveLogs',
+        wixDiveLogData,
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: 15000 // 15 second timeout for Wix backend
+        }
+      );
+
+      if (wixResponse.status === 200 && wixResponse.data?.success) {
+        console.log('✅ Wix backend sync completed successfully');
+        
+        // Mark as synced in local file with Wix ID
+        const updatedLogData = { 
+          ...localLogData, 
+          syncedToWix: true, 
+          wixSyncedAt: new Date().toISOString(),
+          wixId: wixResponse.data.data?.[0]?._id
+        };
+        await saveLogEntry(userId, updatedLogData);
+      } else {
+        console.warn('⚠️ Wix backend sync failed but local saved:', wixResponse.data);
+      }
+    } catch (wixError) {
+      console.error('❌ Wix backend sync error (but local saved):', (wixError as any).message);
     }
 
-    // ✅ Parse and sanitize numeric fields safely
-    const safeParseFloat = (value: any) => {
-      const num = parseFloat(value);
-      return isNaN(num) ? 0 : num;
-    };
-
-    const logData = {
-      date: new Date(date).toISOString(),
-      disciplineType: String(disciplineType || ''),
-      discipline: String(discipline || ''),
-      location: String(location || ''),
-      targetDepth: safeParseFloat(targetDepth),
-      reachedDepth: safeParseFloat(reachedDepth),
-      mouthfillDepth: safeParseFloat(mouthfillDepth),
-      issueDepth: safeParseFloat(issueDepth),
-      squeeze: Boolean(squeeze),
-      exit: String(exit || ''),
-      durationOrDistance: String(durationOrDistance || ''),
-      attemptType: String(attemptType || ''),
-      notes: String(notes || ''),
-      totalDiveTime: String(totalDiveTime || ''),
-      issueComment: String(issueComment || ''),
-      surfaceProtocol: String(surfaceProtocol || ''),
-    };
-
-    // ✅ Save log entry locally (DB or storage)
-    const { id, logEntry } = await saveLogEntry(userId, logData);
-
-    // ✅ Sync to Wix (non-blocking, with improved logging)
-    axios
-      .post(
-        'https://www.deepfreediving.com/_functions/saveDiveLog',
-        { ...logEntry, userId },
-        { headers: { 'Content-Type': 'application/json' }, timeout: 5000 }
-      )
-      .then(() => {
-        console.log(`✅ Wix sync successful for log ${id}`);
-      })
-      .catch((err) => {
-        console.error(`⚠️ Wix sync failed for log ${id}:`, err?.response?.data || err.message);
-      });
-
-    return res.status(200).json({ success: true, id });
+    // ✅ Return immediately with local data (don't wait for Wix)
+    res.status(200).json({
+      success: true,
+      _id: localResult.id,
+      localPath: localResult.filePath,
+      message: 'Dive log saved locally, syncing to Wix...',
+      data: localLogData
+    });
 
   } catch (error: any) {
-    console.error('❌ Error saving dive log:', error?.stack || error.message || error);
+    console.error('❌ Error in save-dive-log:', error);
+    
     return res.status(500).json({
-      error: 'Internal Server Error',
-      message: error?.message || 'Unknown error',
+      error: 'Save failed',
+      message: error.message || 'Unknown error',
+      details: error.response?.data || null
     });
   }
 }

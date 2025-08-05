@@ -83,6 +83,82 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
+// 🌊 Query dive logs for personal context
+async function queryDiveLogs(userId: string, query: string): Promise<string[]> {
+  if (!userId || !query?.trim()) return [];
+
+  try {
+    console.log('🌊 Querying dive logs for personal context...');
+    
+    // Try local dive logs first (fastest)
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+      
+    const localResponse = await fetch(`${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (localResponse.ok) {
+      const localData = await localResponse.json();
+      if (localData.logs && localData.logs.length > 0) {
+        // Convert recent dives to context strings
+        interface DiveLog {
+          reachedDepth?: number;
+          targetDepth?: number;
+          discipline?: string;
+          location?: string;
+          notes?: string;
+        }
+
+        const recentDives = (localData.logs as DiveLog[]).slice(0, 5).map((log: DiveLog) => 
+          `Personal dive: ${log.reachedDepth || log.targetDepth}m ${log.discipline || 'freedive'} at ${log.location || 'unknown location'} - ${log.notes || 'no notes'}`
+        );
+        
+        console.log(`✅ Found ${recentDives.length} personal dives for context`);
+        return recentDives;
+      }
+    }
+
+    // Fallback: Try Wix backend for dive history
+    try {
+      const wixResponse = await fetch(`https://www.deepfreediving.com/_functions/diveLogs?userId=${userId}`, {
+        method: 'GET',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (wixResponse.ok) {
+        const wixData = await wixResponse.json();
+        if (wixData.success && wixData.data) {
+          type DiveLog = {
+            reachedDepth?: number;
+            targetDepth?: number;
+            discipline?: string;
+            location?: string;
+            notes?: string;
+          };
+
+          const recentDives = (wixData.data as DiveLog[]).slice(0, 5).map((log: DiveLog) => 
+            `Personal dive: ${log.reachedDepth || log.targetDepth}m ${log.discipline || 'freedive'} at ${log.location || 'unknown location'} - ${log.notes || 'no notes'}`
+          );
+          console.log(`✅ Found ${recentDives.length} dives from Wix backend`);
+          return recentDives;
+        }
+      }
+    } catch (wixError) {
+      console.warn('⚠️ Wix dive logs query failed:', wixError);
+    }
+
+    return [];
+  } catch (error) {
+    console.warn('⚠️ Dive log context query failed:', error);
+    return [];
+  }
+}
+
 // ✅ Simple system prompt
 function generateSystemPrompt(level: 'expert' | 'beginner'): string {
   return `You are Koval Deep AI, a freediving coach powered by Daniel Koval's training expertise.
@@ -203,9 +279,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Query knowledge base
     const contextChunks = await queryPinecone(message);
+    
+    // 🌊 NEW: Query dive logs for personal context
+    const diveContext = await queryDiveLogs(userId, message);
 
-    // ✅ Generate response
-    const assistantReply = await askWithContext(contextChunks, message, userLevel);
+    // ✅ Generate response with BOTH contexts
+    const assistantReply = await askWithContext(
+      [...contextChunks, ...diveContext], // ✅ Combine knowledge + personal dives
+      message, 
+      userLevel
+    );
 
     // ✅ Save to memory (if not error response)
     if (!assistantReply.startsWith("⚠️")) {
@@ -236,6 +319,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userLevel, 
         depthRange, 
         contextChunks: contextChunks.length,
+        diveContext: diveContext.length, // ✅ NEW: Show personal dive context count
         processingTime,
         embedMode
       }

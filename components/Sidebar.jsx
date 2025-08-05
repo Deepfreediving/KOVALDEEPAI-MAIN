@@ -1,10 +1,11 @@
+import { useState, useEffect } from 'react';
 import DiveJournalForm from "./DiveJournalForm";
 
 export default function Sidebar({
   sessionName,
   sessionsList = [],
   showDiveJournalForm,
-  diveLogs = [],
+  diveLogs = [], // This will be populated from API instead of localStorage
   toggleDiveJournal,
   handleSelectSession,
   handleDeleteSession,
@@ -19,8 +20,77 @@ export default function Sidebar({
   setMessages,
   darkMode,
   connectionStatus = { pinecone: "", wix: "", openai: "" },
-  loadingConnections = false
+  loadingConnections = false,
+  // NEW PROPS:
+  onDiveLogsUpdate, // Callback to parent when dive logs change
+  refreshDiveLogs    // Function to refresh dive logs from API
 }) {
+  
+  // 🔄 Load dive logs when component mounts or userId changes
+  useEffect(() => {
+    if (userId && refreshDiveLogs) {
+      refreshDiveLogs();
+    }
+  }, [userId, showDiveJournalForm]); // Refresh when journal opens/closes
+
+  // 🎯 Enhanced journal submit that uses your enterprise API
+  const handleEnterpriseJournalSubmit = async (formData) => {
+    try {
+      setLoading(true);
+      
+      console.log('🔄 Submitting to enterprise API...');
+      
+      // ✅ Use your save-dive-log.ts API
+      const response = await fetch('/api/analyze/save-dive-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          userId,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Dive log saved:', result);
+
+      // ✅ Refresh dive logs display
+      if (refreshDiveLogs) {
+        await refreshDiveLogs();
+      }
+
+      // ✅ Call original handler for any additional UI updates
+      if (handleJournalSubmit) {
+        handleJournalSubmit(formData);
+      }
+
+      // ✅ Show success message
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ Dive log saved successfully! Auto-analysis started in background.`
+        }]);
+      }
+
+    } catch (error) {
+      console.error('❌ Enterprise submit failed:', error);
+      
+      // ✅ Show error message
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant', 
+          content: `❌ Failed to save dive log: ${error.message}`
+        }]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <aside
       className={`w-[320px] h-screen border-r flex flex-col ${
@@ -70,7 +140,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Dive Journal */}
+        {/* Enhanced Dive Journal */}
         <div>
           <button
             onClick={toggleDiveJournal}
@@ -86,7 +156,7 @@ export default function Sidebar({
           {showDiveJournalForm ? (
             <div className="mt-4">
               <DiveJournalForm
-                onSubmit={handleJournalSubmit}
+                onSubmit={handleEnterpriseJournalSubmit} // ✅ Use enterprise submit
                 existingEntry={editLogIndex !== null ? diveLogs[editLogIndex] : null}
                 userId={userId}
                 setLoading={setLoading}
@@ -96,27 +166,44 @@ export default function Sidebar({
             </div>
           ) : (
             <div className="mt-4">
-              <h3 className="font-semibold mb-2">📒 Dive Logs</h3>
+              <h3 className="font-semibold mb-2">📒 Dive Logs ({diveLogs.length})</h3>
               {diveLogs.length > 0 ? (
-                <ul className="space-y-2">
-                  {diveLogs.map((log, i) => (
+                <ul className="space-y-2 max-h-64 overflow-y-auto">
+                  {diveLogs.slice(0, 10).map((log, i) => (
                     <li
                       key={log.id || i}
                       className={`border p-2 rounded text-sm ${
-                        darkMode ? "bg-gray-800 text-white" : "bg-white text-black"
+                        darkMode ? "bg-gray-800 text-white border-gray-600" : "bg-white text-black border-gray-200"
                       }`}
                     >
-                      <strong>{log.date}</strong> – {log.disciplineType}: {log.targetDepth}m
+                      <div className="flex justify-between items-start mb-1">
+                        <strong className="text-xs">{new Date(log.date || log.timestamp).toLocaleDateString()}</strong>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {log.reachedDepth || log.targetDepth}m
+                        </span>
+                      </div>
+                      
+                      <div className="text-xs text-gray-500 mb-2">
+                        {log.discipline || log.disciplineType} • {log.location || 'Unknown location'}
+                      </div>
+                      
+                      {/* ✅ Show sync status */}
+                      {log.syncedToWix && (
+                        <div className="text-xs text-green-500 mb-1">✅ Synced to cloud</div>
+                      )}
+                      
                       <div className="flex justify-end space-x-2 mt-1">
                         <button
                           onClick={() => handleEdit(i)}
-                          className="text-blue-500 text-xs"
+                          className="text-blue-500 text-xs hover:underline"
                         >
                           🖊️ Edit
                         </button>
                         <button
                           onClick={() => handleDelete(i)}
-                          className="text-red-500 text-xs"
+                          className="text-red-500 text-xs hover:underline"
                         >
                           🗑️ Delete
                         </button>
@@ -125,7 +212,7 @@ export default function Sidebar({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm italic text-gray-500">No dive logs yet</p>
+                <p className="text-sm italic text-gray-500">No dive logs yet. Add your first dive above!</p>
               )}
             </div>
           )}

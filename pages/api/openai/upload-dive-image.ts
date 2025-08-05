@@ -3,7 +3,10 @@ import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
+import handleCors from '@/utils/handleCors';
+import { extractDiveText } from '@/utils/extractTextFromImage';
+import { analyzeDiveLogText, generateDiveReport } from '@/utils/analyzeDiveLog';
+import OpenAI from 'openai';
 
 export const config = {
   api: {
@@ -95,6 +98,10 @@ async function syncToWix(diveLogId: string, imageUrl: string): Promise<boolean> 
     return false;
   }
 }
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const startTime = Date.now();
@@ -253,24 +260,138 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ✅ Sync to Wix (non-blocking, matching your other API patterns)
     const wixSynced = await syncToWix(diveLogId, imageUrl);
 
-    const processingTime = Date.now() - startTime;
-    console.log(`✅ Image upload completed in ${processingTime}ms`);
+    // 🔍 STEP 1: OCR Text Extraction
+    console.log('🔍 Extracting text from dive profile...');
+    const extractedText = await extractDiveText(imageFile.filepath);
+    console.log('📄 OCR Result:', extractedText);
 
-    // ✅ Response format matching your other APIs
+    // 📊 STEP 2: Technical Analysis
+    let analysis = null;
+    let coachingReport = '';
+    
+    if (extractedText && extractedText.trim()) {
+      console.log('📊 Analyzing extracted dive data...');
+      analysis = analyzeDiveLogText(extractedText);
+      coachingReport = generateDiveReport(analysis);
+    }
+
+    // 🤖 STEP 3: AI Vision Analysis
+    const imageBuffer = fs.readFileSync(imageFile.filepath);
+    const base64Image = imageBuffer.toString('base64');
+
+    const visionResponse = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Analyze this freediving depth profile chart. 
+              
+              OCR extracted: "${extractedText || 'No text detected'}"
+              ${coachingReport ? `Technical analysis: ${coachingReport}` : ''}
+              
+              Please provide insights about:
+              1. Descent/ascent curve smoothness
+              2. Time spent at various depths
+              3. Any concerning patterns
+              4. Technical improvement suggestions
+              5. Safety observations`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`,
+                detail: "high"
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 500
+    });
+
+    const visionAnalysis = visionResponse.choices[0]?.message?.content || 'No vision analysis available';
+
+    // 🎯 STEP 4: Combined Results
+    const combinedAnalysis = {
+      ocr: {
+        text: extractedText,
+        success: !!extractedText?.trim()
+      },
+      technical: analysis ? {
+        analysis,
+        coaching: coachingReport,
+        metrics: {
+          maxDepth: Math.max(...(analysis.depthData || [])) || 0,
+          avgDescentRate: analysis.descentRates?.length > 0 
+            ? analysis.descentRates.reduce((a, b) => a + b, 0) / analysis.descentRates.length 
+            : 0,
+          hangCount: analysis.changes?.filter(c => c.warning).length || 0
+        }
+      } : null,
+      vision: {
+        insights: visionAnalysis,
+        model: 'gpt-4-vision-preview'
+      }
+    };
+
+    // 💾 STEP 5: Auto-save to memory system (non-blocking)
+    const wixUserIdResponse = await axios.get(`${process.env.WIX_SITE_URL || 'https://www.deepfreediving.com'}/_functions/getUserId`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'KovalAI/1.0'
+      },
+      timeout: 8000
+    });
+
+    const userId = wixUserIdResponse.data?.userId;
+
+    if (diveLogId && userId) {
+      const wixUserIdResponse = await axios.get(`${process.env.WIX_SITE_URL || 'https://www.deepfreediving.com'}/_functions/getUserId`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'KovalAI/1.0'
+        },
+        timeout: 8000
+      });
+
+      const userId = wixUserIdResponse.data?.userId;
+
+      if (!userId) {
+        console.warn('⚠️ Failed to retrieve user ID from Wix');
+      } else {
+        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/analyze/record-memory`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+        log: {
+          imageAnalysis: combinedAnalysis,
+          diveLogId,
+          analysisTimestamp: new Date().toISOString()
+        },
+        threadId: `user_${userId}_thread`,
+        userId: userId
+          })
+        }).catch(err => console.warn('⚠️ Memory save failed:', err.message));
+      }
+    }
+
+    // 🧹 Cleanup
+    fs.unlinkSync(imageFile.filepath);
+
+    const successMessage = `🤖 Complete Analysis Results:
+    
+📄 OCR: ${extractedText ? 'Successfully extracted dive data' : 'No text detected'}
+${coachingReport ? `📊 Technical: ${coachingReport}` : ''}
+🤖 AI Vision: ${visionAnalysis.substring(0, 200)}${visionAnalysis.length > 200 ? '...' : ''}`;
+
     return res.status(200).json({
       success: true,
-      message: '✅ Image uploaded and linked to your dive log.',
-      data: {
-        diveLogId,
-        imageUrl,
-        localUpdated: logUpdated,
-        wixSynced
-      },
-      metadata: {
-        processingTime,
-        fileSize: imageFile.size,
-        fileName: imageFile.originalFilename
-      }
+      message: successMessage,
+      data: combinedAnalysis,
+      diveLogId
     });
 
   } catch (error: any) {

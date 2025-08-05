@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface DiveLog {
   date: string;
@@ -22,6 +22,143 @@ export default function Journal({ userId, onSave }: JournalProps) {
     localId: ""
   });
   const [loading, setLoading] = useState(false);
+
+  // 🔄 NEW: Enterprise dive logs state
+  const [diveLogs, setDiveLogs] = useState([]);
+  const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('idle');
+
+  // 📊 Load dive logs from hybrid system
+  const refreshDiveLogs = async () => {
+    if (!userId) {
+      console.log('⚠️ No userId for loading dive logs');
+      return;
+    }
+    
+    try {
+      setLoadingDiveLogs(true);
+      setSyncStatus('syncing');
+      console.log('🔄 Loading dive logs from hybrid system...');
+      
+      // 🚀 Local API first (fastest)
+      const localResponse = await fetch(`/api/analyze/get-dive-logs?userId=${userId}`);
+      
+      if (localResponse.ok) {
+        const localData = await localResponse.json();
+        if (localData.logs && localData.logs.length > 0) {
+          setDiveLogs(localData.logs);
+          setSyncStatus('synced');
+          console.log(`✅ Loaded ${localData.logs.length} logs from local`);
+          
+          // 🌐 Background sync with Wix
+          setTimeout(() => syncWithWix(localData.logs), 1000);
+          return;
+        }
+      }
+      
+      // 🌐 Fallback: Load from Wix directly
+      await loadFromWix();
+      
+    } catch (error) {
+      console.error('❌ Failed to load dive logs:', error);
+      setSyncStatus('error');
+      setDiveLogs([]);
+    } finally {
+      setLoadingDiveLogs(false);
+    }
+  };
+
+  // 🌐 Load from Wix backend
+  const loadFromWix = async () => {
+    try {
+      console.log('🌐 Loading from Wix backend...');
+      
+      const wixResponse = await fetch(`https://www.deepfreediving.com/_functions/diveLogs?userId=${userId}`, {
+        method: 'GET',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (wixResponse.ok) {
+        const wixData = await wixResponse.json();
+        if (wixData.success && wixData.data) {
+          const transformedLogs = wixData.data.map((log: any) => ({
+            id: log.uniqueKey || log._id,
+            date: log.date,
+            discipline: log.discipline,
+            disciplineType: log.disciplineType,
+            location: log.location,
+            targetDepth: log.targetDepth,
+            reachedDepth: log.reachedDepth,
+            notes: log.notes,
+            timestamp: log.timestamp,
+            syncedToWix: true,
+            wixId: log._id
+          }));
+          
+          setDiveLogs(transformedLogs);
+          setSyncStatus('synced');
+          console.log(`✅ Loaded ${transformedLogs.length} logs from Wix`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Wix load failed:', error);
+      throw error;
+    }
+  };
+
+  // 🔄 Background sync with Wix
+  const syncWithWix = async (localLogs: DiveLog[]) => {
+    try {
+      const syncResponse = await fetch('/api/analyze/sync-dive-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, localLogs })
+      });
+      
+      if (syncResponse.ok) {
+        const syncData = await syncResponse.json();
+        if (syncData.logs) {
+          setDiveLogs(syncData.logs);
+          console.log(`✅ Background sync: ${syncData.totalCount} total, ${syncData.uploadedCount} uploaded`);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Background sync failed:', error);
+    }
+  };
+
+  // 🔄 Load when userId changes
+  useEffect(() => {
+    if (userId) {
+      refreshDiveLogs();
+    }
+  }, [userId]);
+
+  // ✅ Enhanced handlers
+  const handleJournalSubmit = async (formData: DiveLog) => {
+    console.log('📝 Dive journal submitted:', formData);
+    setTimeout(() => refreshDiveLogs(), 2000);
+  };
+
+  const handleDelete = async (index: number) => {
+    const logToDelete = diveLogs[index];
+    if (!logToDelete) return;
+
+    try {
+      setLoadingDiveLogs(true);
+      const updatedLogs = diveLogs.filter((_, i) => i !== index);
+      setDiveLogs(updatedLogs);
+      setTimeout(() => refreshDiveLogs(), 1000);
+    } catch (error) {
+      console.error('❌ Delete failed:', error);
+      refreshDiveLogs();
+    } finally {
+      setLoadingDiveLogs(false);
+    }
+  };
 
   // ✅ Handles input change
   const handleChange = (

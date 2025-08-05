@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import ChatMessages from "../components/ChatMessages";
 import Sidebar from "../components/Sidebar";
 import ChatBox from "../components/ChatBox";
+import DiveJournalDisplay from '../components/DiveJournalDisplay';
 // ✅ Fix: Remove or create proper apiClient import
 // import apiClient from "../utils/apiClient";
 
@@ -65,6 +66,7 @@ export default function Index() {
   const [profile, setProfile] = useState({});
   const [eqState, setEqState] = useState({ currentDepth: null, answers: {}, alreadyAsked: [] });
   const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
+  // 🔄 NEW: Enterprise dive logs state
   const [diveLogs, setDiveLogs] = useState([]);
   const [editLogIndex, setEditLogIndex] = useState(null);
   const [loadingConnections, setLoadingConnections] = useState(true);
@@ -73,6 +75,9 @@ export default function Index() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
+  const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
+  const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
   const bottomRef = useRef(null);
 
   // ----------------------------
@@ -517,6 +522,11 @@ export default function Index() {
           handleJournalSubmit={handleJournalSubmit}
           handleEdit={handleEdit}
           handleDelete={handleDelete}
+          diveLogs={diveLogs}                           // ✅ Pass enterprise dive logs
+          refreshDiveLogs={refreshDiveLogs}             // ✅ Refresh function
+          onDiveLogsUpdate={setDiveLogs}               // ✅ Update callback
+          loadingDiveLogs={loadingDiveLogs}            // ✅ Loading state
+          syncStatus={syncStatus}                       // ✅ Sync status
         />
 
         {/* ✅ Connection Status Dock */}
@@ -559,6 +569,23 @@ export default function Index() {
           <ChatBox {...sharedProps} />
         </div>
       </div>
+
+      {/* Add dive journal button */}
+      <button
+        onClick={() => setIsDiveJournalOpen(true)}
+        className="fixed top-4 right-16 bg-blue-600 hover:bg-blue-700 p-2 rounded-lg text-sm"
+        title="View Dive Journal"
+      >
+        📘 Journal
+      </button>
+
+      {/* Dive journal sidebar */}
+      <DiveJournalDisplay 
+        userId="current-user" // Replace with actual user ID
+        darkMode={true}
+        isOpen={isDiveJournalOpen} 
+        onClose={() => setIsDiveJournalOpen(false)} 
+      />
     </main>
   );
 }
