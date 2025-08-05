@@ -87,6 +87,15 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string, query: string): Promise<string[]> {
   if (!userId || !query?.trim()) return [];
 
+  // ✅ Single DiveLog interface definition
+  interface DiveLog {
+    reachedDepth?: number;
+    targetDepth?: number;
+    discipline?: string;
+    location?: string;
+    notes?: string;
+  }
+
   try {
     console.log('🌊 Querying dive logs for personal context...');
     
@@ -102,15 +111,6 @@ async function queryDiveLogs(userId: string, query: string): Promise<string[]> {
     if (localResponse.ok) {
       const localData = await localResponse.json();
       if (localData.logs && localData.logs.length > 0) {
-        // Convert recent dives to context strings
-        interface DiveLog {
-          reachedDepth?: number;
-          targetDepth?: number;
-          discipline?: string;
-          location?: string;
-          notes?: string;
-        }
-
         const recentDives = (localData.logs as DiveLog[]).slice(0, 5).map((log: DiveLog) => 
           `Personal dive: ${log.reachedDepth || log.targetDepth}m ${log.discipline || 'freedive'} at ${log.location || 'unknown location'} - ${log.notes || 'no notes'}`
         );
@@ -133,14 +133,6 @@ async function queryDiveLogs(userId: string, query: string): Promise<string[]> {
       if (wixResponse.ok) {
         const wixData = await wixResponse.json();
         if (wixData.success && wixData.data) {
-          type DiveLog = {
-            reachedDepth?: number;
-            targetDepth?: number;
-            discipline?: string;
-            location?: string;
-            notes?: string;
-          };
-
           const recentDives = (wixData.data as DiveLog[]).slice(0, 5).map((log: DiveLog) => 
             `Personal dive: ${log.reachedDepth || log.targetDepth}m ${log.discipline || 'freedive'} at ${log.location || 'unknown location'} - ${log.notes || 'no notes'}`
           );
