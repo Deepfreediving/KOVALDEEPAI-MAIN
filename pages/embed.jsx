@@ -191,10 +191,19 @@ export default function Embed() {
     }
   }, [darkMode]);
 
-  // ✅ AUTO-SCROLL
+  // ✅ AUTO-SCROLL - More controlled for embedded mode
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current && messages.length > 0) {
+      // Only scroll if user is near bottom to avoid interrupting reading
+      const messagesContainer = bottomRef.current.closest('.overflow-y-auto');
+      if (messagesContainer) {
+        const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        
+        if (isNearBottom) {
+          bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
+      }
     }
   }, [messages]);
 
@@ -280,7 +289,7 @@ export default function Embed() {
     setFiles(selectedFiles);
   }, []);
 
-  // ✅ LOAD DIVE LOGS (Enhanced from both versions)
+  // ✅ LOAD DIVE LOGS (Enhanced with better error handling)
   const loadDiveLogs = useCallback(async () => {
     if (!userId) return;
     
@@ -291,28 +300,34 @@ export default function Embed() {
       const localLogs = safeParse(key, []);
       setDiveLogs(localLogs);
 
-      // Then try to load from API
-      const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
-      if (response.ok) {
-        const data = await response.json();
-        const remoteLogs = data.logs || [];
-        
-        // Merge local and remote logs (remove duplicates)
-        const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
-          const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
-          return { ...map, [key]: log };
-        }, {});
-        
-        const combined = Object.values(merged).sort((a, b) => 
-          new Date(b.date) - new Date(a.date)
-        );
-        
-        setDiveLogs(combined);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+      // Then try to load from API - but don't fail if API is not available
+      try {
+        const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const remoteLogs = data.logs || [];
+          
+          // Merge local and remote logs (remove duplicates)
+          const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
+            const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
+            return { ...map, [key]: log };
+          }, {});
+          
+          const combined = Object.values(merged).sort((a, b) => 
+            new Date(b.date) - new Date(a.date)
+          );
+          
+          setDiveLogs(combined);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+          }
+          
+          console.log(`✅ Loaded ${combined.length} dive logs`);
+        } else {
+          console.log("ℹ️ API not available, using local logs only");
         }
-        
-        console.log(`✅ Loaded ${combined.length} dive logs`);
+      } catch (apiError) {
+        console.log("ℹ️ API not available, using local logs only");
       }
     } catch (error) {
       console.error("❌ Failed to load dive logs:", error);
@@ -321,38 +336,66 @@ export default function Embed() {
     }
   }, [userId]);
 
-  // ✅ DIVE JOURNAL SUBMIT
+  // ✅ DIVE JOURNAL SUBMIT (Enhanced with better error handling)
   const handleJournalSubmit = useCallback(async (diveData) => {
+    if (!userId) {
+      console.error("❌ No userId available for dive log submission");
+      return;
+    }
+
     try {
-      const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...diveData, userId }),
-      });
+      // Add userId to dive data
+      const diveLogWithUser = { ...diveData, userId };
+      
+      // Try API first, then fall back to local storage
+      try {
+        const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(diveLogWithUser),
+        });
 
-      if (response.ok) {
-        console.log("✅ Dive log saved successfully");
-        await loadDiveLogs(); // Refresh the list
-        setIsDiveJournalOpen(false);
-        setEditLogIndex(null);
+        if (response.ok) {
+          console.log("✅ Dive log saved to API successfully");
+        } else {
+          throw new Error("API save failed");
+        }
+      } catch (apiError) {
+        console.log("ℹ️ API not available, saving to local storage only");
         
-        // Add confirmation message
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || 'your location'}.`
-        }]);
-
-        // Notify parent about dive log save
-        window.parent?.postMessage({ 
-          type: "SAVE_DIVE_LOG", 
-          diveLog: diveData,
-          source: 'koval-ai-embed',
-          userId: userId,
-          timestamp: Date.now()
-        }, "*");
-      } else {
-        console.error("❌ Failed to save dive log");
+        // Save to local storage as fallback
+        const key = storageKey(userId);
+        const existingLogs = safeParse(key, []);
+        const localId = `local-${Date.now()}`;
+        const localLog = { ...diveLogWithUser, localId, savedAt: new Date().toISOString() };
+        const updatedLogs = [localLog, ...existingLogs];
+        
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(key, JSON.stringify(updatedLogs));
+        }
+        setDiveLogs(updatedLogs);
       }
+
+      // Refresh the list regardless of save method
+      await loadDiveLogs();
+      setIsDiveJournalOpen(false);
+      setEditLogIndex(null);
+      
+      // Add confirmation message
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || 'your location'}.`
+      }]);
+
+      // Notify parent about dive log save
+      window.parent?.postMessage({ 
+        type: "SAVE_DIVE_LOG", 
+        diveLog: diveLogWithUser,
+        source: 'koval-ai-embed',
+        userId: userId,
+        timestamp: Date.now()
+      }, "*");
+
     } catch (error) {
       console.error("❌ Error saving dive log:", error);
     }
@@ -454,74 +497,76 @@ export default function Embed() {
   ]);
 
   return (
-    <main className={`h-full flex ${
+    <div className={`h-screen w-full flex flex-col overflow-hidden ${
       darkMode ? "bg-black text-white" : "bg-white text-gray-900"
     }`}>
-      
-      {/* ✅ SIDEBAR - Smaller in embedded mode */}
-      <div className={`w-[250px] h-full overflow-y-auto border-r flex flex-col justify-between ${
-        darkMode ? "border-gray-700" : "border-gray-300"
-      }`}>
-        <Sidebar {...sidebarProps} />
-
-        {/* ✅ CONNECTION STATUS - Simplified */}
-        <div className={`mt-2 mb-2 mx-2 flex justify-center space-x-2 text-lg px-2 py-1 rounded ${
-          darkMode ? "bg-gray-800" : "bg-gray-100"
-        }`}>
-          {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
-          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
-          {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
-        </div>
-      </div>
-
-      {/* ✅ MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex h-full overflow-hidden">
         
-        {/* Top Bar - Compact */}
-        <div className={`sticky top-0 z-10 border-b p-2 flex justify-between items-center text-sm ${
-          darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
+        {/* ✅ SIDEBAR - Fixed height in embedded mode */}
+        <div className={`w-[250px] h-full overflow-y-auto border-r flex flex-col justify-between ${
+          darkMode ? "border-gray-700" : "border-gray-300"
         }`}>
-          <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-            👤 {getDisplayName()} • Embedded
+          <Sidebar {...sidebarProps} />
+
+          {/* ✅ CONNECTION STATUS - Simplified */}
+          <div className={`mt-2 mb-2 mx-2 flex justify-center space-x-2 text-lg px-2 py-1 rounded ${
+            darkMode ? "bg-gray-800" : "bg-gray-100"
+          }`}>
+            {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+            {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+            {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`px-2 py-1 rounded text-xs ${
-              darkMode
-                ? "bg-gray-800 text-white hover:bg-gray-700"
-                : "bg-gray-200 text-black hover:bg-gray-300"
-            }`}
-          >
-            {darkMode ? "☀️" : "🌙"}
-          </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto flex justify-center">
-          <div className="w-full max-w-3xl px-4 py-3">
-            <ChatMessages
-              messages={messages}
-              BOT_NAME={BOT_NAME}
-              darkMode={darkMode}
+        {/* ✅ MAIN CHAT AREA - Fixed height with proper overflow */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          
+          {/* Top Bar - Fixed position */}
+          <div className={`flex-shrink-0 border-b p-2 flex justify-between items-center text-sm ${
+            darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
+          }`}>
+            <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+              👤 {getDisplayName()} • Embedded
+            </div>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`px-2 py-1 rounded text-xs ${
+                darkMode
+                  ? "bg-gray-800 text-white hover:bg-gray-700"
+                  : "bg-gray-200 text-black hover:bg-gray-300"
+              }`}
+            >
+              {darkMode ? "☀️" : "🌙"}
+            </button>
+          </div>
+
+          {/* Messages - Scrollable area only */}
+          <div className="flex-1 overflow-y-auto flex justify-center">
+            <div className="w-full max-w-3xl px-4 py-3">
+              <ChatMessages
+                messages={messages}
+                BOT_NAME={BOT_NAME}
+                darkMode={darkMode}
+                loading={loading}
+                bottomRef={bottomRef}
+              />
+            </div>
+          </div>
+
+          {/* Chat Input - Fixed at bottom */}
+          <div className={`flex-shrink-0 px-3 py-2 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}>
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              handleSubmit={handleSubmit}
+              handleKeyDown={handleKeyDown}
+              handleFileChange={handleFileChange}
+              files={files}
+              setFiles={setFiles}
               loading={loading}
-              bottomRef={bottomRef}
+              darkMode={darkMode}
             />
           </div>
-        </div>
-
-        {/* Chat Input */}
-        <div className={`px-3 py-2 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}>
-          <ChatInput
-            input={input}
-            setInput={setInput}
-            handleSubmit={handleSubmit}
-            handleKeyDown={handleKeyDown}
-            handleFileChange={handleFileChange}
-            files={files}
-            setFiles={setFiles}
-            loading={loading}
-            darkMode={darkMode}
-          />
         </div>
       </div>
 
@@ -549,11 +594,20 @@ export default function Embed() {
               </button>
             </div>
             <div className="h-[calc(95vh-80px)]">
-              <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+              <DiveJournalSidebarCard 
+                userId={userId} 
+                darkMode={darkMode}
+                onSubmit={handleJournalSubmit}
+                onDelete={handleDelete}
+                diveLogs={diveLogs}
+                loadingDiveLogs={loadingDiveLogs}
+                editLogIndex={editLogIndex}
+                setEditLogIndex={setEditLogIndex}
+              />
             </div>
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
