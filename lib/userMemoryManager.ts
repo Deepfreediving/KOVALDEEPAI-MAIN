@@ -26,7 +26,7 @@ const wixClient = createClient({
   }),
 });
 
-const COLLECTION_ID = "UserMemory";
+const COLLECTION_ID = "@deepfreediving/kovaldeepai-app/Import1";
 
 /**
  * Fetch UserMemory document for a specific userId

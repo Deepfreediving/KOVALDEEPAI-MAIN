@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import handleCors from '@/utils/handleCors';
 import { fetchUserMemory, saveUserMemory } from '@/lib/userMemoryManager';
+import { queryVectors } from '@/lib/pineconeClient';
 
 // ✅ Environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -43,34 +44,32 @@ function getDepthRange(depth: number = 10): string {
   return `${Math.floor(depth / 10) * 10}m`;
 }
 
-// ✅ Pinecone query (updated to use new unified endpoint)
+// ✅ Pinecone query (using direct client)
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
 
   try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
-
-    // ✅ UPDATED: Use new unified pinecone endpoint
-    const response = await fetch(`${baseUrl}/api/pinecone`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'query',
-        query,
-        topK: 5,
-        filter: { approvedBy: { $eq: 'Koval' } },
-      }),
+    // ✅ Get embedding for the query
+    const response = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: query.trim(),
     });
 
-    if (!response.ok) {
-      console.warn(`⚠️ Pinecone query failed with status ${response.status}`);
+    const embedding = response.data?.[0]?.embedding;
+    if (!embedding) {
+      console.warn('⚠️ Failed to get embedding for query');
       return [];
     }
 
-    const result = await response.json();
-    return result.matches?.map((m: any) => m.metadata?.text).filter(Boolean) || [];
+    // ✅ Query Pinecone directly
+    const matches = await queryVectors(embedding, 5, { 
+      approvedBy: { $eq: 'Koval' } 
+    });
+
+    return matches
+      .map((match: any) => match.metadata?.text)
+      .filter(Boolean) || [];
+      
   } catch (err: unknown) {
     console.warn('⚠️ Pinecone query error:', err instanceof Error ? err.message : String(err));
     return [];

@@ -1,0 +1,334 @@
+// ===== 📄 http-loadMemories.jsw - FIXED VERSION =====
+// Handles retrieval of user memory logs (direct DB fetch or semantic search via external API)
+
+import wixData from 'wix-data';
+import wixUsersBackend from 'wix-users-backend';
+import { fetch } from 'wix-fetch';
+import {
+    successResponse,
+    unauthorizedResponse,
+    serverErrorResponse,
+    baseResponse,
+    badRequestResponse
+} from 'backend/http-utils.jsw';
+
+// ✅ CONFIGURATION
+const COLLECTION_ID = "@deepfreediving/kovaldeepai-app/Import1";
+const SEMANTIC_SEARCH_API = "https://kovaldeepai-main.vercel.app/api/pinecone";
+const MAX_RESULTS = 100;
+
+/**
+ * ✅ OPTIONS: Preflight requests
+ */
+export function options_loadMemories(request) {
+    return baseResponse(204, request);
+}
+
+/**
+ * ✅ GET: Retrieve all user memories (with optional semantic search)
+ */
+export async function get_loadMemories(request) {
+    try {
+        // ✅ IMPROVED USER IDENTIFICATION
+        let userId = request.query?.userId;
+        
+        // Try to get authenticated user
+        try {
+            const currentUser = await wixUsersBackend.currentUser;
+            if (currentUser?.id) {
+                userId = currentUser.id;
+            }
+        } catch (authError) {
+            console.log("ℹ️ No authenticated user, using query userId");
+        }
+
+        if (!userId) {
+            return unauthorizedResponse(request, "User not identified. Please provide userId parameter or log in.");
+        }
+
+        // ✅ PARSE QUERY PARAMETERS
+        const searchQuery = request.query?.q || request.query?.query || null;
+        const limit = Math.min(parseInt(request.query?.limit || 50), MAX_RESULTS);
+        const skip = Math.max(parseInt(request.query?.skip || 0), 0);
+        const sortBy = request.query?.sort || 'timestamp'; // timestamp, discipline, depth
+        const sortOrder = request.query?.order === 'asc' ? 'ascending' : 'descending';
+
+        console.log(`📊 Loading memories for user: ${userId}`);
+        console.log(`🔍 Search query: "${searchQuery}", limit: ${limit}, skip: ${skip}`);
+
+        let items = [];
+        let totalCount = 0;
+        let searchType = 'database';
+
+        if (searchQuery && searchQuery.trim().length > 2) {
+            // ✅ SEMANTIC SEARCH via Next.js API
+            const semanticResults = await performSemanticSearch(searchQuery, userId, limit);
+            if (semanticResults.success) {
+                items = semanticResults.data;
+                totalCount = semanticResults.count;
+                searchType = 'semantic';
+            } else {
+                console.warn("⚠️ Semantic search failed, falling back to database search");
+                // Fall through to database search
+            }
+        }
+
+        if (!searchQuery || searchType === 'database') {
+            // ✅ DIRECT DATABASE QUERY
+            const dbResults = await performDatabaseSearch(userId, searchQuery, limit, skip, sortBy, sortOrder);
+            items = dbResults.items;
+            totalCount = dbResults.totalCount;
+            searchType = 'database';
+        }
+
+        return successResponse(request, {
+            success: true,
+            count: items.length,
+            totalCount,
+            data: items,
+            searchType,
+            query: searchQuery,
+            userId,
+            pagination: {
+                limit,
+                skip,
+                hasMore: skip + items.length < totalCount
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ GET loadMemories error:", error);
+        return serverErrorResponse(request, "Failed to load user memories.", error);
+    }
+}
+
+/**
+ * ✅ PERFORM SEMANTIC SEARCH via Next.js API
+ */
+async function performSemanticSearch(query, userId, limit = 20) {
+    try {
+        console.log("🔍 Performing semantic search via Next.js API");
+
+        const response = await fetch(SEMANTIC_SEARCH_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'query',
+                query: query,
+                topK: limit,
+                filter: { 
+                    userId: { $eq: userId },
+                    type: { $eq: 'user-memory' }
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Semantic search API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.success || !data.matches) {
+            throw new Error('Invalid response from semantic search API');
+        }
+
+        // ✅ Map Pinecone results to standard format
+        const items = data.matches.map(match => ({
+            _id: match.id,
+            userId: match.metadata?.userId || userId,
+            memoryContent: match.metadata?.content || '',
+            logEntry: match.metadata?.logEntry || '',
+            discipline: match.metadata?.discipline || '',
+            location: match.metadata?.location || '',
+            targetDepth: match.metadata?.targetDepth || 0,
+            reachedDepth: match.metadata?.reachedDepth || 0,
+            timestamp: match.metadata?.timestamp || new Date().toISOString(),
+            score: match.score,
+            searchType: 'semantic'
+        }));
+
+        return {
+            success: true,
+            data: items,
+            count: items.length
+        };
+
+    } catch (error) {
+        console.error("❌ Semantic search error:", error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * ✅ PERFORM DATABASE SEARCH
+ */
+async function performDatabaseSearch(userId, searchQuery, limit, skip, sortBy, sortOrder) {
+    try {
+        console.log("🗄️ Performing database search");
+
+        let query = wixData.query(COLLECTION_ID)
+            .eq("userId", userId);
+
+        // ✅ ADD TEXT SEARCH if query provided
+        if (searchQuery && searchQuery.trim()) {
+            // Search in multiple fields
+            query = query.or(
+                wixData.query(COLLECTION_ID).contains("memoryContent", searchQuery),
+                wixData.query(COLLECTION_ID).contains("logEntry", searchQuery),
+                wixData.query(COLLECTION_ID).contains("discipline", searchQuery),
+                wixData.query(COLLECTION_ID).contains("location", searchQuery),
+                wixData.query(COLLECTION_ID).contains("notes", searchQuery)
+            ).eq("userId", userId);
+        }
+
+        // ✅ ADD SORTING
+        switch (sortBy) {
+            case 'depth':
+                query = query[sortOrder]("reachedDepth");
+                break;
+            case 'discipline':
+                query = query[sortOrder]("discipline");
+                break;
+            case 'location':
+                query = query[sortOrder]("location");
+                break;
+            default:
+                query = query[sortOrder]("timestamp");
+        }
+
+        // ✅ ADD PAGINATION
+        query = query.skip(skip).limit(limit);
+
+        const result = await query.find();
+
+        // ✅ GET TOTAL COUNT (for pagination)
+        const countQuery = wixData.query(COLLECTION_ID).eq("userId", userId);
+        const countResult = await countQuery.count();
+
+        // ✅ ENHANCE ITEMS WITH COMPUTED FIELDS
+        const items = (result.items || []).map(item => ({
+            ...item,
+            searchType: 'database',
+            // Add computed fields
+            depthAchieved: item.reachedDepth || item.targetDepth || 0,
+            hasNotes: !!(item.notes && item.notes.trim()),
+            daysSinceLog: item.timestamp ? 
+                Math.floor((new Date() - new Date(item.timestamp)) / (1000 * 60 * 60 * 24)) : 0
+        }));
+
+        return {
+            items,
+            totalCount: countResult || items.length
+        };
+
+    } catch (error) {
+        console.error("❌ Database search error:", error);
+        throw new Error("Database search failed: " + error.message);
+    }
+}
+
+/**
+ * ✅ POST: Advanced memory search with filters
+ */
+export async function post_loadMemories(request) {
+    try {
+        // ✅ GET USER ID
+        let userId;
+        try {
+            const currentUser = await wixUsersBackend.currentUser;
+            userId = currentUser?.id;
+        } catch (authError) {
+            // No auth required if userId provided in body
+        }
+
+        // ✅ PARSE REQUEST BODY
+        const body = await parseRequestBody(request);
+        
+        if (!userId && body.userId) {
+            userId = body.userId;
+        }
+
+        if (!userId) {
+            return unauthorizedResponse(request, "User not identified");
+        }
+
+        const {
+            query: searchQuery,
+            filters = {},
+            limit = 50,
+            skip = 0,
+            sortBy = 'timestamp',
+            sortOrder = 'desc'
+        } = body;
+
+        console.log("🔍 Advanced search:", { searchQuery, filters, userId });
+
+        // ✅ BUILD COMPLEX QUERY
+        let dbQuery = wixData.query(COLLECTION_ID).eq("userId", userId);
+
+        // Apply filters
+        if (filters.discipline) {
+            dbQuery = dbQuery.eq("discipline", filters.discipline);
+        }
+        if (filters.location) {
+            dbQuery = dbQuery.contains("location", filters.location);
+        }
+        if (filters.minDepth) {
+            dbQuery = dbQuery.ge("reachedDepth", filters.minDepth);
+        }
+        if (filters.maxDepth) {
+            dbQuery = dbQuery.le("reachedDepth", filters.maxDepth);
+        }
+        if (filters.dateFrom) {
+            dbQuery = dbQuery.ge("timestamp", new Date(filters.dateFrom));
+        }
+        if (filters.dateTo) {
+            dbQuery = dbQuery.le("timestamp", new Date(filters.dateTo));
+        }
+
+        // Apply search query
+        if (searchQuery) {
+            dbQuery = dbQuery.or(
+                wixData.query(COLLECTION_ID).contains("memoryContent", searchQuery),
+                wixData.query(COLLECTION_ID).contains("logEntry", searchQuery),
+                wixData.query(COLLECTION_ID).contains("notes", searchQuery)
+            );
+        }
+
+        // Apply sorting and pagination
+        dbQuery = dbQuery[sortOrder === 'asc' ? 'ascending' : 'descending'](sortBy)
+            .skip(skip)
+            .limit(Math.min(limit, MAX_RESULTS));
+
+        const result = await dbQuery.find();
+
+        return successResponse(request, {
+            success: true,
+            count: result.items.length,
+            data: result.items || [],
+            filters: filters,
+            searchQuery,
+            pagination: { limit, skip }
+        });
+
+    } catch (error) {
+        console.error("❌ POST loadMemories error:", error);
+        return serverErrorResponse(request, "Advanced search failed", error);
+    }
+}
+
+/**
+ * ✅ Helper: Parse request body safely
+ */
+async function parseRequestBody(request) {
+    try {
+        const bodyText = await request.body.text();
+        return JSON.parse(bodyText);
+    } catch (error) {
+        throw new Error('Invalid JSON in request body');
+    }
+}

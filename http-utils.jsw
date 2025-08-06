@@ -1,0 +1,119 @@
+// ===== 📄 http-utils.jsw =====
+// Utility functions for HTTP responses in Wix backend
+
+/**
+ * ✅ Base response structure with CORS headers
+ */
+export function createResponse(status, data, request) {
+    return {
+        status,
+        body: data,
+        headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+            'Access-Control-Max-Age': '86400'
+        }
+    };
+}
+
+/**
+ * ✅ Success response (200)
+ */
+export function successResponse(request, data) {
+    return createResponse(200, {
+        success: true,
+        timestamp: new Date().toISOString(),
+        ...data
+    }, request);
+}
+
+/**
+ * ✅ Bad Request response (400)
+ */
+export function badRequestResponse(request, message, details = null) {
+    return createResponse(400, {
+        success: false,
+        error: message,
+        details,
+        timestamp: new Date().toISOString()
+    }, request);
+}
+
+/**
+ * ✅ Unauthorized response (401)
+ */
+export function unauthorizedResponse(request, message) {
+    return createResponse(401, {
+        success: false,
+        error: message,
+        timestamp: new Date().toISOString()
+    }, request);
+}
+
+/**
+ * ✅ Forbidden response (403)
+ */
+export function forbiddenResponse(request, message) {
+    return createResponse(403, {
+        success: false,
+        error: message,
+        timestamp: new Date().toISOString()
+    }, request);
+}
+
+/**
+ * ✅ Not Found response (404)
+ */
+export function notFoundResponse(request, message) {
+    return createResponse(404, {
+        success: false,
+        error: message,
+        timestamp: new Date().toISOString()
+    }, request);
+}
+
+/**
+ * ✅ Server Error response (500)
+ */
+export function serverErrorResponse(request, message, error = null) {
+    return createResponse(500, {
+        success: false,
+        error: message,
+        details: error?.message || null,
+        timestamp: new Date().toISOString()
+    }, request);
+}
+
+/**
+ * ✅ Base response (for OPTIONS, etc.)
+ */
+export function baseResponse(status, request) {
+    return {
+        status,
+        headers: createResponse(status, {}, request).headers
+    };
+}
+
+/**
+ * ✅ Validation helper
+ */
+export function validateRequired(data, requiredFields) {
+    const missing = requiredFields.filter(field => !data[field]);
+    if (missing.length > 0) {
+        throw new Error(`Missing required fields: ${missing.join(', ')}`);
+    }
+}
+
+/**
+ * ✅ Safe JSON parsing
+ */
+export async function parseRequestBody(request) {
+    try {
+        const bodyText = await request.body.text();
+        return JSON.parse(bodyText);
+    } catch (error) {
+        throw new Error('Invalid JSON in request body');
+    }
+}
