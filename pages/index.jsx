@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useRouter } from "next/router";
 import ChatMessages from "../components/ChatMessages";
 import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
@@ -16,8 +17,12 @@ const API_ROUTES = {
 };
 
 export default function Index() {
+  const router = useRouter();
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
+
+  // Check if we're in embedded mode
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   // ✅ CORE STATE (Combined from both versions)
   const [sessionName, setSessionName] = useState(defaultSessionName);
@@ -77,6 +82,54 @@ export default function Index() {
       setProfile(safeParse("kovalProfile", { nickname: "Guest User" }));
     }
   }, []);
+
+  // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
+  useEffect(() => {
+    if (router.isReady) {
+      const { theme, userId: urlUserId, userName, embedded } = router.query;
+      
+      // Check if we're embedded
+      if (embedded === 'true' || window.parent !== window) {
+        setIsEmbedded(true);
+        console.log('🎯 Running in embedded mode');
+        
+        // Notify parent that we're ready
+        window.parent?.postMessage({ 
+          type: 'EMBED_READY', 
+          source: 'koval-ai-embed',
+          timestamp: Date.now()
+        }, "*");
+      }
+      
+      // Apply theme from URL
+      if (theme === 'dark') {
+        setDarkMode(true);
+      } else if (theme === 'light') {
+        setDarkMode(false);
+      }
+      
+      // Set user data from URL parameters
+      if (urlUserId) {
+        setUserId(String(urlUserId));
+        localStorage.setItem("kovalUser", String(urlUserId));
+      }
+      
+      if (userName) {
+        const decodedUserName = decodeURIComponent(String(userName));
+        setProfile(prev => ({ 
+          ...prev, 
+          nickname: decodedUserName,
+          displayName: decodedUserName 
+        }));
+        localStorage.setItem("kovalProfile", JSON.stringify({ 
+          nickname: decodedUserName,
+          displayName: decodedUserName 
+        }));
+      }
+      
+      console.log('✅ URL parameters processed:', { theme, userId: urlUserId, userName, embedded });
+    }
+  }, [router.isReady, router.query]);
 
   // ✅ THEME SYNC
   useEffect(() => {
@@ -340,46 +393,50 @@ export default function Index() {
   ]);
 
   return (
-    <main className={`h-screen flex ${
+    <main className={`${isEmbedded ? 'h-full' : 'h-screen'} flex ${
       darkMode ? "bg-black text-white" : "bg-white text-gray-900"
     }`}>
       
-      {/* ✅ SIDEBAR */}
-      <div className={`w-[320px] h-screen overflow-y-auto border-r flex flex-col justify-between ${
+      {/* ✅ SIDEBAR - Hidden in embedded mode on mobile, smaller on desktop */}
+      <div className={`${isEmbedded ? 'w-[250px] hidden sm:flex' : 'w-[320px]'} h-full overflow-y-auto border-r flex flex-col justify-between ${
         darkMode ? "border-gray-700" : "border-gray-300"
       }`}>
         <Sidebar {...sidebarProps} />
 
-        {/* ✅ CONNECTION STATUS */}
-        <div className={`mt-4 mb-4 mx-4 flex space-x-4 text-xl px-3 py-2 rounded-lg ${
-          darkMode ? "bg-gray-800" : "bg-gray-100"
-        }`}>
-          {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
-          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
-          {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
-        </div>
+        {/* ✅ CONNECTION STATUS - Simplified in embedded mode */}
+        {!isEmbedded && (
+          <div className={`mt-4 mb-4 mx-4 flex space-x-4 text-xl px-3 py-2 rounded-lg ${
+            darkMode ? "bg-gray-800" : "bg-gray-100"
+          }`}>
+            {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+            {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+            {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
+          </div>
+        )}
       </div>
 
       {/* ✅ MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col h-screen">
+      <div className={`flex-1 flex flex-col ${isEmbedded ? 'h-full' : 'h-screen'}`}>
         
-        {/* Top Bar */}
-        <div className={`sticky top-0 z-10 border-b p-3 flex justify-between items-center text-sm ${
+        {/* Top Bar - Simplified in embedded mode */}
+        <div className={`sticky top-0 z-10 border-b ${isEmbedded ? 'p-2' : 'p-3'} flex justify-between items-center text-sm ${
           darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
         }`}>
           <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
             👤 {getDisplayName()}
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`px-3 py-1 rounded-md ${
-              darkMode
-                ? "bg-gray-800 text-white hover:bg-gray-700"
-                : "bg-gray-200 text-black hover:bg-gray-300"
-            }`}
-          >
-            {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
-          </button>
+          {!isEmbedded && (
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`px-3 py-1 rounded-md ${
+                darkMode
+                  ? "bg-gray-800 text-white hover:bg-gray-700"
+                  : "bg-gray-200 text-black hover:bg-gray-300"
+              }`}
+            >
+              {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+            </button>
+          )}
         </div>
 
         {/* Messages */}

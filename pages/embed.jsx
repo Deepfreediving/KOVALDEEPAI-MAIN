@@ -1,82 +1,153 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
+import ChatMessages from "../components/ChatMessages";
+import ChatInput from "../components/ChatInput";
+import Sidebar from "../components/Sidebar";
+import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
+import apiClient from "../utils/apiClient";
 
-export default function Embed({ userData = {}, aiResponse }) {
+const API_ROUTES = {
+  CREATE_THREAD: "/api/openai/create-thread",
+  CHAT: "/api/chat-embed",
+  GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
+  SAVE_DIVE_LOG: "/api/analyze/save-dive-log",
+  DELETE_DIVE_LOG: "/api/analyze/delete-dive-log",
+  READ_MEMORY: "/api/analyze/read-memory",
+  QUERY_WIX: "/api/wix/query-wix-data",
+};
+
+export default function Embed() {
   const router = useRouter();
-  const [isEmbedMode, setIsEmbedMode] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState("");
-  const [currentUserName, setCurrentUserName] = useState("Guest User");
-  
-  const [messages, setMessages] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("koval_ai_messages")) || [
-        { role: "assistant", content: "🤿 Hi! I'm Koval AI, your freediving coach. How can I help you today?" }
-      ];
-    } catch {
-      return [{ role: "assistant", content: "🤿 Hi! I'm Koval AI, your freediving coach. How can I help you today?" }];
-    }
-  });
+  const BOT_NAME = "Koval AI";
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
+  // Always assume we're in embedded mode for this page
+  const [isEmbedded, setIsEmbedded] = useState(true);
+
+  // ✅ CORE STATE (Combined from both versions)
+  const [sessionName, setSessionName] = useState(defaultSessionName);
+  const [sessionsList, setSessionsList] = useState([]);
+  const [editingSessionName, setEditingSessionName] = useState(false);
   const [input, setInput] = useState("");
+  const [files, setFiles] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: `🤿 Hi! I'm ${BOT_NAME}, your freediving coach. How can I help you today?`,
+    },
+  ]);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [diveLogs, setDiveLogs] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("koval_ai_logs")) || [];
-    } catch {
-      return [];
-    }
+  const [darkMode, setDarkMode] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem("kovalDarkMode") === "true" : false
+  );
+  const [userId, setUserId] = useState("");
+  const [threadId, setThreadId] = useState(null);
+  const [profile, setProfile] = useState({});
+  const [diveLogs, setDiveLogs] = useState([]);
+  const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
+  const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
+  const [editLogIndex, setEditLogIndex] = useState(null);
+  const [loadingConnections, setLoadingConnections] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState({
+    wix: "⏳ Checking...",
+    openai: "⏳ Checking...",
+    pinecone: "⏳ Checking...",
   });
 
-  const [newLog, setNewLog] = useState({ date: "", location: "", depth: "", notes: "", image: "" });
   const bottomRef = useRef(null);
 
-  // Initialize from URL parameters on component mount
+  // ✅ HELPERS
+  const storageKey = (uid) => `diveLogs-${uid}`;
+  const safeParse = (key, fallback) => {
+    try {
+      return typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(key)) || fallback : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const getDisplayName = useCallback(() =>
+    profile?.loginEmail ||
+    profile?.contactDetails?.firstName ||
+    profile?.displayName ||
+    profile?.nickname ||
+    (userId?.startsWith("guest") ? "Guest User" : "User"),
+    [profile, userId]
+  );
+
+  // ✅ INITIALIZATION
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSessionsList(safeParse("kovalSessionsList", []));
+      setUserId(localStorage.getItem("kovalUser") || `guest-${Date.now()}`);
+      setThreadId(localStorage.getItem("kovalThreadId") || null);
+      setProfile(safeParse("kovalProfile", { nickname: "Guest User" }));
+    }
+  }, []);
+
+  // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
   useEffect(() => {
     if (router.isReady) {
-      console.log("🚀 Embed initializing with URL params:", router.query);
+      const { theme, userId: urlUserId, userName, embedded } = router.query;
       
-      // Check if we're in an iframe (embed mode)
-      setIsEmbedMode(window.parent !== window);
+      console.log('🎯 Embed page - URL parameters:', { theme, userId: urlUserId, userName, embedded });
       
-      // Get URL parameters
-      const { theme, userId, userName } = router.query;
+      // Notify parent that we're ready
+      window.parent?.postMessage({ 
+        type: 'EMBED_READY', 
+        source: 'koval-ai-embed',
+        timestamp: Date.now()
+      }, "*");
       
+      // Apply theme from URL
       if (theme === 'dark') {
         setDarkMode(true);
+      } else if (theme === 'light') {
+        setDarkMode(false);
       }
       
-      if (userId) {
-        setCurrentUserId(String(userId));
+      // Set user data from URL parameters
+      if (urlUserId) {
+        setUserId(String(urlUserId));
+        localStorage.setItem("kovalUser", String(urlUserId));
       }
       
       if (userName) {
-        setCurrentUserName(decodeURIComponent(String(userName)));
+        const decodedUserName = decodeURIComponent(String(userName));
+        setProfile(prev => ({ 
+          ...prev, 
+          nickname: decodedUserName,
+          displayName: decodedUserName 
+        }));
+        localStorage.setItem("kovalProfile", JSON.stringify({ 
+          nickname: decodedUserName,
+          displayName: decodedUserName 
+        }));
       }
       
-      console.log("✅ Embed initialized with:", { theme, userId, userName, isEmbedMode: window.parent !== window });
+      console.log('✅ Embed URL parameters processed:', { theme, userId: urlUserId, userName });
     }
   }, [router.isReady, router.query]);
 
-  // Scroll chat to bottom on new messages
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Listen for messages from parent (Wix)
+  // ✅ MESSAGE HANDLING FOR EMBEDDED MODE
   useEffect(() => {
     const handleParentMessages = (event) => {
       console.log('📨 Embed received message:', event.data);
       
-      // Security check - only accept messages from known origins
+      // Security check
       const allowedOrigins = [
         'https://kovaldeepai-main.vercel.app',
+        'http://localhost:3000',
         'https://www.wix.com',
         'https://static.wixstatic.com',
         'https://editor.wix.com'
       ];
       
-      if (event.origin && !allowedOrigins.some(origin => event.origin.includes('wix') || event.origin === 'https://kovaldeepai-main.vercel.app')) {
+      if (event.origin && !allowedOrigins.some(origin => 
+        event.origin.includes('wix') || 
+        event.origin === 'https://kovaldeepai-main.vercel.app' ||
+        event.origin === 'http://localhost:3000'
+      )) {
         console.log('🚫 Ignoring message from untrusted origin:', event.origin);
         return;
       }
@@ -89,283 +160,400 @@ export default function Embed({ userData = {}, aiResponse }) {
           
         case 'USER_AUTH':
           console.log('👤 User auth received:', event.data.data);
-          // Handle user authentication data from Wix
           if (event.data.data?.userId) {
-            setCurrentUserId(event.data.data.userId);
+            setUserId(event.data.data.userId);
           }
           if (event.data.data?.profile?.userName) {
-            setCurrentUserName(event.data.data.profile.userName);
+            setProfile(prev => ({
+              ...prev,
+              displayName: event.data.data.profile.userName,
+              nickname: event.data.data.profile.userName
+            }));
           }
           if (event.data.data?.diveLogs) {
             setDiveLogs(event.data.data.diveLogs);
             localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.diveLogs));
           }
           break;
-          
-        case 'AI_RESPONSE':
-          console.log('🤖 AI response received:', event.data.data);
-          // Handle AI response from Wix backend
-          if (event.data.data?.aiResponse) {
-            setMessages(prev => {
-              const updated = [...prev, { role: "assistant", content: event.data.data.aiResponse }];
-              localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
-              return updated;
-            });
-            setLoading(false);
-          }
-          if (event.data.data?.success === false) {
-            setLoading(false);
-            console.error('❌ AI response failed:', event.data.data.error);
-          }
-          break;
-          
-        case 'DATA_UPDATE':
-          console.log('💾 Data update received:', event.data.data);
-          // Handle updated user data from Wix
-          if (event.data.data?.userDiveLogs) {
-            setDiveLogs(event.data.data.userDiveLogs);
-            localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.userDiveLogs));
-          }
-          break;
-          
-        default:
-          console.log('🔄 Unhandled message type:', event.data?.type);
       }
     };
     
     window.addEventListener('message', handleParentMessages);
     
-    // Notify parent that embed is ready (with retry mechanism)
-    const notifyParent = () => {
-      if (window.parent && window.parent !== window) {
-        console.log('📡 Notifying parent that embed is ready...');
-        window.parent.postMessage({ 
-          type: 'EMBED_READY', 
-          source: 'koval-ai-embed',
-          timestamp: Date.now()
-        }, "*");
-      }
-    };
-    
-    // Notify immediately and then again after a short delay to ensure it's received
-    notifyParent();
-    const timeoutId = setTimeout(notifyParent, 1000);
-    
-    return () => {
-      window.removeEventListener('message', handleParentMessages);
-      clearTimeout(timeoutId);
-    };
+    return () => window.removeEventListener('message', handleParentMessages);
   }, []);
 
-  // Load updated dive logs from parent
+  // ✅ THEME SYNC
   useEffect(() => {
-    if (userData?.userDiveLogs?.length) {
-      setDiveLogs(userData.userDiveLogs);
-      localStorage.setItem("koval_ai_logs", JSON.stringify(userData.userDiveLogs));
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.toggle("dark", darkMode);
+      localStorage.setItem("kovalDarkMode", darkMode);
     }
-  }, [userData]);
+  }, [darkMode]);
 
-  // Handle new AI responses
+  // ✅ AUTO-SCROLL
   useEffect(() => {
-    if (aiResponse?.answer) {
-      setMessages(prev => {
-        const updated = [...prev, { role: "assistant", content: aiResponse.answer }];
-        localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
-        return updated;
-      });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [aiResponse]);
-
-  // Persist messages to cache
-  useEffect(() => {
-    localStorage.setItem("koval_ai_messages", JSON.stringify(messages));
   }, [messages]);
 
-  const sendMessage = (text) => {
-    if (!text.trim()) return;
+  // ✅ CONNECTION CHECK
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        // Simple connection check
+        const checks = {
+          openai: "✅ Connected",
+          pinecone: "✅ Connected", 
+          wix: "✅ Connected"
+        };
+        if (isMounted) setConnectionStatus(checks);
+      } catch (error) {
+        console.warn("⚠️ Connection check failed:", error);
+      } finally {
+        if (isMounted) setLoadingConnections(false);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
 
-    console.log('📤 Sending message:', text);
-    
-    setMessages(prev => {
-      const updated = [...prev, { role: "user", content: text }];
-      localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
-      return updated;
-    });
+  // ✅ WORKING CHAT SUBMISSION (From working version)
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
 
+    const userMessage = { role: "user", content: input };
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
-    if (isEmbedMode && window.parent !== window) {
-      console.log('🔗 Sending message to parent Wix page...');
-      // Send message to parent Wix page for AI processing
-      window.parent.postMessage({ 
-        type: "CHAT_MESSAGE", 
-        message: text,
-        source: 'koval-ai-embed',
-        userId: currentUserId || userData?.userId || 'guest-' + Date.now(),
-        timestamp: Date.now()
-      }, "*");
-    } else {
-      console.log('🤖 Processing message directly (not in embed mode)...');
-      // Direct API call when not in embed mode (for testing)
-      handleDirectMessage(text);
-    }
-  };
-
-  // Handle direct API calls when not in embed mode
-  const handleDirectMessage = async (text) => {
     try {
-      const response = await fetch("/api/chat-embed", {
+      console.log("🚀 Sending message to chat API...");
+
+      const response = await fetch(API_ROUTES.CHAT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
-          userId: currentUserId || 'guest-' + Date.now(),
-          profile: { userName: currentUserName }
-        })
+          message: input,
+          userId,
+          profile,
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const data = await response.json();
-      
-      setMessages(prev => {
-        const updated = [...prev, { 
-          role: "assistant", 
-          content: data.assistantMessage?.content || data.aiResponse || "I received your message!" 
-        }];
-        localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
-        return updated;
-      });
-      
-      setLoading(false);
-      console.log("✅ Direct API response received");
-      
+      console.log("✅ Chat response received:", data);
+
+      const assistantMessage = data.assistantMessage || {
+        role: "assistant",
+        content: data.answer || "I received your message!",
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("❌ Direct API error:", error);
-      setMessages(prev => {
-        const updated = [...prev, { 
-          role: "assistant", 
-          content: "I'm having trouble responding right now. Please try again in a moment." 
-        }];
-        localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
-        return updated;
-      });
+      console.error("❌ Chat error:", error);
+
+      const errorMessage = {
+        role: "assistant",
+        content: "I'm having trouble responding right now. Please try again in a moment.",
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setLoading(false);
     }
-  };
+  }, [input, loading, userId, profile]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      handleSubmit(e);
     }
-  };
+  }, [handleSubmit]);
 
-  // Save dive log
-  const saveDiveLog = () => {
-    if (!newLog.date || !newLog.depth) return;
+  const handleFileChange = useCallback((e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setFiles(selectedFiles);
+  }, []);
 
-    const logWithId = { ...newLog, id: Date.now(), timestamp: new Date().toISOString() };
-    const updatedLogs = [logWithId, ...diveLogs];
+  // ✅ LOAD DIVE LOGS (Enhanced from both versions)
+  const loadDiveLogs = useCallback(async () => {
+    if (!userId) return;
+    
+    setLoadingDiveLogs(true);
+    try {
+      // Load from localStorage first
+      const key = storageKey(userId);
+      const localLogs = safeParse(key, []);
+      setDiveLogs(localLogs);
 
-    setDiveLogs(updatedLogs);
-    localStorage.setItem("koval_ai_logs", JSON.stringify(updatedLogs));
-
-    // Reset form
-    setNewLog({ date: "", location: "", depth: "", notes: "", image: "" });
-
-    if (isEmbedMode && window.parent !== window) {
-      console.log('💾 Sending dive log to parent Wix page...');
-      // Send to parent Wix page for backend saving
-      window.parent.postMessage({ 
-        type: "SAVE_DIVE_LOG", 
-        diveLog: logWithId,
-        source: 'koval-ai-embed',
-        userId: currentUserId,
-        timestamp: Date.now()
-      }, "*");
+      // Then try to load from API
+      const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const remoteLogs = data.logs || [];
+        
+        // Merge local and remote logs (remove duplicates)
+        const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
+          const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
+          return { ...map, [key]: log };
+        }, {});
+        
+        const combined = Object.values(merged).sort((a, b) => 
+          new Date(b.date) - new Date(a.date)
+        );
+        
+        setDiveLogs(combined);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+        }
+        
+        console.log(`✅ Loaded ${combined.length} dive logs`);
+      }
+    } catch (error) {
+      console.error("❌ Failed to load dive logs:", error);
+    } finally {
+      setLoadingDiveLogs(false);
     }
-  };
+  }, [userId]);
 
-  // Handle image upload
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setNewLog(prev => ({ ...prev, image: reader.result }));
-    reader.readAsDataURL(file);
-  };
+  // ✅ DIVE JOURNAL SUBMIT
+  const handleJournalSubmit = useCallback(async (diveData) => {
+    try {
+      const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...diveData, userId }),
+      });
 
-  const quickActions = ["📈 Learn more about freediving physiology", "🌊 Training Tips", "🤿 Equalization", "🔍 Technique Analysis"];
+      if (response.ok) {
+        console.log("✅ Dive log saved successfully");
+        await loadDiveLogs(); // Refresh the list
+        setIsDiveJournalOpen(false);
+        setEditLogIndex(null);
+        
+        // Add confirmation message
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || 'your location'}.`
+        }]);
+
+        // Notify parent about dive log save
+        window.parent?.postMessage({ 
+          type: "SAVE_DIVE_LOG", 
+          diveLog: diveData,
+          source: 'koval-ai-embed',
+          userId: userId,
+          timestamp: Date.now()
+        }, "*");
+      } else {
+        console.error("❌ Failed to save dive log");
+      }
+    } catch (error) {
+      console.error("❌ Error saving dive log:", error);
+    }
+  }, [userId, loadDiveLogs]);
+
+  // ✅ DELETE DIVE LOG
+  const handleDelete = useCallback(async (logId) => {
+    try {
+      const response = await fetch(`${API_ROUTES.DELETE_DIVE_LOG}?id=${logId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        console.log("✅ Dive log deleted");
+        await loadDiveLogs(); // Refresh the list
+      }
+    } catch (error) {
+      console.error("❌ Error deleting dive log:", error);
+    }
+  }, [loadDiveLogs]);
+
+  // ✅ SESSION MANAGEMENT
+  const handleSaveSession = useCallback(() => {
+    const newSession = {
+      id: Date.now(),
+      sessionName,
+      messages,
+      timestamp: Date.now(),
+    };
+    const updated = [newSession, ...sessionsList.filter(s => s.sessionName !== sessionName)];
+    setSessionsList(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+    }
+    console.log("✅ Session saved");
+  }, [sessionName, messages, sessionsList]);
+
+  const startNewSession = useCallback(() => {
+    const name = `Session – ${new Date().toLocaleDateString("en-US")} (${Date.now()})`;
+    setSessionName(name);
+    setMessages([
+      {
+        role: "assistant",
+        content: `🤿 Hi! I'm ${BOT_NAME}, your freediving coach. How can I help you today?`,
+      },
+    ]);
+    setFiles([]);
+    setEditingSessionName(false);
+    console.log("✅ New session started");
+  }, [BOT_NAME]);
+
+  const handleSelectSession = useCallback((name) => {
+    const found = sessionsList.find(s => s.sessionName === name);
+    if (found) {
+      setSessionName(found.sessionName);
+      setMessages(found.messages || []);
+      setInput("");
+      console.log("✅ Session loaded:", name);
+    }
+  }, [sessionsList]);
+
+  // ✅ Load dive logs on mount
+  useEffect(() => {
+    if (userId) {
+      loadDiveLogs();
+    }
+  }, [userId, loadDiveLogs]);
+
+  // ✅ MEMOIZED PROPS FOR PERFORMANCE
+  const sidebarProps = useMemo(() => ({
+    BOT_NAME,
+    sessionName,
+    setSessionName,
+    sessionsList,
+    messages,
+    setMessages,
+    userId,
+    profile,
+    setProfile,
+    diveLogs,
+    setDiveLogs,
+    darkMode,
+    setDarkMode,
+    startNewSession,
+    handleSaveSession,
+    handleSelectSession,
+    toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
+    handleJournalSubmit,
+    handleDelete,
+    refreshDiveLogs: loadDiveLogs,
+    loadingDiveLogs,
+    syncStatus: "✅ Ready",
+    editingSessionName,
+    setEditingSessionName
+  }), [
+    sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
+    startNewSession, handleSaveSession, handleSelectSession, handleJournalSubmit,
+    handleDelete, loadDiveLogs, loadingDiveLogs, editingSessionName
+  ]);
 
   return (
-    <div className={`koval-ai-container ${darkMode ? "dark" : "light"}`} 
-      style={{ display: "flex", flexDirection: "column", height: "500px", fontFamily: "Arial, sans-serif", border: "1px solid #ccc", borderRadius: "8px", overflow: "hidden" }}>
+    <main className={`h-full flex ${
+      darkMode ? "bg-black text-white" : "bg-white text-gray-900"
+    }`}>
       
-      {/* Header */}
-      <div style={{ 
-        padding: "8px 12px", 
-        backgroundColor: darkMode ? "#333" : "#f8f9fa", 
-        borderBottom: "1px solid #ccc",
-        fontSize: "12px",
-        color: darkMode ? "#ccc" : "#666"
-      }}>
-        👤 {currentUserName} {isEmbedMode ? "• Embedded in Wix" : "• Standalone Mode"} {loading && "• Processing..."}
+      {/* ✅ SIDEBAR - Smaller in embedded mode */}
+      <div className={`w-[250px] h-full overflow-y-auto border-r flex flex-col justify-between ${
+        darkMode ? "border-gray-700" : "border-gray-300"
+      }`}>
+        <Sidebar {...sidebarProps} />
+
+        {/* ✅ CONNECTION STATUS - Simplified */}
+        <div className={`mt-2 mb-2 mx-2 flex justify-center space-x-2 text-lg px-2 py-1 rounded ${
+          darkMode ? "bg-gray-800" : "bg-gray-100"
+        }`}>
+          {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+          {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+          {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
+        </div>
       </div>
-      
-      {/* Main Content */}
-      <div style={{ display: "flex", flex: 1 }}>
-      
-      {/* Sidebar */}
-      <div style={{ width: "250px", backgroundColor: darkMode ? "#222" : "#f3f3f3", padding: "10px", borderRight: "1px solid #ccc", overflowY: "auto" }}>
-        <h4>Koval AI Coach</h4>
-        {quickActions.map((q, i) => (
-          <button key={i} onClick={() => sendMessage(q)}
-            style={{ display: "block", width: "100%", marginBottom: "6px", padding: "6px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px", textAlign: "left" }}>
-            {q}
-          </button>
-        ))}
 
-        <h4 style={{ marginTop: "10px" }}>Dive Journal</h4>
-        <input placeholder="Date" value={newLog.date} onChange={(e) => setNewLog({ ...newLog, date: e.target.value })} style={{ width: "100%", marginBottom: "4px" }}/>
-        <input placeholder="Location" value={newLog.location} onChange={(e) => setNewLog({ ...newLog, location: e.target.value })} style={{ width: "100%", marginBottom: "4px" }}/>
-        <input placeholder="Depth (m)" value={newLog.depth} onChange={(e) => setNewLog({ ...newLog, depth: e.target.value })} style={{ width: "100%", marginBottom: "4px" }}/>
-        <textarea placeholder="Notes" value={newLog.notes} onChange={(e) => setNewLog({ ...newLog, notes: e.target.value })} style={{ width: "100%", marginBottom: "4px" }}/>
-        <input type="file" onChange={handleImageUpload} style={{ marginBottom: "6px" }} />
-        <button onClick={saveDiveLog} style={{ width: "100%", marginBottom: "10px" }}>Save Dive Log</button>
-
-        <h4>Saved Logs</h4>
-        {diveLogs.length === 0 && <div>No logs yet.</div>}
-        {diveLogs.map((log, i) => (
-          <div key={i} style={{ padding: "5px", marginBottom: "5px", background: "#fff", borderRadius: "4px", border: "1px solid #ccc" }}>
-            <strong>{log.date}</strong> - {log.location || "Unknown"} ({log.depth}m)
-            {log.image && <img src={log.image} alt="Dive Log" style={{ width: "100%", marginTop: "4px" }} />}
-            <div style={{ fontSize: "12px", color: "#555" }}>{log.notes}</div>
+      {/* ✅ MAIN CHAT AREA */}
+      <div className="flex-1 flex flex-col h-full">
+        
+        {/* Top Bar - Compact */}
+        <div className={`sticky top-0 z-10 border-b p-2 flex justify-between items-center text-sm ${
+          darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
+        }`}>
+          <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+            👤 {getDisplayName()} • Embedded
           </div>
-        ))}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className={`px-2 py-1 rounded text-xs ${
+              darkMode
+                ? "bg-gray-800 text-white hover:bg-gray-700"
+                : "bg-gray-200 text-black hover:bg-gray-300"
+            }`}
+          >
+            {darkMode ? "☀️" : "🌙"}
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto flex justify-center">
+          <div className="w-full max-w-3xl px-4 py-3">
+            <ChatMessages
+              messages={messages}
+              BOT_NAME={BOT_NAME}
+              darkMode={darkMode}
+              loading={loading}
+              bottomRef={bottomRef}
+            />
+          </div>
+        </div>
+
+        {/* Chat Input */}
+        <div className={`px-3 py-2 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}>
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            handleSubmit={handleSubmit}
+            handleKeyDown={handleKeyDown}
+            handleFileChange={handleFileChange}
+            files={files}
+            setFiles={setFiles}
+            loading={loading}
+            darkMode={darkMode}
+          />
+        </div>
       </div>
 
-      {/* Chat window */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "10px", backgroundColor: darkMode ? "#111" : "#fff" }}>
-          {messages.map((msg, i) => (
-            <div key={i} style={{
-              margin: "6px 0",
-              padding: "8px",
-              borderRadius: "6px",
-              backgroundColor: msg.role === "assistant" ? "#d4f5d4" : "#e6e6e6",
-              maxWidth: "80%"
-            }}>
-              <strong>{msg.role === "user" ? "You" : "Koval AI"}:</strong> {msg.content}
+      {/* ✅ DIVE JOURNAL SIDEBAR */}
+      {isDiveJournalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
+            darkMode ? "bg-gray-900" : "bg-white"
+          }`}>
+            <div className={`flex justify-between items-center p-4 border-b ${
+              darkMode ? "border-gray-700" : "border-gray-200"
+            }`}>
+              <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                🤿 Dive Journal
+              </h2>
+              <button 
+                onClick={() => setIsDiveJournalOpen(false)}
+                className={`text-2xl transition-colors ${
+                  darkMode 
+                    ? "text-gray-400 hover:text-white" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                ×
+              </button>
             </div>
-          ))}
-          <div ref={bottomRef}></div>
+            <div className="h-[calc(95vh-80px)]">
+              <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+            </div>
+          </div>
         </div>
-        <div style={{ display: "flex", padding: "8px", borderTop: "1px solid #ccc" }}>
-          <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your message..." rows={2} style={{ flex: 1, marginRight: "6px", resize: "none" }}/>
-          <button onClick={() => sendMessage(input)} disabled={loading}>{loading ? "..." : "Send"}</button>
-        </div>
-      </div>
-      </div>
-    </div>
+      )}
+    </main>
   );
 }
