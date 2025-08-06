@@ -19,9 +19,9 @@ $w.onReady(async function () {
     
     // Get user data first
     const userData = await getUserData();
-    console.log("� User data loaded:", userData);
+    console.log("👤 User data loaded:", userData);
     
-    // Show the chat interface
+    // Show the chat interface directly (skip backend testing to avoid 404s)
     showFallbackChat();
     
     console.log("✅ Koval AI initialization complete");
@@ -99,18 +99,7 @@ async function getUserData() {
         const userId = wixUsers.currentUser.id;
         const email = wixUsers.currentUser.loginEmail;
         
-        // Load user memories/data
-        let memories = [];
-        try {
-            const response = await fetch(`${USER_MEMORY_API}?userId=${userId}&limit=10`);
-            if (response.ok) {
-                const data = await response.json();
-                memories = data.data || [];
-            }
-        } catch (error) {
-            console.warn("⚠️ Could not load memories:", error);
-        }
-
+        // Skip loading memories to avoid API calls (simplified approach)
         return {
             userId: userId,
             isGuest: false,
@@ -118,7 +107,7 @@ async function getUserData() {
                 email: email,
                 nickname: email || 'Diver'
             },
-            memories: memories
+            memories: [] // Empty array instead of API call
         };
 
     } catch (error) {
