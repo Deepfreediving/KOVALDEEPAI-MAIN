@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import ChatMessages from "../components/ChatMessages";
 import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
-import DiveJournalDisplay from "../components/DiveJournalDisplay";
+import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
 import apiClient from "../utils/apiClient";
 
 const API_ROUTES = {
@@ -420,17 +420,23 @@ export default function Index() {
         📘 Journal
       </button>
 
-      {/* ✅ DIVE JOURNAL MODAL */}
-      <DiveJournalDisplay
-        userId={userId}
-        darkMode={darkMode}
-        isOpen={isDiveJournalOpen}
-        onClose={() => setIsDiveJournalOpen(false)}
-        diveLogs={diveLogs}
-        onSubmit={handleJournalSubmit}
-        onDelete={handleDelete}
-        onRefresh={loadDiveLogs}
-      />
+      {/* ✅ DIVE JOURNAL SIDEBAR - Now includes both form and display */}
+      {isDiveJournalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Dive Journal</h2>
+              <button 
+                onClick={() => setIsDiveJournalOpen(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
