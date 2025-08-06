@@ -444,27 +444,27 @@ async function queryPinecone(query) {
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3000';
 
-    // ✅ NEW: Use unified pinecone endpoint
-    const response = await fetch(`${baseUrl}/api/pinecone`, {
+    // ✅ Use the chat-embed endpoint for Pinecone queries
+    const response = await fetch(`${baseUrl}/api/chat-embed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "query",
-        query: query,  // Send text query, not vector
-        topK: 5,
-        filter: { approvedBy: { "$eq": "Koval" } }
+        message: query,
+        userId: 'frontend-user',
+        profile: { pb: 50 } // Default profile
       })
     });
 
     if (!response.ok) {
-      console.warn(`⚠️ Pinecone query failed with status ${response.status}`);
+      console.warn(`⚠️ Chat API query failed with status ${response.status}`);
       return [];
     }
 
     const result = await response.json();
-    return result.matches?.map((m) => m.metadata?.text).filter(Boolean) || [];
+    // Extract the AI response content
+    return result.assistantMessage?.content ? [result.assistantMessage.content] : [];
   } catch (error) {
-    console.error('❌ Pinecone error:', error.message);
+    console.error('❌ Chat API error:', error.message);
     return [];
   }
 }
