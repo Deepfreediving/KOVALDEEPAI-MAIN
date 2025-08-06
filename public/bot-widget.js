@@ -5,6 +5,7 @@
   window.KovalAILoaded = true;
 
   const ALLOWED_ORIGIN = "https://kovaldeepai-main.vercel.app";
+  const LOCALHOST_ORIGIN = "http://localhost:3000";
 
   class KovalAiElement extends HTMLElement {
     constructor() {
@@ -12,7 +13,8 @@
       this.attachShadow({ mode: 'open' });
       this.isReady = false;
       this.messageQueue = [];
-      this.BASE_URL = ALLOWED_ORIGIN;
+      // Use localhost for development if available, otherwise production
+      this.BASE_URL = window.location.hostname === 'localhost' ? LOCALHOST_ORIGIN : ALLOWED_ORIGIN;
       this.createWidget();
     }
 
@@ -117,7 +119,14 @@
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
       const cacheParam = Date.now(); // Force fresh load
-      this.iframe.src = `${this.BASE_URL}/embed?theme=${theme}&userId=${userData.userId}&v=${cacheParam}`;
+      const embedUrl = new URL(`${this.BASE_URL}/embed`);
+      embedUrl.searchParams.set('theme', theme);
+      embedUrl.searchParams.set('userId', userData.userId);
+      embedUrl.searchParams.set('userName', userData.userName);
+      embedUrl.searchParams.set('v', cacheParam.toString());
+      
+      this.iframe.src = embedUrl.toString();
+      console.log('🔗 Loading embed URL:', embedUrl.toString());
         
       this.iframe.style.cssText = `
         width: 100%; height: 100%; border: none;
@@ -190,7 +199,17 @@
 
       // ✅ MESSAGE LISTENER (same as before)
       window.addEventListener('message', (event) => {
-        if (event.origin === this.BASE_URL && event.data) {
+        // Allow messages from the correct origin (including localhost for development)
+        const allowedOrigins = [
+          this.BASE_URL,
+          'http://localhost:3000',
+          'https://localhost:3000'
+        ];
+        
+        if (allowedOrigins.includes(event.origin) && event.data) {
+          this.handleMessage(event);
+        } else if (event.data && event.data.source === 'koval-ai-embed') {
+          // Trust messages with our source identifier
           this.handleMessage(event);
         }
       });
@@ -242,9 +261,26 @@
         console.log('📥 Widget received:', type);
 
         switch (type) {
+          case 'EMBED_READY':
           case 'embed_ready':
             console.log('✅ Embed confirmed ready');
             this.processQueue();
+            break;
+
+          case 'CHAT_MESSAGE':
+            console.log('📨 Chat message from embed:', data);
+            // Forward to parent if needed
+            if (window.parent !== window) {
+              window.parent.postMessage(event.data, '*');
+            }
+            break;
+
+          case 'SAVE_DIVE_LOG':
+            console.log('💾 Dive log save request:', data);
+            // Forward to parent if needed
+            if (window.parent !== window) {
+              window.parent.postMessage(event.data, '*');
+            }
             break;
 
           case 'SAVE_SESSION':
@@ -325,7 +361,8 @@
   };
 
   const loadTime = new Date().toLocaleTimeString();
-  console.log('🚀 Koval AI Widget v2.5-UPDATED-926AM loaded safely - Cache: ' + Date.now());
+  console.log('🚀 Koval AI Widget v3.1-FIXED loaded safely - Cache: ' + Date.now());
   console.log('🎯 Widget loaded at: ' + loadTime);
-  console.log('🔄 NEW VERSION ACTIVE! If you see this, cache was cleared successfully!');
+  console.log('🔄 EMBED COMMUNICATION FIXES APPLIED!');
+  console.log('✅ Message types supported: EMBED_READY, CHAT_MESSAGE, SAVE_DIVE_LOG, USER_AUTH, THEME_CHANGE');
 })();

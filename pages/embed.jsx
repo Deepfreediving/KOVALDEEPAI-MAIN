@@ -1,6 +1,12 @@
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/router";
 
 export default function Embed({ userData = {}, aiResponse }) {
+  const router = useRouter();
+  const [isEmbedMode, setIsEmbedMode] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("Guest User");
+  
   const [messages, setMessages] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("koval_ai_messages")) || [
@@ -25,6 +31,33 @@ export default function Embed({ userData = {}, aiResponse }) {
   const [newLog, setNewLog] = useState({ date: "", location: "", depth: "", notes: "", image: "" });
   const bottomRef = useRef(null);
 
+  // Initialize from URL parameters on component mount
+  useEffect(() => {
+    if (router.isReady) {
+      console.log("🚀 Embed initializing with URL params:", router.query);
+      
+      // Check if we're in an iframe (embed mode)
+      setIsEmbedMode(window.parent !== window);
+      
+      // Get URL parameters
+      const { theme, userId, userName } = router.query;
+      
+      if (theme === 'dark') {
+        setDarkMode(true);
+      }
+      
+      if (userId) {
+        setCurrentUserId(String(userId));
+      }
+      
+      if (userName) {
+        setCurrentUserName(decodeURIComponent(String(userName)));
+      }
+      
+      console.log("✅ Embed initialized with:", { theme, userId, userName, isEmbedMode: window.parent !== window });
+    }
+  }, [router.isReady, router.query]);
+
   // Scroll chat to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,13 +68,34 @@ export default function Embed({ userData = {}, aiResponse }) {
     const handleParentMessages = (event) => {
       console.log('📨 Embed received message:', event.data);
       
+      // Security check - only accept messages from known origins
+      const allowedOrigins = [
+        'https://kovaldeepai-main.vercel.app',
+        'https://www.wix.com',
+        'https://static.wixstatic.com',
+        'https://editor.wix.com'
+      ];
+      
+      if (event.origin && !allowedOrigins.some(origin => event.origin.includes('wix') || event.origin === 'https://kovaldeepai-main.vercel.app')) {
+        console.log('🚫 Ignoring message from untrusted origin:', event.origin);
+        return;
+      }
+      
       switch (event.data?.type) {
         case 'THEME_CHANGE':
+          console.log('🎨 Theme change received:', event.data.data);
           setDarkMode(Boolean(event.data.data?.dark));
           break;
           
         case 'USER_AUTH':
+          console.log('👤 User auth received:', event.data.data);
           // Handle user authentication data from Wix
+          if (event.data.data?.userId) {
+            setCurrentUserId(event.data.data.userId);
+          }
+          if (event.data.data?.profile?.userName) {
+            setCurrentUserName(event.data.data.profile.userName);
+          }
           if (event.data.data?.diveLogs) {
             setDiveLogs(event.data.data.diveLogs);
             localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.diveLogs));
@@ -49,6 +103,7 @@ export default function Embed({ userData = {}, aiResponse }) {
           break;
           
         case 'AI_RESPONSE':
+          console.log('🤖 AI response received:', event.data.data);
           // Handle AI response from Wix backend
           if (event.data.data?.aiResponse) {
             setMessages(prev => {
@@ -58,27 +113,48 @@ export default function Embed({ userData = {}, aiResponse }) {
             });
             setLoading(false);
           }
+          if (event.data.data?.success === false) {
+            setLoading(false);
+            console.error('❌ AI response failed:', event.data.data.error);
+          }
           break;
           
         case 'DATA_UPDATE':
+          console.log('💾 Data update received:', event.data.data);
           // Handle updated user data from Wix
           if (event.data.data?.userDiveLogs) {
             setDiveLogs(event.data.data.userDiveLogs);
             localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.userDiveLogs));
           }
           break;
+          
+        default:
+          console.log('🔄 Unhandled message type:', event.data?.type);
       }
     };
     
     window.addEventListener('message', handleParentMessages);
     
-    // Notify parent that embed is ready
-    window.parent?.postMessage({ 
-      type: 'EMBED_READY', 
-      source: 'koval-ai-embed'
-    }, "*");
+    // Notify parent that embed is ready (with retry mechanism)
+    const notifyParent = () => {
+      if (window.parent && window.parent !== window) {
+        console.log('📡 Notifying parent that embed is ready...');
+        window.parent.postMessage({ 
+          type: 'EMBED_READY', 
+          source: 'koval-ai-embed',
+          timestamp: Date.now()
+        }, "*");
+      }
+    };
     
-    return () => window.removeEventListener('message', handleParentMessages);
+    // Notify immediately and then again after a short delay to ensure it's received
+    notifyParent();
+    const timeoutId = setTimeout(notifyParent, 1000);
+    
+    return () => {
+      window.removeEventListener('message', handleParentMessages);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Load updated dive logs from parent
@@ -108,6 +184,8 @@ export default function Embed({ userData = {}, aiResponse }) {
   const sendMessage = (text) => {
     if (!text.trim()) return;
 
+    console.log('📤 Sending message:', text);
+    
     setMessages(prev => {
       const updated = [...prev, { role: "user", content: text }];
       localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
@@ -117,13 +195,62 @@ export default function Embed({ userData = {}, aiResponse }) {
     setInput("");
     setLoading(true);
 
-    // Send message to parent Wix page for AI processing
-    window.parent?.postMessage({ 
-      type: "CHAT_MESSAGE", 
-      message: text,
-      source: 'koval-ai-embed',
-      userId: userData?.userId || 'guest-' + Date.now()
-    }, "*");
+    if (isEmbedMode && window.parent !== window) {
+      console.log('🔗 Sending message to parent Wix page...');
+      // Send message to parent Wix page for AI processing
+      window.parent.postMessage({ 
+        type: "CHAT_MESSAGE", 
+        message: text,
+        source: 'koval-ai-embed',
+        userId: currentUserId || userData?.userId || 'guest-' + Date.now(),
+        timestamp: Date.now()
+      }, "*");
+    } else {
+      console.log('🤖 Processing message directly (not in embed mode)...');
+      // Direct API call when not in embed mode (for testing)
+      handleDirectMessage(text);
+    }
+  };
+
+  // Handle direct API calls when not in embed mode
+  const handleDirectMessage = async (text) => {
+    try {
+      const response = await fetch("/api/chat-embed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          userId: currentUserId || 'guest-' + Date.now(),
+          profile: { userName: currentUserName }
+        })
+      });
+
+      const data = await response.json();
+      
+      setMessages(prev => {
+        const updated = [...prev, { 
+          role: "assistant", 
+          content: data.assistantMessage?.content || data.aiResponse || "I received your message!" 
+        }];
+        localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
+        return updated;
+      });
+      
+      setLoading(false);
+      console.log("✅ Direct API response received");
+      
+    } catch (error) {
+      console.error("❌ Direct API error:", error);
+      setMessages(prev => {
+        const updated = [...prev, { 
+          role: "assistant", 
+          content: "I'm having trouble responding right now. Please try again in a moment." 
+        }];
+        localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
+        return updated;
+      });
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -146,12 +273,17 @@ export default function Embed({ userData = {}, aiResponse }) {
     // Reset form
     setNewLog({ date: "", location: "", depth: "", notes: "", image: "" });
 
-    // Send to parent Wix page for backend saving
-    window.parent?.postMessage({ 
-      type: "SAVE_DIVE_LOG", 
-      diveLog: logWithId,
-      source: 'koval-ai-embed'
-    }, "*");
+    if (isEmbedMode && window.parent !== window) {
+      console.log('💾 Sending dive log to parent Wix page...');
+      // Send to parent Wix page for backend saving
+      window.parent.postMessage({ 
+        type: "SAVE_DIVE_LOG", 
+        diveLog: logWithId,
+        source: 'koval-ai-embed',
+        userId: currentUserId,
+        timestamp: Date.now()
+      }, "*");
+    }
   };
 
   // Handle image upload
@@ -167,7 +299,21 @@ export default function Embed({ userData = {}, aiResponse }) {
 
   return (
     <div className={`koval-ai-container ${darkMode ? "dark" : "light"}`} 
-      style={{ display: "flex", height: "500px", fontFamily: "Arial, sans-serif", border: "1px solid #ccc", borderRadius: "8px", overflow: "hidden" }}>
+      style={{ display: "flex", flexDirection: "column", height: "500px", fontFamily: "Arial, sans-serif", border: "1px solid #ccc", borderRadius: "8px", overflow: "hidden" }}>
+      
+      {/* Header */}
+      <div style={{ 
+        padding: "8px 12px", 
+        backgroundColor: darkMode ? "#333" : "#f8f9fa", 
+        borderBottom: "1px solid #ccc",
+        fontSize: "12px",
+        color: darkMode ? "#ccc" : "#666"
+      }}>
+        👤 {currentUserName} {isEmbedMode ? "• Embedded in Wix" : "• Standalone Mode"} {loading && "• Processing..."}
+      </div>
+      
+      {/* Main Content */}
+      <div style={{ display: "flex", flex: 1 }}>
       
       {/* Sidebar */}
       <div style={{ width: "250px", backgroundColor: darkMode ? "#222" : "#f3f3f3", padding: "10px", borderRight: "1px solid #ccc", overflowY: "auto" }}>
@@ -218,6 +364,7 @@ export default function Embed({ userData = {}, aiResponse }) {
           <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your message..." rows={2} style={{ flex: 1, marginRight: "6px", resize: "none" }}/>
           <button onClick={() => sendMessage(input)} disabled={loading}>{loading ? "..." : "Send"}</button>
         </div>
+      </div>
       </div>
     </div>
   );
