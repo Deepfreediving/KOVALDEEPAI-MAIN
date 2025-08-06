@@ -44,6 +44,8 @@
   "exclude": [
     "node_modules",
     ".next",
-    "out"
+    "out",
+    "public/wix-widget-loader-v3.js",
+    "**/wix-widget-loader*.js"
   ]
 }

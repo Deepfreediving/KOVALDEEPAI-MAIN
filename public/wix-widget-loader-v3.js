@@ -86,13 +86,13 @@ $w.onReady(async function () {
             
             console.log("📨 Message from embed:", event.data.type, event.data);
 
+            // Get target origin once for all cases
+            const targetOrigin = getTargetOrigin();
+
             switch (event.data.type) {
                 case 'EMBED_READY':
                     embedReady = true;
                     console.log("✅ Embed is ready for communication");
-                    
-                    // Send initial user data to embed immediately
-                    const targetOrigin = getTargetOrigin();
                     
                     iframe.contentWindow.postMessage({
                         type: 'USER_AUTH',
@@ -127,7 +127,6 @@ $w.onReady(async function () {
                         });
 
                         const data = await response.json();
-                        const targetOrigin = getTargetOrigin();
                         
                         // Send AI response back to embed
                         iframe.contentWindow.postMessage({
@@ -143,7 +142,6 @@ $w.onReady(async function () {
                     } catch (error) {
                         console.error("❌ Chat API error:", error);
                         
-                        const targetOrigin = getTargetOrigin();
                         iframe.contentWindow.postMessage({
                             type: 'AI_RESPONSE',
                             data: {
@@ -160,7 +158,6 @@ $w.onReady(async function () {
                     
                     // Here you could integrate with Wix Data Collections if needed
                     // For now, just acknowledge the save
-                    const targetOrigin = getTargetOrigin();
                     iframe.contentWindow.postMessage({
                         type: 'DATA_UPDATE',
                         data: {
