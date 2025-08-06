@@ -114,9 +114,10 @@
         console.warn('⚠️ Wix user detection failed:', wixError.message);
       }
 
-      // ✅ CREATE IFRAME WITH THEME
+      // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
-      this.iframe.src = `${this.BASE_URL}/embed?theme=${theme}&userId=${userData.userId}`;
+      const cacheParam = Date.now(); // Force fresh load
+      this.iframe.src = `${this.BASE_URL}/embed?theme=${theme}&userId=${userData.userId}&v=${cacheParam}`;
         
       this.iframe.style.cssText = `
         width: 100%; height: 100%; border: none;
@@ -323,5 +324,5 @@
     }
   };
 
-  console.log('✅ Koval AI Widget v2.3 loaded safely');
+  console.log('✅ Koval AI Widget v2.4 loaded safely - Cache: ' + Date.now());
 })();
