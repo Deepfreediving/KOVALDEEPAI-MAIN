@@ -1,30 +1,20 @@
 import { OpenAI } from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
-import handleCors from '@/utils/handleCors'; // ✅ CHANGED from cors to handleCors
+import handleCors from '@/utils/handleCors';
 
-// ✅ Environment validation
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX = process.env.PINECONE_INDEX;
 
-if (!OPENAI_API_KEY) {
-  console.error("❌ OPENAI_API_KEY is required");
-}
+if (!OPENAI_API_KEY) console.error("❌ OPENAI_API_KEY is required");
+if (!PINECONE_API_KEY) console.error("❌ PINECONE_API_KEY is required");
+if (!PINECONE_INDEX) console.error("❌ PINECONE_INDEX is missing");
 
-if (!PINECONE_API_KEY) {
-  console.error("❌ PINECONE_API_KEY is required");
-}
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY || '' });
 
-// ✅ Initialize clients with proper error handling
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY || '',
-});
-
-let pinecone;
-let index;
-
+let pinecone, index;
 try {
-  if (PINECONE_API_KEY) {
+  if (PINECONE_API_KEY && PINECONE_INDEX) {
     pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
     index = pinecone.index(PINECONE_INDEX);
     console.log("✅ Pinecone initialized for semantic search");
@@ -33,96 +23,62 @@ try {
   console.error("❌ Pinecone initialization failed:", error);
 }
 
-// ✅ Enhanced semantic search with validation
 export async function semanticSearch(query, options = {}) {
-  if (!query || typeof query !== "string" || query.trim() === "") {
-    throw new Error("Invalid query - must be a non-empty string");
-  }
-
-  if (!OPENAI_API_KEY) {
-    throw new Error("OpenAI API key not configured");
-  }
-
-  if (!index) {
-    throw new Error("Pinecone index not available");
-  }
+  if (!query?.trim()) throw new Error("Invalid query - must be a non-empty string");
+  if (!OPENAI_API_KEY) throw new Error("OpenAI API key not configured");
+  if (!index) throw new Error("Pinecone index not available");
 
   const { topK = 5, includeMetadata = true, filter = null } = options;
 
   try {
-    console.log(`🔍 Performing semantic search for: "${query.slice(0, 50)}..."`);
-    
-    // ✅ Create embedding with error handling
+    console.log(`🔍 Semantic search for: "${query.slice(0, 50)}..."`);
+
+    // Use latest model
     const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
+      model: "text-embedding-3-small",
       input: query.trim(),
     });
 
-    const queryEmbedding = embeddingResponse.data[0].embedding;
-
+    const queryEmbedding = embeddingResponse?.data?.[0]?.embedding;
     if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
       throw new Error("Invalid embedding generated");
     }
 
-    // ✅ Query Pinecone with enhanced options
     const queryOptions = {
       vector: queryEmbedding,
-      topK: Math.min(Math.max(topK, 1), 100), // Clamp between 1-100
+      topK: Math.min(Math.max(topK, 1), 100),
       includeMetadata,
+      ...(filter && { filter }),
     };
 
-    if (filter) {
-      queryOptions.filter = filter;
-    }
-
     const pineconeResponse = await index.query(queryOptions);
-    
-    const matches = pineconeResponse.matches || [];
-    console.log(`✅ Found ${matches.length} matches for semantic search`);
-    
+    const matches = pineconeResponse?.matches || [];
+    console.log(`✅ Found ${matches.length} matches`);
     return matches;
 
   } catch (error) {
     console.error("❌ Semantic search error:", error);
-    
-    // ✅ Better error categorization
-    if (error.message?.includes('API key')) {
-      throw new Error("Authentication failed");
-    } else if (error.message?.includes('quota') || error.message?.includes('rate')) {
-      throw new Error("Rate limit exceeded");
-    } else {
-      throw new Error(`Semantic search failed: ${error.message}`);
-    }
+    throw new Error(`Semantic search failed: ${error.message}`);
   }
 }
 
-// ✅ Enhanced API handler matching your project patterns
 export default async function handler(req, res) {
   const startTime = Date.now();
-  
-  try {
-    // ✅ CORS handling (matching your other APIs)
-    if (await handleCors(req, res)) return;
 
-    // ✅ Method validation
+  try {
+    await handleCors(req, res);
+    if (req.method === "OPTIONS") return;
+
     if (req.method !== "POST") {
       return res.status(405).json({ 
         error: "Method Not Allowed",
-        message: "Only POST requests are allowed"
+        message: "Only POST requests are allowed" 
       });
     }
 
-    // ✅ Input validation
     const { query, topK, filter } = req.body;
-    
-    if (!query) {
-      return res.status(400).json({ 
-        error: "Missing Query",
-        message: "query field is required" 
-      });
-    }
 
-    if (typeof query !== "string" || query.trim().length === 0) {
+    if (!query || typeof query !== "string" || !query.trim()) {
       return res.status(400).json({ 
         error: "Invalid Query",
         message: "query must be a non-empty string" 
@@ -136,55 +92,30 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`🚀 Processing semantic search for: "${query.slice(0, 50)}..."`);
+    const results = await semanticSearch(query, { topK, filter });
 
-    // ✅ Perform semantic search
-    const options = {};
-    if (topK && typeof topK === 'number') options.topK = topK;
-    if (filter && typeof filter === 'object') options.filter = filter;
-
-    const results = await semanticSearch(query, options);
-    
     const processingTime = Date.now() - startTime;
-    console.log(`✅ Semantic search completed in ${processingTime}ms`);
-
-    // ✅ Response format matching your other APIs
     return res.status(200).json({
       results,
       metadata: {
-        query: query.slice(0, 100), // Truncated for logging
+        query: query.slice(0, 100),
         resultCount: results.length,
         processingTime,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
 
   } catch (error) {
     const processingTime = Date.now() - startTime;
-    console.error("❌ Semantic search API error:", error);
-    
-    // ✅ Error response format matching your other APIs
-    let statusCode = 500;
-    let errorMessage = "Internal server error";
+    console.error("❌ Semantic search API error:", error.message);
 
-    if (error.message?.includes("Authentication")) {
-      statusCode = 401;
-      errorMessage = "Authentication failed";
-    } else if (error.message?.includes("Rate limit")) {
-      statusCode = 429;
-      errorMessage = "Rate limit exceeded";
-    } else if (error.message?.includes("Invalid") || error.message?.includes("required")) {
-      statusCode = 400;
-      errorMessage = error.message;
-    }
-
-    return res.status(statusCode).json({ 
+    return res.status(500).json({
       error: "Semantic Search Failed",
-      message: errorMessage,
+      message: error.message || "Internal server error",
       metadata: {
         processingTime,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 }
@@ -192,6 +123,6 @@ export default async function handler(req, res) {
 export const config = {
   api: {
     bodyParser: { sizeLimit: '1mb' },
-    responseLimit: false
-  }
+    responseLimit: false,
+  },
 };

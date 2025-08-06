@@ -1,33 +1,30 @@
-// SIMPLIFIED VERSION - Much cleaner and shorter:
-
 import { useEffect, useState, useRef } from "react";
 import ChatMessages from "../components/ChatMessages";
 import Sidebar from "../components/Sidebar";
 import ChatBox from "../components/ChatBox";
-import DiveJournalDisplay from '../components/DiveJournalDisplay';
-import { useEnterpriseData } from '../hooks/useEnterpriseData';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useConnections } from '../hooks/useConnections';
+import DiveJournalDisplay from "../components/DiveJournalDisplay";
+import { useEnterpriseData } from "../hooks/useEnterpriseData";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useConnections } from "../hooks/useConnections";
 
 export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
   // ----------------------------
-  // Core State (Simplified)
+  // Core State
   // ----------------------------
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showDiveJournalForm, setShowDiveJournalForm] = useState(false);
   const [editLogIndex, setEditLogIndex] = useState(null);
   const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
   const bottomRef = useRef(null);
 
   // ----------------------------
-  // Custom Hooks (Extract Complex Logic)
+  // Custom Hooks
   // ----------------------------
   const {
     darkMode,
@@ -38,7 +35,7 @@ export default function Index() {
     setProfile,
     sessionsList,
     setSessionsList,
-    saveToStorage
+    saveToStorage,
   } = useLocalStorage();
 
   const {
@@ -48,30 +45,37 @@ export default function Index() {
     syncStatus,
     refreshDiveLogs,
     handleJournalSubmit,
-    handleDelete
+    handleDelete,
   } = useEnterpriseData(userId);
 
   const { connectionStatus, loadingConnections } = useConnections();
 
   // ----------------------------
-  // Simple Handlers
+  // Debug AI Connection
+  // ----------------------------
+  useEffect(() => {
+    console.log("🔌 Connection Status:", connectionStatus);
+  }, [connectionStatus]);
+
+  // ----------------------------
+  // Handlers
   // ----------------------------
   const handleEdit = (index) => {
     setEditLogIndex(index);
-    setShowDiveJournalForm(true);
+    setIsDiveJournalOpen(true);
   };
 
   const handleSaveSession = () => {
     const updated = [
       ...sessionsList.filter((s) => s.sessionName !== sessionName),
-      { sessionName, messages, timestamp: Date.now() },
+      { id: Date.now(), sessionName, messages, timestamp: Date.now() },
     ];
     saveToStorage("kovalSessionsList", updated);
     setSessionsList(updated);
   };
 
   const startNewSession = () => {
-    const name = `Session – ${new Date().toLocaleDateString("en-US")}`;
+    const name = `Session – ${new Date().toLocaleDateString("en-US")} (${Date.now()})`;
     setSessionName(name);
     setMessages([]);
     setFiles([]);
@@ -93,7 +97,7 @@ export default function Index() {
     (userId?.startsWith("Guest") ? "Guest User" : "User");
 
   // ----------------------------
-  // Shared Props (Simplified)
+  // Shared Props
   // ----------------------------
   const sharedProps = {
     BOT_NAME,
@@ -114,15 +118,13 @@ export default function Index() {
     setDiveLogs,
     editLogIndex,
     setEditLogIndex,
-    showDiveJournalForm,
-    setShowDiveJournalForm,
     darkMode,
     setDarkMode,
-    bottomRef
+    bottomRef,
   };
 
   // ----------------------------
-  // Render (Clean & Simple)
+  // Render
   // ----------------------------
   return (
     <main className="h-screen flex bg-white text-gray-900 dark:bg-black dark:text-white">
@@ -134,7 +136,7 @@ export default function Index() {
           startNewSession={startNewSession}
           handleSaveSession={handleSaveSession}
           handleSelectSession={handleSelectSession}
-          toggleDiveJournal={() => setShowDiveJournalForm((prev) => !prev)}
+          toggleDiveJournal={() => setIsDiveJournalOpen((prev) => !prev)}
           handleJournalSubmit={handleJournalSubmit}
           handleEdit={handleEdit}
           handleDelete={handleDelete}
@@ -145,9 +147,15 @@ export default function Index() {
 
         {/* Connection Status */}
         <div className="mt-4 mb-4 mx-4 flex space-x-4 text-xl bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
-          {!loadingConnections && connectionStatus.pinecone?.startsWith("✅") && <span title="Data Connected">🌲</span>}
-          {!loadingConnections && connectionStatus.openai?.startsWith("✅") && <span title="AI Connected">🤖</span>}
-          {!loadingConnections && connectionStatus.wix?.startsWith("✅") && <span title="Site Connected">🌀</span>}
+          {!loadingConnections && connectionStatus.pinecone?.startsWith("✅") && (
+            <span title="Data Connected">🌲</span>
+          )}
+          {!loadingConnections && connectionStatus.openai?.startsWith("✅") && (
+            <span title="AI Connected">🤖</span>
+          )}
+          {!loadingConnections && connectionStatus.wix?.startsWith("✅") && (
+            <span title="Site Connected">🌀</span>
+          )}
         </div>
       </div>
 
@@ -155,7 +163,9 @@ export default function Index() {
       <div className="flex-1 flex flex-col h-screen">
         {/* Top Bar */}
         <div className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-300 dark:border-gray-700 p-3 flex justify-between items-center text-sm">
-          <div className="text-gray-500 dark:text-gray-400 px-2 truncate">👤 {getDisplayName()}</div>
+          <div className="text-gray-500 dark:text-gray-400 px-2 truncate">
+            👤 {getDisplayName()}
+          </div>
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="px-3 py-1 rounded-md bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
@@ -192,11 +202,11 @@ export default function Index() {
         📘 Journal
       </button>
 
-      <DiveJournalDisplay 
+      <DiveJournalDisplay
         userId={userId}
         darkMode={darkMode}
-        isOpen={isDiveJournalOpen} 
-        onClose={() => setIsDiveJournalOpen(false)} 
+        isOpen={isDiveJournalOpen}
+        onClose={() => setIsDiveJournalOpen(false)}
       />
     </main>
   );
