@@ -7,6 +7,7 @@ export default function Embed() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState("guest");
+  const [darkMode, setDarkMode] = useState(false);
   const bottomRef = useRef(null);
 
   // ✅ Auto-scroll to bottom
@@ -15,6 +16,29 @@ export default function Embed() {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  useEffect(() => {
+    // Listen for theme changes from parent widget
+    const handleParentMessages = (event) => {
+      if (event.data?.type === 'THEME_CHANGE') {
+        const { theme, dark } = event.data.data || {};
+        setDarkMode(Boolean(dark));
+        console.log('🎨 Theme updated from parent:', theme);
+      }
+    };
+
+    window.addEventListener('message', handleParentMessages);
+    
+    // Check URL params for initial theme
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTheme = urlParams.get('theme');
+    if (initialTheme) {
+      setDarkMode(initialTheme === 'dark');
+      console.log('🎨 Initial theme from URL:', initialTheme);
+    }
+
+    return () => window.removeEventListener('message', handleParentMessages);
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim()) return;

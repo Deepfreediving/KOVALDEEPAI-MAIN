@@ -12,84 +12,156 @@
       this.attachShadow({ mode: 'open' });
       this.isReady = false;
       this.messageQueue = [];
-
       this.BASE_URL = ALLOWED_ORIGIN;
-
       this.createWidget();
     }
 
     createWidget() {
       const container = document.createElement('div');
+      
+      // ✅ DETECT PARENT SITE THEME
+      const detectParentTheme = () => {
+        try {
+          // Check if parent document has dark mode
+          const parentDoc = window.parent ? window.parent.document : document;
+          return parentDoc.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        } catch {
+          return 'light'; // Default fallback
+        }
+      };
+
+      const theme = detectParentTheme();
+      const isDark = theme === 'dark';
+      
+      console.log(`🎨 Detected theme: ${theme}`);
+
+      // ✅ THEMED CONTAINER
       container.style.cssText = `
         width: 100%; height: 100%; min-height: 600px;
-        border-radius: 10px; overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        position: relative; background: #fff;
+        border-radius: 12px; overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0,0,0,${isDark ? '0.4' : '0.1'});
+        position: relative; 
+        background: ${isDark ? '#1a1a1a' : '#ffffff'};
+        border: 1px solid ${isDark ? '#333' : '#e1e5e9'};
       `;
 
-      // Loading Indicator
+      // ✅ THEMED LOADING INDICATOR
       this.loadingDiv = document.createElement('div');
       this.loadingDiv.style.cssText = `
         position: absolute; top: 50%; left: 50%;
         transform: translate(-50%, -50%); text-align: center;
-        font-family: system-ui, sans-serif; z-index: 10;
+        font-family: system-ui, -apple-system, sans-serif; z-index: 10;
+        color: ${isDark ? '#e1e5e9' : '#333'};
       `;
       this.loadingDiv.innerHTML = `
-        <div style="font-size: 32px; margin-bottom: 10px;">🤿</div>
-        <div style="color: #666;">Loading Koval AI...</div>
+        <div style="font-size: 48px; margin-bottom: 16px; animation: bounce 2s infinite;">🤿</div>
+        <div style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">
+          Koval AI Coach
+        </div>
+        <div style="font-size: 14px; opacity: 0.7;">
+          Loading your freediving assistant...
+        </div>
+        <div style="margin-top: 16px;">
+          <div style="width: 40px; height: 4px; background: #3498db; 
+                      margin: 0 auto; border-radius: 2px; 
+                      animation: loading 1.5s ease-in-out infinite;">
+          </div>
+        </div>
+        <style>
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+          }
+          @keyframes loading {
+            0% { transform: scaleX(0.3); }
+            50% { transform: scaleX(1); }
+            100% { transform: scaleX(0.3); }
+          }
+        </style>
       `;
 
-      // Default Guest User
+      // ✅ ENHANCED USER DATA with theme
       let userData = {
         userId: 'wix-guest-' + Date.now(),
         userName: 'Guest User',
-        source: 'wix-widget'
+        source: 'wix-widget-enhanced',
+        theme: theme,  // ✅ Pass theme to embed
+        parentUrl: window.location.href
       };
 
+      // ✅ Wix user detection (same as before but add theme)
       try {
-        if (window.wixUsers?.currentUser?.loggedIn) {
-          userData = {
-            userId: window.wixUsers.currentUser.id,
-            userName: window.wixUsers.currentUser.displayName || 'Wix User',
-            userEmail: window.wixUsers.currentUser.loginEmail || '',
-            source: 'wix-authenticated'
-          };
+        if (typeof window !== 'undefined' && 
+            window.wixUsers && 
+            typeof window.wixUsers.currentUser === 'object' &&
+            window.wixUsers.currentUser !== null) {
+          
+          const currentUser = window.wixUsers.currentUser;
+          if (currentUser.loggedIn === true && currentUser.id) {
+            userData = {
+              ...userData,
+              userId: 'wix-' + currentUser.id,
+              userName: currentUser.displayName || currentUser.nickname || 'Wix User',
+              userEmail: currentUser.loginEmail || '',
+              source: 'wix-authenticated',
+              theme: theme  // ✅ Keep theme
+            };
+            console.log('✅ Wix user authenticated:', userData.userName);
+          }
         }
-      } catch (err) {
-        console.warn('⚠️ Could not fetch Wix user info:', err);
+      } catch (wixError) {
+        console.warn('⚠️ Wix user detection failed:', wixError.message);
       }
 
-      // Embed Iframe
+      // ✅ CREATE IFRAME WITH THEME
       this.iframe = document.createElement('iframe');
-      this.iframe.src = `${this.BASE_URL}/embed?userId=${encodeURIComponent(userData.userId)}&source=${encodeURIComponent(userData.source)}`;
+      this.iframe.src = `${this.BASE_URL}/embed?theme=${theme}&userId=${userData.userId}`;
+        
       this.iframe.style.cssText = `
         width: 100%; height: 100%; border: none;
-        opacity: 0; transition: opacity 0.3s;
+        opacity: 0; transition: opacity 0.5s ease;
+        background: ${isDark ? '#1a1a1a' : '#ffffff'};
       `;
       this.iframe.allow = 'microphone; camera';
 
+      // ✅ ENHANCED IFRAME LOADING
       this.iframe.onload = () => {
-        console.log('✅ Koval AI iframe loaded');
+        console.log('✅ Koval AI iframe loaded with theme:', theme);
         this.isReady = true;
-        this.loadingDiv.style.display = 'none';
-        this.iframe.style.opacity = '1';
+        
+        // Smooth transition
+        setTimeout(() => {
+          this.loadingDiv.style.opacity = '0';
+          this.iframe.style.opacity = '1';
+          
+          setTimeout(() => {
+            this.loadingDiv.style.display = 'none';
+          }, 300);
+        }, 500);
 
+        // Send enhanced user data
         this.postMessage('USER_AUTH', userData);
+        this.postMessage('THEME_CHANGE', { theme: theme, dark: isDark });
         this.sendInitialSession();
         this.processQueue();
       };
 
+      // ✅ BETTER ERROR HANDLING
       this.iframe.onerror = () => {
         console.error('❌ Iframe failed to load');
         this.loadingDiv.innerHTML = `
-          <div style="color: #e74c3c; font-size: 16px;">
-            ⚠️ Chat temporarily unavailable
+          <div style="color: #e74c3c; font-size: 18px; margin-bottom: 16px;">
+            🚫 Connection Issue
+          </div>
+          <div style="font-size: 14px; margin-bottom: 16px; opacity: 0.8;">
+            Unable to load Koval AI chat
           </div>
           <button onclick="location.reload()" 
-                  style="margin-top: 10px; padding: 8px 16px; 
-                         background: #3498db; color: white; 
-                         border: none; border-radius: 4px; cursor: pointer;">
-            Retry
+                  style="padding: 12px 24px; background: #3498db; color: white; 
+                         border: none; border-radius: 6px; cursor: pointer; 
+                         font-size: 14px; font-weight: 500;">
+            🔄 Retry
           </button>
         `;
       };
@@ -98,18 +170,27 @@
       container.appendChild(this.iframe);
       this.shadowRoot.appendChild(container);
 
-      // Message Listener
-      window.addEventListener('message', (event) => {
-        if (event.origin === ALLOWED_ORIGIN) {
-          this.handleMessage(event);
+      // ✅ THEME CHANGE LISTENER
+      const themeObserver = new MutationObserver(() => {
+        const newTheme = detectParentTheme();
+        if (newTheme !== theme) {
+          console.log('🎨 Theme changed to:', newTheme);
+          this.postMessage('THEME_CHANGE', { 
+            theme: newTheme, 
+            dark: newTheme === 'dark' 
+          });
         }
       });
 
-      // Listen for Wix user login updates
-      document.addEventListener('wixUserLogin', (e) => {
-        const data = e.detail;
-        if (data?.userId) {
-          this.postMessage('USER_AUTH', data);
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'data-theme']
+      });
+
+      // ✅ MESSAGE LISTENER (same as before)
+      window.addEventListener('message', (event) => {
+        if (event.origin === this.BASE_URL && event.data) {
+          this.handleMessage(event);
         }
       });
     }
@@ -125,9 +206,9 @@
           { type, data, timestamp: Date.now() },
           this.BASE_URL
         );
-        console.log('📤 Sent:', type, data);
+        console.log('📤 Widget sent:', type);
       } catch (error) {
-        console.warn('⚠️ Message send failed:', error);
+        console.warn('⚠️ Message send failed:', error.message);
       }
     }
 
@@ -140,78 +221,107 @@
 
     sendInitialSession() {
       try {
-        const session = localStorage.getItem('koval_ai_session');
-        if (session) {
-          this.postMessage('LOAD_SESSION', JSON.parse(session));
+        // Safe localStorage access
+        if (typeof localStorage !== 'undefined') {
+          const session = localStorage.getItem('koval_ai_session');
+          if (session) {
+            this.postMessage('LOAD_SESSION', JSON.parse(session));
+          }
         }
       } catch (error) {
-        console.warn('⚠️ Session load failed:', error);
+        console.warn('⚠️ Session load failed (this is normal):', error.message);
       }
     }
 
     handleMessage(event) {
-      const { type, data } = event.data;
-      console.log('📥 Received:', type, data);
+      try {
+        const { type, data } = event.data || {};
+        if (!type) return;
 
-      switch (type) {
-        case 'embed_ready':
-          console.log('✅ Embed confirmed ready');
-          this.processQueue();
-          break;
+        console.log('📥 Widget received:', type);
 
-        case 'SAVE_SESSION':
-          try {
-            localStorage.setItem('koval_ai_session', JSON.stringify(data));
-          } catch (error) {
-            console.warn('⚠️ Session save failed:', error);
-          }
-          break;
+        switch (type) {
+          case 'embed_ready':
+            console.log('✅ Embed confirmed ready');
+            this.processQueue();
+            break;
 
-        case 'resize':
-          if (data?.height) {
-            this.style.height = Math.max(data.height, 400) + 'px';
-          }
-          break;
+          case 'SAVE_SESSION':
+            try {
+              if (typeof localStorage !== 'undefined' && data) {
+                localStorage.setItem('koval_ai_session', JSON.stringify(data));
+              }
+            } catch (error) {
+              console.warn('⚠️ Session save failed:', error.message);
+            }
+            break;
+
+          case 'resize':
+            if (data?.height && typeof data.height === 'number') {
+              this.style.height = Math.max(data.height, 400) + 'px';
+            }
+            break;
+        }
+      } catch (error) {
+        console.warn('⚠️ Message handling failed:', error.message);
       }
     }
 
     connectedCallback() {
-      console.log('✅ Koval AI widget connected');
+      console.log('✅ Koval AI widget connected to DOM');
     }
 
     disconnectedCallback() {
-      console.log('❌ Koval AI widget disconnected');
+      console.log('🔌 Koval AI widget disconnected from DOM');
     }
   }
 
+  // ✅ Safe custom element registration
   if (!customElements.get('koval-ai')) {
     customElements.define('koval-ai', KovalAiElement);
-    console.log('✅ Koval AI element registered');
+    console.log('✅ Koval AI custom element registered');
   }
 
-  // Global API
+  // ✅ Safe Global API
   window.KovalAI = {
     loadUserData: (data) => {
-      const widget = document.querySelector('koval-ai');
-      if (widget) {
-        widget.postMessage('USER_AUTH', data);
-        return true;
+      try {
+        const widget = document.querySelector('koval-ai');
+        if (widget && widget.postMessage) {
+          widget.postMessage('USER_AUTH', data);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.warn('⚠️ loadUserData failed:', error.message);
+        return false;
       }
-      return false;
     },
+    
     saveSession: (data) => {
-      const widget = document.querySelector('koval-ai');
-      if (widget) {
-        widget.postMessage('SAVE_SESSION', data);
-        return true;
+      try {
+        const widget = document.querySelector('koval-ai');
+        if (widget && widget.postMessage) {
+          widget.postMessage('SAVE_SESSION', data);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.warn('⚠️ saveSession failed:', error.message);
+        return false;
       }
-      return false;
     },
+    
     isReady: () => {
-      const widget = document.querySelector('koval-ai');
-      return widget ? widget.isReady : false;
+      try {
+        const widget = document.querySelector('koval-ai');
+        return widget ? Boolean(widget.isReady) : false;
+      } catch (error) {
+        console.warn('⚠️ isReady check failed:', error.message);
+        return false;
+      }
     }
   };
 
-  console.log('✅ Koval AI Widget v2.2 loaded');
+  console.log('✅ Koval AI Widget v2.3 loaded safely');
 })();
