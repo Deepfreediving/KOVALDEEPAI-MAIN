@@ -342,12 +342,14 @@ Make sure your Wix Blocks element has the ID: **`KovalAIFrame`**
 #### **Step 3: How It Works**
 
 The loader script will:
+
 - Automatically detect your site theme (light/dark)
 - Load the full Koval AI embed in an iframe
 - Handle user authentication
 - Manage responsive sizing
 
 #### **Benefits of Iframe Approach:**
+
 - ✅ No caching issues
 - ✅ Automatic theme detection
 - ✅ Better error handling
@@ -358,16 +360,19 @@ The loader script will:
 If you prefer the custom HTML element approach:
 
 #### **Step 1: Server URL**
+
 ```
 https://kovaldeepai-main.vercel.app/bot-widget.js?v=20250806-4
 ```
 
 #### **Step 2: Tag Name**
+
 ```
 koval-ai
 ```
 
 #### **Step 3: Element ID**
+
 Make sure the element has ID: **`#koval-ai`**
 
 ## 🔧 **Current Issue Resolution**
@@ -375,7 +380,7 @@ Make sure the element has ID: **`#koval-ai`**
 Based on your setup, I recommend switching to **OPTION 1 (Iframe Approach)** because:
 
 1. **You already have `#KovalAIFrame`** - perfect match
-2. **No widget script conflicts** - cleaner implementation  
+2. **No widget script conflicts** - cleaner implementation
 3. **Automatic cache busting** - always loads latest version
 4. **Better error handling** - fallback UI if loading fails
 
