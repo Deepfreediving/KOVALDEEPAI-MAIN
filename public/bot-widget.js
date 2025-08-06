@@ -1,4 +1,4 @@
-(function() {
+(function () {
   'use strict';
 
   // ✅ Prevent multiple loads
@@ -12,14 +12,13 @@
       this.isReady = false;
       this.messageQueue = [];
 
-      // ✅ YOUR CORRECT DEPLOYMENT URL
       this.BASE_URL = "https://kovaldeepai-main.vercel.app";
 
       this.createWidget();
     }
 
     createWidget() {
-      // ✅ Simple container
+      // ✅ Container
       const container = document.createElement('div');
       container.style.cssText = `
         width: 100%; height: 100%; min-height: 600px;
@@ -40,9 +39,29 @@
         <div style="color: #666;">Loading Koval AI...</div>
       `;
 
-      // ✅ Simple iframe
+      // ✅ Build user data first
+      let userData = {
+        userId: 'wix-guest-' + Date.now(),
+        userName: 'Guest User',
+        source: 'wix-widget'
+      };
+
+      try {
+        if (window.wixUsers && window.wixUsers.currentUser?.loggedIn) {
+          userData = {
+            userId: window.wixUsers.currentUser.id,
+            userName: window.wixUsers.currentUser.displayName || 'Wix User',
+            userEmail: window.wixUsers.currentUser.loginEmail,
+            source: 'wix-authenticated'
+          };
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not get Wix user info:', err);
+      }
+
+      // ✅ Simple iframe with actual userId if available
       this.iframe = document.createElement('iframe');
-      this.iframe.src = `${this.BASE_URL}/embed?userId=wix-guest-${Date.now()}&source=wix-widget`;
+      this.iframe.src = `${this.BASE_URL}/embed?userId=${encodeURIComponent(userData.userId)}&source=${userData.source}`;
       this.iframe.style.cssText = `
         width: 100%; height: 100%; border: none;
         opacity: 0; transition: opacity 0.3s;
@@ -55,7 +74,9 @@
         this.isReady = true;
         this.loadingDiv.style.display = 'none';
         this.iframe.style.opacity = '1';
-        this.sendInitialData();
+
+        this.postMessage('USER_AUTH', userData);
+        this.sendInitialSession();
         this.processQueue();
       };
 
@@ -79,15 +100,23 @@
       container.appendChild(this.iframe);
       this.shadowRoot.appendChild(container);
 
-      // ✅ Listen for messages
+      // ✅ Listen for messages from iframe
       window.addEventListener('message', (event) => {
         if (event.origin.includes('kovaldeepai-main.vercel.app')) {
           this.handleMessage(event);
         }
       });
+
+      // ✅ Also listen for Wix login updates dynamically
+      document.addEventListener('wixUserLogin', (e) => {
+        const data = e.detail;
+        if (data?.userId) {
+          this.postMessage('USER_AUTH', data);
+        }
+      });
     }
 
-    // ✅ Send message to iframe
+    // ✅ Send messages to iframe
     postMessage(type, data = {}) {
       if (!this.isReady) {
         this.messageQueue.push({ type, data });
@@ -97,16 +126,15 @@
       try {
         this.iframe.contentWindow.postMessage({
           type,
-          ...data,
+          data,
           timestamp: Date.now()
         }, this.BASE_URL);
-        console.log('📤 Sent:', type);
+        console.log('📤 Sent:', type, data);
       } catch (error) {
         console.warn('⚠️ Message send failed:', error);
       }
     }
 
-    // ✅ Process queued messages
     processQueue() {
       while (this.messageQueue.length > 0) {
         const msg = this.messageQueue.shift();
@@ -114,61 +142,24 @@
       }
     }
 
-    // ✅ Send initial data
-    sendInitialData() {
-      // ✅ Try to get Wix user data
-      let userData = {
-        userId: 'wix-guest-' + Date.now(),
-        userName: 'Guest User',
-        source: 'wix-widget'
-      };
-
-      try {
-        if (window.wixUsers && window.wixUsers.currentUser) {
-          const user = window.wixUsers.currentUser;
-          if (user.loggedIn) {
-            userData = {
-              userId: user.id,
-              userName: user.displayName || user.nickname || 'Wix User',
-              userEmail: user.loginEmail,
-              source: 'wix-authenticated'
-            };
-          }
-        }
-      } catch (error) {
-        console.warn('⚠️ Could not get Wix user:', error);
-      }
-
-      this.postMessage('USER_AUTH', userData);
-      console.log('✅ Sent user data:', userData.userName);
-
-      // ✅ Load saved session
+    sendInitialSession() {
       try {
         const session = localStorage.getItem('koval_ai_session');
         if (session) {
-          this.postMessage('LOAD_SAVED_SESSION', JSON.parse(session));
+          this.postMessage('LOAD_SESSION', JSON.parse(session));
         }
       } catch (error) {
         console.warn('⚠️ Session load failed:', error);
       }
     }
 
-    // ✅ Handle messages from iframe
     handleMessage(event) {
       const { type, data } = event.data;
-      console.log('📥 Received:', type);
+      console.log('📥 Received:', type, data);
 
       switch (type) {
         case 'embed_ready':
-          this.sendInitialData();
-          break;
-
-        case 'new_message':
-          this.notifyParent('new_message');
-          break;
-
-        case 'close_chat':
-          this.notifyParent('close_chat');
+          console.log('✅ Embed ready, resending USER_AUTH');
           break;
 
         case 'save_session':
@@ -180,35 +171,11 @@
           break;
 
         case 'resize':
-          if (data.height) {
+          if (data?.height) {
             this.style.height = Math.max(data.height, 400) + 'px';
           }
           break;
       }
-    }
-
-    // ✅ Notify parent window
-    notifyParent(type, data = {}) {
-      try {
-        if (window.parent !== window) {
-          window.parent.postMessage({
-            type: `koval_ai_${type}`,
-            source: 'koval-ai-widget',
-            ...data
-          }, '*');
-        }
-      } catch (error) {
-        console.warn('⚠️ Parent notify failed:', error);
-      }
-    }
-
-    // ✅ Public methods
-    loadUserData(data) {
-      this.postMessage('USER_DATA', data);
-    }
-
-    saveSession(data) {
-      this.postMessage('SAVE_SESSION', data);
     }
 
     connectedCallback() {
@@ -235,27 +202,24 @@
     loadUserData: (data) => {
       const widget = document.querySelector('koval-ai');
       if (widget) {
-        widget.loadUserData(data);
+        widget.postMessage('USER_AUTH', data);
         return true;
       }
       return false;
     },
-
     saveSession: (data) => {
       const widget = document.querySelector('koval-ai');
       if (widget) {
-        widget.saveSession(data);
+        widget.postMessage('SAVE_SESSION', data);
         return true;
       }
       return false;
     },
-
     isReady: () => {
       const widget = document.querySelector('koval-ai');
       return widget ? widget.isReady : false;
     }
   };
 
-  console.log('✅ Koval AI Widget v2.0 loaded');
-
+  console.log('✅ Koval AI Widget v2.1 loaded');
 })();
