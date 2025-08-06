@@ -30,14 +30,54 @@ export default function Embed({ userData = {}, aiResponse }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for theme changes
+  // Listen for messages from parent (Wix)
   useEffect(() => {
     const handleParentMessages = (event) => {
-      if (event.data?.type === 'THEME_CHANGE') {
-        setDarkMode(Boolean(event.data.data?.dark));
+      console.log('📨 Embed received message:', event.data);
+      
+      switch (event.data?.type) {
+        case 'THEME_CHANGE':
+          setDarkMode(Boolean(event.data.data?.dark));
+          break;
+          
+        case 'USER_AUTH':
+          // Handle user authentication data from Wix
+          if (event.data.data?.diveLogs) {
+            setDiveLogs(event.data.data.diveLogs);
+            localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.diveLogs));
+          }
+          break;
+          
+        case 'AI_RESPONSE':
+          // Handle AI response from Wix backend
+          if (event.data.data?.aiResponse) {
+            setMessages(prev => {
+              const updated = [...prev, { role: "assistant", content: event.data.data.aiResponse }];
+              localStorage.setItem("koval_ai_messages", JSON.stringify(updated));
+              return updated;
+            });
+            setLoading(false);
+          }
+          break;
+          
+        case 'DATA_UPDATE':
+          // Handle updated user data from Wix
+          if (event.data.data?.userDiveLogs) {
+            setDiveLogs(event.data.data.userDiveLogs);
+            localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.userDiveLogs));
+          }
+          break;
       }
     };
+    
     window.addEventListener('message', handleParentMessages);
+    
+    // Notify parent that embed is ready
+    window.parent?.postMessage({ 
+      type: 'EMBED_READY', 
+      source: 'koval-ai-embed'
+    }, "*");
+    
     return () => window.removeEventListener('message', handleParentMessages);
   }, []);
 
@@ -74,11 +114,16 @@ export default function Embed({ userData = {}, aiResponse }) {
       return updated;
     });
 
-    // Notify Wix parent to process AI query
-    window.parent?.postMessage({ type: "userQuery", query: text }, "*");
     setInput("");
     setLoading(true);
-    setTimeout(() => setLoading(false), 800); // UX spinner
+
+    // Send message to parent Wix page for AI processing
+    window.parent?.postMessage({ 
+      type: "CHAT_MESSAGE", 
+      message: text,
+      source: 'koval-ai-embed',
+      userId: userData?.userId || 'guest-' + Date.now()
+    }, "*");
   };
 
   const handleKeyDown = (e) => {
@@ -92,7 +137,8 @@ export default function Embed({ userData = {}, aiResponse }) {
   const saveDiveLog = () => {
     if (!newLog.date || !newLog.depth) return;
 
-    const updatedLogs = [{ ...newLog, id: Date.now() }, ...diveLogs];
+    const logWithId = { ...newLog, id: Date.now(), timestamp: new Date().toISOString() };
+    const updatedLogs = [logWithId, ...diveLogs];
 
     setDiveLogs(updatedLogs);
     localStorage.setItem("koval_ai_logs", JSON.stringify(updatedLogs));
@@ -100,9 +146,12 @@ export default function Embed({ userData = {}, aiResponse }) {
     // Reset form
     setNewLog({ date: "", location: "", depth: "", notes: "", image: "" });
 
-    // Notify parent to persist data
-    window.parent?.postMessage({ type: "saveDiveLog", diveLog: newLog }, "*");
-    window.parent?.postMessage({ type: "userMemoryUpdate", memory: { lastLog: newLog } }, "*");
+    // Send to parent Wix page for backend saving
+    window.parent?.postMessage({ 
+      type: "SAVE_DIVE_LOG", 
+      diveLog: logWithId,
+      source: 'koval-ai-embed'
+    }, "*");
   };
 
   // Handle image upload
