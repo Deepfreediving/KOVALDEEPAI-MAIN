@@ -7,7 +7,7 @@ import apiClient from "../utils/apiClient";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
-  CHAT: "/api/openai/chat",
+  CHAT: "/api/chat-embed",
   GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
   SAVE_DIVE_LOG: "/api/analyze/save-dive-log",
   DELETE_DIVE_LOG: "/api/analyze/delete-dive-log",
@@ -411,29 +411,34 @@ export default function Index() {
         </div>
       </div>
 
-      {/* ✅ DIVE JOURNAL BUTTON */}
-      <button
-        onClick={() => setIsDiveJournalOpen(true)}
-        className="fixed top-4 right-16 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-sm z-50"
-        title="View Dive Journal"
-      >
-        📘 Journal
-      </button>
+
 
       {/* ✅ DIVE JOURNAL SIDEBAR - Now includes both form and display */}
       {isDiveJournalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Dive Journal</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
+            darkMode ? "bg-gray-900" : "bg-white"
+          }`}>
+            <div className={`flex justify-between items-center p-4 border-b ${
+              darkMode ? "border-gray-700" : "border-gray-200"
+            }`}>
+              <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                🤿 Dive Journal
+              </h2>
               <button 
                 onClick={() => setIsDiveJournalOpen(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className={`text-2xl transition-colors ${
+                  darkMode 
+                    ? "text-gray-400 hover:text-white" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 ×
               </button>
             </div>
-            <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+            <div className="h-[calc(95vh-80px)]">
+              <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+            </div>
           </div>
         </div>
       )}
