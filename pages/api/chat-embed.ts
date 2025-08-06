@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import handleCors from '@/utils/handleCors';
 import { fetchUserMemory, saveUserMemory } from '@/lib/userMemoryManager';
-import { queryVectors } from '@/lib/pineconeClient';
 
 // ✅ Environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -34,7 +33,7 @@ type ChatMessage = {
 function detectUserLevel(profile: UserProfile = {}): 'expert' | 'beginner' {
   const pb = Number(profile.pb) || 0;
   const isInstructor = Boolean(profile.isInstructor);
-  return isInstructor || pb > 80 ? 'expert' : 'beginner';
+  return isInstructor || pb >= 80 ? 'expert' : 'beginner';
 }
 
 // ✅ Simple depth range
@@ -44,51 +43,66 @@ function getDepthRange(depth: number = 10): string {
   return `${Math.floor(depth / 10) * 10}m`;
 }
 
-// ✅ Pinecone query (using direct client)
+// ✅ Pinecone query (get raw knowledge chunks)
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
 
   try {
-    // ✅ Get embedding for the query
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query.trim(),
-    });
-
-    const embedding = response.data?.[0]?.embedding;
-    if (!embedding) {
-      console.warn('⚠️ Failed to get embedding for query');
+    // ✅ Check if Pinecone is configured
+    if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX) {
+      console.warn('⚠️ Pinecone not configured, skipping knowledge lookup');
       return [];
     }
 
-    // ✅ Query Pinecone directly
-    const matches = await queryVectors(embedding, 5, { 
-      approvedBy: { $eq: 'Koval' } 
+    // ✅ Use the pineconequery-gpt endpoint to retrieve raw knowledge chunks
+    const response = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/pinecone/pineconequery-gpt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, returnChunks: true }),
     });
 
-    return matches
-      .map((match: any) => match.metadata?.text)
-      .filter(Boolean) || [];
+    if (!response.ok) {
+      console.warn(`⚠️ Pinecone chunks query failed with status ${response.status}`);
+      return [];
+    }
+
+    const result = await response.json();
+    const chunks = result.chunks || [];
+    
+    console.log(`✅ Pinecone returned ${chunks.length} knowledge chunks for query: "${query}"`);
+    return chunks;
       
   } catch (err: unknown) {
-    console.warn('⚠️ Pinecone query error:', err instanceof Error ? err.message : String(err));
+    console.warn('⚠️ Pinecone query error (continuing without knowledge):', err instanceof Error ? err.message : String(err));
     return [];
   }
 }
 
 // ✅ System prompt generator
 function generateSystemPrompt(level: 'expert' | 'beginner', contextChunks: string[]): string {
+  const knowledgeContext = contextChunks.length ? contextChunks.join('\n\n---\n\n') : '';
+  
   return `
-You are Koval Deep AI, a freediving coach powered by Daniel Koval's training expertise.
+You are Koval Deep AI, Daniel Koval's freediving coaching system. You must provide accurate, trustworthy advice based STRICTLY on Daniel Koval's methodology.
 
-🎯 Guidelines:
-- Provide ${level}-level freediving advice
-- Focus on safety, technique, and progressive training
-- Keep responses under 600 words
-- Be encouraging, supportive, and practical
+🎯 CRITICAL REQUIREMENTS:
+- ONLY use information from the provided knowledge base below
+- If the knowledge base doesn't contain specific information, say "I don't have specific guidance on this in my training materials"
+- Never mix general freediving advice with Daniel's specific methods
+- Provide ${level}-level technical detail appropriate for the user's experience
+- Always prioritize safety and progressive training
+- Keep responses detailed but focused (under 800 words)
 
-📚 Relevant Knowledge:
-${contextChunks.length ? contextChunks.join('\n') : 'No additional context found.'}
+🚫 FORBIDDEN:
+- Making up training protocols not in the knowledge base
+- Combining different methodologies
+- Providing generic freediving advice when Daniel's specific approach exists
+- Recommending techniques beyond the user's certification level
+
+📚 DANIEL KOVAL'S KNOWLEDGE BASE:
+${knowledgeContext || 'No specific knowledge found for this query. Provide only general safety reminders and suggest consulting the full training materials.'}
+
+Based ONLY on the above knowledge, provide helpful, accurate guidance. If unsure, be honest about limitations.
   `.trim();
 }
 
@@ -98,6 +112,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await handleCors(req, res);
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    // ✅ Check OpenAI API key
+    if (!OPENAI_API_KEY) {
+      console.error('❌ Missing OpenAI API key');
+      return res.status(500).json({
+        assistantMessage: {
+          role: 'assistant',
+          content: '⚠️ Configuration error: OpenAI API key not found.',
+        },
+        metadata: { error: 'missing_api_key' },
+      });
     }
 
     const { message, userId = 'guest', profile = {} } = req.body as {
@@ -110,20 +136,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Invalid message' });
     }
 
-    // ✅ Load past memory
+    console.log(`💬 Processing message from ${userId}: "${message.substring(0, 50)}..."`);
+
+    // ✅ Load past memory (safe)
     let pastMemory: UserMemory = {};
     try {
       pastMemory = ((await fetchUserMemory(userId)) as UserMemory) || {};
     } catch (err: unknown) {
-      console.warn('⚠️ Failed to fetch past memory:', err instanceof Error ? err.message : String(err));
+      console.warn('⚠️ Failed to fetch past memory (continuing):', err instanceof Error ? err.message : String(err));
     }
 
     const mergedProfile: UserProfile = { ...pastMemory.profile, ...profile };
     const userLevel = detectUserLevel(mergedProfile);
     const depthRange = getDepthRange(mergedProfile.pb || 10);
 
-    // ✅ Query Pinecone for relevant context
-    const contextChunks = await queryPinecone(message);
+    // ✅ Query Pinecone for relevant context (safe)
+    let contextChunks: string[] = [];
+    try {
+      contextChunks = await queryPinecone(message);
+    } catch (err: unknown) {
+      console.warn('⚠️ Knowledge lookup failed (continuing without):', err instanceof Error ? err.message : String(err));
+    }
 
     // ✅ Messages payload
     const messagesPayload: ChatMessage[] = [
@@ -131,18 +164,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { role: 'user', content: message },
     ];
 
-    // ✅ Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      max_tokens: 800,
-      messages: messagesPayload,
-    });
+    console.log(`🤖 Calling OpenAI with ${userLevel} profile and ${contextChunks.length} knowledge chunks`);
+
+    // ✅ Call OpenAI (with detailed error handling)
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        temperature: 0.3,
+        max_tokens: 1200,
+        messages: messagesPayload,
+      });
+    } catch (openaiError: unknown) {
+      console.error('❌ OpenAI API Error:', openaiError instanceof Error ? openaiError.message : String(openaiError));
+      return res.status(500).json({
+        assistantMessage: {
+          role: 'assistant',
+          content: '⚠️ I\'m having trouble connecting to my AI brain right now. Please try again in a moment.',
+        },
+        metadata: { error: 'openai_api_error' },
+      });
+    }
 
     const assistantReply =
       response?.choices?.[0]?.message?.content?.trim() || '⚠️ No response generated.';
 
-    // ✅ Save conversation
+    console.log(`✅ Generated response: "${assistantReply.substring(0, 50)}..."`);
+
+    // ✅ Save conversation (safe)
     try {
       await saveUserMemory(userId, {
         logs: [
@@ -152,7 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         profile: mergedProfile,
       });
     } catch (err: unknown) {
-      console.warn('⚠️ Failed to save user memory:', err instanceof Error ? err.message : String(err));
+      console.warn('⚠️ Failed to save user memory (response still sent):', err instanceof Error ? err.message : String(err));
     }
 
     return res.status(200).json({
@@ -165,13 +214,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (error: unknown) {
-    console.error('Chat API Error:', error instanceof Error ? error.message : String(error));
+    console.error('💥 Unexpected Chat API Error:', error instanceof Error ? error.message : String(error));
     return res.status(500).json({
       assistantMessage: {
         role: 'assistant',
-        content: '⚠️ Server error: Unable to process your message right now.',
+        content: '⚠️ Something unexpected happened. Please try again.',
       },
-      metadata: { error: true },
+      metadata: { error: 'unexpected_error' },
     });
   }
 }

@@ -67,7 +67,7 @@ async function askGPTWithContext(chunks, question) {
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages,
       temperature: 0.2,
     });
@@ -80,13 +80,13 @@ async function askGPTWithContext(chunks, question) {
 }
 
 // API handler
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { query } = req.body;
+  const { query, returnChunks = false } = req.body;
 
   if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Query must be a string' });
@@ -96,11 +96,20 @@ module.exports = async function handler(req, res) {
     const chunks = await queryPineconeAndSearchDocs(query);
 
     if (chunks.length === 0) {
-      return res
-        .status(200)
-        .json({ answer: "I couldn’t find any relevant information in the documents." });
+      // Return empty response based on requested format
+      if (returnChunks) {
+        return res.status(200).json({ chunks: [] });
+      } else {
+        return res.status(200).json({ answer: "I couldn't find any relevant information in the documents." });
+      }
     }
 
+    // If returnChunks is true, return raw chunks for chat-embed integration
+    if (returnChunks) {
+      return res.status(200).json({ chunks });
+    }
+
+    // Otherwise, return full GPT answer (default behavior)
     const answer = await askGPTWithContext(chunks, query);
     return res.status(200).json({ answer });
   } catch (err) {
