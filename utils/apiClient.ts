@@ -81,11 +81,10 @@ export async function testOpenAI(): Promise<{ success: boolean; message: string 
  */
 export async function testPinecone(): Promise<{ success: boolean; message: string }> {
   try {
-    // ✅ UPDATED: Use new unified pinecone endpoint
-    const result = await sendRequest('/api/pinecone', {
-      action: 'query',
+    // ✅ Use pineconequery-gpt endpoint
+    const result = await sendRequest('/api/pinecone/pineconequery-gpt', {
       query: 'freediving safety',
-      topK: 1
+      returnChunks: true
     });
 
     return {
@@ -209,11 +208,10 @@ export async function queryDocuments(
   query: string,
   topK: number = 5
 ): Promise<ApiResponse> {
-  // ✅ UPDATED: Use new unified pinecone endpoint
-  return await sendRequest('/api/pinecone', {
-    action: 'query',
+  // ✅ Use pineconequery-gpt endpoint
+  return await sendRequest('/api/pinecone/pineconequery-gpt', {
     query,
-    topK
+    returnChunks: true
   });
 }
 

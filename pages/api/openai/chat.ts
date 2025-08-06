@@ -33,15 +33,13 @@ async function queryPinecone(query: string): Promise<string[]> {
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3000';
 
-    // ✅ UPDATED: Use new unified pinecone endpoint
-    const response = await fetch(`${baseUrl}/api/pinecone`, {
+    // ✅ Use pineconequery-gpt endpoint
+    const response = await fetch(`${baseUrl}/api/pinecone/pineconequery-gpt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'query',
         query,
-        topK: 5,
-        filter: { approvedBy: { $eq: 'Koval' } }
+        returnChunks: true
       })
     });
 
