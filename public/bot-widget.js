@@ -119,14 +119,15 @@
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
       const cacheParam = Date.now(); // Force fresh load
-      const embedUrl = new URL(`${this.BASE_URL}/embed`);
+      const embedUrl = new URL(`${this.BASE_URL}/embed`); // Load embed (which now has full app functionality)
       embedUrl.searchParams.set('theme', theme);
       embedUrl.searchParams.set('userId', userData.userId);
       embedUrl.searchParams.set('userName', userData.userName);
+      embedUrl.searchParams.set('embedded', 'true'); // Flag to indicate it's embedded
       embedUrl.searchParams.set('v', cacheParam.toString());
       
       this.iframe.src = embedUrl.toString();
-      console.log('🔗 Loading embed URL:', embedUrl.toString());
+      console.log('🔗 Loading embed URL with full app functionality:', embedUrl.toString());
         
       this.iframe.style.cssText = `
         width: 100%; height: 100%; border: none;
