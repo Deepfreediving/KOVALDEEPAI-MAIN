@@ -1,18 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
-import { Pinecone } from '@pinecone-database/pinecone';
 import handleCors from '@/utils/handleCors';
 import { fetchUserMemory, saveUserMemory } from '@/lib/userMemoryManager';
 
 // ✅ Environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const PINECONE_API_KEY = process.env.PINECONE_API_KEY || '';
-const PINECONE_INDEX = process.env.PINECONE_INDEX || '';
 
-// ✅ Initialize clients
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-const pinecone = PINECONE_API_KEY ? new Pinecone({ apiKey: PINECONE_API_KEY }) : null;
-const index = pinecone && PINECONE_INDEX ? pinecone.index(PINECONE_INDEX) : null;
 
 // ✅ Types
 interface UserProfile {
@@ -35,7 +29,7 @@ type ChatMessage = {
   content: string;
 };
 
-// ✅ User level detection
+// ✅ Detect user experience level
 function detectUserLevel(profile: UserProfile = {}): 'expert' | 'beginner' {
   const pb = Number(profile.pb) || 0;
   const isInstructor = Boolean(profile.isInstructor);
@@ -49,7 +43,7 @@ function getDepthRange(depth: number = 10): string {
   return `${Math.floor(depth / 10) * 10}m`;
 }
 
-// ✅ Pinecone query
+// ✅ Pinecone query (updated to use new unified endpoint)
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
 
@@ -58,10 +52,16 @@ async function queryPinecone(query: string): Promise<string[]> {
       process.env.NEXT_PUBLIC_BASE_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
 
-    const response = await fetch(`${baseUrl}/api/pinecone/queryDocuments`, {
+    // ✅ UPDATED: Use new unified pinecone endpoint
+    const response = await fetch(`${baseUrl}/api/pinecone`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, topK: 5, filter: { approvedBy: { $eq: 'Koval' } } }),
+      body: JSON.stringify({
+        action: 'query',
+        query,
+        topK: 5,
+        filter: { approvedBy: { $eq: 'Koval' } },
+      }),
     });
 
     if (!response.ok) {
@@ -123,6 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userLevel = detectUserLevel(mergedProfile);
     const depthRange = getDepthRange(mergedProfile.pb || 10);
 
+    // ✅ Query Pinecone for relevant context
     const contextChunks = await queryPinecone(message);
 
     // ✅ Messages payload

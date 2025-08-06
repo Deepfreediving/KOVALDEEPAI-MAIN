@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { upsertVectors, queryVectors, deleteVectors } from "@/lib/pineconeClient";
 import handleCors from "@/utils/handleCors";
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -8,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (await handleCors(req, res)) return;
 
     if (req.method === "POST") {
-      const { vectors, action = "upsert", vector, topK = 5, filter, ids } = req.body;
+      const { vectors, action = "upsert", vector, topK = 5, filter, ids, query } = req.body;
 
       switch (action) {
         case "upsert": {
@@ -27,14 +30,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         case "query": {
-          if (!vector || !Array.isArray(vector)) {
-            return res.status(400).json({ success: false, error: "query vector is required" });
+          let queryVector = vector;
+
+          // ✅ NEW: Auto-generate embedding from text query
+          if (!queryVector && typeof query === "string" && query.trim()) {
+            console.log(`🔍 Generating embedding for query: "${query}"`);
+            const embedding = await openai.embeddings.create({
+              model: "text-embedding-3-small",
+              input: query,
+            });
+            queryVector = embedding.data[0].embedding;
+            console.log(`✅ Generated embedding with ${queryVector.length} dimensions`);
           }
 
-          const matches = await queryVectors(vector, Number(topK) || 5, filter);
+          if (!queryVector || !Array.isArray(queryVector)) {
+            return res.status(400).json({ success: false, error: "query text or vector is required" });
+          }
+
+          const matches = await queryVectors(queryVector, Number(topK) || 5, filter);
           return res.status(200).json({
             success: true,
-            data: matches,
+            matches,  // ✅ UPDATED: Return matches directly
             matchCount: matches.length || 0,
           });
         }
@@ -60,43 +76,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "GET") {
       return res.status(200).json({
         success: true,
-        message: "Pinecone API is running",
+        message: "Pinecone API is operational",
         timestamp: new Date().toISOString(),
+        availableActions: ["upsert", "query", "delete"]
       });
     }
 
-    return res.status(405).json({
-      success: false,
-      error: "Method Not Allowed. Use POST for operations, GET for health check",
-    });
+    return res.status(405).json({ success: false, error: "Method not allowed" });
+
   } catch (error: any) {
     console.error("❌ Pinecone API error:", error);
-
-    let statusCode = 500;
-    let errorMessage = "Internal server error";
-
-    if (error.message?.includes("Missing") || error.message?.includes("required")) {
-      statusCode = 400;
-      errorMessage = error.message;
-    } else if (error.message?.includes("API key") || error.message?.includes("unauthorized")) {
-      statusCode = 401;
-      errorMessage = "Authentication failed";
-    } else if (error.message?.includes("quota") || error.message?.includes("rate limit")) {
-      statusCode = 429;
-      errorMessage = "Rate limit exceeded";
-    }
-
-    return res.status(statusCode).json({
+    return res.status(500).json({
       success: false,
-      error: errorMessage,
-      timestamp: new Date().toISOString(),
+      error: "Internal server error",
+      message: error.message || "Unknown error occurred"
     });
   }
 }
 
 export const config = {
   api: {
-    bodyParser: { sizeLimit: "5mb" },
+    bodyParser: { sizeLimit: "10mb" },
     responseLimit: false,
+    timeout: 30000,
   },
 };

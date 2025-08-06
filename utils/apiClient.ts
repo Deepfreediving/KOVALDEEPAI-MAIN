@@ -77,11 +77,13 @@ export async function testOpenAI(): Promise<{ success: boolean; message: string 
 }
 
 /**
- * ✅ Test Pinecone connection
+ * ✅ Test Pinecone connection (UPDATED)
  */
 export async function testPinecone(): Promise<{ success: boolean; message: string }> {
   try {
-    const result = await sendRequest('/api/pinecone/queryDocuments', {
+    // ✅ UPDATED: Use new unified pinecone endpoint
+    const result = await sendRequest('/api/pinecone', {
+      action: 'query',
       query: 'freediving safety',
       topK: 1
     });
@@ -201,13 +203,15 @@ export async function uploadImage(file: File, userId?: string): Promise<ApiRespo
 }
 
 /**
- * ✅ Query documents in Pinecone
+ * ✅ Query documents in Pinecone (UPDATED)
  */
 export async function queryDocuments(
   query: string,
   topK: number = 5
 ): Promise<ApiResponse> {
-  return await sendRequest('/api/pinecone/queryDocuments', {
+  // ✅ UPDATED: Use new unified pinecone endpoint
+  return await sendRequest('/api/pinecone', {
+    action: 'query',
     query,
     topK
   });

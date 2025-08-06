@@ -33,10 +33,16 @@ async function queryPinecone(query: string): Promise<string[]> {
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3000';
 
-    const response = await fetch(`${baseUrl}/api/pinecone/queryDocuments`, {
+    // ✅ UPDATED: Use new unified pinecone endpoint
+    const response = await fetch(`${baseUrl}/api/pinecone`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, topK: 5, filter: { approvedBy: { "$eq": "Koval" } } })
+      body: JSON.stringify({
+        action: 'query',
+        query,
+        topK: 5,
+        filter: { approvedBy: { $eq: 'Koval' } }
+      })
     });
 
     if (!response.ok) {
