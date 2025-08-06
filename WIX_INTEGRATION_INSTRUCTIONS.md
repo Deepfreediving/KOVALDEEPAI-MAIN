@@ -288,6 +288,202 @@ https://kovaldeepai-main.vercel.app/embed?theme=light&userId=[user-id]&v=[timest
 - **Cause**: Default container might be too small
 - **Fix**: In Wix editor, resize the widget element to at least 400px wide × 600px tall
 
+## 🎯 **Wix Blocks Widget Configuration**
+
+### **Required Settings for Koval AI Widget:**
+
+1. **Element Type**: Custom Element
+2. **Tag Name**: `koval-ai` (exactly as shown)
+3. **Element ID**: `#koval-ai` or `#KovalAIFrame`
+4. **Server URL**: `https://kovaldeepai-main.vercel.app/bot-widget.js?v=FRESH-20250806-926AM`
+
+### **Widget Properties:**
+
+- **Width**: 960px (or 100% of container)
+- **Height**: 749px (minimum 600px)
+- **Responsive**: Fixed or responsive as needed
+
+### **Important Notes:**
+
+- The frontend code now specifically looks for `#koval-ai` and `#KovalAIFrame` as priority IDs
+- Make sure the Tag name matches exactly: `koval-ai`
+- The Server URL must include the cache-busting parameter
+
+### **Testing Checklist:**
+
+✅ Updated Server URL with cache parameter  
+✅ Clicked "Update" button in Wix Blocks  
+✅ Widget is on top layer (not behind other elements)  
+✅ Widget container is large enough (400×600 minimum)  
+✅ Tested in preview mode  
+✅ Checked browser console for new timestamp  
+✅ Tested actual chat functionality
+
+## 🎯 **UPDATED: Two Approaches for Wix Blocks Integration**
+
+You have two options for integrating Koval AI with Wix Blocks:
+
+### **🚀 OPTION 1: IFRAME APPROACH (RECOMMENDED)**
+
+This is simpler and more reliable for Wix Blocks:
+
+#### **Step 1: Use the Widget Loader Script**
+
+Instead of the bot-widget.js, use this dedicated loader script:
+
+```
+https://kovaldeepai-main.vercel.app/wix-widget-loader.js?v=20250806-1209PM
+```
+
+#### **Step 2: Set Element ID**
+
+Make sure your Wix Blocks element has the ID: **`KovalAIFrame`**
+
+#### **Step 3: How It Works**
+
+The loader script will:
+- Automatically detect your site theme (light/dark)
+- Load the full Koval AI embed in an iframe
+- Handle user authentication
+- Manage responsive sizing
+
+#### **Benefits of Iframe Approach:**
+- ✅ No caching issues
+- ✅ Automatic theme detection
+- ✅ Better error handling
+- ✅ Simpler setup
+
+### **⚙️ OPTION 2: CUSTOM ELEMENT APPROACH**
+
+If you prefer the custom HTML element approach:
+
+#### **Step 1: Server URL**
+```
+https://kovaldeepai-main.vercel.app/bot-widget.js?v=20250806-4
+```
+
+#### **Step 2: Tag Name**
+```
+koval-ai
+```
+
+#### **Step 3: Element ID**
+Make sure the element has ID: **`#koval-ai`**
+
+## 🔧 **Current Issue Resolution**
+
+Based on your setup, I recommend switching to **OPTION 1 (Iframe Approach)** because:
+
+1. **You already have `#KovalAIFrame`** - perfect match
+2. **No widget script conflicts** - cleaner implementation  
+3. **Automatic cache busting** - always loads latest version
+4. **Better error handling** - fallback UI if loading fails
+
+## 🚨 **IMPORTANT: If Still Loading Old Version After Update**
+
+If you're still seeing the old light theme app after updating the URL, Wix Blocks has aggressive caching. Try these steps **in order**:
+
+#### **Method 1: Force New Version**
+
+Change the version parameter to a completely new timestamp:
+
+```
+https://kovaldeepai-main.vercel.app/bot-widget.js?v=FRESH-20250806-926AM
+```
+
+#### **Method 2: Clear Wix Blocks Cache**
+
+1. **Save and Exit** the Wix Blocks editor
+2. **Wait 2-3 minutes** for Wix to clear internal cache
+3. **Re-open** Wix Blocks editor
+4. **Verify** the Server URL still shows the new version
+5. **Test** the widget again
+
+#### **Method 3: Browser Hard Reset**
+
+1. **Close all browser tabs** related to Wix
+2. **Clear browser cache** completely (Chrome: Settings → Privacy → Clear browsing data)
+3. **Open new incognito/private window**
+4. **Log back into Wix Blocks**
+5. **Check the widget** functionality
+
+#### **Method 4: Widget Recreation** (Last Resort)
+
+If the above doesn't work:
+
+1. **Delete** the current widget element in Wix Blocks
+2. **Add a new** Custom Element
+3. **Set Server URL** to: `https://kovaldeepai-main.vercel.app/bot-widget.js?v=REBUILD-20250806`
+4. **Set Tag name** to: `koval-ai`
+
+### **Step 3: Check for Layers/Overlays**
+
+If the widget still isn't working after updating:
+
+1. **Check Element Layers**: In your Wix editor, make sure no other elements are overlapping the widget
+2. **Z-Index Issues**: The widget might be behind other elements
+3. **Container Size**: Ensure the widget container has proper dimensions (minimum 600px height)
+
+### **Step 4: Verify the Correct Embed URL**
+
+After updating, the widget should load this iframe:
+
+```
+https://kovaldeepai-main.vercel.app/embed?theme=light&userId=[user-id]&v=[timestamp]
+```
+
+### **Step 5: Test in Different Modes**
+
+- **Preview Mode**: Test the widget in Wix preview
+- **Published Site**: Test on your live site
+- **Different Browsers**: Try Chrome, Firefox, Safari
+
+### **Common Wix Blocks Issues & Solutions:**
+
+#### **Issue A: Widget Not Visible**
+
+- **Cause**: Element might be behind other layers
+- **Fix**: In Wix editor, right-click the widget → "Arrange" → "Bring to Front"
+
+#### **Issue B: Widget Shows But Doesn't Respond**
+
+- **Cause**: Script URL is cached or incorrect
+- **Fix**: Update Server URL with new version parameter: `?v=20250806-4`
+
+#### **Issue C: Console Errors Still Appear**
+
+- **Cause**: Old cached JavaScript still running
+- **Fix**:
+  1. Clear browser cache completely
+  2. Try incognito/private browsing mode
+  3. Update version parameter again
+
+#### **Issue D: Widget Container Too Small**
+
+- **Cause**: Default container might be too small
+- **Fix**: In Wix editor, resize the widget element to at least 400px wide × 600px tall
+
+## 🎯 **Wix Blocks Widget Configuration**
+
+### **Required Settings for Koval AI Widget:**
+
+1. **Element Type**: Custom Element
+2. **Tag Name**: `koval-ai` (exactly as shown)
+3. **Element ID**: `#koval-ai` or `#KovalAIFrame`
+4. **Server URL**: `https://kovaldeepai-main.vercel.app/bot-widget.js?v=FRESH-20250806-926AM`
+
+### **Widget Properties:**
+
+- **Width**: 960px (or 100% of container)
+- **Height**: 749px (minimum 600px)
+- **Responsive**: Fixed or responsive as needed
+
+### **Important Notes:**
+
+- The frontend code now specifically looks for `#koval-ai` and `#KovalAIFrame` as priority IDs
+- Make sure the Tag name matches exactly: `koval-ai`
+- The Server URL must include the cache-busting parameter
+
 ### **Testing Checklist:**
 
 ✅ Updated Server URL with cache parameter  
