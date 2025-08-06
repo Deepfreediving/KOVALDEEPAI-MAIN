@@ -14,15 +14,16 @@ const DEBUG_MODE = true;
 $w.onReady(async function () {
     console.log("✅ Koval-AI Wix app initializing...");
 
-    // ✅ TRY MULTIPLE POSSIBLE WIDGET IDS - PRIORITIZING THE CORRECT ONE
+    // ✅ PRIORITIZE WIX BLOCKS SPECIFIC IDS - KovalAIFrame and koval-ai
     let aiWidget = null;
-    const possibleIds = ['#koval-ai', '#KovalAiWidget', '#kovalAIWidget', '#KovalAIWidget', '#htmlComponent1', '#html1', '#customElement1'];
+    const possibleIds = ['#koval-ai', '#KovalAIFrame', '#kovalAIFrame', '#KovalAiWidget', '#kovalAIWidget'];
     
     for (const id of possibleIds) {
         try {
             aiWidget = $w(id);
             if (aiWidget) {
-                console.log(`✅ Found widget with ID: ${id}`);
+                console.log(`✅ Found Koval AI widget with ID: ${id}`);
+                console.log(`🎯 Widget type: ${aiWidget.type || 'custom'}`);
                 break;
             }
         } catch (e) {
@@ -31,10 +32,19 @@ $w.onReady(async function () {
     }
 
     if (!aiWidget) {
-        console.error("❌ No Koval-AI widget found on page. Tried IDs:", possibleIds);
+        console.error("❌ No Koval-AI widget found on page. Expected IDs: #koval-ai or #KovalAIFrame");
+        console.log("🔍 Available elements on page:", Object.keys($w).filter(k => k.startsWith('#')));
         showFallbackUI();
         return;
     }
+
+    console.log(`🚀 Successfully connected to Koval AI widget: ${aiWidget.id || 'unknown'}`);
+    console.log(`📋 Widget properties:`, {
+        id: aiWidget.id,
+        type: aiWidget.type,
+        hasPostMessage: typeof aiWidget.postMessage === 'function',
+        hasOnMessage: typeof aiWidget.onMessage === 'function'
+    });
 
     // ✅ TEST CONNECTION FIRST
     const connectionStatus = await testBackendConnection();
@@ -88,14 +98,32 @@ async function setupKovalAIWidget(aiWidget) {
         console.error("❌ Failed to send initial data to widget:", msgError);
     }
 
-    // ✅ SETUP MESSAGE LISTENER WITH ERROR HANDLING
-    aiWidget.onMessage((event) => {
-        try {
-            handleWidgetMessage(event.data);
-        } catch (handlerError) {
-            console.error("❌ Widget message handler error:", handlerError);
+    // ✅ SETUP MESSAGE LISTENER WITH SPECIFIC WIDGET REFERENCE
+    try {
+        if (typeof aiWidget.onMessage === 'function') {
+            aiWidget.onMessage((event) => {
+                try {
+                    console.log("📨 Message received from Koval AI widget:", event.data?.type);
+                    handleWidgetMessage(event.data, aiWidget);
+                } catch (handlerError) {
+                    console.error("❌ Widget message handler error:", handlerError);
+                }
+            });
+            console.log("✅ Message listener attached to Koval AI widget");
+        } else {
+            console.warn("⚠️ Widget does not support onMessage - using global listener");
+            // Fallback to global message listener
+            if (typeof window !== 'undefined') {
+                window.addEventListener('message', (event) => {
+                    if (event.data?.source === 'koval-ai' || event.data?.type) {
+                        handleWidgetMessage(event.data, aiWidget);
+                    }
+                });
+            }
         }
-    });
+    } catch (msgError) {
+        console.error("❌ Failed to setup message listener:", msgError);
+    }
 
     console.log("✅ Koval-AI widget initialized successfully");
 }
@@ -133,18 +161,26 @@ async function testBackendConnection() {
 }
 
 /**
- * ✅ HANDLE MESSAGES FROM WIDGET
+ * ✅ HANDLE MESSAGES FROM KOVAL AI WIDGET
  */
-async function handleWidgetMessage(data) {
+async function handleWidgetMessage(data, widgetRef = null) {
     if (!data || !data.type) return;
 
-    console.log("📨 Widget message received:", data.type);
+    console.log("📨 Koval AI widget message received:", data.type);
+
+    // ✅ GET WIDGET REFERENCE - PRIORITIZE PASSED REFERENCE
+    const widget = widgetRef || $w('#koval-ai') || $w('#KovalAIFrame');
+    
+    if (!widget) {
+        console.error("❌ No widget reference available for message handling");
+        return;
+    }
 
     try {
         switch (data.type) {
             case 'CHAT_MESSAGE':
                 const response = await sendChatMessage(data.message, data.userId);
-                aiWidget.postMessage({
+                widget.postMessage({
                     type: 'AI_RESPONSE',
                     data: response
                 });
@@ -154,7 +190,7 @@ async function handleWidgetMessage(data) {
                 const saveResult = await saveDiveLog(data.diveLog);
                 if (saveResult) {
                     const updatedData = await loadUserData();
-                    aiWidget.postMessage({
+                    widget.postMessage({
                         type: 'DATA_UPDATE',
                         data: updatedData
                     });
@@ -167,30 +203,35 @@ async function handleWidgetMessage(data) {
 
             case 'WIDGET_RESIZE':
                 if (data.height && data.height > 200 && data.height < 1000) {
-                    aiWidget.style.height = `${data.height}px`;
+                    widget.style.height = `${data.height}px`;
                 }
                 break;
 
             case 'REQUEST_USER_DATA':
                 const userData = await loadUserData();
-                aiWidget.postMessage({
+                widget.postMessage({
                     type: 'USER_DATA_UPDATE',
                     data: userData
                 });
                 break;
 
             default:
-                if (DEBUG_MODE) console.log("🔄 Unhandled widget message:", data.type);
+                if (DEBUG_MODE) console.log("🔄 Unhandled Koval AI widget message:", data.type);
         }
     } catch (error) {
-        console.error(`❌ Error handling widget message ${data.type}:`, error);
-        $w('#kovalAIWidget').postMessage({
-            type: 'ERROR',
-            data: {
-                message: `Failed to handle ${data.type}`,
-                error: error.message
-            }
-        });
+        console.error(`❌ Error handling Koval AI widget message ${data.type}:`, error);
+        
+        // ✅ TRY MULTIPLE WIDGET REFERENCES FOR ERROR REPORTING
+        const errorWidget = widgetRef || $w('#koval-ai') || $w('#KovalAIFrame');
+        if (errorWidget && typeof errorWidget.postMessage === 'function') {
+            errorWidget.postMessage({
+                type: 'ERROR',
+                data: {
+                    message: `Failed to handle ${data.type}`,
+                    error: error.message
+                }
+            });
+        }
     }
 }
 
@@ -443,12 +484,19 @@ function showFallbackUI() {
             </button>
             <div style="margin-top: 30px; font-size: 14px; opacity: 0.7;">
                 <p>📧 Contact support if this persists</p>
+                <p>Looking for: #koval-ai or #KovalAIFrame</p>
             </div>
         </div>
     `;
 
     try {
-        $w('#kovalAIWidget').html = fallbackHTML;
+        // ✅ TRY MULTIPLE WIDGET IDS FOR FALLBACK
+        const fallbackWidget = $w('#koval-ai') || $w('#KovalAIFrame') || $w('#kovalAIWidget');
+        if (fallbackWidget) {
+            fallbackWidget.html = fallbackHTML;
+        } else {
+            console.error("❌ Could not find any widget element for fallback UI");
+        }
     } catch (error) {
         console.error("❌ Could not show fallback UI:", error);
     }
