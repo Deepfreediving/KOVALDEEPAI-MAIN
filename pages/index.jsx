@@ -434,3 +434,37 @@ export default function Index() {
     </main>
   );
 }
+
+// REPLACE the queryPinecone function in pages/api/openai/chat.ts:
+
+async function queryPinecone(query) {
+  if (!query?.trim()) return [];
+  try {
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+
+    // ✅ NEW: Use unified pinecone endpoint
+    const response = await fetch(`${baseUrl}/api/pinecone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "query",
+        query: query,  // Send text query, not vector
+        topK: 5,
+        filter: { approvedBy: { "$eq": "Koval" } }
+      })
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Pinecone query failed with status ${response.status}`);
+      return [];
+    }
+
+    const result = await response.json();
+    return result.matches?.map((m) => m.metadata?.text).filter(Boolean) || [];
+  } catch (error) {
+    console.error('❌ Pinecone error:', error.message);
+    return [];
+  }
+}
