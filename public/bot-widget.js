@@ -324,5 +324,8 @@
     }
   };
 
-  console.log('✅ Koval AI Widget v2.4 loaded safely - Cache: ' + Date.now());
+  const loadTime = new Date().toLocaleTimeString();
+  console.log('🚀 Koval AI Widget v2.5-UPDATED-926AM loaded safely - Cache: ' + Date.now());
+  console.log('🎯 Widget loaded at: ' + loadTime);
+  console.log('🔄 NEW VERSION ACTIVE! If you see this, cache was cleared successfully!');
 })();
