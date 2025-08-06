@@ -10,52 +10,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "POST") {
       const { vectors, action = "upsert", vector, topK = 5, filter, ids } = req.body;
 
-      // ✅ Handle upsert
-      if (action === "upsert") {
-        if (!vectors || !Array.isArray(vectors)) {
-          return res.status(400).json({ success: false, error: "vectors array is required" });
+      switch (action) {
+        case "upsert": {
+          if (!vectors || !Array.isArray(vectors)) {
+            return res.status(400).json({ success: false, error: "vectors array is required" });
+          }
+          if (vectors.length === 0) {
+            return res.status(400).json({ success: false, error: "vectors array cannot be empty" });
+          }
+          if (vectors.length > 1000) {
+            return res.status(400).json({ success: false, error: "Too many vectors. Maximum 1000 per request" });
+          }
+
+          const response = await upsertVectors(vectors);
+          return res.status(200).json({ success: true, data: response, count: vectors.length });
         }
 
-        if (vectors.length === 0) {
-          return res.status(400).json({ success: false, error: "vectors array cannot be empty" });
+        case "query": {
+          if (!vector || !Array.isArray(vector)) {
+            return res.status(400).json({ success: false, error: "query vector is required" });
+          }
+
+          const matches = await queryVectors(vector, Number(topK) || 5, filter);
+          return res.status(200).json({
+            success: true,
+            data: matches,
+            matchCount: matches.length || 0,
+          });
         }
 
-        if (vectors.length > 1000) {
-          return res.status(400).json({ success: false, error: "Too many vectors. Maximum 1000 per request" });
+        case "delete": {
+          if (!ids || !Array.isArray(ids)) {
+            return res.status(400).json({ success: false, error: "ids array is required for deletion" });
+          }
+
+          const response = await deleteVectors(ids);
+          return res.status(200).json({ success: true, data: response, deleted: ids.length });
         }
 
-        const response = await upsertVectors(vectors);
-        return res.status(200).json({ success: true, data: response, count: vectors.length });
+        default:
+          return res.status(400).json({
+            success: false,
+            error: "Invalid action. Use 'upsert', 'query', or 'delete'",
+          });
       }
-
-      // ✅ Handle query
-      if (action === "query") {
-        if (!vector || !Array.isArray(vector)) {
-          return res.status(400).json({ success: false, error: "query vector is required" });
-        }
-
-        const matches = await queryVectors(vector, Number(topK) || 5);
-        return res.status(200).json({
-          success: true,
-          data: matches,
-          matchCount: matches.length || 0,
-        });
-      }
-
-      // ✅ Handle delete
-      if (action === "delete") {
-        if (!ids || !Array.isArray(ids)) {
-          return res.status(400).json({ success: false, error: "ids array is required for deletion" });
-        }
-
-        const response = await deleteVectors(ids);
-        return res.status(200).json({ success: true, data: response, deleted: ids.length });
-      }
-
-      return res.status(400).json({
-        success: false,
-        error: "Invalid action. Use 'upsert', 'query', or 'delete'",
-      });
     }
 
     // ✅ GET endpoint: health check
