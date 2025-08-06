@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import handleCors from '@/utils/handleCors';
 import { fetchUserMemory, saveUserMemory } from '@/lib/userMemoryManager';
+import { queryPineconeForChunks } from '@/lib/pineconeQuery';
 
 // ✅ Environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -43,41 +44,14 @@ function getDepthRange(depth: number = 10): string {
   return `${Math.floor(depth / 10) * 10}m`;
 }
 
-// ✅ Pinecone query (get raw knowledge chunks)
+// ✅ Pinecone query (get raw knowledge chunks) - Direct function call
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
 
   try {
-    // ✅ Check if Pinecone is configured
-    if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX) {
-      console.warn('⚠️ Pinecone not configured, skipping knowledge lookup');
-      return [];
-    }
-
-    // ✅ Use the pineconequery-gpt endpoint to retrieve raw knowledge chunks
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : process.env.NODE_ENV === 'production' 
-        ? 'https://kovaldeepai-main.vercel.app' 
-        : 'http://localhost:3000';
-    
-    const response = await fetch(`${baseUrl}/api/pinecone/pineconequery-gpt`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, returnChunks: true }),
-    });
-
-    if (!response.ok) {
-      console.warn(`⚠️ Pinecone chunks query failed with status ${response.status}`);
-      return [];
-    }
-
-    const result = await response.json();
-    const chunks = result.chunks || [];
-    
+    const chunks = await queryPineconeForChunks(query);
     console.log(`✅ Pinecone returned ${chunks.length} knowledge chunks for query: "${query}"`);
     return chunks;
-      
   } catch (err: unknown) {
     console.warn('⚠️ Pinecone query error (continuing without knowledge):', err instanceof Error ? err.message : String(err));
     return [];
