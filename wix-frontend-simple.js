@@ -228,19 +228,21 @@ function showFallbackChat() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             message: message,
-                            userId: 'wix-user-' + Date.now()
+                            userId: 'wix-user-' + Date.now(),
+                            profile: {}
                         })
                     });
                     
                     if (response.ok) {
                         const data = await response.json();
-                        const aiResponse = data.assistantMessage?.content || data.aiResponse || 'I received your message!';
+                        const aiResponse = data.assistantMessage?.content || data.answer || data.aiResponse || 'I received your message!';
                         document.getElementById('loading').innerHTML = '<strong>🤖 Koval AI:</strong> ' + aiResponse;
                     } else {
-                        document.getElementById('loading').innerHTML = '<strong>🤖 Koval AI:</strong> Sorry, I\\'m having trouble right now. Please try the <a href="https://kovaldeepai-main.vercel.app" target="_blank" style="color: #4fc3f7;">full app</a>.';
+                        throw new Error('HTTP ' + response.status);
                     }
                 } catch (error) {
-                    document.getElementById('loading').innerHTML = '<strong>🤖 Koval AI:</strong> Connection error. Please try the <a href="https://kovaldeepai-main.vercel.app" target="_blank" style="color: #4fc3f7;">full app</a>.';
+                    console.error('Chat API error:', error);
+                    document.getElementById('loading').innerHTML = '<strong>🤖 Koval AI:</strong> Sorry, I\\'m having trouble right now. Please try the <a href="https://kovaldeepai-main.vercel.app" target="_blank" style="color: #4fc3f7;">full app</a>.';
                 }
                 
                 document.getElementById('loading').id = '';

@@ -3,35 +3,80 @@ import DiveJournalForm from './DiveJournalForm';
 import DiveJournalDisplay from './DiveJournalDisplay';
 
 export default function DiveJournalSidebarCard({ userId, darkMode }) {
-  const [open, setOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // Trigger display update
+  const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'add'
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleFormSubmit = (data) => {
     // Save logs to localStorage
     const existingLogs = JSON.parse(localStorage.getItem(`diveLogs-${userId}`)) || [];
     existingLogs.push(data);
     localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(existingLogs));
-    setRefreshKey(prev => prev + 1); // Refresh display
+    setRefreshKey(prev => prev + 1);
+    setActiveTab('logs'); // Switch to logs after saving
   };
 
   return (
-    <div className={`mt-6 border rounded-lg shadow-sm ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200"}`}>
-      <div
-        className={`flex justify-between items-center p-3 cursor-pointer ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
-        onClick={() => setOpen(!open)}
-      >
-        <h3 className="font-semibold text-sm">📝 Dive Journal</h3>
-        <button className={`text-xs ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
-          {open ? 'Hide' : 'Open'}
-        </button>
+    <div className={`w-full h-full flex flex-col ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+      {/* Header with Tabs */}
+      <div className={`border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'logs'
+                ? darkMode 
+                  ? "bg-blue-900 text-blue-200 border-b-2 border-blue-400"
+                  : "bg-blue-50 text-blue-700 border-b-2 border-blue-500"
+                : darkMode
+                  ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            }`}
+          >
+            <span className="flex items-center justify-center gap-2">
+              � <span>My Logs</span>
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('add')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'add'
+                ? darkMode 
+                  ? "bg-green-900 text-green-200 border-b-2 border-green-400"
+                  : "bg-green-50 text-green-700 border-b-2 border-green-500"
+                : darkMode
+                  ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            }`}
+          >
+            <span className="flex items-center justify-center gap-2">
+              ➕ <span>Add Dive</span>
+            </span>
+          </button>
+        </div>
       </div>
 
-      {open && (
-        <div className="p-3 border-t space-y-4">
-          <DiveJournalForm onSubmit={handleFormSubmit} />
-          <DiveJournalDisplay key={refreshKey} userId={userId} darkMode={darkMode} />
-        </div>
-      )}
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'logs' ? (
+          <div className="h-full">
+            <DiveJournalDisplay 
+              key={refreshKey} 
+              userId={userId} 
+              darkMode={darkMode}
+              isEmbedded={true}
+            />
+          </div>
+        ) : (
+          <div className="h-full overflow-y-auto p-4">
+            <div className={`rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} p-4`}>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                🤿 <span>New Dive Entry</span>
+              </h3>
+              <DiveJournalForm onSubmit={handleFormSubmit} darkMode={darkMode} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
