@@ -55,7 +55,13 @@ async function queryPinecone(query: string): Promise<string[]> {
     }
 
     // ✅ Use the pineconequery-gpt endpoint to retrieve raw knowledge chunks
-    const response = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/pinecone/pineconequery-gpt`, {
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : process.env.NODE_ENV === 'production' 
+        ? 'https://kovaldeepai-main.vercel.app' 
+        : 'http://localhost:3000';
+    
+    const response = await fetch(`${baseUrl}/api/pinecone/pineconequery-gpt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, returnChunks: true }),
