@@ -234,7 +234,7 @@ function showFallbackChat() {
                 
                 try {
                     // Use the working backup API
-                    const response = await fetch('${BACKUP_CHAT_API}', {
+                    const response = await fetch('https://kovaldeepai-main.vercel.app/api/chat-embed', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
