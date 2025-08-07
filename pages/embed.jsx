@@ -106,22 +106,24 @@ export default function Embed() {
         setDarkMode(false);
       }
       
-      // Set user data from URL parameters
-      if (urlUserId) {
+      // Set user data from URL parameters (as fallback)
+      if (urlUserId && !userId) {  // Only if no userId is already set
         setUserId(String(urlUserId));
         localStorage.setItem("kovalUser", String(urlUserId));
       }
       
-      if (userName) {
+      if (userName && (!profile?.nickname || profile?.nickname === 'Guest User')) {  // Only if no better name exists
         const decodedUserName = decodeURIComponent(String(userName));
         setProfile(prev => ({ 
           ...prev, 
           nickname: decodedUserName,
-          displayName: decodedUserName 
+          displayName: decodedUserName,
+          source: 'url-params'
         }));
         localStorage.setItem("kovalProfile", JSON.stringify({ 
           nickname: decodedUserName,
-          displayName: decodedUserName 
+          displayName: decodedUserName,
+          source: 'url-params'
         }));
       }
       
@@ -162,14 +164,23 @@ export default function Embed() {
           console.log('👤 User auth received:', event.data.data);
           if (event.data.data?.userId) {
             setUserId(event.data.data.userId);
+            localStorage.setItem("kovalUser", event.data.data.userId);
           }
-          if (event.data.data?.profile?.userName) {
-            setProfile(prev => ({
-              ...prev,
-              displayName: event.data.data.profile.userName,
-              nickname: event.data.data.profile.userName
-            }));
+          
+          // Update profile with Wix user data
+          if (event.data.data?.userName || event.data.data?.userEmail) {
+            const newProfile = {
+              nickname: event.data.data.userName || event.data.data.userEmail || 'User',
+              displayName: event.data.data.userName || event.data.data.userEmail || 'User',
+              loginEmail: event.data.data.userEmail || '',
+              source: event.data.data.source || 'wix-widget'
+            };
+            
+            setProfile(newProfile);
+            localStorage.setItem("kovalProfile", JSON.stringify(newProfile));
+            console.log('✅ Profile updated with Wix user data:', newProfile);
           }
+          
           if (event.data.data?.diveLogs) {
             setDiveLogs(event.data.data.diveLogs);
             localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.diveLogs));

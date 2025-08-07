@@ -83,7 +83,7 @@
         </style>
       `;
 
-      // ✅ ENHANCED USER DATA with theme
+      // ✅ ENHANCED USER DATA with theme and better Wix detection
       let userData = {
         userId: 'wix-guest-' + Date.now(),
         userName: 'Guest User',
@@ -92,29 +92,54 @@
         parentUrl: window.location.href
       };
 
-      // ✅ Wix user detection (same as before but add theme)
-      try {
-        if (typeof window !== 'undefined' && 
-            window.wixUsers && 
-            typeof window.wixUsers.currentUser === 'object' &&
-            window.wixUsers.currentUser !== null) {
-          
-          const currentUser = window.wixUsers.currentUser;
-          if (currentUser.loggedIn === true && currentUser.id) {
-            userData = {
-              ...userData,
-              userId: 'wix-' + currentUser.id,
-              userName: currentUser.displayName || currentUser.nickname || 'Wix User',
-              userEmail: currentUser.loginEmail || '',
-              source: 'wix-authenticated',
-              theme: theme  // ✅ Keep theme
-            };
-            console.log('✅ Wix user authenticated:', userData.userName);
+      // ✅ Enhanced Wix user detection with retry logic
+      const detectWixUser = () => {
+        try {
+          if (typeof window !== 'undefined' && 
+              window.wixUsers && 
+              typeof window.wixUsers.currentUser === 'object' &&
+              window.wixUsers.currentUser !== null) {
+            
+            const currentUser = window.wixUsers.currentUser;
+            console.log('🔍 Wix currentUser detected:', currentUser);
+            
+            if (currentUser.loggedIn === true && currentUser.id) {
+              userData = {
+                ...userData,
+                userId: 'wix-' + currentUser.id,
+                userName: currentUser.displayName || currentUser.nickname || currentUser.loginEmail || 'Wix User',
+                userEmail: currentUser.loginEmail || '',
+                wixId: currentUser.id,
+                source: 'wix-authenticated',
+                theme: theme  // ✅ Keep theme
+              };
+              console.log('✅ Wix user authenticated:', userData);
+              return true;
+            } else {
+              console.log('ℹ️ Wix user not logged in');
+            }
+          } else {
+            console.log('ℹ️ Wix users API not available yet');
+          }
+        } catch (wixError) {
+          console.warn('⚠️ Wix user detection failed:', wixError.message);
+        }
+        return false;
+      };
+
+      // Try to detect Wix user immediately
+      detectWixUser();
+
+      // Also try again after a short delay in case Wix API loads later
+      setTimeout(() => {
+        if (detectWixUser()) {
+          // If we found a user after delay, update the iframe
+          if (this.iframe && this.isReady) {
+            console.log('🔄 Sending updated Wix user data');
+            this.postMessage('USER_AUTH', userData);
           }
         }
-      } catch (wixError) {
-        console.warn('⚠️ Wix user detection failed:', wixError.message);
-      }
+      }, 1000);
 
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
