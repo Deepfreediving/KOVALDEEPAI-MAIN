@@ -1,8 +1,9 @@
 import wixUsers from 'wix-users';
 import wixData from 'wix-data';
+import wixLocation from 'wix-location';
+import wixWindow from 'wix-window';
 import { currentMember } from 'wix-members-frontend';
 import { checkUserAccess } from 'backend/checkUserAccess';
-import { checkEntitlement } from 'backend/aiAccess.jsw';
 
 // ===== 🔄 Enhanced Widget Communication & Entitlement Logic =====
 // (Merged from koval-ai-page.js)
@@ -11,10 +12,10 @@ import { checkEntitlement } from 'backend/aiAccess.jsw';
 const CHAT_API = "/_functions/chat";  // ✅ Your http-chat.jsw function
 const USER_MEMORY_API = "/_functions/userMemory";  // ✅ Your http-userMemory.jsw
 const DIVE_LOGS_API = "/_functions/diveLogs";  // ✅ Your http-diveLogs.jsw
-const LOAD_MEMORIES_API = "/_functions/loadMemories";  // ✅ Your http-loadMemories.jsw
+const LOAD_MEMORIES_API = "/_functions/loadMemories";  // ✅ DEPRECATED - Use userMemory instead
 const WIX_CONNECTION_API = "/_functions/wixConnection";  // ✅ Your http-wixConnection.jsw
-const GET_USER_MEMORY_API = "/_functions/getUserMemory";  // ✅ Your http-getUserMemory.jsw
-const SAVE_TO_USER_MEMORY_API = "/_functions/saveToUserMemory";  // ✅ Your http-saveToUserMemory.jsw
+const GET_USER_MEMORY_API = "/_functions/userMemory";  // ✅ UNIFIED - Use userMemory for all memory operations
+const SAVE_TO_USER_MEMORY_API = "/_functions/userMemory";  // ✅ UNIFIED - Use userMemory for all memory operations
 
 // ✅ BACKUP: Direct to Next.js backend if Wix functions fail
 const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/chat-embed";
@@ -244,17 +245,17 @@ async function initializeUserAuthAndEntitlement() {
             return;
         }
         
-        // 2. Check entitlement (Pricing Plan)
+        // 2. Check entitlement (Registration/Access)
         try {
-            const entitled = await checkEntitlement(member._id);
-            if (!entitled) {
+            const accessResult = await checkUserAccess(member._id, member.loginEmail);
+            if (!accessResult || !accessResult.hasAccess) {
                 console.log('❌ User not entitled, redirecting to pricing...');
                 wixLocation.to('/plans-pricing');
                 return;
             }
-            console.log('✅ User has valid entitlement');
+            console.log('✅ User has valid access:', accessResult);
         } catch (entitlementError) {
-            console.warn('⚠️ Entitlement check failed:', entitlementError);
+            console.warn('⚠️ Access check failed:', entitlementError);
             // Continue anyway - might be a backend issue
         }
         

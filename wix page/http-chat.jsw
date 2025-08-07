@@ -4,9 +4,7 @@
 import wixData from 'wix-data';
 import { fetch } from 'wix-fetch';
 import { currentMember } from 'wix-members';
-
-// ✅ Configuration
-const AI_BACKEND_URL = "https://kovaldeepai-main.vercel.app/api/chat-embed";
+import { API_ENDPOINTS, ERROR_MESSAGES, CORS_HEADERS } from 'backend/config/constants.jsw';
 
 /**
  * ✅ Forward chat requests from Wix frontend to your deployed AI backend
@@ -28,13 +26,10 @@ export async function post_chat(request) {
             return {
                 status: 400,
                 body: {
-                    error: 'Message is required',
+                    error: ERROR_MESSAGES.MISSING_MESSAGE,
                     success: false
                 },
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: CORS_HEADERS
             };
         }
 
@@ -171,7 +166,7 @@ export async function post_chat(request) {
             profileSummary: `PB: ${userProfile.pb || 'Unknown'}, Dives: ${userProfile.totalDives}`
         });
 
-        const response = await fetch(AI_BACKEND_URL, {
+        const response = await fetch(API_ENDPOINTS.AI_BACKEND, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -185,10 +180,7 @@ export async function post_chat(request) {
                     error: `AI backend error: ${response.status}`,
                     success: false
                 },
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: CORS_HEADERS
             };
         }
 
@@ -212,12 +204,7 @@ export async function post_chat(request) {
                 success: true,
                 timestamp: new Date().toISOString()
             },
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-            }
+            headers: CORS_HEADERS
         };
 
     } catch (error) {
@@ -229,10 +216,7 @@ export async function post_chat(request) {
                 success: false,
                 timestamp: new Date().toISOString()
             },
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            headers: CORS_HEADERS
         };
     }
 }
@@ -243,9 +227,7 @@ export async function post_chat(request) {
 export function options_chat(request) {
     return {
         status: 200,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        headers: CORS_HEADERS
             'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
     };

@@ -1,0 +1,105 @@
+// ===== 📄 config/constants.jsw =====
+// Centralized configuration for Koval Deep AI backend
+
+/**
+ * ✅ Collection and Database Configuration
+ */
+export const COLLECTIONS = {
+    USER_MEMORY: "@deepfreediving/kovaldeepai-app/Import1",
+    REGISTRATIONS: "KovalAIRegistrations", 
+    MEMBERS: "Members"
+};
+
+/**
+ * ✅ External API Endpoints
+ */
+export const API_ENDPOINTS = {
+    AI_BACKEND: "https://kovaldeepai-main.vercel.app/api/chat-embed",
+    SEMANTIC_SEARCH: "https://kovaldeepai-main.vercel.app/api/pinecone"
+};
+
+/**
+ * ✅ System Limits and Defaults
+ */
+export const LIMITS = {
+    MAX_RESULTS: 100,
+    MAX_MEMORY_ENTRIES: 1000,
+    MAX_DIVE_LOGS: 500,
+    MAX_MESSAGE_LENGTH: 10000,
+    MAX_SEARCH_RESULTS: 50
+};
+
+/**
+ * ✅ Response Status Codes
+ */
+export const STATUS_CODES = {
+    OK: 200,
+    CREATED: 201,
+    NO_CONTENT: 204,
+    BAD_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    SERVER_ERROR: 500
+};
+
+/**
+ * ✅ Standard Error Messages
+ */
+export const ERROR_MESSAGES = {
+    MISSING_USER_ID: "User ID is required",
+    MISSING_MESSAGE: "Message is required", 
+    UNAUTHORIZED_ACCESS: "Unauthorized access",
+    USER_NOT_FOUND: "User not found",
+    INVALID_REQUEST: "Invalid request format",
+    DATABASE_ERROR: "Database operation failed",
+    AI_BACKEND_ERROR: "AI backend service unavailable",
+    GENERAL_ERROR: "An unexpected error occurred"
+};
+
+/**
+ * ✅ CORS Headers Configuration
+ */
+export const CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400'
+};
+
+/**
+ * ✅ Default User Profile Structure
+ */
+export const DEFAULT_USER_PROFILE = {
+    displayName: 'User',
+    email: '',
+    firstName: '',
+    lastName: '',
+    profilePicture: '',
+    totalDives: 0,
+    pb: 0,
+    lastDiveDepth: 0,
+    lastDiveLocation: 'Unknown'
+};
+
+/**
+ * ✅ Memory Types
+ */
+export const MEMORY_TYPES = {
+    DIVE_LOG: 'dive_log',
+    CHAT_MESSAGE: 'chat_message',
+    USER_PROFILE: 'user_profile',
+    COACHING_REPORT: 'coaching_report',
+    SYSTEM_NOTE: 'system_note'
+};
+
+/**
+ * ✅ Access Levels
+ */
+export const ACCESS_LEVELS = {
+    GUEST: 'guest',
+    STANDARD: 'standard', 
+    PREMIUM: 'premium',
+    ADMIN: 'admin'
+};
