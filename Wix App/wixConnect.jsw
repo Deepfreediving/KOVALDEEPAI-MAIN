@@ -1,6 +1,9 @@
 import { fetch } from 'wix-fetch';
 import wixData from 'wix-data';
-import { COLLECTIONS, API_ENDPOINTS } from 'backend/config/constants.jsw';
+
+// ✅ Direct constants to avoid import issues
+const USER_MEMORY_COLLECTION = "@deepfreediving/kovaldeepai-app/Import1";
+const AI_BACKEND_URL = "https://kovaldeepai-main.vercel.app/api/chat-embed";
 
 /**
  * ✅ Safe JSON parsing utility
@@ -20,7 +23,7 @@ async function safeJsonParse(response) {
  */
 export async function saveDiveLog(diveData) {
     try {
-        return await wixData.insert(COLLECTIONS.USER_MEMORY, diveData);
+        return await wixData.insert(USER_MEMORY_COLLECTION, diveData);
     } catch (error) {
         console.error("❌ Error saving dive log:", error);
         throw new Error("Could not save dive log");
@@ -32,7 +35,7 @@ export async function saveDiveLog(diveData) {
  */
 export async function getDiveLogs(userId) {
     try {
-        const results = await wixData.query(COLLECTIONS.USER_MEMORY)
+        const results = await wixData.query(USER_MEMORY_COLLECTION)
             .eq("userId", userId)
             .find();
         return results.items || [];
@@ -47,7 +50,7 @@ export async function getDiveLogs(userId) {
  */
 export async function saveUserMemory(userId, memoryUpdate) {
     try {
-        return await wixData.insert(COLLECTIONS.USER_MEMORY, {
+        return await wixData.insert(USER_MEMORY_COLLECTION, {
             userId,
             type: "memory",
             timestamp: new Date().toISOString(),
@@ -65,7 +68,7 @@ export async function saveUserMemory(userId, memoryUpdate) {
  */
 export async function testAIConnection() {
     try {
-        const response = await fetch(API_ENDPOINTS.AI_BACKEND, {
+        const response = await fetch(AI_BACKEND_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

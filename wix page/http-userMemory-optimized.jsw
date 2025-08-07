@@ -11,7 +11,7 @@ import {
     unauthorizedResponse, 
     serverErrorResponse, 
     baseResponse 
-} from 'backend/http-utils.jsw';
+} from './http-utils.jsw';
 import { 
     COLLECTIONS, 
     API_ENDPOINTS, 

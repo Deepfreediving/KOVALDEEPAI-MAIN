@@ -3,7 +3,8 @@ import wixData from 'wix-data';
 import wixLocation from 'wix-location';
 import wixWindow from 'wix-window';
 import { currentMember } from 'wix-members-frontend';
-import { checkUserAccess } from 'backend/checkUserAccess';
+// Note: Using HTTP endpoint instead of direct import for Wix pages
+// import { checkUserAccess } from 'backend/checkUserAccess.jsw';
 
 // ===== 🔄 Enhanced Widget Communication & Entitlement Logic =====
 // (Merged from koval-ai-page.js)
@@ -247,7 +248,16 @@ async function initializeUserAuthAndEntitlement() {
         
         // 2. Check entitlement (Registration/Access)
         try {
-            const accessResult = await checkUserAccess(member._id, member.loginEmail);
+            const accessResponse = await fetch('/_functions/checkUserAccess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: member._id,
+                    userEmail: member.loginEmail
+                })
+            });
+            const accessResult = await accessResponse.json();
+            
             if (!accessResult || !accessResult.hasAccess) {
                 console.log('❌ User not entitled, redirecting to pricing...');
                 wixLocation.to('/plans-pricing');
@@ -363,7 +373,15 @@ async function checkAndSendUserAccess() {
         }
         
         // Check access via backend
-        const accessResult = await checkUserAccess(member._id, member.loginEmail);
+        const accessResponse = await fetch('/_functions/checkUserAccess', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: member._id,
+                userEmail: member.loginEmail
+            })
+        });
+        const accessResult = await accessResponse.json();
         console.log('🔍 Enhanced access check result:', accessResult);
         
         postEnhancedMessageToWidget('USER_REGISTRATION_RESPONSE', {
