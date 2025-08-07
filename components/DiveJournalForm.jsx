@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import imageCompression from 'browser-image-compression';
 
 export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
@@ -21,11 +21,83 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
     notes: '',
   };
 
-  const [form, setForm] = useState(initialFormState);
+  // ✅ FORM PERSISTENCE - Load saved form data on mount
+  const [form, setForm] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedForm = localStorage.getItem('diveJournalDraft');
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          console.log('📋 Restored dive journal draft:', parsed);
+          return { ...initialFormState, ...parsed };
+        } catch (error) {
+          console.warn('⚠️ Failed to parse saved form data:', error);
+        }
+      }
+    }
+    return initialFormState;
+  });
+  
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [aiFeedback, setAiFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  // Check if we have a saved draft
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedForm = localStorage.getItem('diveJournalDraft');
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          // Check if draft has meaningful data
+          const hasData = Object.entries(parsed).some(([key, value]) => {
+            if (key === 'date') return false;
+            if (key === 'disciplineType') return value !== 'depth';
+            return value && value !== '' && value !== false;
+          });
+          setHasDraft(hasData);
+        } catch (error) {
+          setHasDraft(false);
+        }
+      }
+    }
+  }, []);
+
+  // Function to clear draft
+  const clearDraft = () => {
+    localStorage.removeItem('diveJournalDraft');
+    setForm(initialFormState);
+    setHasDraft(false);
+    setImageFile(null);
+    setImagePreview(null);
+    console.log('🗑️ Manually cleared dive journal draft');
+  };
+
+  // ✅ AUTO-SAVE FORM DATA as user types (debounced)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // Only save if form has meaningful data (not just default values)
+      const hasData = Object.entries(form).some(([key, value]) => {
+        if (key === 'date') return false; // Date is always set to today by default
+        if (key === 'disciplineType') return value !== 'depth'; // Default value
+        return value && value !== '' && value !== false;
+      });
+      
+      if (hasData) {
+        localStorage.setItem('diveJournalDraft', JSON.stringify(form));
+        setHasDraft(true);
+        console.log('💾 Auto-saved dive journal draft');
+      } else {
+        // Remove draft if form is empty
+        localStorage.removeItem('diveJournalDraft');
+        setHasDraft(false);
+      }
+    }, 1000); // Save 1 second after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [form]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -117,7 +189,10 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
         onSubmit(saveLogResult.data || diveLogData);
       }
 
-      // ✅ Reset form
+      // ✅ Clear draft from localStorage and reset form
+      localStorage.removeItem('diveJournalDraft');
+      setHasDraft(false);
+      console.log('🗑️ Cleared dive journal draft from localStorage');
       setForm(initialFormState);
       setImageFile(null);
       setImagePreview(null);
@@ -140,6 +215,29 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Draft Status Indicator */}
+      {hasDraft && (
+        <div className={`p-3 rounded-lg border flex items-center justify-between ${
+          darkMode ? "bg-yellow-900 border-yellow-700 text-yellow-200" : "bg-yellow-50 border-yellow-200 text-yellow-800"
+        }`}>
+          <div className="flex items-center gap-2">
+            <span>📝</span>
+            <span className="text-sm font-medium">Draft restored from previous session</span>
+          </div>
+          <button
+            type="button"
+            onClick={clearDraft}
+            className={`text-xs px-3 py-1 rounded transition-colors ${
+              darkMode 
+                ? "bg-yellow-800 hover:bg-yellow-700 text-yellow-200" 
+                : "bg-yellow-200 hover:bg-yellow-300 text-yellow-800"
+            }`}
+          >
+            Clear Draft
+          </button>
+        </div>
+      )}
+
       {/* Basic Information */}
       <div className={`p-4 rounded-lg ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-blue-50 border border-blue-200"}`}>
         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">

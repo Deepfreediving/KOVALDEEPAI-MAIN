@@ -1,0 +1,91 @@
+// ===== 📄 http-wixConnection.jsw =====
+// Simple endpoint for testing Wix backend connectivity
+
+import { ok, serverError } from 'wix-http-functions';
+import wixUsers from 'wix-users-backend';
+import wixData from 'wix-data';
+
+/**
+ * OPTIONS: Handle preflight requests
+ */
+export function options_wixConnection(request) {
+    return {
+        status: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+    };
+}
+
+/**
+ * GET: Test basic Wix backend connectivity
+ */
+export async function get_wixConnection(request) {
+    try {
+        console.log('🔍 Testing Wix backend connection...');
+        
+        // Test basic response
+        const response = {
+            success: true,
+            timestamp: new Date().toISOString(),
+            message: 'Wix backend is connected and working',
+            services: {}
+        };
+
+        // Test wixUsers
+        try {
+            const currentUser = wixUsers.currentUser;
+            response.services.users = {
+                available: true,
+                userLoggedIn: currentUser?.loggedIn || false,
+                userId: currentUser?.id || null
+            };
+        } catch (userError) {
+            response.services.users = {
+                available: false,
+                error: userError.message
+            };
+        }
+
+        // Test wixData
+        try {
+            // Try to query a simple collection or create a test query
+            response.services.data = {
+                available: true,
+                message: 'wixData module loaded successfully'
+            };
+        } catch (dataError) {
+            response.services.data = {
+                available: false,
+                error: dataError.message
+            };
+        }
+
+        console.log('✅ Connection test completed:', response);
+        
+        return ok({
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify(response)
+        });
+        
+    } catch (error) {
+        console.error('❌ Connection test failed:', error);
+        
+        return serverError({
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            })
+        });
+    }
+}

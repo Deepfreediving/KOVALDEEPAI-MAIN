@@ -108,11 +108,22 @@ export default function Embed() {
     return fallback;
   }, [profile, userId]);
 
-  // ✅ INITIALIZATION
+  // ✅ INITIALIZATION with userId validation
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setSessionsList(safeParse("kovalSessionsList", []));
-      setUserId(localStorage.getItem("kovalUser") || `guest-${Date.now()}`);
+      
+      let storedUserId = localStorage.getItem("kovalUser") || `guest-${Date.now()}`;
+      
+      // Validate userId
+      if (!storedUserId || storedUserId === 'undefined' || storedUserId === 'null') {
+        storedUserId = `guest-${Date.now()}`;
+        console.warn('⚠️ Invalid stored userId, generated new:', storedUserId);
+      }
+      
+      setUserId(storedUserId);
+      localStorage.setItem("kovalUser", storedUserId);
+      
       setThreadId(localStorage.getItem("kovalThreadId") || null);
       setProfile(safeParse("kovalProfile", { nickname: "Guest User" }));
     }
@@ -141,8 +152,16 @@ export default function Embed() {
       
       // Set user data from URL parameters (as fallback)
       if (urlUserId && !userId) {  // Only if no userId is already set
-        setUserId(String(urlUserId));
-        localStorage.setItem("kovalUser", String(urlUserId));
+        const validatedUserId = String(urlUserId);
+        
+        // Validate URL userId
+        if (validatedUserId && validatedUserId !== 'undefined' && validatedUserId !== 'null') {
+          setUserId(validatedUserId);
+          localStorage.setItem("kovalUser", validatedUserId);
+          console.log('✅ Set userId from URL:', validatedUserId);
+        } else {
+          console.warn('⚠️ Invalid URL userId, keeping current:', userId);
+        }
       }
       
       if (userName && (!profile?.nickname || profile?.nickname === 'Guest User')) {  // Only if no better name exists
@@ -200,8 +219,17 @@ export default function Embed() {
           
           if (event.data.data?.userId) {
             console.log('✅ Setting userId to:', event.data.data.userId);
-            setUserId(event.data.data.userId);
-            localStorage.setItem("kovalUser", event.data.data.userId);
+            const newUserId = String(event.data.data.userId);
+            setUserId(newUserId);
+            localStorage.setItem("kovalUser", newUserId);
+            
+            // Ensure userId is always defined for components
+            if (!newUserId || newUserId === 'undefined' || newUserId === 'null') {
+              const fallbackId = `wix-guest-${Date.now()}`;
+              console.warn('⚠️ Invalid userId received, using fallback:', fallbackId);
+              setUserId(fallbackId);
+              localStorage.setItem("kovalUser", fallbackId);
+            }
           }
           
           // Update profile with rich Wix Collections/Members data
