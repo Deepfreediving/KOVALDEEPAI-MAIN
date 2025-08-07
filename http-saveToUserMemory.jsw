@@ -1,0 +1,131 @@
+// http-saveToUserMemory.jsw - NEW DEDICATED FUNCTION FOR SAVING USER MEMORY
+// This function is called by your Next.js record-memory.ts API
+
+import wixData from 'wix-data';
+import { ok, badRequest, serverError } from 'wix-http-functions';
+
+export async function post_saveToUserMemory(request) {
+    try {
+        console.log('💾 saveToUserMemory function called');
+        
+        // Parse request body
+        const body = await request.body.json();
+        const { 
+            userId, 
+            threadId,
+            coachingReport,
+            date,
+            disciplineType,
+            discipline,
+            location,
+            targetDepth,
+            reachedDepth,
+            mouthfillDepth,
+            issueDepth,
+            issueComment,
+            durationOrDistance,
+            totalDiveTime,
+            attemptType,
+            exit,
+            surfaceProtocol,
+            squeeze,
+            notes
+        } = body;
+        
+        if (!userId) {
+            console.log('❌ No userId provided');
+            return badRequest({
+                body: JSON.stringify({
+                    success: false,
+                    error: 'Missing userId parameter'
+                })
+            });
+        }
+        
+        console.log(`📊 Saving memory for user: ${userId}`);
+        
+        // Create memory entry
+        const timestamp = new Date();
+        const uniqueKey = `dive-memory-${userId}-${timestamp.getTime()}`;
+        
+        const memoryEntry = {
+            userId,
+            uniqueKey,
+            timestamp,
+            type: 'dive-log-memory',
+            source: 'record-memory-api',
+            threadId: threadId || 'unknown',
+            
+            // Dive log data
+            date: date ? new Date(date) : timestamp,
+            disciplineType: disciplineType || '',
+            discipline: discipline || '',
+            location: location || '',
+            targetDepth: parseFloat(targetDepth) || 0,
+            reachedDepth: parseFloat(reachedDepth) || 0,
+            mouthfillDepth: parseFloat(mouthfillDepth) || 0,
+            issueDepth: parseFloat(issueDepth) || 0,
+            issueComment: issueComment || '',
+            durationOrDistance: durationOrDistance || '',
+            totalDiveTime: totalDiveTime || '',
+            attemptType: attemptType || '',
+            exit: exit || '',
+            surfaceProtocol: surfaceProtocol || '',
+            squeeze: Boolean(squeeze),
+            notes: notes || '',
+            
+            // AI analysis
+            coachingReport: coachingReport || '',
+            
+            // Memory content for AI context
+            memoryContent: `Dive Log: ${discipline} at ${location}, reached ${reachedDepth}m (target: ${targetDepth}m). ${notes}`,
+            logEntry: `${date}: ${discipline} dive at ${location}`
+        };
+        
+        try {
+            // Check if similar entry exists (prevent duplicates)
+            const existing = await wixData.query("@deepfreediving/kovaldeepai-app/Import1")
+                .eq("userId", userId)
+                .eq("date", memoryEntry.date)
+                .eq("discipline", discipline)
+                .find();
+                
+            let saved;
+            if (existing.items.length > 0) {
+                // Update existing entry
+                saved = await wixData.update("@deepfreediving/kovaldeepai-app/Import1", {
+                    _id: existing.items[0]._id,
+                    ...memoryEntry
+                });
+                console.log('✅ Updated existing memory entry');
+            } else {
+                // Create new entry
+                saved = await wixData.insert("@deepfreediving/kovaldeepai-app/Import1", memoryEntry);
+                console.log('✅ Created new memory entry');
+            }
+            
+            return ok({
+                body: JSON.stringify({
+                    success: true,
+                    message: 'Memory saved successfully',
+                    data: saved,
+                    memoryId: saved._id
+                })
+            });
+            
+        } catch (dbError) {
+            console.error('❌ Database error:', dbError);
+            throw new Error('Failed to save to database: ' + dbError.message);
+        }
+        
+    } catch (error) {
+        console.error('❌ saveToUserMemory error:', error);
+        return serverError({
+            body: JSON.stringify({
+                success: false,
+                error: 'Failed to save user memory',
+                details: error.message
+            })
+        });
+    }
+}
