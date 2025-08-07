@@ -1,4 +1,5 @@
 import wixUsers from 'wix-users';
+import wixData from 'wix-data';
 
 // ✅ CORRECTED API ENDPOINTS TO MATCH YOUR DEPLOYED BACKEND FUNCTIONS
 const CHAT_API = "/_functions/chat";  // ✅ Your http-chat.jsw function
@@ -17,33 +18,43 @@ const DEBUG_MODE = true;
 $w.onReady(async function () {
     console.log("✅ Koval-AI widget initializing...");
 
-    // ✅ SETUP MESSAGE LISTENER FOR WIDGET COMMUNICATION
-    window.addEventListener('message', async (event) => {
-        if (event.data?.type === 'REQUEST_USER_DATA' && event.data?.source === 'koval-ai-widget') {
-            console.log('📨 Widget requesting user data, sending authenticated user info...');
-            
-            try {
-                // Load current user data
-                const userData = await loadUserData();
+    // ✅ SETUP MESSAGE LISTENER FOR WIDGET COMMUNICATION (with safety check)
+    if (typeof window !== 'undefined') {
+        window.addEventListener('message', async (event) => {
+            if (event.data?.type === 'REQUEST_USER_DATA' && event.data?.source === 'koval-ai-widget') {
+                console.log('📨 Widget requesting user data, sending authenticated user info...');
                 
-                // Send user data back to widget
-                event.source.postMessage({
-                    type: 'USER_DATA_RESPONSE',
-                    userData: userData
-                }, event.origin);
-                
-                console.log('📤 Sent authenticated user data to widget:', userData.userId);
-            } catch (error) {
-                console.error('❌ Failed to send user data to widget:', error);
-                
-                // Send guest data as fallback
-                event.source.postMessage({
-                    type: 'USER_DATA_RESPONSE',
-                    userData: getGuestUserData()
-                }, event.origin);
+                try {
+                    // Load current user data
+                    const userData = await loadUserData();
+                    
+                    // Send user data back to widget with more detailed logging
+                    console.log('🔍 Sending user data:', {
+                        userId: userData.userId,
+                        hasProfile: !!userData.profile,
+                        diveLogsCount: userData.userDiveLogs?.length || 0
+                    });
+                    
+                    event.source.postMessage({
+                        type: 'USER_DATA_RESPONSE',
+                        userData: userData
+                    }, event.origin);
+                    
+                    console.log('📤 Sent authenticated user data to widget:', userData.userId);
+                } catch (error) {
+                    console.error('❌ Failed to send user data to widget:', error);
+                    
+                    // Send guest data as fallback
+                    const guestData = getGuestUserData();
+                    event.source.postMessage({
+                        type: 'USER_DATA_RESPONSE',
+                        userData: guestData
+                    }, event.origin);
+                    console.log('📤 Sent guest data as fallback');
+                }
             }
-        }
-    });
+        });
+    }
 
     // ✅ TRY MULTIPLE POSSIBLE WIDGET IDS - PRIORITIZING THE CORRECT ONE
     let aiWidget = null;
@@ -738,3 +749,111 @@ if (DEBUG_MODE) {
         }
     }, 60000); // Check every minute
 }
+
+// ===== 📊 DATASET INTEGRATION FUNCTIONS =====
+
+/**
+ * ✅ Initialize UserMemory Dataset with proper filtering
+ */
+function initializeUserMemoryDataset() {
+    try {
+        // ✅ Set up dataset filtering by current user
+        if (wixUsers.currentUser.loggedIn) {
+            const userId = wixUsers.currentUser.id;
+            console.log('🔍 Filtering UserMemory dataset for user:', userId);
+            
+            // Check if dataset exists
+            if ($w('#dataset1')) {
+                // Filter dataset to show only current user's memories
+                $w('#dataset1').setFilter(wixData.filter()
+                    .eq('userId', userId)
+                );
+                
+                // ✅ Load the data
+                $w('#dataset1').loadPage()
+                    .then(() => {
+                        console.log('✅ UserMemory dataset loaded successfully');
+                        console.log('📊 Loaded items:', $w('#dataset1').getTotalCount());
+                    })
+                    .catch((error) => {
+                        console.error('❌ Error loading UserMemory dataset:', error);
+                    });
+            } else {
+                console.warn('⚠️ Dataset #dataset1 not found on page');
+            }
+        } else {
+            console.warn('⚠️ User not logged in, cannot filter UserMemory dataset');
+        }
+    } catch (error) {
+        console.error('❌ Error initializing dataset:', error);
+    }
+}
+
+/**
+ * ✅ Save new memory to dataset
+ */
+async function saveMemoryToDataset(memoryData) {
+    try {
+        if (!wixUsers.currentUser.loggedIn) {
+            throw new Error('User not logged in');
+        }
+        
+        const userId = wixUsers.currentUser.id;
+        
+        // Prepare data for saving
+        const newMemory = {
+            userId: userId,
+            memoryContent: memoryData.content || memoryData.memoryContent,
+            logEntry: memoryData.logEntry || '',
+            sessionName: memoryData.sessionName || 'Page Session',
+            timestamp: new Date(),
+            metadata: memoryData.metadata || {}
+        };
+        
+        // Save to dataset if it exists
+        if ($w('#dataset1')) {
+            const result = await $w('#dataset1').save(newMemory);
+            console.log('✅ Memory saved to dataset:', result);
+            return { success: true, data: result };
+        } else {
+            console.warn('⚠️ Dataset not available, saving via API instead');
+            return await saveUserMemory(memoryData);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error saving memory to dataset:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * ✅ Setup dataset event handlers
+ */
+function setupDatasetEventHandlers() {
+    try {
+        if ($w('#dataset1')) {
+            // Handle dataset ready
+            $w('#dataset1').onReady(() => {
+                console.log('📊 UserMemory dataset is ready');
+            });
+            
+            // Handle dataset errors
+            $w('#dataset1').onError((error) => {
+                console.error('❌ Dataset error:', error);
+            });
+            
+            // Handle data changes
+            $w('#dataset1').onCurrentItemChanged(() => {
+                console.log('🔄 Dataset current item changed');
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error setting up dataset handlers:', error);
+    }
+}
+
+// ✅ Initialize dataset integration
+setTimeout(() => {
+    initializeUserMemoryDataset();
+    setupDatasetEventHandlers();
+}, 1000); // Give page time to load

@@ -50,7 +50,37 @@ async function testAllEndpoints() {
     console.log("✅ All tests completed");
 }
 
-// Run tests (uncomment the line below to run)
+// Run tests (comment out to avoid auto-running)
 // testAllEndpoints();
 
-console.log("💡 To run tests, uncomment the last line and run this script in a browser console");
+// ✅ SIMPLE COMMUNICATION TEST
+function testWidgetCommunication() {
+    console.log("� Testing widget communication...");
+    
+    // Find widget iframe
+    const widget = document.querySelector('koval-ai');
+    if (widget) {
+        console.log('✅ Found widget:', widget);
+        
+        // Test sending message to widget
+        try {
+            const testMessage = {
+                type: 'USER_DATA_RESPONSE',
+                userData: {
+                    userId: 'test-user-123',
+                    profile: { displayName: 'Test User' }
+                }
+            };
+            
+            widget.contentWindow?.postMessage(testMessage, '*');
+            console.log('📤 Sent test message to widget');
+        } catch (error) {
+            console.error('❌ Failed to send test message:', error);
+        }
+    } else {
+        console.log('❌ Widget not found');
+        console.log('🔍 Available elements:', document.querySelectorAll('*'));
+    }
+}
+
+console.log("💡 Run testWidgetCommunication() in console to test widget communication");
