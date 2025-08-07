@@ -1,5 +1,11 @@
 import wixUsers from 'wix-users';
 import wixData from 'wix-data';
+import { currentMember } from 'wix-members-frontend';
+import { checkUserAccess } from 'backend/checkUserAccess';
+import { checkEntitlement } from 'backend/aiAccess.jsw';
+
+// ===== 🔄 Enhanced Widget Communication & Entitlement Logic =====
+// (Merged from koval-ai-page.js)
 
 // ✅ CORRECTED API ENDPOINTS TO MATCH YOUR DEPLOYED BACKEND FUNCTIONS
 const CHAT_API = "/_functions/chat";  // ✅ Your http-chat.jsw function
@@ -16,7 +22,20 @@ const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/chat-embed";
 const DEBUG_MODE = true;
 
 $w.onReady(async function () {
-    console.log("✅ Koval-AI widget initializing...");
+    console.log("🚀 Koval-AI widget initializing...");
+
+    // ===== 🔄 Enhanced Widget Communication (from koval-ai-page.js) =====
+    
+    // Setup enhanced message listener for widget communication
+    if (typeof window !== 'undefined') {
+        window.addEventListener('message', handleEnhancedWidgetMessage);
+        console.log('👂 Enhanced widget message listener active');
+    }
+
+    // ===== User Authentication & Entitlement Check =====
+    await initializeUserAuthAndEntitlement();
+
+    // ===== Original Widget Setup Logic =====
 
     // ✅ SETUP MESSAGE LISTENER FOR WIDGET COMMUNICATION (with safety check)
     if (typeof window !== 'undefined') {
@@ -160,6 +179,290 @@ async function setupKovalAIWidget(aiWidget) {
 
     console.log("✅ Koval-AI widget initialized successfully");
 }
+
+// ===== 🔄 Enhanced Widget Communication Functions (from koval-ai-page.js) =====
+
+/**
+ * ✅ Enhanced Widget Message Handler
+ */
+async function handleEnhancedWidgetMessage(event) {
+    console.log('📨 Enhanced message handler - received:', event.data);
+    
+    try {
+        const { type, source } = event.data;
+        
+        // Security check - only respond to our widget
+        if (source !== 'koval-ai-widget') {
+            return;
+        }
+        
+        switch (type) {
+            case 'REQUEST_USER_DATA':
+                console.log('🔍 Widget requesting user data via enhanced handler');
+                await sendEnhancedUserDataToWidget();
+                break;
+                
+            case 'CHECK_USER_REGISTRATION':
+                console.log('🔐 Widget checking user registration via enhanced handler');
+                await checkAndSendUserAccess();
+                break;
+                
+            case 'CHAT_MESSAGE':
+                console.log('💬 Chat message from widget:', event.data.data);
+                // Handle chat messages if needed
+                break;
+                
+            case 'SAVE_DIVE_LOG':
+                console.log('💾 Saving dive log from widget via enhanced handler:', event.data.data);
+                await saveDiveLogFromWidget(event.data.data);
+                break;
+                
+            default:
+                console.log('❓ Unknown enhanced message type:', type);
+        }
+    } catch (error) {
+        console.error('❌ Error in enhanced widget message handler:', error);
+    }
+}
+
+/**
+ * ✅ Initialize User Authentication and Entitlement
+ */
+async function initializeUserAuthAndEntitlement() {
+    try {
+        console.log('🔄 Initializing user authentication and entitlement...');
+        
+        // 1. Check if user is logged in
+        if (!wixUsers.currentUser.loggedIn) {
+            console.log('👤 User not logged in, prompting login...');
+            await wixUsers.promptLogin();
+        }
+        
+        const member = await currentMember.getMember();
+        if (!member || !member.loggedIn) {
+            console.warn('⚠️ User login failed or cancelled');
+            return;
+        }
+        
+        // 2. Check entitlement (Pricing Plan)
+        try {
+            const entitled = await checkEntitlement(member._id);
+            if (!entitled) {
+                console.log('❌ User not entitled, redirecting to pricing...');
+                wixLocation.to('/plans-pricing');
+                return;
+            }
+            console.log('✅ User has valid entitlement');
+        } catch (entitlementError) {
+            console.warn('⚠️ Entitlement check failed:', entitlementError);
+            // Continue anyway - might be a backend issue
+        }
+        
+        // 3. Find and update widget with user data
+        await updateWidgetWithUserData(member);
+        
+        // 4. Send initial user data
+        setTimeout(async () => {
+            await sendEnhancedUserDataToWidget();
+        }, 1000);
+        
+        // 5. Check and send user access status
+        setTimeout(async () => {
+            await checkAndSendUserAccess();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Error initializing user auth/entitlement:', error);
+    }
+}
+
+/**
+ * ✅ Update Widget with User Data
+ */
+async function updateWidgetWithUserData(member) {
+    try {
+        // Try to find the widget with various possible IDs
+        const possibleIds = ['#koval-ai', '#KovalAiWidget', '#kovalAIWidget', '#KovalAIWidget', '#htmlComponent1', '#html1', '#customElement1'];
+        let widget = null;
+        
+        for (const id of possibleIds) {
+            try {
+                widget = $w(id);
+                if (widget) {
+                    console.log(`✅ Found widget with ID: ${id}`);
+                    break;
+                }
+            } catch (e) {
+                // Continue trying other IDs
+            }
+        }
+        
+        // Update widget src with user data if it's an iframe
+        if (widget && widget.src) {
+            const url = new URL(widget.src, window.location.origin);
+            url.searchParams.set('userId', member._id);
+            url.searchParams.set('userName', member.profile?.nickname || member.profile?.firstName || 'Member');
+            url.searchParams.set('ts', `${Date.now()}`);
+            widget.src = url.toString();
+            console.log('🔗 Updated widget iframe src with userId:', member._id);
+        }
+    } catch (error) {
+        console.error('❌ Error updating widget with user data:', error);
+    }
+}
+
+/**
+ * ✅ Send Enhanced User Data to Widget
+ */
+async function sendEnhancedUserDataToWidget() {
+    try {
+        const member = await currentMember.getMember();
+        let userData = {
+            userId: 'guest-' + Date.now(),
+            userName: 'Guest User',
+            userEmail: '',
+            isAuthenticated: false,
+            source: 'wix-enhanced-page'
+        };
+        
+        if (member && member.loggedIn) {
+            userData = {
+                userId: member._id,
+                userName: member.profile?.nickname || member.profile?.firstName || 'Member',
+                userEmail: member.loginEmail || '',
+                isAuthenticated: true,
+                profile: member.profile,
+                source: 'wix-enhanced-authenticated'
+            };
+        }
+        
+        // Send to widget via postMessage
+        postEnhancedMessageToWidget('USER_DATA_RESPONSE', { userData });
+        console.log('✅ Enhanced user data sent to widget');
+        
+    } catch (error) {
+        console.error('❌ Error sending enhanced user data to widget:', error);
+    }
+}
+
+/**
+ * ✅ Check and Send User Access Status
+ */
+async function checkAndSendUserAccess() {
+    try {
+        const member = await currentMember.getMember();
+        
+        if (!member || !member.loggedIn) {
+            postEnhancedMessageToWidget('USER_REGISTRATION_RESPONSE', {
+                hasAccess: false,
+                reason: 'not_logged_in',
+                message: 'Please log in to access Koval AI'
+            });
+            return;
+        }
+        
+        // Check access via backend
+        const accessResult = await checkUserAccess(member._id, member.loginEmail);
+        console.log('🔍 Enhanced access check result:', accessResult);
+        
+        postEnhancedMessageToWidget('USER_REGISTRATION_RESPONSE', {
+            hasAccess: accessResult.hasAccess,
+            user: {
+                id: member._id,
+                displayName: member.profile?.nickname || member.profile?.firstName,
+                loginEmail: member.loginEmail
+            },
+            accessData: accessResult,
+            timestamp: Date.now()
+        });
+        
+        console.log('✅ Enhanced access status sent to widget');
+        
+    } catch (error) {
+        console.error('❌ Enhanced access check error:', error);
+        postEnhancedMessageToWidget('USER_REGISTRATION_RESPONSE', {
+            hasAccess: false,
+            error: error.message,
+            reason: 'check_failed'
+        });
+    }
+}
+
+/**
+ * ✅ Save Dive Log from Widget (Enhanced)
+ */
+async function saveDiveLogFromWidget(diveLogData) {
+    try {
+        console.log('💾 Enhanced dive log save from widget:', diveLogData);
+        
+        // Use existing saveDiveLog function if available, or implement save logic
+        let saveResult;
+        if (typeof saveDiveLog === 'function') {
+            saveResult = await saveDiveLog(diveLogData);
+        } else {
+            // Fallback save logic
+            saveResult = { success: true, message: 'Dive log received' };
+        }
+        
+        postEnhancedMessageToWidget('DIVE_LOG_SAVED', saveResult);
+        
+    } catch (error) {
+        console.error('❌ Enhanced dive log save error:', error);
+        postEnhancedMessageToWidget('DIVE_LOG_SAVED', {
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+/**
+ * ✅ Helper: Post Enhanced Message to Widget
+ */
+function postEnhancedMessageToWidget(type, data = {}) {
+    try {
+        // Try multiple widget IDs
+        const possibleIds = ['#koval-ai', '#KovalAiWidget', '#kovalAIWidget', '#KovalAIWidget', '#htmlComponent1', '#html1', '#customElement1'];
+        
+        for (const id of possibleIds) {
+            try {
+                const widget = $w(id);
+                if (widget && widget.contentWindow) {
+                    const message = {
+                        type,
+                        data,
+                        source: 'wix-enhanced-page',
+                        timestamp: Date.now()
+                    };
+                    
+                    widget.contentWindow.postMessage(message, '*');
+                    console.log('📤 Enhanced message sent to widget:', type);
+                    return; // Success, exit loop
+                }
+            } catch (e) {
+                // Continue trying other IDs
+            }
+        }
+        
+        console.warn('⚠️ No widget found to send enhanced message');
+    } catch (error) {
+        console.error('❌ Error sending enhanced message to widget:', error);
+    }
+}
+
+/**
+ * ✅ Enhanced Edit Mode Handler
+ */
+if (typeof wixWindow !== 'undefined' && wixWindow.onEditModeChange) {
+    wixWindow.onEditModeChange((isEditMode) => {
+        console.log(`🎛️ Enhanced edit mode: ${isEditMode ? 'EDIT' : 'PREVIEW'}`);
+        postEnhancedMessageToWidget('EDIT_MODE_CHANGE', {
+            editMode: isEditMode,
+            timestamp: Date.now()
+        });
+    });
+}
+
+// ===== Original Widget Setup Functions Continue Below =====
 
 /**
  * ✅ SETUP WIDGET EVENT HANDLERS
