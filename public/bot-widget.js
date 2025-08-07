@@ -95,6 +95,7 @@
       // ✅ Enhanced Wix user detection with retry logic
       const detectWixUser = () => {
         try {
+          // Method 1: Try wixUsers API
           if (typeof window !== 'undefined' && 
               window.wixUsers && 
               typeof window.wixUsers.currentUser === 'object' &&
@@ -118,9 +119,43 @@
             } else {
               console.log('ℹ️ Wix user not logged in');
             }
-          } else {
-            console.log('ℹ️ Wix users API not available yet');
           }
+
+          // Method 2: Try $w.user (if in Wix Blocks)
+          if (typeof $w !== 'undefined' && $w && $w.user) {
+            console.log('📱 Checking $w.user API...');
+            $w.user.currentUser.then((user) => {
+              if (user && user.loggedIn && user.id) {
+                userData = {
+                  ...userData,
+                  userId: 'wix-' + user.id,
+                  userName: user.nickname || user.displayName || user.loginEmail || 'Wix User',
+                  userEmail: user.loginEmail || '',
+                  wixId: user.id,
+                  source: 'wix-blocks-authenticated',
+                  theme: theme
+                };
+                console.log('✅ Wix Blocks user authenticated:', userData);
+                
+                // Update iframe if ready
+                if (this.iframe && this.isReady) {
+                  this.postMessage('USER_AUTH', userData);
+                }
+              }
+            }).catch((error) => {
+              console.warn('⚠️ $w.user API error:', error);
+            });
+          }
+
+          // Method 3: Check for auth cookies/session
+          if (typeof document !== 'undefined') {
+            const cookies = document.cookie;
+            if (cookies.includes('wix-session') || cookies.includes('XSRF-TOKEN')) {
+              console.log('🍪 Wix session detected');
+              userData.source = 'wix-session-detected';
+            }
+          }
+
         } catch (wixError) {
           console.warn('⚠️ Wix user detection failed:', wixError.message);
         }
@@ -140,6 +175,29 @@
           }
         }
       }, 1000);
+
+      // ✅ PERIODIC CONNECTION TESTING
+      const testBackendConnection = async () => {
+        try {
+          // Test the Wix backend connection
+          const response = await fetch('/_functions/wixConnection', {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          const status = response.ok ? '✅ Connected' : '❌ Failed';
+          console.log(`🔍 Testing backend connection... ${status} (${response.status})`);
+          
+          return response.ok;
+        } catch (error) {
+          console.log(`🔍 Testing backend connection... ❌ Failed (network error)`);
+          return false;
+        }
+      };
+
+      // Test connection periodically
+      testBackendConnection();
+      setInterval(testBackendConnection, 30000); // Every 30 seconds
 
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
