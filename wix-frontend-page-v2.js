@@ -17,6 +17,34 @@ const DEBUG_MODE = true;
 $w.onReady(async function () {
     console.log("✅ Koval-AI widget initializing...");
 
+    // ✅ SETUP MESSAGE LISTENER FOR WIDGET COMMUNICATION
+    window.addEventListener('message', async (event) => {
+        if (event.data?.type === 'REQUEST_USER_DATA' && event.data?.source === 'koval-ai-widget') {
+            console.log('📨 Widget requesting user data, sending authenticated user info...');
+            
+            try {
+                // Load current user data
+                const userData = await loadUserData();
+                
+                // Send user data back to widget
+                event.source.postMessage({
+                    type: 'USER_DATA_RESPONSE',
+                    userData: userData
+                }, event.origin);
+                
+                console.log('📤 Sent authenticated user data to widget:', userData.userId);
+            } catch (error) {
+                console.error('❌ Failed to send user data to widget:', error);
+                
+                // Send guest data as fallback
+                event.source.postMessage({
+                    type: 'USER_DATA_RESPONSE',
+                    userData: getGuestUserData()
+                }, event.origin);
+            }
+        }
+    });
+
     // ✅ TRY MULTIPLE POSSIBLE WIDGET IDS - PRIORITIZING THE CORRECT ONE
     let aiWidget = null;
     const possibleIds = ['#koval-ai', '#KovalAiWidget', '#kovalAIWidget', '#KovalAIWidget', '#htmlComponent1', '#html1', '#customElement1'];
@@ -71,6 +99,19 @@ async function setupKovalAIWidget(aiWidget) {
         ]);
         
         if (DEBUG_MODE) console.log("📊 User data loaded:", userData);
+        
+        // ✅ UPDATE WIDGET SRC URL WITH CORRECT USER ID (if widget supports it)
+        if (userData && userData.userId && !userData.userId.startsWith('guest-')) {
+            try {
+                // ✅ Try to update the widget's src URL with the correct user ID
+                const embedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${userData.userId}&userName=${encodeURIComponent(userData.profile?.displayName || 'User')}&embedded=true&v=${Date.now()}`;
+                aiWidget.src = embedUrl;
+                console.log("🔗 Updated widget src with authenticated user ID:", userData.userId);
+            } catch (srcError) {
+                console.warn("⚠️ Could not update widget src:", srcError);
+            }
+        }
+        
     } catch (dataError) {
         console.error("❌ Failed to load user data:", dataError);
         userData = getGuestUserData();
@@ -80,6 +121,25 @@ async function setupKovalAIWidget(aiWidget) {
     try {
         aiWidget.setProperty("userData", userData);
         aiWidget.setProperty("loading", false);
+        
+        // ✅ ALSO SEND USER DATA VIA POST MESSAGE FOR EMBEDDED WIDGETS
+        setTimeout(() => {
+            try {
+                if (aiWidget.postMessage && userData) {
+                    aiWidget.postMessage({
+                        type: 'USER_AUTH',
+                        userId: userData.userId,
+                        profile: userData.profile,
+                        diveLogs: userData.userDiveLogs || [],
+                        memories: userData.userMemories || []
+                    });
+                    console.log("📤 Sent authentic user data to widget via postMessage:", userData.userId);
+                }
+            } catch (postError) {
+                console.warn("⚠️ Could not send postMessage to widget:", postError);
+            }
+        }, 1000); // Give widget time to load
+        
     } catch (propError) {
         console.warn("⚠️ Could not set widget properties");
     }
