@@ -2,7 +2,7 @@
 // This code connects your Wix page to your deployed backend functions
 
 import wixUsers from 'wix-users';
-import wixData from 'wix-data';
+import wixData from '@/wix-data-hooks';
 
 // ✅ YOUR DEPLOYED BACKEND ENDPOINTS
 const BACKEND_FUNCTIONS = {

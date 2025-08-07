@@ -69,7 +69,7 @@ wixUsers.currentUser.getUser()
 
 // ✅ TEST 4: Data Collection Access
 console.log("\n🧪 TEST 4: Data Collection Access");
-import wixData from 'wix-data';
+import wixData from '@/wix-data-hooks';
 
 wixData.query("@deepfreediving/kovaldeepai-app/Import1")
     .limit(1)

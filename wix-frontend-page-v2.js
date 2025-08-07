@@ -1,5 +1,4 @@
 import wixUsers from 'wix-users';
-import wixData from 'wix-data';
 
 // ✅ CORRECTED API ENDPOINTS TO MATCH YOUR DEPLOYED BACKEND FUNCTIONS
 const CHAT_API = "/_functions/chat";  // ✅ Your http-chat.jsw function
@@ -206,61 +205,45 @@ async function handleUserDataRefresh(aiWidget) {
  * ✅ ENHANCED USER DATA LOADING
  */
 async function loadUserData() {
-    // ✅ FIRST: GET REAL MEMBER ID FROM DATA HOOKS
+    // ✅ SIMPLIFIED: GET REAL MEMBER ID DIRECTLY FROM WIX USERS
     let realUserId = null;
     let userProfile = {};
     
-    try {
-        // Query PrivateMembersData to trigger data hooks and get real member ID
-        console.log("🔍 Querying PrivateMembersData to get real member ID...");
-        const memberDataResults = await wixData.query("Members/PrivateMembersData")
-            .limit(1)
-            .find();
-            
-        if (memberDataResults.items.length > 0) {
-            const memberData = memberDataResults.items[0];
-            realUserId = memberData.currentMemberId;
-            
-            if (realUserId) {
-                console.log("✅ Got REAL member ID from data hooks:", realUserId);
-                
-                // Extract profile info if available
-                userProfile = {
-                    loginEmail: memberData.currentMemberEmail || 'unknown@email.com',
-                    displayName: memberData.firstName || memberData.lastName ? 
-                        `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim() : 
-                        'Authenticated User',
-                    firstName: memberData.firstName,
-                    lastName: memberData.lastName,
-                    nickname: memberData.nickname || memberData.firstName || 'Diver',
-                    isGuest: false
-                };
-            }
-        }
-    } catch (hookError) {
-        console.warn("⚠️ Data hooks query failed:", hookError);
-    }
-
-    // ✅ FALLBACK: CHECK WIX USER LOGIN STATUS
-    if (!realUserId && wixUsers.currentUser.loggedIn) {
-        console.log("🔄 Falling back to wixUsers.currentUser...");
-        realUserId = wixUsers.currentUser.id;
+    // ✅ CHECK WIX USER LOGIN STATUS FIRST (This is the real member ID)
+    if (wixUsers.currentUser.loggedIn) {
+        realUserId = wixUsers.currentUser.id; // This IS the real Wix member ID
+        console.log("✅ Got authenticated member ID:", realUserId);
+        
         userProfile = {
-            loginEmail: wixUsers.currentUser.loginEmail,
-            displayName: wixUsers.currentUser.displayName,
+            loginEmail: wixUsers.currentUser.loginEmail || 'unknown@email.com',
+            displayName: wixUsers.currentUser.displayName || 'Authenticated User',
             nickname: wixUsers.currentUser.displayName || 'Diver',
             isGuest: false
         };
-    }
 
-    // ✅ FINAL FALLBACK: GUEST USER
-    if (!realUserId) {
+        // ✅ PROFILE DATA: Using wixUsers only (no direct wix-data access from frontend)
+        // Additional profile data should be fetched via backend HTTP functions if needed
+    } else {
         console.log("👤 No authenticated user found, using guest data");
         return getGuestUserData();
     }
 
     try {
         console.log(`👤 Loading data for authenticated user: ${userProfile.displayName} (${realUserId})`);
+
+        // ✅ VALIDATE THAT WE HAVE A REAL WIX MEMBER ID
+        if (!realUserId || realUserId.startsWith('guest-') || realUserId.startsWith('wix-guest-')) {
+            console.warn("⚠️ Invalid or guest userId detected:", realUserId);
+            return getGuestUserData();
+        }
+
+        // ✅ LOG THE MEMBER ID FORMAT FOR DEBUGGING
+        console.log("🔍 Member ID format check:", {
+            userId: realUserId,
+            isValidFormat: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(realUserId),
+            loginStatus: wixUsers.currentUser.loggedIn,
+            displayName: userProfile.displayName
+        });
 
         // ✅ LOAD DATA FROM BOTH ENDPOINTS USING REAL USER ID
         const [memoriesRes, diveLogsRes] = await Promise.all([
@@ -375,7 +358,8 @@ async function sendChatMessage(query) {
             body: JSON.stringify({ 
                 userMessage: query,  // ✅ Using userMessage for Wix backend
                 userId: userData.userId,
-                profile: userData.profile
+                profile: userData.profile,
+                diveLogs: userData.userDiveLogs || []  // ✅ Include dive logs
             })
         }).catch(err => {
             console.warn("⚠️ Wix chat API failed:", err);
@@ -391,7 +375,8 @@ async function sendChatMessage(query) {
                 body: JSON.stringify({ 
                     message: query,  // ✅ Using message for Next.js backend
                     userId: userData.userId,
-                    profile: userData.profile
+                    profile: userData.profile,
+                    diveLogs: userData.userDiveLogs || []  // ✅ Include dive logs for backup too
                 })
             });
         }

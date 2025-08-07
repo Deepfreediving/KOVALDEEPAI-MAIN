@@ -83,7 +83,8 @@ export async function post_chat(request) {
         const payload = {
             message: userMessage,  // ✅ Use 'message' for Next.js backend
             userId: effectiveUserId,
-            profile: userProfile
+            profile: userProfile,
+            diveLogs: userDiveLogs  // ✅ Include dive logs in payload
         };
 
         console.log("🚀 Sending to AI backend for member:", {

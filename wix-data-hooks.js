@@ -1,69 +1,90 @@
-// SIMPLIFIED Wix Data Hooks for PrivateMembersData
-// Copy this into your Wix data.js file
+// ===== 📄 data.js - Wix Data Hooks =====
+// This file should be uploaded to your Wix backend data folder
 
 import { currentMember } from 'wix-members';
 
-export function Members$PrivateMembersData_beforeGet(itemId, context) {
-  // Simple version - just log
-  console.log('🔍 beforeGet called');
+/**
+ * ✅ Collection: PrivateMembersData
+ * This hooks into queries for a private members data collection
+ */
+
+export function PrivateMembersData_beforeQuery(query, context) {
+    console.log('🔍 PrivateMembersData beforeQuery called');
+    return query;
 }
 
-export function Members$PrivateMembersData_afterGet(item, context) {
-  // Add current member info to the retrieved item
-  if (!item) return item;
-  
-  return currentMember.getCurrentMember()
-    .then((member) => {
-      if (member) {
-        item.currentMemberId = member._id;
-        item.currentMemberEmail = member.loginEmail;
-        console.log('✅ afterGet - Added member ID:', member._id);
-      }
-      return item;
-    })
-    .catch((error) => {
-      console.log('⚠️ afterGet - Error:', error);
-      return item;
-    });
-}
-
-export function Members$PrivateMembersData_beforeQuery(query, context) {
-  // Simple version - just log
-  console.log('🔍 beforeQuery called');
-  return query;
-}
-
-export function Members$PrivateMembersData_afterQuery(results, context) {
-  // Add member context to all results
-  if (!results || !results.items) return results;
-  
-  return currentMember.getCurrentMember()
-    .then((member) => {
-      if (member) {
-        results.items.forEach(item => {
-          item.currentMemberId = member._id;
-          item.currentMemberEmail = member.loginEmail;
+export function PrivateMembersData_afterQuery(results, context) {
+    return currentMember.getCurrentMember()
+        .then((member) => {
+            if (member && results.items) {
+                results.items.forEach(item => {
+                    item.currentMemberId = member._id;
+                    item.currentMemberEmail = member.loginEmail;
+                    item.firstName = member.contactDetails?.firstName || '';
+                    item.lastName = member.contactDetails?.lastName || '';
+                    item.nickname = member.profile?.nickname || '';
+                });
+                console.log('✅ PrivateMembersData afterQuery - Added member context to', results.items.length, 'items');
+            }
+            return results;
+        })
+        .catch((error) => {
+            console.warn('⚠️ PrivateMembersData afterQuery error:', error);
+            return results;
         });
-        console.log('✅ afterQuery - Added member ID to', results.items.length, 'items:', member._id);
-      }
-      return results;
-    })
-    .catch((error) => {
-      console.log('⚠️ afterQuery - Error:', error);
-      return results;
-    });
 }
 
-export function Members$PrivateMembersData_beforeCount(query, context) {
-  console.log('🔍 beforeCount called');
-  return query;
+export function PrivateMembersData_beforeGet(itemId, context) {
+    console.log('🔍 PrivateMembersData beforeGet called for:', itemId);
 }
 
-export function Members$PrivateMembersData_afterCount(count, context) {
-  console.log('✅ afterCount result:', count);
-  return count;
+export function PrivateMembersData_afterGet(item, context) {
+    if (!item) return item;
+    
+    return currentMember.getCurrentMember()
+        .then((member) => {
+            if (member) {
+                item.currentMemberId = member._id;
+                item.currentMemberEmail = member.loginEmail;
+                item.firstName = member.contactDetails?.firstName || '';
+                item.lastName = member.contactDetails?.lastName || '';
+                item.nickname = member.profile?.nickname || '';
+                console.log('✅ PrivateMembersData afterGet - Added member context');
+            }
+            return item;
+        })
+        .catch((error) => {
+            console.warn('⚠️ PrivateMembersData afterGet error:', error);
+            return item;
+        });
 }
 
-export function Members$PrivateMembersData_onFailure(error, context) {
-  console.error('❌ Data hook failure:', error);
+/**
+ * ✅ Collection: Members (Built-in Wix Members collection)
+ * Add hooks to enhance member data if needed
+ */
+
+export function Members_afterQuery(results, context) {
+    if (results.items) {
+        console.log('✅ Members afterQuery - Processing', results.items.length, 'members');
+    }
+    return results;
+}
+
+export function Members_afterGet(item, context) {
+    if (item) {
+        console.log('✅ Members afterGet - Processing member:', item._id);
+    }
+    return item;
+}
+
+/**
+ * ✅ Error handler for any data hooks failures
+ */
+export function PrivateMembersData_onFailure(error, context) {
+    console.error('❌ PrivateMembersData hook failure:', error);
+}
+
+export function Members_onFailure(error, context) {
+    console.error('❌ Members hook failure:', error);
 }
