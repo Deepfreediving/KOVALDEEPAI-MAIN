@@ -2,17 +2,38 @@ import { useState } from 'react';
 import DiveJournalForm from './DiveJournalForm';
 import DiveJournalDisplay from './DiveJournalDisplay';
 
-export default function DiveJournalSidebarCard({ userId, darkMode }) {
+export default function DiveJournalSidebarCard({ 
+  userId, 
+  darkMode, 
+  onSubmit, 
+  onDelete, 
+  diveLogs, 
+  loadingDiveLogs, 
+  editLogIndex, 
+  setEditLogIndex 
+}) {
   const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'add'
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleFormSubmit = (data) => {
-    // Save logs to localStorage
-    const existingLogs = JSON.parse(localStorage.getItem(`diveLogs-${userId}`)) || [];
-    existingLogs.push(data);
-    localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(existingLogs));
-    setRefreshKey(prev => prev + 1);
-    setActiveTab('logs'); // Switch to logs after saving
+  const handleFormSubmit = async (data) => {
+    try {
+      // Save logs to localStorage as backup
+      const existingLogs = JSON.parse(localStorage.getItem(`diveLogs-${userId}`)) || [];
+      existingLogs.push(data);
+      localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(existingLogs));
+      
+      // Call the onSubmit callback from parent (embed page)
+      if (onSubmit) {
+        await onSubmit(data);
+      }
+      
+      setRefreshKey(prev => prev + 1);
+      setActiveTab('logs'); // Switch to logs after saving
+      
+      console.log('✅ Dive log submitted successfully');
+    } catch (error) {
+      console.error('❌ Error submitting dive log:', error);
+    }
   };
 
   return (
@@ -72,7 +93,7 @@ export default function DiveJournalSidebarCard({ userId, darkMode }) {
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 🤿 <span>New Dive Entry</span>
               </h3>
-              <DiveJournalForm onSubmit={handleFormSubmit} darkMode={darkMode} />
+              <DiveJournalForm onSubmit={handleFormSubmit} darkMode={darkMode} userId={userId} />
             </div>
           </div>
         )}

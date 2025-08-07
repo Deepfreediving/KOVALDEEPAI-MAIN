@@ -118,10 +118,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`💬 Processing message from ${userId}: "${message.substring(0, 50)}..."`);
 
-    // ✅ Load past memory (safe)
+    // ✅ Load past memory (safe) - Enhanced with dive log context
     let pastMemory: UserMemory = {};
+    let diveLogContext = '';
     try {
       pastMemory = ((await fetchUserMemory(userId)) as UserMemory) || {};
+      
+      // Load recent dive logs for better coaching context
+      const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/read-memory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      
+      if (memoryResponse.ok) {
+        const memoryData = await memoryResponse.json();
+        const recentDiveLogs = memoryData.memory
+          ?.filter((entry: any) => entry.type === 'dive-log' || entry.disciplineType)
+          ?.slice(-3) // Last 3 dive logs
+          ?.map((log: any) => `Date: ${log.date}, Discipline: ${log.discipline}, Reached: ${log.reachedDepth}m, Target: ${log.targetDepth}m, Notes: ${log.notes || 'None'}`)
+          ?.join('\n');
+          
+        if (recentDiveLogs) {
+          diveLogContext = `\n\n📊 RECENT DIVE HISTORY:\n${recentDiveLogs}`;
+          console.log(`✅ Loaded ${memoryData.memory?.length || 0} memory entries including recent dive logs for coaching context`);
+        }
+      }
     } catch (err: unknown) {
       console.warn('⚠️ Failed to fetch past memory (continuing):', err instanceof Error ? err.message : String(err));
     }
@@ -140,7 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Messages payload
     const messagesPayload: ChatMessage[] = [
-      { role: 'system', content: generateSystemPrompt(userLevel, contextChunks) },
+      { role: 'system', content: generateSystemPrompt(userLevel, contextChunks) + diveLogContext },
       { role: 'user', content: message },
     ];
 

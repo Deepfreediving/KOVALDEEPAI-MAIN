@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import imageCompression from 'browser-image-compression';
 
-export default function DiveJournalForm({ onSubmit, darkMode }) {
+export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
   const initialFormState = {
     date: new Date().toISOString().split('T')[0],
     disciplineType: 'depth',

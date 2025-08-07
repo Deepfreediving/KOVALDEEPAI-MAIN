@@ -67,28 +67,45 @@ export default function Embed() {
   };
 
   const getDisplayName = useCallback(() => {
+    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
+    
     // Try rich profile data first (from Wix Collections/Members)
     if (profile?.displayName && profile.displayName !== 'Guest User') {
+      console.log('✅ Using profile.displayName:', profile.displayName);
       return profile.displayName;
     }
     if (profile?.nickname && profile.nickname !== 'Guest User') {
+      console.log('✅ Using profile.nickname:', profile.nickname);
       return profile.nickname;
     }
     if (profile?.firstName && profile?.lastName) {
-      return `${profile.firstName} ${profile.lastName}`;
+      const fullName = `${profile.firstName} ${profile.lastName}`;
+      console.log('✅ Using firstName + lastName:', fullName);
+      return fullName;
     }
     if (profile?.firstName) {
+      console.log('✅ Using profile.firstName:', profile.firstName);
       return profile.firstName;
     }
     if (profile?.loginEmail) {
+      console.log('✅ Using profile.loginEmail:', profile.loginEmail);
       return profile.loginEmail;
     }
     if (profile?.contactDetails?.firstName) {
+      console.log('✅ Using contactDetails.firstName:', profile.contactDetails.firstName);
       return profile.contactDetails.firstName;
     }
     
+    // Show "Loading..." for non-guest users while waiting for profile data
+    if (userId && !userId.startsWith("guest") && !profile?.source) {
+      console.log('⏳ Waiting for user profile data...');
+      return "Loading...";
+    }
+    
     // Fallback to guest user only if userId starts with "guest"
-    return userId?.startsWith("guest") ? "Guest User" : "User";
+    const fallback = userId?.startsWith("guest") ? "Guest User" : "User";
+    console.log('🔄 Using fallback:', fallback);
+    return fallback;
   }, [profile, userId]);
 
   // ✅ INITIALIZATION
@@ -573,6 +590,9 @@ export default function Embed() {
           }`}>
             <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
               👤 {getDisplayName()} • Embedded
+              {getDisplayName() === "Loading..." && (
+                <span className="ml-2 animate-pulse">⏳</span>
+              )}
             </div>
             <button
               onClick={() => setDarkMode(!darkMode)}

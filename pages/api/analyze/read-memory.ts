@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-      // 1️⃣ Load Local Memory
+      // 1️⃣ Load Local Memory (existing system)
       let localMemory: any[] = [];
       const memoryFile = path.join(MEMORY_DIR, `${userId}.json`);
       if (fs.existsSync(memoryFile)) {
@@ -34,6 +34,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           localMemory = JSON.parse(fileData);
         } catch {
           console.warn(`⚠️ Failed to parse local memory file for ${userId}, ignoring corrupted data.`);
+        }
+      }
+
+      // 1.5️⃣ Load Dive Logs Directory (NEW - for comprehensive data)
+      let diveLogsMemory: any[] = [];
+      const diveLogsDir = path.resolve("./data/diveLogs", userId);
+      if (fs.existsSync(diveLogsDir)) {
+        try {
+          const diveLogFiles = fs.readdirSync(diveLogsDir).filter(file => file.endsWith('.json'));
+          for (const file of diveLogFiles) {
+            const filePath = path.join(diveLogsDir, file);
+            const diveLogData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            // Convert dive log format to memory format
+            diveLogsMemory.push({
+              id: diveLogData.id,
+              timestamp: diveLogData.timestamp,
+              type: 'dive-log',
+              source: 'dive-logs-directory',
+              ...diveLogData
+            });
+          }
+          console.log(`📊 Loaded ${diveLogsMemory.length} dive logs from directory for user ${userId}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to load dive logs directory for ${userId}:`, error);
         }
       }
 
@@ -46,8 +70,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.warn("⚠️ Wix memory fetch failed:", err.message);
       }
 
-      // 3️⃣ Merge & Deduplicate logs
-      const mergedLogs = [...localMemory, ...wixMemory];
+      // 3️⃣ Merge & Deduplicate logs (including dive logs)
+      const mergedLogs = [...localMemory, ...diveLogsMemory, ...wixMemory];
       const seen = new Set<string>();
       const finalMemory = mergedLogs.filter((log: any) => {
         if (!log.id) {
