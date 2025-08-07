@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import imageCompression from 'browser-image-compression';
+import { getOrCreateUserId, migrateGuestDataToPersistent, debugUserIdSituation } from '@/utils/userIdUtils';
 
 export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
   const initialFormState = {
@@ -43,6 +44,19 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
   const [aiFeedback, setAiFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
+
+  // ✅ IMPROVED USER ID MANAGEMENT
+  const effectiveUserId = getOrCreateUserId(userId);
+  
+  // Debug user ID situation and migrate guest data if needed
+  useEffect(() => {
+    debugUserIdSituation();
+    const migrated = migrateGuestDataToPersistent();
+    if (migrated) {
+      console.log('🔄 Migrated guest data to persistent user ID:', migrated);
+    }
+    console.log('🆔 Using effective user ID for dive logs:', effectiveUserId);
+  }, [effectiveUserId]);
 
   // Check if we have a saved draft
   useEffect(() => {
@@ -126,7 +140,7 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
       // ✅ Prepare data for your save-dive-log.ts API
       const diveLogData = {
         ...form,
-        userId: userId || 'anonymous-user',
+        userId: effectiveUserId,
         timestamp: new Date().toISOString()
       };
 
@@ -151,16 +165,17 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
       // ✅ Show success with local storage confirmation
       setAiFeedback("✅ Dive log saved locally! Syncing to Wix...");
       
-      // ✅ Save to local storage as backup
-      const savedDiveLogs = JSON.parse(localStorage.getItem('savedDiveLogs') || '[]');
+      // ✅ Save to local storage as backup with user-specific key
+      const storageKey = `savedDiveLogs_${effectiveUserId}`;
+      const savedDiveLogs = JSON.parse(localStorage.getItem(storageKey) || '[]');
       savedDiveLogs.push({
         id: saveLogResult._id || saveLogResult.data?.id,
         ...diveLogData,
         savedAt: new Date().toISOString(),
         syncedToWix: saveLogResult.syncedToWix || false
       });
-      localStorage.setItem('savedDiveLogs', JSON.stringify(savedDiveLogs));
-      console.log('💾 Dive log backed up to local storage');
+      localStorage.setItem(storageKey, JSON.stringify(savedDiveLogs));
+      console.log('💾 Dive log backed up to local storage with key:', storageKey);
       
       const diveLogId = saveLogResult._id || saveLogResult.data?.id;
 
@@ -180,7 +195,7 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
           const formData = new FormData();
           formData.append('image', compressed);
           formData.append('diveLogId', diveLogId);
-          formData.append('userId', userId || 'anonymous-user');
+          formData.append('userId', effectiveUserId);
 
           const uploadRes = await fetch('/api/openai/upload-dive-image', {
             method: 'POST',

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
+import { getOrCreateUserId } from "@/utils/userIdUtils";
 
 export default function ChatBox({
   userId = "Guest",
@@ -22,6 +23,13 @@ export default function ChatBox({
   const BOT_NAME = "Koval AI";
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
+  
+  // ✅ IMPROVED USER ID MANAGEMENT
+  const effectiveUserId = getOrCreateUserId(userId);
+  
+  useEffect(() => {
+    console.log('💬 ChatBox using effective user ID:', effectiveUserId);
+  }, [effectiveUserId]);
 
   // ✅ Smooth Auto-scroll
   useEffect(() => {
@@ -91,7 +99,7 @@ export default function ChatBox({
         const res = await fetch("/api/openai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: trimmedInput, profile, eqState, userId }),
+          body: JSON.stringify({ message: trimmedInput, profile, eqState, userId: effectiveUserId }),
         });
 
         const textResponse = await res.text();
@@ -174,7 +182,7 @@ export default function ChatBox({
             <div>
               <h1 className="text-xl font-semibold">koval-ai Deep Chat</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {profile?.nickname || userId}
+                {profile?.nickname || effectiveUserId}
               </p>
             </div>
           </div>

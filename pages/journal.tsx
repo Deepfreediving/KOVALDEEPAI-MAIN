@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import SavedDiveLogsViewer from "@/components/SavedDiveLogsViewer";
+import UserIdDebugger from "@/components/UserIdDebugger";
 
 interface DiveLog {
   date: string;

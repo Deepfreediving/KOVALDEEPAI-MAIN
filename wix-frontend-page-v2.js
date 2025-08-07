@@ -206,29 +206,72 @@ async function handleUserDataRefresh(aiWidget) {
  * ✅ ENHANCED USER DATA LOADING
  */
 async function loadUserData() {
-    // ✅ CHECK USER LOGIN STATUS
-    if (!wixUsers.currentUser.loggedIn) {
-        console.log("👤 Guest user detected");
+    // ✅ FIRST: GET REAL MEMBER ID FROM DATA HOOKS
+    let realUserId = null;
+    let userProfile = {};
+    
+    try {
+        // Query PrivateMembersData to trigger data hooks and get real member ID
+        console.log("🔍 Querying PrivateMembersData to get real member ID...");
+        const memberDataResults = await wixData.query("Members/PrivateMembersData")
+            .limit(1)
+            .find();
+            
+        if (memberDataResults.items.length > 0) {
+            const memberData = memberDataResults.items[0];
+            realUserId = memberData.currentMemberId;
+            
+            if (realUserId) {
+                console.log("✅ Got REAL member ID from data hooks:", realUserId);
+                
+                // Extract profile info if available
+                userProfile = {
+                    loginEmail: memberData.currentMemberEmail || 'unknown@email.com',
+                    displayName: memberData.firstName || memberData.lastName ? 
+                        `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim() : 
+                        'Authenticated User',
+                    firstName: memberData.firstName,
+                    lastName: memberData.lastName,
+                    nickname: memberData.nickname || memberData.firstName || 'Diver',
+                    isGuest: false
+                };
+            }
+        }
+    } catch (hookError) {
+        console.warn("⚠️ Data hooks query failed:", hookError);
+    }
+
+    // ✅ FALLBACK: CHECK WIX USER LOGIN STATUS
+    if (!realUserId && wixUsers.currentUser.loggedIn) {
+        console.log("🔄 Falling back to wixUsers.currentUser...");
+        realUserId = wixUsers.currentUser.id;
+        userProfile = {
+            loginEmail: wixUsers.currentUser.loginEmail,
+            displayName: wixUsers.currentUser.displayName,
+            nickname: wixUsers.currentUser.displayName || 'Diver',
+            isGuest: false
+        };
+    }
+
+    // ✅ FINAL FALLBACK: GUEST USER
+    if (!realUserId) {
+        console.log("👤 No authenticated user found, using guest data");
         return getGuestUserData();
     }
 
     try {
-        const userId = wixUsers.currentUser.id;
-        const userEmail = wixUsers.currentUser.loginEmail;
-        const displayName = wixUsers.currentUser.displayName;
+        console.log(`👤 Loading data for authenticated user: ${userProfile.displayName} (${realUserId})`);
 
-        console.log(`👤 Loading data for user: ${displayName} (${userId})`);
-
-        // ✅ LOAD DATA FROM BOTH ENDPOINTS
+        // ✅ LOAD DATA FROM BOTH ENDPOINTS USING REAL USER ID
         const [memoriesRes, diveLogsRes] = await Promise.all([
-            fetch(`${LOAD_MEMORIES_API}?userId=${userId}&limit=50`, { 
+            fetch(`${LOAD_MEMORIES_API}?userId=${realUserId}&limit=50`, { 
                 credentials: "include",
                 headers: { 'Content-Type': 'application/json' }
             }).catch(err => {
                 console.warn("⚠️ Load memories API failed:", err);
                 return null;
             }),
-            fetch(`${DIVE_LOGS_API}?userId=${userId}&limit=50`, { 
+            fetch(`${DIVE_LOGS_API}?userId=${realUserId}&limit=50`, { 
                 credentials: "include",
                 headers: { 'Content-Type': 'application/json' }
             }).catch(err => {
@@ -254,11 +297,9 @@ async function loadUserData() {
             : 0;
 
         return {
-            userId,
+            userId: realUserId, // ✅ NOW USING REAL MEMBER ID
             profile: {
-                loginEmail: userEmail,
-                displayName: displayName,
-                nickname: displayName || 'Diver',
+                ...userProfile,
                 totalDives: userDiveLogs.length,
                 pb: personalBest,
                 avgDepth: avgDepth,
