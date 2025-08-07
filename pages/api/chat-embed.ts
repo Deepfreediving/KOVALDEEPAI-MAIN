@@ -145,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       pastMemory = ((await fetchUserMemory(effectiveUserId)) as UserMemory) || {};
       console.log('✅ Loaded past memory');
       
-      // 🏊‍♂️ ENHANCED: Process dive logs from Wix database
+      // 🏊‍♂️ ENHANCED: Process dive logs from Wix database OR load from file system as fallback
       if (diveLogs && diveLogs.length > 0) {
         console.log(`📊 Processing ${diveLogs.length} dive logs from Wix database`);
         
@@ -180,11 +180,93 @@ ${recentDiveLogs}
         
         console.log('✅ Generated dive log context for AI coaching');
       } else {
-        console.log('📭 No dive logs provided');
-        diveLogContext = `
+        console.log('📭 No dive logs provided from Wix, trying file system fallback...');
+        
+        // ✅ FALLBACK: Load dive logs from file system
+        try {
+          const fs = require('fs/promises');
+          const path = require('path');
+          
+          const LOG_DIR = path.resolve('./data/diveLogs');
+          console.log(`📂 Checking dive logs directory: ${LOG_DIR}`);
+          
+          // Try specific known user IDs or scan for any dive logs
+          const knownUserIds = [
+            '8b315b71-22b9-40c6-af86-841ceee3f534',
+            'f549b01d-9dc1-4c85-90b9-1683337f6ed0',
+            effectiveUserId
+          ];
+          
+          let loadedLogs: any[] = [];
+          
+          for (const testUserId of knownUserIds) {
+            try {
+              const userLogFile = path.join(LOG_DIR, `${testUserId}.json`);
+              await fs.access(userLogFile);
+              
+              const content = await fs.readFile(userLogFile, 'utf8');
+              const logData = JSON.parse(content);
+              
+              if (logData && typeof logData === 'object') {
+                loadedLogs.push(logData);
+                console.log(`✅ Loaded dive log from file system: ${testUserId}`);
+              }
+            } catch (fileError) {
+              // File doesn't exist or can't be read, continue to next
+            }
+          }
+          
+          if (loadedLogs.length > 0) {
+            // Sort by timestamp (most recent first)
+            loadedLogs.sort((a, b) => {
+              const dateA = new Date(a.timestamp || a.date || 0).getTime();
+              const dateB = new Date(b.timestamp || b.date || 0).getTime();
+              return dateB - dateA;
+            });
+            
+            const recentDiveLogs = loadedLogs
+              .slice(0, 5) // Last 5 dive logs
+              .map((log: any) => {
+                const details = [
+                  `📅 ${log.date || log.timestamp?.split('T')[0] || 'Unknown date'}`,
+                  `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
+                  `📍 ${log.location || 'Unknown location'}`,
+                  `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
+                  log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
+                  log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
+                  log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
+                  log.notes ? `📝 ${log.notes}` : ''
+                ].filter(Boolean).join(' | ');
+                
+                return details;
+              })
+              .join('\n');
+            
+            diveLogContext = `
+🏊‍♂️ MEMBER'S RECENT DIVE LOGS (Last ${Math.min(5, loadedLogs.length)} dives - from file system):
+${recentDiveLogs}
+
+📈 DIVE STATISTICS:
+- Total recorded dives: ${loadedLogs.length}
+- Personal best: ${Math.max(...loadedLogs.map(log => parseInt(log.reachedDepth || log.targetDepth || '0')))}m
+- Last dive depth: ${loadedLogs[0]?.reachedDepth || loadedLogs[0]?.targetDepth || 'Unknown'}m
+- Progress analysis: ${loadedLogs.length >= 3 ? 'Multiple sessions recorded - analyze patterns and progression' : 'Limited data - focus on current goals'}
+            `.trim();
+            
+            console.log('✅ Generated dive log context from file system for AI coaching');
+          } else {
+            diveLogContext = `
+🏊‍♂️ DIVE LOG STATUS: No dive logs found in database or file system.
+💡 COACHING FOCUS: Encourage member to start logging their training sessions for personalized guidance.
+            `.trim();
+          }
+        } catch (fsError) {
+          console.warn('⚠️ File system fallback failed:', fsError);
+          diveLogContext = `
 🏊‍♂️ DIVE LOG STATUS: No recent dive logs available.
 💡 COACHING FOCUS: Encourage member to start logging their training sessions for personalized guidance.
-        `.trim();
+          `.trim();
+        }
       }
       
     } catch (err: unknown) {
