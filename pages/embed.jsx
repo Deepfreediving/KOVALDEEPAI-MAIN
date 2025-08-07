@@ -150,34 +150,32 @@ export default function Embed() {
         setDarkMode(false);
       }
       
-      // Set user data from URL parameters (as fallback)
-      if (urlUserId && !userId) {  // Only if no userId is already set
-        const validatedUserId = String(urlUserId);
-        
-        // Validate URL userId
-        if (validatedUserId && validatedUserId !== 'undefined' && validatedUserId !== 'null') {
-          setUserId(validatedUserId);
-          localStorage.setItem("kovalUser", validatedUserId);
-          console.log('✅ Set userId from URL:', validatedUserId);
-        } else {
-          console.warn('⚠️ Invalid URL userId, keeping current:', userId);
-        }
-      }
+      // ✅ DON'T set user data from URL immediately - wait for USER_AUTH postMessage
+      // Only apply theme from URL
+      console.log('✅ Embed URL parameters processed, waiting for USER_AUTH message...');
       
-      if (userName && (!profile?.nickname || profile?.nickname === 'Guest User')) {  // Only if no better name exists
-        const decodedUserName = decodeURIComponent(String(userName));
-        setProfile(prev => ({ 
-          ...prev, 
-          nickname: decodedUserName,
-          displayName: decodedUserName,
-          source: 'url-params'
-        }));
-        localStorage.setItem("kovalProfile", JSON.stringify({ 
-          nickname: decodedUserName,
-          displayName: decodedUserName,
-          source: 'url-params'
-        }));
-      }
+      // ✅ FALLBACK: If no USER_AUTH message received within 3 seconds, use URL params
+      setTimeout(() => {
+        if (userId && userId.startsWith('guest-') && urlUserId && !urlUserId.startsWith('guest-')) {
+          console.log('⏰ No USER_AUTH received, falling back to URL userId:', urlUserId);
+          const validatedUserId = String(urlUserId);
+          
+          if (validatedUserId && validatedUserId !== 'undefined' && validatedUserId !== 'null') {
+            setUserId(validatedUserId);
+            localStorage.setItem("kovalUser", validatedUserId);
+          }
+          
+          if (userName) {
+            const decodedUserName = decodeURIComponent(String(userName));
+            setProfile(prev => ({ 
+              ...prev, 
+              nickname: decodedUserName,
+              displayName: decodedUserName,
+              source: 'url-fallback'
+            }));
+          }
+        }
+      }, 3000);
       
       console.log('✅ Embed URL parameters processed:', { theme, userId: urlUserId, userName });
     }

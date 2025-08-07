@@ -83,7 +83,47 @@
         </style>
       `;
 
-      // ✅ ENHANCED USER DATA with theme and better Wix detection
+      // ✅ LISTEN FOR USER DATA FROM PARENT WIX PAGE
+      const handleParentMessage = (event) => {
+        // Security check for Wix origins
+        if (event.origin && (
+          event.origin.includes('wix.com') || 
+          event.origin.includes('wixsite.com') ||
+          event.origin.includes('deepfreediving.com')
+        )) {
+          console.log('📨 Bot widget received message from Wix page:', event.data);
+          
+          if (event.data.type === 'USER_DATA_RESPONSE' && event.data.userData) {
+            const wixUserData = event.data.userData;
+            console.log('✅ Received authentic user data from Wix page:', wixUserData);
+            
+            // Update userData with real Wix user data
+            userData = {
+              ...userData,
+              userId: wixUserData.userId,
+              userName: wixUserData.profile?.displayName || wixUserData.profile?.nickname || 'Authenticated User',
+              userEmail: wixUserData.profile?.loginEmail || '',
+              source: 'wix-page-authenticated',
+              theme: theme,
+              diveLogs: wixUserData.diveLogs || [],
+              memories: wixUserData.memories || []
+            };
+            
+            console.log('🔄 Updated widget userData:', userData);
+            
+            // If iframe is ready, send updated user data
+            if (this.iframe && this.isReady) {
+              this.postMessage('USER_AUTH', userData);
+              console.log('📤 Sent updated user data to embed');
+            }
+          }
+        }
+      };
+      
+      // Add message listener
+      window.addEventListener('message', handleParentMessage);
+
+      // ✅ ENHANCED USER DATA with better defaults
       let userData = {
         userId: 'guest-' + Date.now(),  // ✅ Use consistent guest format
         userName: 'Guest User',
@@ -91,6 +131,15 @@
         theme: theme,  // ✅ Pass theme to embed
         parentUrl: window.location.href
       };
+
+      // ✅ REQUEST USER DATA FROM PARENT WIX PAGE
+      if (window.parent !== window) {
+        console.log('🔍 Requesting user data from parent Wix page...');
+        window.parent.postMessage({
+          type: 'REQUEST_USER_DATA',
+          source: 'koval-ai-widget'
+        }, '*');
+      }
 
       // ✅ Enhanced Wix user detection with retry logic
       const detectWixUser = () => {

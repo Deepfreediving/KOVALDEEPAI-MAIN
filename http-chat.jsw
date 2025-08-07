@@ -1,13 +1,5 @@
 // ===== 📄 http-chat.jsw - CHAT ENDPOINT =====
-            // Try to get the real user ID from Wix Users service
-            try {
-                // In Wix backend, we can use wix-members to get the current user
-                const member = await currentMember.getMember();
-                if (member && member._id) {
-                    effectiveUserId = member._id;
-                    console.log('✅ Found actual member ID:', effectiveUserId);
-                }
-            } catch (memberError) { chat requests from Wix frontend to your deployed AI backend
+// Forward chat requests from Wix frontend to your deployed AI backend
 
 import wixData from 'wix-data';
 import { fetch } from 'wix-fetch';
@@ -56,8 +48,7 @@ export async function post_chat(request) {
             
             // Try to get the real user ID from Wix Users service
             try {
-                // In Wix backend, we can use wix-users to get the current user
-                import { currentMember } from 'wix-members';
+                // In Wix backend, we can use wix-members to get the current user
                 const member = await currentMember.getMember();
                 if (member && member._id) {
                     effectiveUserId = member._id;

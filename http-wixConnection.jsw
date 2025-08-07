@@ -2,7 +2,7 @@
 // Simple endpoint for testing Wix backend connectivity
 
 import { ok, serverError } from 'wix-http-functions';
-import wixUsers from 'wix-users-backend';
+import { currentMember } from 'wix-members';
 import wixData from 'wix-data';
 
 /**
@@ -34,13 +34,13 @@ export async function get_wixConnection(request) {
             services: {}
         };
 
-        // Test wixUsers
+        // Test wix-members
         try {
-            const currentUser = wixUsers.currentUser;
+            const member = await currentMember.getMember();
             response.services.users = {
                 available: true,
-                userLoggedIn: currentUser?.loggedIn || false,
-                userId: currentUser?.id || null
+                memberLoggedIn: !!member,
+                memberId: member?._id || null
             };
         } catch (userError) {
             response.services.users = {
