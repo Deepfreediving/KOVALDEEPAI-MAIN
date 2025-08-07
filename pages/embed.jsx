@@ -264,12 +264,85 @@ export default function Embed() {
             localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.data.diveLogs));
           }
           break;
+          
+        case 'KOVAL_USER_AUTH':
+          // ✅ DIRECT USER AUTH FALLBACK (for communication issues)
+          console.log('🔧 Direct user auth received:', event.data);
+          
+          if (event.data.userId && !event.data.userId.startsWith('guest-')) {
+            console.log('✅ Setting direct userId:', event.data.userId);
+            setUserId(event.data.userId);
+            localStorage.setItem("kovalUser", event.data.userId);
+            
+            if (event.data.profile) {
+              const directProfile = {
+                nickname: event.data.profile.displayName || event.data.profile.nickname || 'User',
+                displayName: event.data.profile.displayName || event.data.profile.nickname || 'User',
+                loginEmail: event.data.profile.loginEmail || '',
+                source: 'direct-auth',
+                ...event.data.profile
+              };
+              
+              setProfile(directProfile);
+              localStorage.setItem("kovalProfile", JSON.stringify(directProfile));
+              console.log('✅ Direct profile updated:', directProfile);
+            }
+            
+            if (event.data.diveLogs) {
+              setDiveLogs(event.data.diveLogs);
+              localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.diveLogs));
+            }
+          }
+          break;
       }
     };
     
     window.addEventListener('message', handleParentMessages);
     
     return () => window.removeEventListener('message', handleParentMessages);
+  }, []);
+
+  // ✅ CHECK FOR GLOBAL USER DATA (Alternative method)
+  useEffect(() => {
+    const checkGlobalUserData = () => {
+      try {
+        // Check if parent window has global user data
+        const globalUserData = window.parent?.KOVAL_USER_DATA;
+        if (globalUserData && globalUserData.userId && !globalUserData.userId.startsWith('guest-')) {
+          console.log('🌍 Found global user data:', globalUserData);
+          
+          setUserId(globalUserData.userId);
+          localStorage.setItem("kovalUser", globalUserData.userId);
+          
+          if (globalUserData.profile) {
+            const globalProfile = {
+              nickname: globalUserData.profile.displayName || globalUserData.profile.nickname || 'User',
+              displayName: globalUserData.profile.displayName || globalUserData.profile.nickname || 'User',
+              loginEmail: globalUserData.profile.loginEmail || '',
+              source: 'global-data',
+              ...globalUserData.profile
+            };
+            
+            setProfile(globalProfile);
+            localStorage.setItem("kovalProfile", JSON.stringify(globalProfile));
+            console.log('✅ Global profile updated:', globalProfile);
+          }
+          
+          if (globalUserData.userDiveLogs) {
+            setDiveLogs(globalUserData.userDiveLogs);
+            localStorage.setItem("koval_ai_logs", JSON.stringify(globalUserData.userDiveLogs));
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not access global user data:', error);
+      }
+    };
+    
+    // Check immediately and then periodically
+    checkGlobalUserData();
+    const interval = setInterval(checkGlobalUserData, 2000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // ✅ THEME SYNC

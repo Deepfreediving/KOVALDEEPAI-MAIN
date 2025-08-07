@@ -85,37 +85,39 @@
 
       // ✅ LISTEN FOR USER DATA FROM PARENT WIX PAGE
       const handleParentMessage = (event) => {
-        // Security check for Wix origins
-        if (event.origin && (
-          event.origin.includes('wix.com') || 
-          event.origin.includes('wixsite.com') ||
-          event.origin.includes('deepfreediving.com')
-        )) {
-          console.log('📨 Bot widget received message from Wix page:', event.data);
+        // Log ALL messages for debugging
+        console.log('📨 Bot widget received message from Wix page:', event.data);
+        
+        // Security check for Wix origins - be more permissive for debugging
+        const validOrigin = !event.origin || 
+                           event.origin.includes('wix.com') || 
+                           event.origin.includes('wixsite.com') ||
+                           event.origin.includes('deepfreediving.com') ||
+                           event.origin === 'null' ||  // For local testing
+                           event.origin === window.location.origin;
+        
+        if (validOrigin && event.data.type === 'USER_DATA_RESPONSE' && event.data.userData) {
+          const wixUserData = event.data.userData;
+          console.log('✅ Received authentic user data from Wix page:', wixUserData);
           
-          if (event.data.type === 'USER_DATA_RESPONSE' && event.data.userData) {
-            const wixUserData = event.data.userData;
-            console.log('✅ Received authentic user data from Wix page:', wixUserData);
-            
-            // Update userData with real Wix user data
-            userData = {
-              ...userData,
-              userId: wixUserData.userId,
-              userName: wixUserData.profile?.displayName || wixUserData.profile?.nickname || 'Authenticated User',
-              userEmail: wixUserData.profile?.loginEmail || '',
-              source: 'wix-page-authenticated',
-              theme: theme,
-              diveLogs: wixUserData.diveLogs || [],
-              memories: wixUserData.memories || []
-            };
-            
-            console.log('🔄 Updated widget userData:', userData);
-            
-            // If iframe is ready, send updated user data
-            if (this.iframe && this.isReady) {
-              this.postMessage('USER_AUTH', userData);
-              console.log('📤 Sent updated user data to embed');
-            }
+          // Update userData with real Wix user data
+          userData = {
+            ...userData,
+            userId: wixUserData.userId,
+            userName: wixUserData.profile?.displayName || wixUserData.profile?.nickname || 'Authenticated User',
+            userEmail: wixUserData.profile?.loginEmail || '',
+            source: 'wix-page-authenticated',
+            theme: theme,
+            diveLogs: wixUserData.userDiveLogs || [],
+            memories: wixUserData.userMemories || []
+          };
+          
+          console.log('🔄 Updated widget userData:', userData);
+          
+          // If iframe is ready, send updated user data
+          if (this.iframe && this.isReady) {
+            this.postMessage('USER_AUTH', userData);
+            console.log('📤 Sent updated user data to embed');
           }
         }
       };
@@ -135,10 +137,18 @@
       // ✅ REQUEST USER DATA FROM PARENT WIX PAGE
       if (window.parent !== window) {
         console.log('🔍 Requesting user data from parent Wix page...');
-        window.parent.postMessage({
-          type: 'REQUEST_USER_DATA',
-          source: 'koval-ai-widget'
-        }, '*');
+        try {
+          window.parent.postMessage({
+            type: 'REQUEST_USER_DATA',
+            source: 'koval-ai-widget',
+            timestamp: Date.now()
+          }, '*');
+          console.log('📤 Sent REQUEST_USER_DATA to parent');
+        } catch (error) {
+          console.error('❌ Failed to send REQUEST_USER_DATA:', error);
+        }
+      } else {
+        console.log('🔍 Widget is not in an iframe, will use direct detection');
       }
 
       // ✅ Enhanced Wix user detection with retry logic
