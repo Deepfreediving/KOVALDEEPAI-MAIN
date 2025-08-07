@@ -66,12 +66,47 @@ export default function Index() {
     }
   };
 
-  const getDisplayName = useCallback(() =>
-    profile?.loginEmail ||
-    profile?.contactDetails?.firstName ||
-    (userId?.startsWith("guest") ? "Guest User" : "User"),
-    [profile, userId]
-  );
+  const getDisplayName = useCallback(() => {
+    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
+    
+    // Try rich profile data first
+    if (profile?.displayName && profile.displayName !== 'Guest User') {
+      console.log('✅ Using profile.displayName:', profile.displayName);
+      return profile.displayName;
+    }
+    if (profile?.nickname && profile.nickname !== 'Guest User') {
+      console.log('✅ Using profile.nickname:', profile.nickname);
+      return profile.nickname;
+    }
+    if (profile?.firstName && profile?.lastName) {
+      const fullName = `${profile.firstName} ${profile.lastName}`;
+      console.log('✅ Using firstName + lastName:', fullName);
+      return fullName;
+    }
+    if (profile?.firstName) {
+      console.log('✅ Using profile.firstName:', profile.firstName);
+      return profile.firstName;
+    }
+    if (profile?.loginEmail) {
+      console.log('✅ Using profile.loginEmail:', profile.loginEmail);
+      return profile.loginEmail;
+    }
+    if (profile?.contactDetails?.firstName) {
+      console.log('✅ Using contactDetails.firstName:', profile.contactDetails.firstName);
+      return profile.contactDetails.firstName;
+    }
+    
+    // Show "Loading..." for non-guest users while waiting for profile data
+    if (userId && !userId.startsWith("guest") && !profile?.source) {
+      console.log('⏳ Waiting for user profile data...');
+      return "Loading...";
+    }
+    
+    // Fallback to guest user only if userId starts with "guest"
+    const fallback = userId?.startsWith("guest") ? "Guest User" : "User";
+    console.log('🔄 Using fallback:', fallback);
+    return fallback;
+  }, [profile, userId]);
 
   // ✅ INITIALIZATION
   useEffect(() => {
@@ -391,6 +426,77 @@ export default function Index() {
     startNewSession, handleSaveSession, handleSelectSession, handleJournalSubmit,
     handleDelete, loadDiveLogs, loadingDiveLogs, editingSessionName
   ]);
+
+  // ✅ MESSAGE LISTENER FOR USER AUTH FROM PARENT PAGE
+  useEffect(() => {
+    const handleMessage = (event) => {
+      // Security check for trusted origins
+      if (!(
+        event.origin === 'https://www.deepfreediving.com' ||
+        event.origin === 'https://deepfreediving.com' ||
+        event.origin.includes('wix.com') ||
+        event.origin.includes('wixsite.com') ||
+        event.origin.includes('editorx.com') ||
+        event.origin === 'https://kovaldeepai-main.vercel.app' ||
+        event.origin === 'http://localhost:3000'
+      )) {
+        console.log('🚫 Ignoring message from untrusted origin:', event.origin);
+        return;
+      }
+      
+      switch (event.data?.type) {
+        case 'USER_AUTH':
+          console.log('👤 Index: User auth received from parent:', event.data.data);
+          
+          if (event.data.data?.userId) {
+            console.log('✅ Index: Setting userId to:', event.data.data.userId);
+            const newUserId = String(event.data.data.userId);
+            setUserId(newUserId);
+            localStorage.setItem("kovalUser", newUserId);
+          }
+          
+          // Update profile with rich data
+          if (event.data.data?.userName || event.data.data?.userEmail) {
+            const richProfile = {
+              nickname: event.data.data.userName || event.data.data.userEmail || 'User',
+              displayName: event.data.data.userName || event.data.data.userEmail || 'User',
+              loginEmail: event.data.data.userEmail || '',
+              firstName: event.data.data.firstName || '',
+              lastName: event.data.data.lastName || '',
+              profilePicture: event.data.data.profilePicture || '',
+              phone: event.data.data.phone || '',
+              bio: event.data.data.bio || '',
+              location: event.data.data.location || '',
+              source: event.data.data.source || 'wix-parent-auth',
+              customFields: event.data.data.customFields || {},
+              isGuest: event.data.data.isGuest || false
+            };
+            
+            console.log('✅ Index: Setting rich profile to:', richProfile);
+            setProfile(richProfile);
+            localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
+          }
+          break;
+          
+        case 'THEME_CHANGE':
+          console.log('🎨 Index: Theme change received:', event.data.data);
+          setDarkMode(Boolean(event.data.data?.dark));
+          break;
+          
+        default:
+          console.log('❓ Index: Unknown message type:', event.data?.type);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('message', handleMessage);
+      console.log('👂 Index: Message listener for user auth set up');
+      
+      return () => {
+        window.removeEventListener('message', handleMessage);
+      };
+    }
+  }, []);
 
   return (
     <main className={`${isEmbedded ? 'h-full' : 'h-screen'} flex ${
