@@ -18,13 +18,33 @@ export function generateConsistentUserId(): string {
 }
 
 export function getOrCreateUserId(providedUserId?: string): string {
-  // If a user ID is provided (e.g., from Wix), use it
+  console.log('🔍 getOrCreateUserId called with:', providedUserId);
+  
+  // If a user ID is provided and it's not a guest, use it
   if (providedUserId && providedUserId !== 'guest' && !providedUserId.startsWith('wix-guest-')) {
+    console.log('✅ Using provided user ID:', providedUserId);
     return providedUserId;
   }
   
-  // Otherwise generate a consistent session-based ID
-  return generateConsistentUserId();
+  // For guest users or missing IDs, check if we have a persistent user ID
+  if (typeof window !== 'undefined') {
+    // Check localStorage for a more persistent user ID (survives browser restart)
+    let persistentUserId = localStorage.getItem('koval-ai-persistent-user-id');
+    if (!persistentUserId) {
+      // Create a persistent ID that will be used for all dive logs and memory
+      persistentUserId = `koval-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('koval-ai-persistent-user-id', persistentUserId);
+      console.log('🆕 Created new persistent user ID:', persistentUserId);
+    } else {
+      console.log('♻️ Using existing persistent user ID:', persistentUserId);
+    }
+    return persistentUserId;
+  }
+  
+  // Server-side fallback
+  const fallbackId = generateConsistentUserId();
+  console.log('🔄 Using fallback user ID:', fallbackId);
+  return fallbackId;
 }
 
 export function extractUserIdFromUrl(): string | null {
@@ -47,4 +67,58 @@ export function normalizeUserId(userId: string): string {
   
   // Generate fallback
   return generateConsistentUserId();
+}
+
+export function migrateGuestDataToPersistent(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  // Get the current persistent user ID
+  const persistentUserId = getOrCreateUserId();
+  
+  // Check if there's any guest data that needs migration
+  const guestKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes('wix-guest-') && key.includes('dive-logs')) {
+      guestKeys.push(key);
+    }
+  }
+  
+  if (guestKeys.length > 0) {
+    console.log(`🔄 Found ${guestKeys.length} guest dive log entries to migrate`);
+    
+    // Migrate the data
+    guestKeys.forEach(guestKey => {
+      const data = localStorage.getItem(guestKey);
+      if (data) {
+        const newKey = guestKey.replace(/wix-guest-\d+/, persistentUserId);
+        localStorage.setItem(newKey, data);
+        console.log(`✅ Migrated ${guestKey} → ${newKey}`);
+      }
+    });
+    
+    return persistentUserId;
+  }
+  
+  return null;
+}
+
+export function debugUserIdSituation(): void {
+  if (typeof window === 'undefined') return;
+  
+  console.log('🔍 User ID Debug Information:');
+  console.log('  URL userId param:', extractUserIdFromUrl());
+  console.log('  Session userId:', sessionStorage.getItem('koval-ai-user-id'));
+  console.log('  Persistent userId:', localStorage.getItem('koval-ai-persistent-user-id'));
+  
+  // Check for any dive log data
+  const diveLogKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes('dive-logs')) {
+      diveLogKeys.push(key);
+    }
+  }
+  
+  console.log('  Dive log keys found:', diveLogKeys);
 }
