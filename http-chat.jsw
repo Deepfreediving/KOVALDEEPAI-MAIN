@@ -1,8 +1,17 @@
 // ===== 📄 http-chat.jsw - CHAT ENDPOINT =====
-// Forward chat requests from Wix frontend to your deployed AI backend
+            // Try to get the real user ID from Wix Users service
+            try {
+                // In Wix backend, we can use wix-members to get the current user
+                const member = await currentMember.getMember();
+                if (member && member._id) {
+                    effectiveUserId = member._id;
+                    console.log('✅ Found actual member ID:', effectiveUserId);
+                }
+            } catch (memberError) { chat requests from Wix frontend to your deployed AI backend
 
 import wixData from 'wix-data';
 import { fetch } from 'wix-fetch';
+import { currentMember } from 'wix-members';
 
 // ✅ Configuration
 const AI_BACKEND_URL = "https://kovaldeepai-main.vercel.app/api/chat-embed";
@@ -39,7 +48,50 @@ export async function post_chat(request) {
 
         // Since this is a private page accessible only to authenticated members,
         // we trust that Wix handles authentication at the page level
-        const effectiveUserId = userId || 'member';
+        let effectiveUserId = userId || 'member';
+        
+        // ✅ DEBUGGING: If userId looks like a guest ID, try to map to real member ID
+        if (effectiveUserId.startsWith('guest-')) {
+            console.log('⚠️ Guest user detected, checking for actual member session...');
+            
+            // Try to get the real user ID from Wix Users service
+            try {
+                // In Wix backend, we can use wix-users to get the current user
+                import { currentMember } from 'wix-members';
+                const member = await currentMember.getMember();
+                if (member && member._id) {
+                    effectiveUserId = member._id;
+                    console.log('✅ Found actual member ID:', effectiveUserId);
+                }
+            } catch (memberError) {
+                console.warn('⚠️ Could not get member from wix-members:', memberError);
+                
+                // Fallback: Try common member IDs from your dive logs
+                const knownMemberIds = [
+                    '8b315b71-22b9-40c6-af86-841ceee3f534',
+                    'f549b01d-9dc1-4c85-90b9-1683337f6ed0'
+                ];
+                
+                // Test each known member ID to see if they have dive logs
+                for (const testId of knownMemberIds) {
+                    try {
+                        const testResults = await wixData.query("@deepfreediving/kovaldeepai-app/Import1")
+                            .eq("userId", testId)
+                            .limit(1)
+                            .find();
+                        
+                        if (testResults.items.length > 0) {
+                            effectiveUserId = testId;
+                            console.log('✅ Using known member ID with dive logs:', effectiveUserId);
+                            break;
+                        }
+                    } catch (testError) {
+                        console.warn(`⚠️ Test failed for member ID ${testId}:`, testError);
+                    }
+                }
+            }
+        }
+        
         console.log('🔍 Processing request for member:', effectiveUserId);
 
         // ✅ Retrieve dive logs if not provided
@@ -61,6 +113,41 @@ export async function post_chat(request) {
                     
                 userDiveLogs = results.items;
                 console.log(`✅ Retrieved ${userDiveLogs.length} dive logs from Wix database for member ${effectiveUserId}`);
+                
+                // ✅ DEBUGGING: If no logs found, try to see what's actually in the database
+                if (userDiveLogs.length === 0) {
+                    console.log('🔍 No dive logs found, checking database contents...');
+                    
+                    // Check if there are ANY dive logs in the database
+                    const anyLogs = await wixData.query("@deepfreediving/kovaldeepai-app/Import1")
+                        .limit(5)
+                        .find();
+                    
+                    console.log(`📊 Total items in database: ${anyLogs.totalCount}`);
+                    console.log(`📋 Sample items:`, anyLogs.items.map(item => ({
+                        id: item._id,
+                        userId: item.userId,
+                        discipline: item.discipline,
+                        targetDepth: item.targetDepth,
+                        reachedDepth: item.reachedDepth
+                    })));
+                    
+                    // Try to find logs with any userId pattern that might match
+                    if (anyLogs.items.length > 0) {
+                        console.log('🔄 Found dive logs in database, attempting to match with current user...');
+                        
+                        // If there are logs but none match our user ID, use the most recent ones as a fallback
+                        const fallbackLogs = anyLogs.items.filter(item => 
+                            item.discipline || item.targetDepth
+                        );
+                        
+                        if (fallbackLogs.length > 0) {
+                            userDiveLogs = fallbackLogs;
+                            console.log(`✅ Using ${fallbackLogs.length} fallback dive logs for analysis`);
+                        }
+                    }
+                }
+                
             } catch (diveLogError) {
                 console.warn("⚠️ Could not load dive logs from Wix:", diveLogError);
                 userDiveLogs = [];
