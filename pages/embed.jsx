@@ -688,7 +688,7 @@ export default function Embed() {
             darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
           }`}>
             <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-              👤 {getDisplayName()} • Embedded
+              👤 {getDisplayName()}{isEmbedded ? ' • Widget' : ''}
               {getDisplayName() === "Loading..." && (
                 <span className="ml-2 animate-pulse">⏳</span>
               )}

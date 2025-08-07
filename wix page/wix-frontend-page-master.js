@@ -158,14 +158,33 @@ async function setupKovalAIWidget(aiWidget) {
         setTimeout(() => {
             try {
                 if (aiWidget.postMessage && userData) {
-                    aiWidget.postMessage({
+                    // ✅ FORMAT DATA FOR EMBED PAGE EXPECTATIONS
+                    const postMessageData = {
                         type: 'USER_AUTH',
+                        data: {
+                            userId: userData.userId,
+                            userName: userData.profile?.displayName || userData.profile?.nickname || 'User',
+                            userEmail: userData.profile?.loginEmail || '',
+                            firstName: userData.profile?.firstName || '',
+                            lastName: userData.profile?.lastName || '',
+                            profilePicture: userData.profile?.profilePicture || '',
+                            phone: userData.profile?.phone || '',
+                            bio: userData.profile?.bio || '',
+                            location: userData.profile?.location || '',
+                            source: 'wix-frontend-auth',
+                            isGuest: userData.profile?.isGuest || false,
+                            customFields: userData.profile?.customFields || {},
+                            diveLogs: userData.userDiveLogs || [],
+                            memories: userData.userMemories || []
+                        }
+                    };
+                    
+                    aiWidget.postMessage(postMessageData);
+                    console.log("📤 Sent authentic user data to widget via postMessage:", {
                         userId: userData.userId,
-                        profile: userData.profile,
-                        diveLogs: userData.userDiveLogs || [],
-                        memories: userData.userMemories || []
+                        userName: postMessageData.data.userName,
+                        isGuest: postMessageData.data.isGuest
                     });
-                    console.log("📤 Sent authentic user data to widget via postMessage:", userData.userId);
                 }
             } catch (postError) {
                 console.warn("⚠️ Could not send postMessage to widget:", postError);
@@ -332,24 +351,43 @@ async function sendEnhancedUserDataToWidget() {
             userId: 'guest-' + Date.now(),
             userName: 'Guest User',
             userEmail: '',
+            firstName: '',
+            lastName: '',
+            profilePicture: '',
+            phone: '',
+            bio: '',
+            location: '',
             isAuthenticated: false,
+            isGuest: true,
             source: 'wix-enhanced-page'
         };
         
         if (member && member.loggedIn) {
             userData = {
                 userId: member._id,
-                userName: member.profile?.nickname || member.profile?.firstName || 'Member',
+                userName: member.profile?.nickname || member.profile?.firstName || member.profile?.displayName || 'Member',
                 userEmail: member.loginEmail || '',
+                firstName: member.profile?.firstName || '',
+                lastName: member.profile?.lastName || '',
+                profilePicture: member.profile?.profilePicture || '',
+                phone: member.profile?.phone || '',
+                bio: member.profile?.bio || '',
+                location: member.profile?.location || '',
                 isAuthenticated: true,
+                isGuest: false,
                 profile: member.profile,
-                source: 'wix-enhanced-authenticated'
+                source: 'wix-enhanced-authenticated',
+                customFields: member.profile?.customFields || {}
             };
         }
         
         // Send to widget via postMessage
-        postEnhancedMessageToWidget('USER_DATA_RESPONSE', { userData });
-        console.log('✅ Enhanced user data sent to widget');
+        postEnhancedMessageToWidget('USER_AUTH', { ...userData });
+        console.log('✅ Enhanced user data sent to widget:', {
+            userId: userData.userId,
+            userName: userData.userName,
+            isGuest: userData.isGuest
+        });
         
     } catch (error) {
         console.error('❌ Error sending enhanced user data to widget:', error);
@@ -454,11 +492,27 @@ function postEnhancedMessageToWidget(type, data = {}) {
                     };
                     
                     widget.contentWindow.postMessage(message, '*');
-                    console.log('📤 Enhanced message sent to widget:', type);
+                    console.log(`📤 Enhanced message sent to widget ${id}:`, type);
                     return; // Success, exit loop
+                } else if (widget && widget.src) {
+                    // Try to get iframe reference for widgets with src
+                    const iframe = widget.src ? document.querySelector(`iframe[src*="${widget.src}"]`) : null;
+                    if (iframe && iframe.contentWindow) {
+                        const message = {
+                            type,
+                            data,
+                            source: 'wix-enhanced-page',
+                            timestamp: Date.now()
+                        };
+                        
+                        iframe.contentWindow.postMessage(message, '*');
+                        console.log(`📤 Enhanced message sent to iframe ${id}:`, type);
+                        return; // Success, exit loop
+                    }
                 }
             } catch (e) {
                 // Continue trying other IDs
+                console.log(`⚠️ Could not send to widget ${id}:`, e.message);
             }
         }
         
