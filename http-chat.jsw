@@ -13,9 +13,17 @@ const AI_BACKEND_URL = "https://kovaldeepai-main.vercel.app/api/chat-embed";
 export async function post_chat(request) {
     try {
         const { userMessage, userId, profile = {}, diveLogs = [] } = request.body;
+        
+        console.log('📥 Chat request received:', {
+            userMessage: userMessage?.substring(0, 50) + '...',
+            userId: userId,
+            profileKeys: Object.keys(profile),
+            diveLogsCount: diveLogs.length
+        });
 
         // ✅ Validate required inputs
         if (!userMessage?.trim()) {
+            console.error('❌ Empty message received');
             return {
                 status: 400,
                 body: {
@@ -29,12 +37,18 @@ export async function post_chat(request) {
             };
         }
 
+        // Since this is a private page accessible only to authenticated members,
+        // we trust that Wix handles authentication at the page level
+        const effectiveUserId = userId || 'member';
+        console.log('🔍 Processing request for member:', effectiveUserId);
+
         // ✅ Retrieve dive logs if not provided
         let userDiveLogs = diveLogs;
-        if (!userDiveLogs.length && userId) {
+        if (!userDiveLogs.length && effectiveUserId) {
             try {
+                console.log('🔍 Querying dive logs for member:', effectiveUserId);
                 const results = await wixData.query("@deepfreediving/kovaldeepai-app/Import1")
-                    .eq("userId", userId)
+                    .eq("userId", effectiveUserId)
                     .and(wixData.query("@deepfreediving/kovaldeepai-app/Import1")
                         .or(
                             wixData.query("@deepfreediving/kovaldeepai-app/Import1").isNotEmpty("discipline"),
@@ -46,8 +60,9 @@ export async function post_chat(request) {
                     .find();
                     
                 userDiveLogs = results.items;
+                console.log(`✅ Retrieved ${userDiveLogs.length} dive logs from Wix database for member ${effectiveUserId}`);
             } catch (diveLogError) {
-                console.warn("⚠️ Could not load dive logs:", diveLogError);
+                console.warn("⚠️ Could not load dive logs from Wix:", diveLogError);
                 userDiveLogs = [];
             }
         }
@@ -67,11 +82,15 @@ export async function post_chat(request) {
         // ✅ Send query to Next.js AI backend
         const payload = {
             message: userMessage,  // ✅ Use 'message' for Next.js backend
-            userId: userId || 'guest',
+            userId: effectiveUserId,
             profile: userProfile
         };
 
-        console.log("🚀 Sending to AI backend:", payload);
+        console.log("🚀 Sending to AI backend for member:", {
+            userId: effectiveUserId,
+            message: payload.message.substring(0, 50) + '...',
+            profileSummary: `PB: ${userProfile.pb || 'Unknown'}, Dives: ${userProfile.totalDives}`
+        });
 
         const response = await fetch(AI_BACKEND_URL, {
             method: "POST",
