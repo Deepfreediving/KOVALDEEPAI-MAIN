@@ -49,16 +49,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { log, threadId, userId } = req.body as {
       log: DiveLog;
-      threadId: string;
+      threadId?: string; // Make threadId optional
       userId: string;
     };
 
     // Validate input
-    if (!log || !threadId || !userId) {
+    if (!log || !userId) {
       return res.status(400).json({
-        error: 'Missing required fields: log, threadId, or userId',
+        error: 'Missing required fields: log or userId',
       });
     }
+
+    // Use default threadId if not provided
+    const finalThreadId = threadId || `dive-analysis-${userId}-${Date.now()}`;
 
     // ✅ 1. Generate a human-readable dive log summary
     const summary = `
@@ -106,7 +109,7 @@ Notes: ${log.notes}
 
     userMemory.push({
       ...log,
-      threadId,
+      threadId: finalThreadId,
       coachingReport,
       timestamp: new Date().toISOString(),
     });
@@ -117,27 +120,39 @@ Notes: ${log.notes}
       console.error('❌ Failed to write memory file:', e);
     }
 
-    // ✅ 4. Send data to OpenAI Memory API
-    await openai.beta.threads.messages.create(threadId, {
-      role: 'user',
-      content: `Here is a dive log entry:\n${summary}\n\nCoaching Analysis:\n${coachingReport}\n\nPlease store this for future coaching sessions.`,
-      metadata: {
-        type: 'diveLog',
-        userId,
-        createdFrom: 'record-memory.ts',
-      },
-    });
+    // ✅ 4. Send data to OpenAI Memory API (only if we have assistant ID)
+    let assistantMessage = { role: 'assistant', content: '✅ Log received and coaching report saved.' };
+    
+    if (assistantId) {
+      try {
+        await openai.beta.threads.messages.create(finalThreadId, {
+          role: 'user',
+          content: `Here is a dive log entry:\n${summary}\n\nCoaching Analysis:\n${coachingReport}\n\nPlease store this for future coaching sessions.`,
+          metadata: {
+            type: 'diveLog',
+            userId,
+            createdFrom: 'record-memory.ts',
+          },
+        });
 
-    await openai.beta.threads.runs.createAndPoll(threadId, {
-      assistant_id: assistantId!,
-    });
+        await openai.beta.threads.runs.createAndPoll(finalThreadId, {
+          assistant_id: assistantId!,
+        });
 
-    const messages = await openai.beta.threads.messages.list(threadId);
-    const assistantMessage =
-      messages.data.find((msg) => msg.role === 'assistant') || {
-        role: 'assistant',
-        content: '✅ Log received and coaching report saved.',
-      };
+        const messages = await openai.beta.threads.messages.list(finalThreadId);
+        const latestAssistantMessage = messages.data.find((msg) => msg.role === 'assistant');
+        if (latestAssistantMessage && latestAssistantMessage.content?.[0]?.type === 'text') {
+          assistantMessage = {
+            role: 'assistant',
+            content: latestAssistantMessage.content[0].text.value
+          };
+        }
+      } catch (openaiError) {
+        console.warn('⚠️ OpenAI thread operations failed (but memory saved locally):', openaiError);
+      }
+    } else {
+      console.warn('⚠️ No OpenAI Assistant ID configured, skipping thread operations');
+    }
 
     // ✅ 5. Mirror memory to Wix CMS (non-blocking)
     fetch('https://www.deepfreediving.com/_functions/saveToUserMemory', {
@@ -147,7 +162,7 @@ Notes: ${log.notes}
         ...log,
         coachingReport,
         userId,
-        threadId,
+        threadId: finalThreadId,
       }),
     }).catch((err) => {
       console.error('⚠️ Failed to sync memory to Wix:', err.message || err);
