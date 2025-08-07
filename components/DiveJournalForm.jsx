@@ -130,7 +130,10 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
         timestamp: new Date().toISOString()
       };
 
-      // 🚀 STEP 1: Save dive log
+      // � Show immediate feedback
+      setAiFeedback("💾 Saving dive log locally...");
+
+      // �🚀 STEP 1: Save dive log
       const saveLogRes = await fetch('/api/analyze/save-dive-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,6 +147,20 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
 
       const saveLogResult = await saveLogRes.json();
       console.log('✅ Dive log saved:', saveLogResult);
+      
+      // ✅ Show success with local storage confirmation
+      setAiFeedback("✅ Dive log saved locally! Syncing to Wix...");
+      
+      // ✅ Save to local storage as backup
+      const savedDiveLogs = JSON.parse(localStorage.getItem('savedDiveLogs') || '[]');
+      savedDiveLogs.push({
+        id: saveLogResult._id || saveLogResult.data?.id,
+        ...diveLogData,
+        savedAt: new Date().toISOString(),
+        syncedToWix: saveLogResult.syncedToWix || false
+      });
+      localStorage.setItem('savedDiveLogs', JSON.stringify(savedDiveLogs));
+      console.log('💾 Dive log backed up to local storage');
       
       const diveLogId = saveLogResult._id || saveLogResult.data?.id;
 
