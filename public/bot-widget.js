@@ -96,6 +96,53 @@
                            event.origin === 'null' ||  // For local testing
                            event.origin === window.location.origin;
         
+        // Handle Wix Edit Mode Change Event
+        if (event.data.intent === 'TPA2' && event.data.type === 'registerEventListener') {
+          console.log('🎛️ Wix edit mode event detected:', event.data);
+          
+          if (event.data.data && event.data.data.eventKey === 'EDIT_MODE_CHANGE') {
+            console.log('✏️ Registering edit mode change listener');
+            
+            // Send acknowledgment back to Wix
+            if (window.parent !== window) {
+              try {
+                window.parent.postMessage({
+                  intent: 'TPA2',
+                  callId: event.data.callId,
+                  type: 'registerEventListenerResponse',
+                  success: true
+                }, '*');
+                console.log('📤 Sent edit mode registration response to Wix');
+              } catch (error) {
+                console.error('❌ Failed to send edit mode response:', error);
+              }
+            }
+          }
+          return;
+        }
+        
+        // Handle Edit Mode State Changes
+        if (event.data.type === 'EDIT_MODE_CHANGE') {
+          const isEditMode = event.data.editMode === true;
+          console.log(`🎛️ Edit mode ${isEditMode ? 'ENABLED' : 'DISABLED'}`);
+          
+          // Update widget behavior based on edit mode
+          this.handleEditModeChange(isEditMode);
+          return;
+        }
+        
+        // Handle User Registration Response
+        if (event.data.type === 'USER_REGISTRATION_RESPONSE') {
+          console.log('🔐 Registration response received:', event.data);
+          
+          if (event.data.hasAccess) {
+            this.handleRegisteredUser(event.data.user, event.data.accessData);
+          } else {
+            this.handleUnregisteredUser(event.data.user);
+          }
+          return;
+        }
+        
         if (validOrigin && event.data.type === 'USER_DATA_RESPONSE' && event.data.userData) {
           const wixUserData = event.data.userData;
           console.log('✅ Received authentic user data from Wix page:', wixUserData);
@@ -453,6 +500,190 @@
 
     disconnectedCallback() {
       console.log('🔌 Koval AI widget disconnected from DOM');
+    }
+
+    // ✅ HANDLE WIX EDIT MODE CHANGES
+    handleEditModeChange(isEditMode) {
+      console.log(`🎛️ Handling edit mode change: ${isEditMode ? 'EDIT MODE' : 'LIVE MODE'}`);
+      
+      // Store edit mode state
+      this.isEditMode = isEditMode;
+      
+      if (isEditMode) {
+        // In edit mode - show placeholder or admin interface
+        console.log('✏️ Widget in EDIT MODE - Limited functionality');
+        this.postMessage('EDIT_MODE_ENABLED', { 
+          editMode: true,
+          message: 'Widget is in edit mode'
+        });
+        
+        // Optionally show edit mode indicator
+        if (this.iframe) {
+          this.iframe.style.border = '2px dashed #3498db';
+          this.iframe.style.opacity = '0.8';
+        }
+      } else {
+        // In live mode - full functionality for registered users
+        console.log('👀 Widget in LIVE MODE - Checking user registration');
+        this.postMessage('EDIT_MODE_DISABLED', { 
+          editMode: false,
+          message: 'Widget is live'
+        });
+        
+        // Remove edit mode styling
+        if (this.iframe) {
+          this.iframe.style.border = 'none';
+          this.iframe.style.opacity = '1';
+        }
+        
+        // Re-check user registration status
+        this.checkUserRegistration();
+      }
+    }
+
+    // ✅ CHECK USER REGISTRATION STATUS
+    checkUserRegistration() {
+      console.log('🔍 Checking user registration status...');
+      
+      // Check if user is registered for your program
+      if (window.parent !== window) {
+        try {
+          window.parent.postMessage({
+            type: 'CHECK_USER_REGISTRATION',
+            source: 'koval-ai-widget',
+            timestamp: Date.now()
+          }, '*');
+          console.log('📤 Sent registration check to parent');
+        } catch (error) {
+          console.error('❌ Failed to check registration:', error);
+        }
+      }
+      
+      // Also check via Wix Members API
+      this.detectRegisteredWixUser();
+    }
+
+    // ✅ ENHANCED USER DETECTION FOR REGISTERED USERS
+    detectRegisteredWixUser() {
+      try {
+        // Method 1: Check if user is logged in and has access
+        if (typeof window !== 'undefined' && window.wixUsers && window.wixUsers.currentUser) {
+          const currentUser = window.wixUsers.currentUser;
+          console.log('🔍 Checking registered user status:', currentUser);
+          
+          if (currentUser.loggedIn === true && currentUser.id) {
+            // User is logged in, now check if they're registered for your program
+            this.verifyUserAccess(currentUser);
+          } else {
+            console.log('ℹ️ User not logged in - showing guest interface');
+            this.handleUnregisteredUser();
+          }
+        }
+        
+        // Method 2: Check via $w.user API
+        if (typeof $w !== 'undefined' && $w && $w.user) {
+          $w.user.currentUser.then((user) => {
+            if (user && user.loggedIn && user.id) {
+              this.verifyUserAccess(user);
+            }
+          }).catch((error) => {
+            console.warn('⚠️ $w.user API error:', error);
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ User detection failed:', error);
+      }
+    }
+
+    // ✅ VERIFY USER HAS ACCESS TO YOUR PROGRAM
+    async verifyUserAccess(user) {
+      console.log('🔐 Verifying user access for:', user.id);
+      
+      try {
+        // Check via your Wix backend function
+        const response = await fetch('/_functions/checkUserAccess', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            userEmail: user.loginEmail
+          }),
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const accessData = await response.json();
+          console.log('✅ Access verification result:', accessData);
+          
+          if (accessData.hasAccess) {
+            // User has paid/registered access
+            this.handleRegisteredUser(user, accessData);
+          } else {
+            // User is logged in but hasn't paid/registered
+            this.handleUnregisteredUser(user);
+          }
+        } else {
+          console.warn('⚠️ Access check failed:', response.status);
+          this.handleUnregisteredUser(user);
+        }
+      } catch (error) {
+        console.warn('⚠️ Access verification error:', error);
+        // Fallback - allow access but log the issue
+        this.handleRegisteredUser(user, { hasAccess: true, source: 'fallback' });
+      }
+    }
+
+    // ✅ HANDLE REGISTERED USER WITH ACCESS
+    handleRegisteredUser(user, accessData) {
+      console.log('✅ User has access - enabling full functionality');
+      
+      const userData = {
+        userId: user.id,
+        userName: user.displayName || user.nickname || user.loginEmail || 'Registered User',
+        userEmail: user.loginEmail || '',
+        wixId: user.id,
+        source: 'wix-registered-user',
+        hasAccess: true,
+        accessLevel: accessData.accessLevel || 'standard',
+        registrationDate: accessData.registrationDate,
+        theme: this.currentTheme || 'light'
+      };
+      
+      // Send to embed
+      if (this.iframe && this.isReady) {
+        this.postMessage('USER_AUTH', userData);
+        this.postMessage('ACCESS_GRANTED', accessData);
+      }
+      
+      console.log('📤 Sent registered user data to embed:', userData);
+    }
+
+    // ✅ HANDLE UNREGISTERED USER
+    handleUnregisteredUser(user = null) {
+      console.log('❌ User does not have access - showing registration prompt');
+      
+      const userData = {
+        userId: user ? user.id : 'guest-' + Date.now(),
+        userName: user ? (user.displayName || user.nickname || 'User') : 'Guest User',
+        userEmail: user ? user.loginEmail || '' : '',
+        source: 'wix-unregistered-user',
+        hasAccess: false,
+        needsRegistration: true,
+        theme: this.currentTheme || 'light'
+      };
+      
+      // Send to embed
+      if (this.iframe && this.isReady) {
+        this.postMessage('USER_AUTH', userData);
+        this.postMessage('ACCESS_DENIED', { 
+          message: 'Registration required',
+          registrationUrl: '/_functions/registerForProgram' 
+        });
+      }
+      
+      console.log('📤 Sent unregistered user data to embed:', userData);
     }
   }
 
