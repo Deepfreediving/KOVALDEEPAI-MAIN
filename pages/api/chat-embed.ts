@@ -58,12 +58,17 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// ✅ System prompt generator - Enhanced with dive log context
-function generateSystemPrompt(level: 'expert' | 'beginner', contextChunks: string[], diveLogContext: string = ''): string {
+// ✅ System prompt generator - Enhanced with dive log context and user identification
+function generateSystemPrompt(level: 'expert' | 'beginner', contextChunks: string[], diveLogContext: string = '', userId: string = ''): string {
   const knowledgeContext = contextChunks.length ? contextChunks.join('\n\n---\n\n') : '';
   
+  // This is a private members-only page, so all users are authenticated members
+  const userGreeting = userId && userId !== 'member' 
+    ? `You are speaking with member ${userId}. ` 
+    : 'You are speaking with an authenticated member. ';
+  
   return `
-You are Koval Deep AI, Daniel Koval's freediving coaching system. You must provide accurate, trustworthy advice based STRICTLY on Daniel Koval's methodology.
+You are Koval Deep AI, Daniel Koval's freediving coaching system. ${userGreeting}This is a private members-only page, so provide personalized coaching based on their progress and training history.
 
 🎯 CRITICAL REQUIREMENTS:
 - ONLY use information from the provided knowledge base below
@@ -73,6 +78,7 @@ You are Koval Deep AI, Daniel Koval's freediving coaching system. You must provi
 - Always prioritize safety and progressive training
 - Keep responses detailed but focused (under 800 words)
 - When dive logs are available, reference them for personalized coaching
+- Address the user personally as a valued member with access to exclusive training
 
 🚫 FORBIDDEN:
 - Making up training protocols not in the knowledge base
@@ -85,7 +91,7 @@ ${knowledgeContext || 'No specific knowledge found for this query. Provide only 
 
 ${diveLogContext}
 
-Based ONLY on the above knowledge and dive history, provide helpful, accurate guidance. If unsure, be honest about limitations.
+Based ONLY on the above knowledge and dive history, provide helpful, accurate guidance for this member. If unsure, be honest about limitations.
   `.trim();
 }
 
@@ -109,81 +115,128 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const { message, userId = 'guest', profile = {} } = req.body as {
+    const { message, userId, profile = {} } = req.body as {
       message: string;
       userId?: string;
       profile?: UserProfile;
     };
 
+    // ✅ Validate required inputs
     if (!message?.trim()) {
       return res.status(400).json({ error: 'Invalid message' });
     }
 
-    console.log(`💬 Processing message from ${userId}: "${message.substring(0, 50)}..."`);
+    // Since this is a private page accessible only to authenticated members,
+    // we don't need to validate userId - trust that Wix handles authentication
+    const effectiveUserId = userId || 'member';
+
+    console.log(`💬 Processing message from member ${effectiveUserId}: "${message.substring(0, 50)}..."`);
+    console.log(`📊 User profile summary: PB=${profile.pb || 'Unknown'}, Instructor=${profile.isInstructor || false}, Level=${detectUserLevel(profile)}`);
 
     // ✅ Load past memory AND dive logs for comprehensive coaching context
     let pastMemory: UserMemory = {};
     let diveLogContext = '';
+    
+    console.log(`🔍 Loading user data for: ${effectiveUserId}`);
+    
     try {
-      pastMemory = ((await fetchUserMemory(userId)) as UserMemory) || {};
+      pastMemory = ((await fetchUserMemory(effectiveUserId)) as UserMemory) || {};
+      console.log('✅ Loaded past memory');
       
-      // 🏊‍♂️ ENHANCED: Load dive logs directly from local storage first
-      console.log(`🔍 Loading dive logs for user: ${userId}`);
-      
+      // 🏊‍♂️ ENHANCED: Load dive logs directly using the file system API
       try {
-        const diveLogsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/get-dive-logs?userId=${userId}`);
+        // Use the internal dive logs loading logic
+        const fs = require('fs/promises');
+        const path = require('path');
         
-        if (diveLogsResponse.ok) {
-          const diveLogsData = await diveLogsResponse.json();
-          const recentDiveLogs = diveLogsData.logs
-            ?.slice(-5) // Last 5 dive logs
-            ?.map((log: any) => {
-              const details = [
-                `📅 ${log.date || 'Unknown date'}`,
-                `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
-                `📍 ${log.location || 'Unknown location'}`,
-                `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
-                log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
-                log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
-                log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
-                log.notes ? `📝 ${log.notes}` : ''
-              ].filter(Boolean).join(' | ');
-              
-              return details;
-            })
-            ?.join('\n');
+        const LOG_DIR = path.resolve('./data/diveLogs');
+        const userPath = path.join(LOG_DIR, effectiveUserId);
+        
+        console.log(`📂 Checking dive logs path: ${userPath}`);
+        
+        try {
+          await fs.access(userPath);
+          const files = await fs.readdir(userPath);
+          const logs: any[] = [];
+          
+          for (const file of files) {
+            if (!file.endsWith('.json')) continue;
             
-          if (recentDiveLogs) {
-            diveLogContext = `\n\n🏊‍♂️ YOUR RECENT DIVE LOGS:\n${recentDiveLogs}`;
-            console.log(`✅ Loaded ${diveLogsData.logs?.length || 0} dive logs for coaching context`);
-          } else {
-            console.log('📝 No dive logs found, checking memory system...');
+            try {
+              const filePath = path.join(userPath, file);
+              const content = await fs.readFile(filePath, 'utf8');
+              const parsed = JSON.parse(content);
+              if (parsed && typeof parsed === 'object') {
+                logs.push(parsed);
+              }
+            } catch (parseErr) {
+              console.warn(`⚠️ Could not parse dive log file ${file}:`, parseErr);
+            }
           }
+          
+          // Sort by timestamp (most recent first)
+          logs.sort((a, b) => {
+            const dateA = new Date(a.timestamp || 0).getTime();
+            const dateB = new Date(b.timestamp || 0).getTime();
+            return dateB - dateA;
+          });
+          
+          if (logs.length > 0) {
+            const recentDiveLogs = logs
+              .slice(0, 5) // Last 5 dive logs
+              .map((log: any) => {
+                const details = [
+                  `📅 ${log.date || 'Unknown date'}`,
+                  `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
+                  `📍 ${log.location || 'Unknown location'}`,
+                  `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
+                  log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
+                  log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
+                  log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
+                  log.notes ? `📝 ${log.notes}` : ''
+                ].filter(Boolean).join(' | ');
+                
+                return details;
+              })
+              .join('\n');
+              
+            diveLogContext = `\n\n🏊‍♂️ YOUR RECENT DIVE LOGS (${logs.length} total):\n${recentDiveLogs}`;
+            console.log(`✅ Loaded ${logs.length} dive logs directly from file system`);
+          } else {
+            console.log('📝 No dive log files found');
+          }
+        } catch (dirError) {
+          console.log(`📁 User dive logs directory doesn't exist: ${userPath}`);
         }
       } catch (diveLogError) {
-        console.warn('⚠️ Failed to load dive logs from API:', diveLogError);
+        console.warn('⚠️ Failed to load dive logs from file system:', diveLogError);
       }
       
-      // 🧠 Fallback: Load from memory system if no direct dive logs
+      // 🧠 Fallback: Load from memory system if no direct dive logs found
       if (!diveLogContext) {
-        const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/read-memory`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId })
-        });
-        
-        if (memoryResponse.ok) {
-          const memoryData = await memoryResponse.json();
-          const recentDiveLogs = memoryData.memory
-            ?.filter((entry: any) => entry.type === 'dive-log' || entry.disciplineType)
-            ?.slice(-3) // Last 3 dive logs from memory
-            ?.map((log: any) => `Date: ${log.date}, Discipline: ${log.discipline}, Reached: ${log.reachedDepth}m, Target: ${log.targetDepth}m, Notes: ${log.notes || 'None'}`)
-            ?.join('\n');
-            
-          if (recentDiveLogs) {
-            diveLogContext = `\n\n📊 RECENT DIVE HISTORY (from memory):\n${recentDiveLogs}`;
-            console.log(`✅ Loaded ${memoryData.memory?.length || 0} memory entries including recent dive logs`);
+        console.log('🔄 Attempting to load from memory system as fallback...');
+        try {
+          const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/read-memory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: effectiveUserId })
+          });
+          
+          if (memoryResponse.ok) {
+            const memoryData = await memoryResponse.json();
+            const recentDiveLogs = memoryData.memory
+              ?.filter((entry: any) => entry.type === 'dive-log' || entry.disciplineType)
+              ?.slice(-3) // Last 3 dive logs from memory
+              ?.map((log: any) => `Date: ${log.date}, Discipline: ${log.discipline}, Reached: ${log.reachedDepth}m, Target: ${log.targetDepth}m, Notes: ${log.notes || 'None'}`)
+              ?.join('\n');
+              
+            if (recentDiveLogs) {
+              diveLogContext = `\n\n📊 RECENT DIVE HISTORY (from memory):\n${recentDiveLogs}`;
+              console.log(`✅ Loaded ${memoryData.memory?.length || 0} memory entries including recent dive logs`);
+            }
           }
+        } catch (memoryError) {
+          console.warn('⚠️ Failed to load from memory system:', memoryError);
         }
       }
     } catch (err: unknown) {
@@ -204,11 +257,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Messages payload
     const messagesPayload: ChatMessage[] = [
-      { role: 'system', content: generateSystemPrompt(userLevel, contextChunks, diveLogContext) },
+      { role: 'system', content: generateSystemPrompt(userLevel, contextChunks, diveLogContext, effectiveUserId) },
       { role: 'user', content: message },
     ];
 
-    console.log(`🤖 Calling OpenAI with ${userLevel} profile and ${contextChunks.length} knowledge chunks`);
+    console.log(`🤖 Calling OpenAI with ${userLevel} profile, ${contextChunks.length} knowledge chunks, and dive log context for user: ${effectiveUserId}`);
+    if (diveLogContext) {
+      console.log('📊 Dive log context included:', diveLogContext.substring(0, 200) + '...');
+    }
 
     // ✅ Call OpenAI (with detailed error handling)
     let response;
@@ -237,13 +293,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Save conversation (safe)
     try {
-      await saveUserMemory(userId, {
+      const updatedMemory = {
         logs: [
           ...(pastMemory.logs || []),
-          { userMessage: message, assistantReply, timestamp: new Date().toISOString() },
+          { userMessage: message, assistantReply, timestamp: new Date().toISOString(), userId: effectiveUserId },
         ],
-        profile: mergedProfile,
-      });
+        profile: { ...mergedProfile, lastActiveUser: effectiveUserId },
+      };
+      
+      await saveUserMemory(effectiveUserId, updatedMemory);
+      console.log(`💾 Conversation saved for user: ${effectiveUserId}`);
     } catch (err: unknown) {
       console.warn('⚠️ Failed to save user memory (response still sent):', err instanceof Error ? err.message : String(err));
     }
