@@ -58,8 +58,8 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-// ✅ System prompt generator
-function generateSystemPrompt(level: 'expert' | 'beginner', contextChunks: string[]): string {
+// ✅ System prompt generator - Enhanced with dive log context
+function generateSystemPrompt(level: 'expert' | 'beginner', contextChunks: string[], diveLogContext: string = ''): string {
   const knowledgeContext = contextChunks.length ? contextChunks.join('\n\n---\n\n') : '';
   
   return `
@@ -72,6 +72,7 @@ You are Koval Deep AI, Daniel Koval's freediving coaching system. You must provi
 - Provide ${level}-level technical detail appropriate for the user's experience
 - Always prioritize safety and progressive training
 - Keep responses detailed but focused (under 800 words)
+- When dive logs are available, reference them for personalized coaching
 
 🚫 FORBIDDEN:
 - Making up training protocols not in the knowledge base
@@ -82,7 +83,9 @@ You are Koval Deep AI, Daniel Koval's freediving coaching system. You must provi
 📚 DANIEL KOVAL'S KNOWLEDGE BASE:
 ${knowledgeContext || 'No specific knowledge found for this query. Provide only general safety reminders and suggest consulting the full training materials.'}
 
-Based ONLY on the above knowledge, provide helpful, accurate guidance. If unsure, be honest about limitations.
+${diveLogContext}
+
+Based ONLY on the above knowledge and dive history, provide helpful, accurate guidance. If unsure, be honest about limitations.
   `.trim();
 }
 
@@ -118,30 +121,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`💬 Processing message from ${userId}: "${message.substring(0, 50)}..."`);
 
-    // ✅ Load past memory (safe) - Enhanced with dive log context
+    // ✅ Load past memory AND dive logs for comprehensive coaching context
     let pastMemory: UserMemory = {};
     let diveLogContext = '';
     try {
       pastMemory = ((await fetchUserMemory(userId)) as UserMemory) || {};
       
-      // Load recent dive logs for better coaching context
-      const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/read-memory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
+      // 🏊‍♂️ ENHANCED: Load dive logs directly from local storage first
+      console.log(`🔍 Loading dive logs for user: ${userId}`);
       
-      if (memoryResponse.ok) {
-        const memoryData = await memoryResponse.json();
-        const recentDiveLogs = memoryData.memory
-          ?.filter((entry: any) => entry.type === 'dive-log' || entry.disciplineType)
-          ?.slice(-3) // Last 3 dive logs
-          ?.map((log: any) => `Date: ${log.date}, Discipline: ${log.discipline}, Reached: ${log.reachedDepth}m, Target: ${log.targetDepth}m, Notes: ${log.notes || 'None'}`)
-          ?.join('\n');
-          
-        if (recentDiveLogs) {
-          diveLogContext = `\n\n📊 RECENT DIVE HISTORY:\n${recentDiveLogs}`;
-          console.log(`✅ Loaded ${memoryData.memory?.length || 0} memory entries including recent dive logs for coaching context`);
+      try {
+        const diveLogsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/get-dive-logs?userId=${userId}`);
+        
+        if (diveLogsResponse.ok) {
+          const diveLogsData = await diveLogsResponse.json();
+          const recentDiveLogs = diveLogsData.logs
+            ?.slice(-5) // Last 5 dive logs
+            ?.map((log: any) => {
+              const details = [
+                `📅 ${log.date || 'Unknown date'}`,
+                `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
+                `📍 ${log.location || 'Unknown location'}`,
+                `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
+                log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
+                log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
+                log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
+                log.notes ? `📝 ${log.notes}` : ''
+              ].filter(Boolean).join(' | ');
+              
+              return details;
+            })
+            ?.join('\n');
+            
+          if (recentDiveLogs) {
+            diveLogContext = `\n\n🏊‍♂️ YOUR RECENT DIVE LOGS:\n${recentDiveLogs}`;
+            console.log(`✅ Loaded ${diveLogsData.logs?.length || 0} dive logs for coaching context`);
+          } else {
+            console.log('📝 No dive logs found, checking memory system...');
+          }
+        }
+      } catch (diveLogError) {
+        console.warn('⚠️ Failed to load dive logs from API:', diveLogError);
+      }
+      
+      // 🧠 Fallback: Load from memory system if no direct dive logs
+      if (!diveLogContext) {
+        const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/read-memory`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        
+        if (memoryResponse.ok) {
+          const memoryData = await memoryResponse.json();
+          const recentDiveLogs = memoryData.memory
+            ?.filter((entry: any) => entry.type === 'dive-log' || entry.disciplineType)
+            ?.slice(-3) // Last 3 dive logs from memory
+            ?.map((log: any) => `Date: ${log.date}, Discipline: ${log.discipline}, Reached: ${log.reachedDepth}m, Target: ${log.targetDepth}m, Notes: ${log.notes || 'None'}`)
+            ?.join('\n');
+            
+          if (recentDiveLogs) {
+            diveLogContext = `\n\n📊 RECENT DIVE HISTORY (from memory):\n${recentDiveLogs}`;
+            console.log(`✅ Loaded ${memoryData.memory?.length || 0} memory entries including recent dive logs`);
+          }
         }
       }
     } catch (err: unknown) {
@@ -162,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Messages payload
     const messagesPayload: ChatMessage[] = [
-      { role: 'system', content: generateSystemPrompt(userLevel, contextChunks) + diveLogContext },
+      { role: 'system', content: generateSystemPrompt(userLevel, contextChunks, diveLogContext) },
       { role: 'user', content: message },
     ];
 
