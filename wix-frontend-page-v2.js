@@ -1,11 +1,14 @@
 import wixUsers from 'wix-users';
 import wixData from 'wix-data';
 
-// ✅ CORRECTED API ENDPOINTS TO MATCH YOUR FIXED BACKEND FUNCTIONS
-const CHAT_API = "https://www.deepfreediving.com/_functions/chat";  // ✅ Your post_chat function
-const USER_MEMORY_API = "https://www.deepfreediving.com/_functions/http-userMemory";  // ✅ Your http-userMemory.jsw
-const DIVE_LOGS_API = "https://www.deepfreediving.com/_functions/http-diveLogs";  // ✅ Your http-diveLogs.jsw
-const LOAD_MEMORIES_API = "https://www.deepfreediving.com/_functions/http-loadMemories";  // ✅ Your http-loadMemories.jsw
+// ✅ CORRECTED API ENDPOINTS TO MATCH YOUR DEPLOYED BACKEND FUNCTIONS
+const CHAT_API = "/_functions/chat";  // ✅ Your http-chat.jsw function
+const USER_MEMORY_API = "/_functions/userMemory";  // ✅ Your http-userMemory.jsw
+const DIVE_LOGS_API = "/_functions/diveLogs";  // ✅ Your http-diveLogs.jsw
+const LOAD_MEMORIES_API = "/_functions/loadMemories";  // ✅ Your http-loadMemories.jsw
+const WIX_CONNECTION_API = "/_functions/wixConnection";  // ✅ Your http-wixConnection.jsw
+const GET_USER_MEMORY_API = "/_functions/getUserMemory";  // ✅ Your http-getUserMemory.jsw
+const SAVE_TO_USER_MEMORY_API = "/_functions/saveToUserMemory";  // ✅ Your http-saveToUserMemory.jsw
 
 // ✅ BACKUP: Direct to Next.js backend if Wix functions fail
 const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/chat-embed";

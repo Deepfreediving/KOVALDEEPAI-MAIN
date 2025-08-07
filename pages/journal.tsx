@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import SavedDiveLogsViewer from "@/components/SavedDiveLogsViewer";
 
 interface DiveLog {
   date: string;
@@ -197,49 +198,61 @@ export default function Journal({ userId, onSave }: JournalProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded shadow-md">
-      <input
-        type="date"
-        name="date"
-        value={entry.date}
-        onChange={handleChange}
-        className="block mb-2"
-        required
-      />
-      <input
-        type="text"
-        name="location"
-        placeholder="Location"
-        value={entry.location}
-        onChange={handleChange}
-        className="block mb-2"
-        required
-      />
-      <input
-        type="text"
-        name="depth"
-        placeholder="Depth (meters)"
-        value={entry.depth}
-        onChange={handleChange}
-        className="block mb-2"
-        required
-      />
-      <textarea
-        name="notes"
-        placeholder="Notes"
-        value={entry.notes}
-        onChange={handleChange}
-        className="block mb-2"
-        rows={3}
-      ></textarea>
+    <>
+      <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded shadow-md">
+        <input
+          type="date"
+          name="date"
+          value={entry.date}
+          onChange={handleChange}
+          className="block mb-2"
+          required
+        />
+        <input
+          type="text"
+          name="location"
+          placeholder="Location"
+          value={entry.location}
+          onChange={handleChange}
+          className="block mb-2"
+          required
+        />
+        <input
+          type="text"
+          name="depth"
+          placeholder="Depth (meters)"
+          value={entry.depth}
+          onChange={handleChange}
+          className="block mb-2"
+          required
+        />
+        <textarea
+          name="notes"
+          placeholder="Notes"
+          value={entry.notes}
+          onChange={handleChange}
+          className="block mb-2"
+          rows={3}
+        ></textarea>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded"
-      >
-        {loading ? "Saving..." : "Save Dive Log"}
-      </button>
-    </form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          {loading ? "Saving..." : "Save Dive Log"}
+        </button>
+      </form>
+
+      {/* 📚 Dive Logs Viewer */}
+      <div className="mt-4">
+        <h2 className="text-xl font-semibold mb-2">Saved Dive Logs</h2>
+        {loadingDiveLogs ? (
+          <p>Loading dive logs...</p>
+        ) : (
+          <SavedDiveLogsViewer darkMode={false} />
+        )}
+      </div>
+    </>
   );
 }

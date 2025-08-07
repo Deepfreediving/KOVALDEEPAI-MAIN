@@ -1,8 +1,6 @@
-// ===== 📄 http-getUserProfile.jsw =====
-// This function fetches user profile data from Wix Collections/Members
+// 📄 backend/http-functions/http-getUserProfile.jsw
 
 import { ok, badRequest, serverError } from 'wix-http-functions';
-import wixUsers from 'wix-users-backend';
 import wixData from 'wix-data';
 
 /**
@@ -20,109 +18,67 @@ export function options_getUserProfile(request) {
 }
 
 /**
- * GET: Fetch user profile data
+ * POST: Fetch user profile data using userId from frontend
  */
-export async function get_getUserProfile(request) {
+export async function post_getUserProfile(request) {
     try {
-        console.log('🔍 Getting user profile from Collections/Members...');
-        
-        // Get current user ID
-        const currentUser = wixUsers.currentUser;
-        if (!currentUser || !currentUser.loggedIn) {
-            console.log('❌ No authenticated user found');
-            return ok({
+        const body = await request.body.json();
+        const userId = body.userId;
+
+        if (!userId) {
+            return badRequest({
                 headers: {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                body: JSON.stringify({
-                    success: false,
-                    isGuest: true,
-                    user: {
-                        userId: 'guest-' + Date.now(),
-                        displayName: 'Guest User',
-                        email: '',
-                        firstName: '',
-                        lastName: '',
-                        profilePicture: '',
-                        source: 'guest'
-                    }
-                })
+                body: JSON.stringify({ success: false, error: 'Missing userId' })
             });
         }
 
-        const userId = currentUser.id;
-        console.log('👤 Current user ID:', userId);
+        console.log('🔍 Looking up profile for userId:', userId);
 
-        // Try to get user profile from Members collection
-        let memberProfile = null;
-        try {
-            const memberQuery = await wixData.query('Members')
-                .eq('_id', userId)
-                .find();
-                
-            if (memberQuery.items && memberQuery.items.length > 0) {
-                memberProfile = memberQuery.items[0];
-                console.log('✅ Found member profile in collection:', memberProfile);
-            } else {
-                console.log('⚠️ No member profile found in Members collection');
-            }
-        } catch (collectionError) {
-            console.log('⚠️ Members collection not accessible or doesn\'t exist:', collectionError.message);
-        }
+        const memberQuery = await wixData.query('Members')
+            .eq('_id', userId)
+            .find();
 
-        // Get basic user data from Wix Users API as fallback
-        const userProfile = {
-            userId: userId,
-            displayName: currentUser.displayName || 'User',
-            email: currentUser.loginEmail || '',
+        let userProfile = {
+            userId,
+            displayName: 'User',
+            email: '',
             firstName: '',
             lastName: '',
             profilePicture: '',
-            source: 'wix-users-api'
+            source: 'members-collection'
         };
 
-        // If we found member profile, merge the data
-        if (memberProfile) {
-            userProfile.displayName = memberProfile.displayName || 
-                                    memberProfile.firstName + ' ' + memberProfile.lastName ||
-                                    memberProfile.name ||
-                                    userProfile.displayName;
-                                    
-            userProfile.firstName = memberProfile.firstName || '';
-            userProfile.lastName = memberProfile.lastName || '';
-            userProfile.email = memberProfile.email || userProfile.email;
-            userProfile.profilePicture = memberProfile.profilePicture?.url || 
-                                       memberProfile.picture?.url || 
-                                       memberProfile.avatar?.url || '';
-            userProfile.phone = memberProfile.phone || '';
-            userProfile.bio = memberProfile.bio || memberProfile.description || '';
-            userProfile.location = memberProfile.location || memberProfile.city || '';
-            userProfile.source = 'members-collection';
-            
-            // Add any custom fields that might exist
-            if (memberProfile.customFields) {
-                userProfile.customFields = memberProfile.customFields;
+        if (memberQuery.items.length > 0) {
+            const member = memberQuery.items[0];
+
+            userProfile.displayName = member.displayName || `${member.firstName || ''} ${member.lastName || ''}`;
+            userProfile.email = member.email || '';
+            userProfile.firstName = member.firstName || '';
+            userProfile.lastName = member.lastName || '';
+            userProfile.profilePicture = member.profilePicture?.url || member.picture?.url || '';
+            userProfile.phone = member.phone || '';
+            userProfile.bio = member.bio || member.description || '';
+            userProfile.location = member.location || member.city || '';
+
+            if (member.customFields) {
+                userProfile.customFields = member.customFields;
             }
         }
-
-        console.log('✅ Final user profile:', userProfile);
 
         return ok({
             headers: {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            body: JSON.stringify({
-                success: true,
-                isGuest: false,
-                user: userProfile
-            })
+            body: JSON.stringify({ success: true, user: userProfile })
         });
 
     } catch (error) {
         console.error('❌ Error getting user profile:', error);
-        
+
         return serverError({
             headers: {
                 'Content-Type': 'application/json',
@@ -140,10 +96,4 @@ export async function get_getUserProfile(request) {
             })
         });
     }
-}
-}
-
-export async function post_getUserProfile(request) {
-    // Handle POST requests the same way
-    return get_getUserProfile(request);
 }
