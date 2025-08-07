@@ -161,24 +161,37 @@ export default function Embed() {
           break;
           
         case 'USER_AUTH':
-          console.log('👤 User auth received:', event.data.data);
+          console.log('👤 User auth received with rich profile data:', event.data.data);
+          
           if (event.data.data?.userId) {
             setUserId(event.data.data.userId);
             localStorage.setItem("kovalUser", event.data.data.userId);
           }
           
-          // Update profile with Wix user data
+          // Update profile with rich Wix Collections/Members data
           if (event.data.data?.userName || event.data.data?.userEmail) {
-            const newProfile = {
-              nickname: event.data.data.userName || event.data.data.userEmail || 'User',
-              displayName: event.data.data.userName || event.data.data.userEmail || 'User',
+            const richProfile = {
+              nickname: event.data.data.userName || 
+                       event.data.data.firstName + ' ' + event.data.data.lastName ||
+                       event.data.data.userEmail || 'User',
+              displayName: event.data.data.userName || 
+                          event.data.data.firstName + ' ' + event.data.data.lastName ||
+                          event.data.data.userEmail || 'User',
               loginEmail: event.data.data.userEmail || '',
-              source: event.data.data.source || 'wix-widget'
+              firstName: event.data.data.firstName || '',
+              lastName: event.data.data.lastName || '',
+              profilePicture: event.data.data.profilePicture || '',
+              phone: event.data.data.phone || '',
+              bio: event.data.data.bio || '',
+              location: event.data.data.location || '',
+              source: event.data.data.source || 'wix-collections',
+              customFields: event.data.data.customFields || {},
+              isGuest: event.data.data.isGuest || false
             };
             
-            setProfile(newProfile);
-            localStorage.setItem("kovalProfile", JSON.stringify(newProfile));
-            console.log('✅ Profile updated with Wix user data:', newProfile);
+            setProfile(richProfile);
+            localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
+            console.log('✅ Rich profile updated with Collections/Members data:', richProfile);
           }
           
           if (event.data.data?.diveLogs) {
