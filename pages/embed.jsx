@@ -66,14 +66,30 @@ export default function Embed() {
     }
   };
 
-  const getDisplayName = useCallback(() =>
-    profile?.loginEmail ||
-    profile?.contactDetails?.firstName ||
-    profile?.displayName ||
-    profile?.nickname ||
-    (userId?.startsWith("guest") ? "Guest User" : "User"),
-    [profile, userId]
-  );
+  const getDisplayName = useCallback(() => {
+    // Try rich profile data first (from Wix Collections/Members)
+    if (profile?.displayName && profile.displayName !== 'Guest User') {
+      return profile.displayName;
+    }
+    if (profile?.nickname && profile.nickname !== 'Guest User') {
+      return profile.nickname;
+    }
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    if (profile?.firstName) {
+      return profile.firstName;
+    }
+    if (profile?.loginEmail) {
+      return profile.loginEmail;
+    }
+    if (profile?.contactDetails?.firstName) {
+      return profile.contactDetails.firstName;
+    }
+    
+    // Fallback to guest user only if userId starts with "guest"
+    return userId?.startsWith("guest") ? "Guest User" : "User";
+  }, [profile, userId]);
 
   // ✅ INITIALIZATION
   useEffect(() => {
@@ -162,8 +178,11 @@ export default function Embed() {
           
         case 'USER_AUTH':
           console.log('👤 User auth received with rich profile data:', event.data.data);
+          console.log('🔍 Current profile before update:', profile);
+          console.log('🔍 Current userId before update:', userId);
           
           if (event.data.data?.userId) {
+            console.log('✅ Setting userId to:', event.data.data.userId);
             setUserId(event.data.data.userId);
             localStorage.setItem("kovalUser", event.data.data.userId);
           }
@@ -189,9 +208,12 @@ export default function Embed() {
               isGuest: event.data.data.isGuest || false
             };
             
+            console.log('✅ Setting rich profile to:', richProfile);
             setProfile(richProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
             console.log('✅ Rich profile updated with Collections/Members data:', richProfile);
+          } else {
+            console.log('⚠️ No userName or userEmail in USER_AUTH data');
           }
           
           if (event.data.data?.diveLogs) {
