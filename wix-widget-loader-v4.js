@@ -23,7 +23,7 @@
   // ✅ ENHANCED WIX USER DETECTION
   async function getWixUserData() {
     const userData = {
-      userId: 'wix-guest-' + Date.now(),
+      userId: 'guest-' + Date.now(),  // ✅ Use consistent guest format
       userName: 'Guest User',
       userEmail: '',
       firstName: '',
@@ -40,20 +40,20 @@
     console.log('🔍 Detecting Wix user...');
 
     try {
-      // Method 1: Check $w.user API (Wix Blocks/Editor)
-      if (typeof $w !== 'undefined' && $w && $w.user) {
-        console.log('📱 Wix Editor available, checking user status...');
+      // Method 1: Check wixUsers from 'wix-users' module (most reliable)
+      if (typeof wixUsers !== 'undefined' && wixUsers && wixUsers.currentUser) {
+        console.log('📱 wixUsers API available, checking user status...');
         
         try {
-          const user = await $w.user.currentUser;
+          const user = wixUsers.currentUser;
           if (user && user.loggedIn && user.id) {
-            console.log('✅ Wix user found via $w.user:', user);
+            console.log('✅ Wix user found via wixUsers:', user);
             
-            userData.userId = 'wix-' + user.id;
+            userData.userId = user.id;  // ✅ Use the actual Wix member ID (no prefix)
             userData.userName = user.nickname || user.displayName || user.loginEmail || 'Wix User';
             userData.userEmail = user.loginEmail || '';
             userData.wixId = user.id;
-            userData.source = 'wix-user-api';
+            userData.source = 'wix-users-api';
             userData.isGuest = false;
             
             // Try to get rich profile data from backend
@@ -88,11 +88,34 @@
             return userData;
           }
         } catch (userError) {
+          console.warn('⚠️ wixUsers API error:', userError.message);
+        }
+      }
+
+      // Method 2: Check $w.user API (Wix Blocks/Editor) as fallback
+      if (typeof $w !== 'undefined' && $w && $w.user) {
+        console.log('🔄 Trying $w.user as fallback...');
+        
+        try {
+          const user = await $w.user.currentUser;
+          if (user && user.loggedIn && user.id) {
+            console.log('✅ Wix user found via $w.user:', user);
+            
+            userData.userId = user.id;
+            userData.userName = user.nickname || user.displayName || user.loginEmail || 'Wix User';
+            userData.userEmail = user.loginEmail || '';
+            userData.wixId = user.id;
+            userData.source = 'wix-blocks-api';
+            userData.isGuest = false;
+            
+            return userData;
+          }
+        } catch (userError) {
           console.warn('⚠️ $w.user API error:', userError.message);
         }
       }
 
-      // Method 2: Check window.wixUsers
+      // Method 3: Check window.wixUsers
       if (typeof window !== 'undefined' && window.wixUsers) {
         console.log('🌐 Checking window.wixUsers...');
         
@@ -100,7 +123,7 @@
         if (currentUser && currentUser.loggedIn && currentUser.id) {
           console.log('✅ Wix user found via window.wixUsers:', currentUser);
           
-          userData.userId = 'wix-' + currentUser.id;
+          userData.userId = currentUser.id;  // ✅ Use the actual Wix member ID (no prefix)
           userData.userName = currentUser.displayName || currentUser.nickname || currentUser.loginEmail || 'Wix User';
           userData.userEmail = currentUser.loginEmail || '';
           userData.wixId = currentUser.id;
@@ -111,7 +134,7 @@
         }
       }
 
-      // Method 3: Try backend connection test
+      // Method 4: Try backend connection test
       try {
         console.log('🔗 Testing backend connection...');
         const testResponse = await fetch('/_functions/wixConnection', {
@@ -136,7 +159,7 @@
         console.warn('⚠️ Backend connection error:', backendError.message);
       }
 
-      // Method 4: Check for Wix session cookies/tokens
+      // Method 5: Check for Wix session cookies/tokens
       if (typeof document !== 'undefined') {
         const cookies = document.cookie;
         if (cookies.includes('wix-session') || cookies.includes('XSRF-TOKEN')) {
@@ -206,30 +229,53 @@
       script.onload = () => {
         console.log('✅ Widget script loaded successfully');
         
-        // Create the widget element
-        const widget = document.createElement('koval-ai');
-        widget.style.cssText = `
+        // Create iframe-based widget instead of custom element
+        const iframe = document.createElement('iframe');
+        iframe.src = `${CONFIG.EMBED_URL}?userId=${encodeURIComponent(userData.userId)}&userName=${encodeURIComponent(userData.userName)}`;
+        iframe.style.cssText = `
           width: 100%; 
           height: 100%; 
           min-height: 600px; 
-          display: block;
+          border: none;
+          border-radius: 8px;
+          background: #f8f9fa;
         `;
-        
-        // Pass user data to widget
-        widget.setAttribute('data-user', JSON.stringify(userData));
+        iframe.allowFullscreen = true;
+        iframe.allow = "microphone; camera; autoplay";
         
         // Add to container
-        container.appendChild(widget);
+        container.appendChild(iframe);
         
-        console.log('🎉 Koval AI Widget initialized successfully!');
+        console.log('🎉 Koval AI Widget (iframe) initialized successfully!');
         
-        // Optional: Test communication
-        setTimeout(() => {
-          if (widget.postMessage) {
-            widget.postMessage('USER_AUTH', userData);
-            console.log('📤 Sent initial user data to widget');
+        // Set up message listener for iframe communication
+        window.addEventListener('message', (event) => {
+          if (event.origin !== CONFIG.API_BASE) return;
+          
+          console.log('📨 Message from widget:', event.data);
+          
+          // Handle widget messages
+          if (event.data.type === 'WIDGET_READY') {
+            // Send user data when widget is ready
+            iframe.contentWindow.postMessage({
+              type: 'USER_AUTH',
+              data: userData
+            }, CONFIG.API_BASE);
+            console.log('📤 Sent user data to widget');
           }
-        }, 1000);
+        });
+        
+        // Send initial data after a short delay
+        setTimeout(() => {
+          iframe.contentWindow.postMessage({
+            type: 'INIT_USER_DATA',
+            data: {
+              ...userData,
+              diveLogs: []  // Widget loader doesn't have access to dive logs, let the iframe fetch them
+            }
+          }, CONFIG.API_BASE);
+          console.log('📤 Sent initial user data to widget');
+        }, 2000);
       };
       
       script.onerror = () => {

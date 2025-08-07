@@ -85,7 +85,7 @@
 
       // ✅ ENHANCED USER DATA with theme and better Wix detection
       let userData = {
-        userId: 'wix-guest-' + Date.now(),
+        userId: 'guest-' + Date.now(),  // ✅ Use consistent guest format
         userName: 'Guest User',
         source: 'wix-widget-enhanced',
         theme: theme,  // ✅ Pass theme to embed
@@ -107,14 +107,14 @@
             if (currentUser.loggedIn === true && currentUser.id) {
               userData = {
                 ...userData,
-                userId: 'wix-' + currentUser.id,
+                userId: currentUser.id,  // ✅ Use the actual Wix member ID (no prefix)
                 userName: currentUser.displayName || currentUser.nickname || currentUser.loginEmail || 'Wix User',
                 userEmail: currentUser.loginEmail || '',
                 wixId: currentUser.id,
                 source: 'wix-authenticated',
                 theme: theme  // ✅ Keep theme
               };
-              console.log('✅ Wix user authenticated:', userData);
+              console.log('✅ Wix user authenticated with real member ID:', userData);
               return true;
             } else {
               console.log('ℹ️ Wix user not logged in');

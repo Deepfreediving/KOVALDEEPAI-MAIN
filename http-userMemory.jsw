@@ -40,10 +40,10 @@ function createResponse(status, data, request) {
     };
 }
 
-const successResponse = (request, data) => createResponse(200, data, request);
-const badRequestResponse = (request, message) => createResponse(400, { error: message, success: false }, request);
-const unauthorizedResponse = (request, message) => createResponse(401, { error: message, success: false }, request);
-const serverErrorResponse = (request, message) => createResponse(500, { error: message, success: false }, request);
+const successResponse = (request, data) => createResponse(200, { success: true, timestamp: new Date().toISOString(), ...data }, request);
+const badRequestResponse = (request, message) => createResponse(400, { error: message, success: false, timestamp: new Date().toISOString() }, request);
+const unauthorizedResponse = (request, message) => createResponse(401, { error: message, success: false, timestamp: new Date().toISOString() }, request);
+const serverErrorResponse = (request, message) => createResponse(500, { error: message, success: false, timestamp: new Date().toISOString() }, request);
 const baseResponse = (status, request) => ({ status, headers: createResponse(status, {}, request).headers });
 
 // === Helpers ===
@@ -70,8 +70,11 @@ export async function get_userMemory(request) {
         
         // Try to get from current user if available
         try {
-            const currentUser = await wixUsersBackend.currentUser;
-            if (currentUser?.id) userId = currentUser.id;
+            // ✅ FIXED: Correct way to get current user in backend
+            if (wixUsersBackend.currentUser && wixUsersBackend.currentUser.loggedIn) {
+                userId = wixUsersBackend.currentUser.id;
+                console.log("✅ Found authenticated user:", userId);
+            }
         } catch (authError) {
             console.log("ℹ️ No authenticated user, using query userId");
         }
@@ -112,8 +115,11 @@ export async function post_userMemory(request) {
         let userId;
         
         try {
-            const currentUser = await wixUsersBackend.currentUser;
-            userId = currentUser?.id;
+            // ✅ FIXED: Correct way to get current user in backend
+            if (wixUsersBackend.currentUser && wixUsersBackend.currentUser.loggedIn) {
+                userId = wixUsersBackend.currentUser.id;
+                console.log("✅ Found authenticated user for POST:", userId);
+            }
         } catch (authError) {
             console.log("ℹ️ No authenticated user");
         }
@@ -280,8 +286,11 @@ export async function delete_userMemory(request) {
     try {
         let userId;
         try {
-            const currentUser = await wixUsersBackend.currentUser;
-            userId = currentUser?.id;
+            // ✅ FIXED: Correct way to get current user in backend
+            if (wixUsersBackend.currentUser && wixUsersBackend.currentUser.loggedIn) {
+                userId = wixUsersBackend.currentUser.id;
+                console.log("✅ Found authenticated user for DELETE:", userId);
+            }
         } catch (authError) {
             // No auth required for delete if memoryId provided
         }

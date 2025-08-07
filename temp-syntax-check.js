@@ -3,7 +3,7 @@
 
 import { ok, badRequest, serverError } from 'wix-http-functions';
 import wixUsers from 'wix-users-backend';
-import wixData from 'wix-data';
+import wixData from '@/wix-data-hooks';
 
 /**
  * OPTIONS: Handle preflight requests
