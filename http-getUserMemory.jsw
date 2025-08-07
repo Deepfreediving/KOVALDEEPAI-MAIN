@@ -1,0 +1,82 @@
+// http-getUserMemory.jsw - NEW DEDICATED FUNCTION FOR READING USER MEMORY
+// This function is called by your Next.js read-memory.ts API
+
+import wixData from 'wix-data';
+import { ok, badRequest, serverError } from 'wix-http-functions';
+
+export async function post_getUserMemory(request) {
+    try {
+        console.log('🔍 getUserMemory function called');
+        
+        // Parse request body
+        const body = await request.body.json();
+        const { userId } = body;
+        
+        if (!userId) {
+            console.log('❌ No userId provided');
+            return badRequest({
+                body: JSON.stringify({
+                    success: false,
+                    error: 'Missing userId parameter'
+                })
+            });
+        }
+        
+        console.log(`📊 Loading memory for user: ${userId}`);
+        
+        // Query the UserMemory collection
+        const result = await wixData.query("@deepfreediving/kovaldeepai-app/Import1")
+            .eq("userId", userId)
+            .descending("timestamp")
+            .limit(100)
+            .find();
+            
+        console.log(`✅ Found ${result.items.length} memory entries for user ${userId}`);
+        
+        // Transform data to match expected format
+        const logs = result.items.map(item => ({
+            id: item._id,
+            userId: item.userId,
+            timestamp: item.timestamp || item._createdDate,
+            type: item.type || 'memory',
+            source: 'wix-collections',
+            
+            // Dive log specific fields
+            date: item.date,
+            disciplineType: item.disciplineType,
+            discipline: item.discipline,
+            location: item.location,
+            targetDepth: item.targetDepth,
+            reachedDepth: item.reachedDepth,
+            mouthfillDepth: item.mouthfillDepth,
+            notes: item.notes,
+            
+            // Memory specific fields
+            memoryContent: item.memoryContent,
+            logEntry: item.logEntry,
+            sessionName: item.sessionName,
+            coachingReport: item.coachingReport,
+            
+            // Metadata
+            metadata: item.metadata || {}
+        }));
+        
+        return ok({
+            body: JSON.stringify({
+                success: true,
+                count: logs.length,
+                logs: logs
+            })
+        });
+        
+    } catch (error) {
+        console.error('❌ getUserMemory error:', error);
+        return serverError({
+            body: JSON.stringify({
+                success: false,
+                error: 'Failed to retrieve user memory',
+                details: error.message
+            })
+        });
+    }
+}

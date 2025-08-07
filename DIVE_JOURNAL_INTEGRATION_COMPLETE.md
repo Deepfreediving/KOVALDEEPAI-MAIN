@@ -130,6 +130,24 @@ Dive Journal Form → save-dive-log.ts → Multiple Destinations:
    - Enhanced memory integration
    - Improved coaching responses
 
+## 🚨 **IMPORTANT: Wix Backend Update Required**
+
+### Missing Wix Backend Functions
+
+Your Wix backend needs to be updated with these new functions:
+
+1. **`http-getUserMemory.jsw`** - For reading user memory from Wix Collections
+2. **`http-saveToUserMemory.jsw`** - For saving dive log analysis to Wix
+3. **`http-diveLogs.jsw`** - For dive log synchronization
+
+### Quick Setup
+
+1. Copy the three `.jsw` files to your Wix backend folder
+2. Publish your Wix site to activate the functions
+3. Verify the `@deepfreediving/kovaldeepai-app/Import1` collection has required fields
+
+**📖 See `WIX_BACKEND_UPDATE_GUIDE.md` for complete setup instructions**
+
 ## 📈 **Performance Metrics**
 
 ```
