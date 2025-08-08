@@ -171,31 +171,43 @@ export default async function handler(req, res) {
             if (userLogs.length === 0 && userId.match(/^[a-f0-9-]{36}$/)) {
                 console.log(`🔄 UUID userId detected, checking for recent logs...`);
                 
-                // For now, return logs from the last 30 days as potential user logs
-                // This is a fallback until proper userId tracking is implemented
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                // For UUID users, only return logs that explicitly match their userId
+                // Do NOT return all recent logs as this could be a security issue
+                userLogs = allDiveLogs.filter(log => 
+                    log.userId === userId ||
+                    (log.filePath && log.filePath.includes(userId))
+                );
                 
-                userLogs = allDiveLogs.filter(log => {
-                    const logDate = new Date(log.timestamp || log.date || log.lastModified || 0);
-                    return logDate > thirtyDaysAgo;
-                });
-                
-                console.log(`🔄 Found ${userLogs.length} recent logs as potential user logs`);
+                console.log(`🔄 Found ${userLogs.length} UUID-matched logs for user`);
             }
             
-            // Method 4: If still no matches, return user-specific and high-priority logs only
-            if (userLogs.length === 0 && allDiveLogs.length > 0) {
-                console.log(`⚠️ No direct matches for userId ${userId}, returning high-priority logs only`);
-                userLogs = allDiveLogs.filter(log => 
-                    log.source === 'user-specific' || 
-                    log.source === 'memory-system' ||
-                    log.priority === 'highest'
-                );
-            }
+            // Method 4: Security check - filter out test data and other users' data
+            userLogs = userLogs.filter(log => {
+                // Exclude test users and guest users
+                if (log.userId && (
+                    log.userId.startsWith('test-user-') ||
+                    log.userId.startsWith('guest-') ||
+                    log.userId.includes('test')
+                )) {
+                    console.log(`🚫 Filtering out test/guest log: ${log.id}`);
+                    return false;
+                }
+                
+                // Exclude logs from test directories
+                if (log.filePath && (
+                    log.filePath.includes('test-user-') ||
+                    log.filePath.includes('/test/') ||
+                    log.id?.includes('test-user-')
+                )) {
+                    console.log(`🚫 Filtering out test directory log: ${log.filePath}`);
+                    return false;
+                }
+                
+                return true;
+            });
             
             filteredLogs = userLogs;
-            console.log(`✅ Found ${filteredLogs.length} logs for userId ${userId}`);
+            console.log(`✅ Found ${filteredLogs.length} verified logs for userId ${userId}`);
         } else {
             console.log(`⚠️ No valid userId provided (${userId}), returning empty for security`);
             filteredLogs = [];
