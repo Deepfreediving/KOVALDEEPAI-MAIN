@@ -639,9 +639,19 @@
     handleRegisteredUser(user, accessData) {
       console.log('✅ User has access - enabling full functionality');
       
+      // ✅ Prioritize specific user data over generic "Authenticated User"
+      let displayName = 'Registered User';
+      if (user.nickname && user.nickname !== 'Authenticated User') {
+        displayName = user.nickname;
+      } else if (user.loginEmail) {
+        displayName = user.loginEmail.split('@')[0]; // Use email prefix as name
+      } else if (user.displayName && user.displayName !== 'Authenticated User') {
+        displayName = user.displayName;
+      }
+      
       const userData = {
         userId: user.id,
-        userName: user.displayName || user.nickname || user.loginEmail || 'Registered User',
+        userName: displayName,
         userEmail: user.loginEmail || '',
         wixId: user.id,
         source: 'wix-registered-user',
