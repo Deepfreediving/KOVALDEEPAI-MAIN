@@ -20,7 +20,7 @@ const SAVE_TO_USER_MEMORY_API = "/_functions/userMemory";  // ✅ UNIFIED - Use 
 const MEMBER_PROFILE_API = "/_functions/memberProfile";  // ✅ NEW - Get complete member profile data
 
 // ✅ BACKUP: Direct to Next.js backend if Wix functions fail
-const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/chat-embed";
+const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
 
 const DEBUG_MODE = true;
 
@@ -168,15 +168,18 @@ async function setupKovalAIWidget(aiWidget) {
                             userEmail: userData.profile?.loginEmail || '',
                             firstName: userData.profile?.firstName || '',
                             lastName: userData.profile?.lastName || '',
-                            profilePicture: userData.profile?.profilePicture || '',
+                            profilePicture: userData.profile?.profilePhoto || userData.profile?.profilePicture || '',
                             phone: userData.profile?.phone || '',
-                            bio: userData.profile?.bio || '',
+                            bio: userData.profile?.about || userData.profile?.bio || '',
                             location: userData.profile?.location || '',
                             source: 'wix-frontend-auth',
                             isGuest: userData.profile?.isGuest || false,
                             customFields: userData.profile?.customFields || {},
                             diveLogs: userData.userDiveLogs || [],
-                            memories: userData.userMemories || []
+                            memories: userData.userMemories || [],
+                            // ✅ Add additional profile fields for better display
+                            nickname: userData.profile?.nickname || userData.profile?.displayName || 'User',
+                            fullProfile: userData.profile  // ✅ Pass full profile for debugging
                         }
                     };
                     
@@ -184,7 +187,11 @@ async function setupKovalAIWidget(aiWidget) {
                     console.log("📤 Sent authentic user data to widget via postMessage:", {
                         userId: userData.userId,
                         userName: postMessageData.data.userName,
-                        isGuest: postMessageData.data.isGuest
+                        nickname: postMessageData.data.nickname,
+                        isGuest: postMessageData.data.isGuest,
+                        hasProfilePhoto: !!postMessageData.data.profilePicture,
+                        profileSource: userData.profile?.source,
+                        fullProfileData: userData.profile  // ✅ Debug: log full profile
                     });
                 }
             } catch (postError) {
@@ -347,51 +354,64 @@ async function updateWidgetWithUserData(member) {
  */
 async function sendEnhancedUserDataToWidget() {
     try {
-        const member = await currentMember.getMember();
-        let userData = {
-            userId: 'guest-' + Date.now(),
-            userName: 'Guest User',
-            userEmail: '',
-            firstName: '',
-            lastName: '',
-            profilePicture: '',
-            phone: '',
-            bio: '',
-            location: '',
-            isAuthenticated: false,
-            isGuest: true,
-            source: 'wix-enhanced-page'
-        };
+        // ✅ Use the same enhanced loadUserData function that loads rich profile data
+        const fullUserData = await loadUserData();
         
-        if (member && member.loggedIn) {
-            userData = {
-                userId: member._id,
-                userName: member.profile?.nickname || member.profile?.firstName || member.profile?.displayName || 'Member',
-                userEmail: member.loginEmail || '',
-                firstName: member.profile?.firstName || '',
-                lastName: member.profile?.lastName || '',
-                profilePicture: member.profile?.profilePicture || '',
-                phone: member.profile?.phone || '',
-                bio: member.profile?.bio || '',
-                location: member.profile?.location || '',
-                isAuthenticated: true,
-                isGuest: false,
-                profile: member.profile,
-                source: 'wix-enhanced-authenticated',
-                customFields: member.profile?.customFields || {}
-            };
-        }
+        // ✅ Format for widget consumption
+        const userData = {
+            userId: fullUserData.userId,
+            userName: fullUserData.profile?.displayName || fullUserData.profile?.nickname || 'User',
+            userEmail: fullUserData.profile?.loginEmail || '',
+            firstName: fullUserData.profile?.firstName || '',
+            lastName: fullUserData.profile?.lastName || '',
+            profilePicture: fullUserData.profile?.profilePhoto || fullUserData.profile?.profilePicture || '',
+            phone: fullUserData.profile?.phone || '',
+            bio: fullUserData.profile?.about || fullUserData.profile?.bio || '',
+            location: fullUserData.profile?.location || '',
+            isAuthenticated: !fullUserData.profile?.isGuest,
+            isGuest: fullUserData.profile?.isGuest || false,
+            profile: fullUserData.profile,
+            source: 'wix-enhanced-authenticated-full',
+            customFields: fullUserData.profile?.customFields || {},
+            // ✅ Include stats and dive data
+            diveLogs: fullUserData.userDiveLogs || [],
+            memories: fullUserData.userMemories || [],
+            stats: fullUserData.stats || {}
+        };
         
         // Send to widget via postMessage
         postEnhancedMessageToWidget('USER_AUTH', { ...userData });
         console.log('✅ Enhanced user data sent to widget:', {
             userId: userData.userId,
             userName: userData.userName,
-            isGuest: userData.isGuest
+            isGuest: userData.isGuest,
+            hasProfilePhoto: !!userData.profilePicture,
+            source: userData.source
         });
         
     } catch (error) {
         console.error('❌ Error sending enhanced user data to widget:', error);
+        
+        // ✅ Fallback to basic member data if full profile loading fails
+        try {
+            const member = await currentMember.getMember();
+            if (member && member.loggedIn) {
+                const fallbackData = {
+                    userId: member._id,
+                    userName: member.profile?.nickname || member.profile?.firstName || member.profile?.displayName || 'Member',
+                    userEmail: member.loginEmail || '',
+                    isAuthenticated: true,
+                    isGuest: false,
+                    source: 'wix-enhanced-fallback',
+                    profile: member.profile || {}
+                };
+                
+                postEnhancedMessageToWidget('USER_AUTH', fallbackData);
+                console.log('📤 Sent fallback user data to widget:', fallbackData.userId);
+            }
+        } catch (fallbackError) {
+            console.error('❌ Fallback user data failed:', fallbackError);
+        }
     }
 }
 
@@ -742,6 +762,44 @@ async function loadUserData() {
             console.warn("⚠️ Member profile API failed:", profileError);
         }
 
+        // ✅ FALLBACK: Try to get richer profile data using currentMember if backend failed
+        if (!userProfile.source || userProfile.source !== 'Members/FullData') {
+            try {
+                console.log("🔄 Backend failed, trying currentMember.getMember() for richer data...");
+                const member = await currentMember.getMember();
+                if (member && member.profile) {
+                    console.log("✅ Got member profile from currentMember:", {
+                        nickname: member.profile.nickname,
+                        displayName: member.profile.displayName,
+                        hasPhoto: !!member.profile.profilePhoto
+                    });
+                    
+                    // Enhance userProfile with currentMember data
+                    userProfile = {
+                        ...userProfile,
+                        displayName: member.profile.displayName || member.profile.nickname || userProfile.displayName,
+                        nickname: member.profile.nickname || member.profile.displayName || userProfile.nickname,
+                        firstName: member.profile.firstName || userProfile.firstName,
+                        lastName: member.profile.lastName || userProfile.lastName,
+                        profilePhoto: member.profile.profilePhoto || userProfile.profilePhoto,
+                        about: member.profile.about || userProfile.about,
+                        phone: member.profile.phone || userProfile.phone,
+                        source: 'currentMember-fallback'
+                    };
+                    
+                    console.log(`📈 User profile enhanced with currentMember data:`, {
+                        displayName: userProfile.displayName,
+                        nickname: userProfile.nickname,
+                        hasPhoto: !!userProfile.profilePhoto,
+                        source: userProfile.source
+                    });
+                }
+            } catch (memberError) {
+                console.warn("⚠️ currentMember.getMember() also failed:", memberError);
+                userProfile.source = 'basic-wixUsers-only';
+            }
+        }
+
         // ✅ THEN: Load other data (memories, dive logs, etc.)
         console.log("📊 Loading user memories and dive logs...");
         const [memoriesRes, diveLogsRes, localDiveLogsRes] = await Promise.all([
@@ -902,10 +960,11 @@ async function sendChatMessage(query) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    message: query,  // ✅ Using message for Next.js backend
+                    userMessage: query,  // ✅ Using unified parameter for Next.js backend too
                     userId: userData.userId,
                     profile: userData.profile,
-                    diveLogs: userData.userDiveLogs || []  // ✅ Include dive logs for backup too
+                    diveLogs: userData.userDiveLogs || [],  // ✅ Include dive logs for backup too
+                    embedMode: true  // ✅ Indicate this is from embed/widget
                 })
             });
         }
