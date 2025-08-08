@@ -85,8 +85,20 @@
 
       // ✅ LISTEN FOR USER DATA FROM PARENT WIX PAGE
       const handleParentMessage = (event) => {
-        // Log ALL messages for debugging
-        console.log('📨 Bot widget received message from Wix page:', event.data);
+        // Filter out noisy TPA2 infrastructure messages but keep important ones
+        const isImportantMessage = event.data && (
+          event.data.type === 'USER_DATA_RESPONSE' ||
+          event.data.type === 'USER_REGISTRATION_RESPONSE' ||
+          event.data.type === 'REQUEST_USER_DATA' ||
+          event.data.type === 'EDIT_MODE_CHANGE' ||
+          (event.data.intent === 'TPA2' && event.data.type === 'registerEventListener' && 
+           event.data.data && event.data.data.eventKey === 'EDIT_MODE_CHANGE')
+        );
+
+        // Only log important messages to reduce noise
+        if (isImportantMessage) {
+          console.log('📨 Bot widget received message from Wix page:', event.data);
+        }
         
         // Security check for Wix origins - be more permissive for debugging
         const validOrigin = !event.origin || 
@@ -98,7 +110,10 @@
         
         // Handle Wix Edit Mode Change Event
         if (event.data.intent === 'TPA2' && event.data.type === 'registerEventListener') {
-          console.log('🎛️ Wix edit mode event detected:', event.data);
+          // Only log if it's the edit mode listener we care about
+          if (event.data.data && event.data.data.eventKey === 'EDIT_MODE_CHANGE') {
+            console.log('🎛️ Wix edit mode event detected:', event.data);
+          }
           
           if (event.data.data && event.data.data.eventKey === 'EDIT_MODE_CHANGE') {
             console.log('✏️ Registering edit mode change listener');
@@ -434,7 +449,11 @@
           { type, data, timestamp: Date.now() },
           this.BASE_URL
         );
-        console.log('📤 Widget sent:', type);
+        // Only log important message types to reduce noise
+        const importantTypes = ['USER_AUTH', 'THEME_CHANGE', 'LOAD_SESSION', 'AUTH_STATUS_RESPONSE'];
+        if (importantTypes.includes(type)) {
+          console.log('📤 Widget sent:', type);
+        }
       } catch (error) {
         console.warn('⚠️ Message send failed:', error.message);
       }
@@ -466,7 +485,11 @@
         const { type, data } = event.data || {};
         if (!type) return;
 
-        console.log('📥 Widget received:', type);
+        // Only log important message types to reduce noise
+        const importantTypes = ['EMBED_READY', 'embed_ready', 'CHAT_MESSAGE', 'SAVE_DIVE_LOG', 'ERROR'];
+        if (importantTypes.includes(type)) {
+          console.log('📥 Widget received:', type);
+        }
 
         switch (type) {
           case 'EMBED_READY':
