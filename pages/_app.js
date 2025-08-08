@@ -2,6 +2,7 @@ import "../styles/globals.css";
 import { useEffect, useState } from "react";
 import ErrorBoundary from "../components/ErrorBoundary";
 import AppLoader from "../components/AppLoader";
+import PerformanceOptimizer from "../components/PerformanceOptimizer";
 
 function MyApp({ Component, pageProps }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -71,6 +72,7 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <ErrorBoundary>
+      <PerformanceOptimizer />
       <Component {...pageProps} tokenProcessed={tokenProcessed} />
     </ErrorBoundary>
   );
