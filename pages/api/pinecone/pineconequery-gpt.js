@@ -1,7 +1,6 @@
-require('dotenv').config();
-const { OpenAI } = require('openai');
-const { Pinecone } = require('@pinecone-database/pinecone');
-import handleCors from '@/utils/handleCors'; // ✅ CHANGED from require to import
+import { OpenAI } from 'openai';
+import { Pinecone } from '@pinecone-database/pinecone';
+import handleCors from '@/utils/handleCors';
 
 // Initialize OpenAI and Pinecone clients
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
