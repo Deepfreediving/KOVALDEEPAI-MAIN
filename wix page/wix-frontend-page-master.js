@@ -523,7 +523,7 @@ function postEnhancedMessageToWidget(type, data = {}) {
 }
 
 /**
- * ✅ Enhanced Edit Mode Handler
+ * ✅ ENHANCED EDIT MODE HANDLER
  */
 if (typeof wixWindow !== 'undefined' && wixWindow.onEditModeChange) {
     wixWindow.onEditModeChange((isEditMode) => {
@@ -693,7 +693,7 @@ async function loadUserData() {
         });
 
         // ✅ LOAD DATA FROM BOTH ENDPOINTS USING REAL USER ID
-        const [memoriesRes, diveLogsRes] = await Promise.all([
+        const [memoriesRes, diveLogsRes, localDiveLogsRes] = await Promise.all([
             fetch(`${LOAD_MEMORIES_API}?userId=${realUserId}&limit=50`, { 
                 credentials: "include",
                 headers: { 'Content-Type': 'application/json' }
@@ -707,14 +707,45 @@ async function loadUserData() {
             }).catch(err => {
                 console.warn("⚠️ Dive logs API failed:", err);
                 return null;
+            }),
+            // ✅ ALSO TRY TO LOAD LOCAL DIVE LOGS FROM NEXT.JS BACKEND
+            fetch(`https://kovaldeepai-main.vercel.app/api/analyze/dive-logs?userId=${realUserId}`, {
+                headers: { 'Content-Type': 'application/json' }
+            }).catch(err => {
+                console.warn("⚠️ Local dive logs API failed:", err);
+                return null;
             })
         ]);
 
         const memoriesData = memoriesRes ? await safeJson(memoriesRes) : { data: [] };
         const diveLogsData = diveLogsRes ? await safeJson(diveLogsRes) : { data: [] };
+        const localDiveLogsData = localDiveLogsRes ? await safeJson(localDiveLogsRes) : { data: [] };
 
         const userMemories = memoriesData.data || [];
-        const userDiveLogs = diveLogsData.data || [];
+        let userDiveLogs = diveLogsData.data || [];
+        
+        // ✅ MERGE LOCAL AND WIX DIVE LOGS, PRIORITIZE LOCAL
+        const localDiveLogs = localDiveLogsData.data || localDiveLogsData.diveLogs || [];
+        if (localDiveLogs.length > 0) {
+            console.log(`✅ Found ${localDiveLogs.length} local dive logs, merging with Wix data`);
+            
+            // Combine and deduplicate dive logs
+            const allDiveLogs = [...localDiveLogs, ...userDiveLogs];
+            const uniqueDiveLogs = allDiveLogs.filter((dive, index, self) => 
+                index === self.findIndex(d => d.id === dive.id || 
+                    (d.date === dive.date && d.discipline === dive.discipline && d.reachedDepth === dive.reachedDepth))
+            );
+            
+            userDiveLogs = uniqueDiveLogs;
+            console.log(`✅ Merged dive logs: ${uniqueDiveLogs.length} total (${localDiveLogs.length} local + ${diveLogsData.data?.length || 0} Wix)`);
+            
+            // ✅ SYNC LOCAL DIVE LOGS TO WIX DATABASE FOR AI ACCESS
+            if (localDiveLogs.length > 0) {
+                syncLocalDiveLogsToWix(realUserId, localDiveLogs).catch(err => {
+                    console.warn("⚠️ Could not sync local dive logs to Wix:", err);
+                });
+            }
+        }
 
         // ✅ CALCULATE PROFILE STATISTICS
         const personalBest = userDiveLogs.length > 0 
@@ -1233,3 +1264,49 @@ setTimeout(() => {
     initializeUserMemoryDataset();
     setupDatasetEventHandlers();
 }, 1000); // Give page time to load
+
+/**
+ * ✅ SYNC LOCAL DIVE LOGS TO WIX DATABASE
+ */
+async function syncLocalDiveLogsToWix(userId, localDiveLogs) {
+    console.log(`🔄 Syncing ${localDiveLogs.length} local dive logs to Wix for user: ${userId}`);
+    
+    for (const diveLog of localDiveLogs) {
+        try {
+            // Convert local dive log format to Wix format
+            const wixDiveLog = {
+                userId: userId,
+                ...diveLog,
+                type: 'dive-log',
+                source: 'local-sync',
+                timestamp: diveLog.timestamp || new Date().toISOString(),
+                memoryContent: `Dive Log: ${diveLog.discipline} at ${diveLog.location}, reached ${diveLog.reachedDepth}m (target: ${diveLog.targetDepth}m). ${diveLog.notes || 'No additional notes.'}`,
+                logEntry: `${diveLog.date}: ${diveLog.discipline} dive at ${diveLog.location}`
+            };
+            
+            // Save to Wix database via API
+            const response = await fetch(DIVE_LOGS_API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    userId: userId,
+                    diveLog: wixDiveLog
+                })
+            });
+            
+            if (response.ok) {
+                console.log(`✅ Synced dive log ${diveLog.id} to Wix`);
+            } else {
+                console.warn(`⚠️ Failed to sync dive log ${diveLog.id}:`, response.status);
+            }
+        } catch (error) {
+            console.warn(`⚠️ Error syncing dive log ${diveLog.id}:`, error.message);
+        }
+        
+        // Small delay to avoid overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log('✅ Local dive logs sync completed');
+}

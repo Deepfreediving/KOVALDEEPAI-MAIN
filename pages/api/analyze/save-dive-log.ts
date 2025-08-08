@@ -64,31 +64,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const localResult = await saveLogEntry(userId, localLogData);
     console.log('✅ Local save completed:', localResult.id);
 
-    // 🌐 STEP 2: Sync to Wix (background) - ENHANCED
+    // 🌐 STEP 2: Sync to Wix UserMemory Collection (permanent storage)
     try {
-      console.log('🌐 Syncing to Wix backend...');
+      console.log('🌐 Syncing dive log to Wix UserMemory collection...');
       
-      // Transform data for your Wix http-diveLogs.jsw format
-      const wixDiveLogData = {
+      // ✅ Format as UserMemory entry (NOT diveLogs collection)
+      const userMemoryData = {
         userId,
-        diveLog: {
-          id: localLogData.id,
-          date: localLogData.date,
-          disciplineType: localLogData.disciplineType,
+        memoryContent: `Dive Log: ${localLogData.discipline} dive to ${localLogData.reachedDepth}m at ${localLogData.location}`,
+        logEntry: JSON.stringify(localLogData), // Full dive log as JSON
+        sessionName: `Dive Journal - ${localLogData.date}`,
+        timestamp: localLogData.timestamp,
+        metadata: {
+          type: 'dive-log',
           discipline: localLogData.discipline,
-          location: localLogData.location,
-          targetDepth: localLogData.targetDepth,
           reachedDepth: localLogData.reachedDepth,
-          notes: localLogData.notes,
-          totalDiveTime: localLogData.totalDiveTime,
-          mouthfillDepth: localLogData.mouthfillDepth,
-          exit: localLogData.exit
+          location: localLogData.location,
+          date: localLogData.date,
+          source: 'dive-journal-submission'
         }
       };
 
+      // ✅ Save to UserMemory collection (your 50GB permanent storage)
       const wixResponse = await axios.post(
-        'https://www.deepfreediving.com/_functions/diveLogs',
-        wixDiveLogData,
+        'https://www.deepfreediving.com/_functions/userMemory',
+        userMemoryData,
         {
           headers: { 
             'Content-Type': 'application/json',
