@@ -3,8 +3,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import handleCors from '@/utils/handleCors';
 
 export default async function handler(req, res) {
+    // ✅ Handle CORS
+    if (handleCors(req, res)) return;
+    
     try {
         console.log('📊 Loading local dive logs...');
         
