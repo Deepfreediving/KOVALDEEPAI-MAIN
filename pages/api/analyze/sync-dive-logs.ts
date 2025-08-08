@@ -1,6 +1,6 @@
-// ===== 📄 pages/api/analyze/sync-dive-logs.ts =====
-// API endpoint to sync a specific user's dive logs to Wix UserMemory collection
-// This endpoint gets the authenticated user's ID and syncs their dive logs
+// ===== 📄 pages/api/analyze/sync-dive-logs-fixed.ts =====
+// API endpoint to sync a specific user's dive logs to Wix diveLogs collection
+// This is the MASTER version with bidirectional sync, deduplication, and proper endpoints
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs';
@@ -9,7 +9,6 @@ import handleCors from '@/utils/handleCors';
 
 // Configuration
 const DIVE_LOGS_DIR = path.join(process.cwd(), 'data', 'diveLogs');
-const WIX_ENDPOINT = 'https://www.deepfreediving.com/_functions/userMemory';
 
 interface DiveLog {
   id?: string;
@@ -24,6 +23,9 @@ interface DiveLog {
   timestamp?: string;
   source?: string;
   originalFile?: string;
+  totalDiveTime?: string;
+  mouthfillDepth?: number;
+  exit?: string;
   [key: string]: any;
 }
 
@@ -59,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    console.log(`🔄 Syncing dive logs for authenticated user: ${userId}`);
+    console.log(`� Syncing dive logs for authenticated user: ${userId}`);
 
     // ✅ STEP 2: Load local dive logs from both files and directories
     let localLogs: LocalLog[] = [];
@@ -123,7 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Add current logs to the collection
     localLogs.push(...currentLogs);
 
-    // 🌐 STEP 3: Sync with Wix backend
+    // 🌐 STEP 3: Sync with Wix backend (BIDIRECTIONAL)
     let wixLogs: LocalLog[] = [];
     let uploadedCount = 0;
 

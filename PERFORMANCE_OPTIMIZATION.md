@@ -153,7 +153,173 @@ These optimizations are designed to:
 - Maintain functionality while improving performance
 - Follow web standards and best practices
 
+## Critical Production Issues & Fixes
+
+### Backend Connection Failures
+
+❌ **Current Issue**: `https://www.deepfreediving.com/_functions/wixConnection` returning 500 errors
+
+✅ **Solution**: 
+```javascript
+// Implement robust backend connection with fallback
+const testBackendConnection = async () => {
+  try {
+    const response = await fetch('/_functions/wixConnection', {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`Backend failed: ${response.status}`);
+      // Implement fallback logic
+      return { status: 'fallback', timestamp: new Date().toISOString() };
+    }
+    
+    return { status: 'connected', timestamp: new Date().toISOString() };
+  } catch (error) {
+    console.error('Backend connection error:', error);
+    return { status: 'offline', timestamp: new Date().toISOString() };
+  }
+};
+```
+
+### CORS Configuration
+
+❌ **Current Issue**: Cross-origin requests blocked between Wix and Vercel
+
+✅ **Solution**: Update Next.js API routes with proper CORS headers:
+```javascript
+// pages/api/analyze/[...slug].ts
+export default async function handler(req, res) {
+  // Set CORS headers for Wix integration
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.deepfreediving.com');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  // Your existing API logic
+}
+```
+
+### Cross-Origin Communication Fix
+
+❌ **Current Issue**: SecurityError accessing `window.KOVAL_USER_DATA`
+
+✅ **Solution**: Implement secure postMessage communication:
+```javascript
+// Wix Page Code - Send user data to widget
+function sendUserDataToWidget(userData) {
+  const iframe = document.querySelector('iframe[src*="kovaldeepai-main.vercel.app"]');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({
+      type: 'USER_AUTH_DATA',
+      data: userData,
+      timestamp: Date.now()
+    }, 'https://kovaldeepai-main.vercel.app');
+  }
+}
+
+// Widget Code - Receive user data
+window.addEventListener('message', (event) => {
+  if (event.origin !== 'https://www.deepfreediving.com') return;
+  
+  if (event.data.type === 'USER_AUTH_DATA') {
+    console.log('✅ Received user data from Wix:', event.data.data);
+    // Process authenticated user data
+  }
+});
+```
+
+### Wix Dataset API Fixes
+
+❌ **Current Issue**: `$w(...).setFilter is not a function`
+
+✅ **Solution**: Proper dataset API usage:
+```javascript
+// Correct Wix dataset implementation
+$w.onReady(() => {
+  const userMemoryDataset = $w('#UserMemoryDataset');
+  
+  // Check if dataset exists and has required methods
+  if (userMemoryDataset && typeof userMemoryDataset.setFilter === 'function') {
+    userMemoryDataset.setFilter(wixData.filter().eq('userId', currentUserId));
+    
+    userMemoryDataset.onReady(() => {
+      console.log('✅ Dataset ready');
+    });
+  } else {
+    console.warn('⚠️ Dataset not available, using alternative data source');
+    // Implement fallback data retrieval
+  }
+});
+```
+
+### Performance Monitoring Enhancement
+
+✅ **Real-time error tracking**:
+```javascript
+// Enhanced error monitoring
+class PerformanceMonitor {
+  constructor() {
+    this.errors = [];
+    this.metrics = {};
+    this.setupErrorTracking();
+  }
+  
+  setupErrorTracking() {
+    window.addEventListener('error', (event) => {
+      this.logError('JavaScript Error', event.error);
+    });
+    
+    window.addEventListener('unhandledrejection', (event) => {
+      this.logError('Unhandled Promise Rejection', event.reason);
+    });
+  }
+  
+  logError(type, error) {
+    const errorData = {
+      type,
+      message: error.message || error,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      url: window.location.href
+    };
+    
+    this.errors.push(errorData);
+    console.error(`🚨 ${type}:`, errorData);
+    
+    // Send to monitoring service
+    this.sendToMonitoring(errorData);
+  }
+  
+  sendToMonitoring(errorData) {
+    // Implement error reporting to your monitoring service
+    fetch('/api/monitoring/error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(errorData)
+    }).catch(err => console.warn('Failed to send error report:', err));
+  }
+}
+
+// Initialize monitoring
+const monitor = new PerformanceMonitor();
+```
+
 ---
 
 _Generated: August 7, 2025_
 _Version: 1.0_
+
+---
+
+_Updated: August 8, 2025_
+_Version: 1.1 - Critical Production Fixes_

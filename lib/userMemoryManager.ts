@@ -76,3 +76,39 @@ export async function saveUserMemory(userId: string, newData: any) {
     return false;
   }
 }
+
+/**
+ * Query UserMemory document by email address
+ */
+export async function queryUserMemoryByEmail(email: string) {
+  try {
+    const query = await wixClient.items.query(COLLECTION_ID).eq("profile.loginEmail", email).find();
+    return query.items[0] || null;
+  } catch (error: any) {
+    console.warn("⚠️ queryUserMemoryByEmail failed (using local only):", error.message);
+    return null;
+  }
+}
+
+/**
+ * Query UserMemory documents by multiple criteria
+ */
+export async function queryUserMemory(criteria: { userId?: string; email?: string; displayName?: string }) {
+  try {
+    let query = wixClient.items.query(COLLECTION_ID);
+    
+    if (criteria.userId) {
+      query = query.eq("userId", criteria.userId);
+    } else if (criteria.email) {
+      query = query.eq("profile.loginEmail", criteria.email);
+    } else if (criteria.displayName) {
+      query = query.eq("profile.displayName", criteria.displayName);
+    }
+    
+    const result = await query.find();
+    return result.items;
+  } catch (error: any) {
+    console.warn("⚠️ queryUserMemory failed (using local only):", error.message);
+    return [];
+  }
+}
