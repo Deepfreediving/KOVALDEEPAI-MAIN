@@ -7,7 +7,7 @@
 export const COLLECTIONS = {
     USER_MEMORY: "@deepfreediving/kovaldeepai-app/Import1",
     REGISTRATIONS: "KovalAIRegistrations", 
-    MEMBERS: "Members"
+    MEMBERS: "Members/FullData"  // ✅ Updated to use FullData collection with complete member records
 };
 
 /**

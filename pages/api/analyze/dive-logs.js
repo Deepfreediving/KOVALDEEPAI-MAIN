@@ -181,25 +181,40 @@ export default async function handler(req, res) {
                 console.log(`🔄 Found ${userLogs.length} UUID-matched logs for user`);
             }
             
-            // Method 4: Security check - filter out test data and other users' data
+            // Method 4: STRICT Security check - filter out test data and other users' data
             userLogs = userLogs.filter(log => {
-                // Exclude test users and guest users
+                // CRITICAL: For UUID users, ONLY return logs that exactly match their userId
+                if (userId.match(/^[a-f0-9-]{36}$/)) {
+                    // For UUID users, must have exact userId match
+                    if (log.userId !== userId) {
+                        console.log(`🚫 SECURITY: UUID user ${userId} - filtering out log with different userId: ${log.userId || 'undefined'}`);
+                        return false;
+                    }
+                }
+                
+                // Exclude test users and guest users  
                 if (log.userId && (
                     log.userId.startsWith('test-user-') ||
                     log.userId.startsWith('guest-') ||
                     log.userId.includes('test')
                 )) {
-                    console.log(`🚫 Filtering out test/guest log: ${log.id}`);
+                    console.log(`🚫 Filtering out test/guest log: ${log.id} (userId: ${log.userId})`);
                     return false;
                 }
                 
-                // Exclude logs from test directories
+                // Exclude logs from test directories or with test IDs
                 if (log.filePath && (
                     log.filePath.includes('test-user-') ||
                     log.filePath.includes('/test/') ||
                     log.id?.includes('test-user-')
                 )) {
-                    console.log(`🚫 Filtering out test directory log: ${log.filePath}`);
+                    console.log(`🚫 Filtering out test directory log: ${log.filePath} (id: ${log.id})`);
+                    return false;
+                }
+                
+                // Exclude logs with test-user IDs
+                if (log.id && log.id.includes('test-user-')) {
+                    console.log(`🚫 Filtering out log with test-user ID: ${log.id}`);
                     return false;
                 }
                 
