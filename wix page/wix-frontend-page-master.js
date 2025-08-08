@@ -17,6 +17,7 @@ const LOAD_MEMORIES_API = "/_functions/loadMemories";  // ✅ DEPRECATED - Use u
 const WIX_CONNECTION_API = "/_functions/wixConnection";  // ✅ Your http-wixConnection.jsw
 const GET_USER_MEMORY_API = "/_functions/userMemory";  // ✅ UNIFIED - Use userMemory for all memory operations
 const SAVE_TO_USER_MEMORY_API = "/_functions/userMemory";  // ✅ UNIFIED - Use userMemory for all memory operations
+const MEMBER_PROFILE_API = "/_functions/memberProfile";  // ✅ NEW - Get complete member profile data
 
 // ✅ BACKUP: Direct to Next.js backend if Wix functions fail
 const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/chat-embed";
@@ -692,8 +693,8 @@ async function loadUserData() {
             displayName: userProfile.displayName
         });
 
-        // ✅ LOAD DATA FROM BOTH ENDPOINTS USING REAL USER ID
-        const [memoriesRes, diveLogsRes, localDiveLogsRes] = await Promise.all([
+        // ✅ LOAD DATA FROM ENDPOINTS INCLUDING COMPLETE PROFILE DATA
+        const [memoriesRes, diveLogsRes, localDiveLogsRes, profileRes] = await Promise.all([
             fetch(`${LOAD_MEMORIES_API}?userId=${realUserId}&limit=50`, { 
                 credentials: "include",
                 headers: { 'Content-Type': 'application/json' }
@@ -714,12 +715,48 @@ async function loadUserData() {
             }).catch(err => {
                 console.warn("⚠️ Local dive logs API failed:", err);
                 return null;
+            }),
+            // ✅ NEW: Load complete member profile data from Members/FullData
+            fetch(`${MEMBER_PROFILE_API}?userId=${realUserId}`, {
+                credentials: "include",
+                headers: { 'Content-Type': 'application/json' }
+            }).catch(err => {
+                console.warn("⚠️ Member profile API failed:", err);
+                return null;
             })
         ]);
 
         const memoriesData = memoriesRes ? await safeJson(memoriesRes) : { data: [] };
         const diveLogsData = diveLogsRes ? await safeJson(diveLogsRes) : { data: [] };
         const localDiveLogsData = localDiveLogsRes ? await safeJson(localDiveLogsRes) : { data: [] };
+        const profileData = profileRes ? await safeJson(profileRes) : null;
+
+        // ✅ ENHANCED PROFILE DATA - Use Members/FullData if available
+        if (profileData && profileData.success && profileData.profile) {
+            console.log(`✅ Enhanced profile data loaded from Members/FullData:`, {
+                displayName: profileData.profile.displayName,
+                nickname: profileData.profile.nickname,
+                hasPhoto: !!profileData.profile.profilePhoto,
+                email: profileData.profile.loginEmail
+            });
+            
+            userProfile = {
+                ...userProfile,
+                displayName: profileData.profile.displayName || profileData.profile.nickname || userProfile.displayName,
+                nickname: profileData.profile.nickname || profileData.profile.displayName || userProfile.nickname,
+                loginEmail: profileData.profile.loginEmail || userProfile.loginEmail,
+                profilePhoto: profileData.profile.profilePhoto,
+                about: profileData.profile.about,
+                firstName: profileData.profile.firstName,
+                lastName: profileData.profile.lastName,
+                phone: profileData.profile.phone,
+                contactId: profileData.profile.contactId,
+                isActive: profileData.profile.isActive,
+                source: 'Members/FullData'
+            };
+        } else {
+            console.log(`⚠️ Could not load enhanced profile data, using basic wixUsers data`);
+        }
 
         const userMemories = memoriesData.data || [];
         let userDiveLogs = diveLogsData.data || [];

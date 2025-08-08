@@ -70,11 +70,11 @@ export default function Embed() {
     console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
     
     // Try rich profile data first (from Wix Collections/Members)
-    if (profile?.displayName && profile.displayName !== 'Guest User') {
+    if (profile?.displayName && profile.displayName !== 'Guest User' && profile.displayName !== 'Authenticated User') {
       console.log('✅ Using profile.displayName:', profile.displayName);
       return profile.displayName;
     }
-    if (profile?.nickname && profile.nickname !== 'Guest User') {
+    if (profile?.nickname && profile.nickname !== 'Guest User' && profile.nickname !== 'Diver') {
       console.log('✅ Using profile.nickname:', profile.nickname);
       return profile.nickname;
     }
@@ -87,9 +87,10 @@ export default function Embed() {
       console.log('✅ Using profile.firstName:', profile.firstName);
       return profile.firstName;
     }
-    if (profile?.loginEmail) {
-      console.log('✅ Using profile.loginEmail:', profile.loginEmail);
-      return profile.loginEmail;
+    if (profile?.loginEmail && !profile.loginEmail.includes('unknown')) {
+      const emailName = profile.loginEmail.split('@')[0];
+      console.log('✅ Using email username:', emailName);
+      return emailName;
     }
     if (profile?.contactDetails?.firstName) {
       console.log('✅ Using contactDetails.firstName:', profile.contactDetails.firstName);
@@ -107,6 +108,14 @@ export default function Embed() {
     console.log('🔄 Using fallback:', fallback);
     return fallback;
   }, [profile, userId]);
+
+  const getProfilePhoto = useCallback(() => {
+    if (profile?.profilePhoto) {
+      return profile.profilePhoto;
+    }
+    // You could add a default avatar URL here
+    return null;
+  }, [profile]);
 
   // ✅ INITIALIZATION with userId validation
   useEffect(() => {
@@ -687,11 +696,21 @@ export default function Embed() {
           <div className={`flex-shrink-0 border-b p-2 flex justify-between items-center text-sm ${
             darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
           }`}>
-            <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-              👤 {getDisplayName()}{isEmbedded ? ' • Widget' : ''}
-              {getDisplayName() === "Loading..." && (
-                <span className="ml-2 animate-pulse">⏳</span>
+            <div className={`px-2 truncate flex items-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+              {getProfilePhoto() && (
+                <img 
+                  src={getProfilePhoto()} 
+                  alt="Profile" 
+                  className="w-6 h-6 rounded-full mr-2 flex-shrink-0"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
               )}
+              <span>
+                👤 {getDisplayName()}{isEmbedded ? ' • Widget' : ''}
+                {getDisplayName() === "Loading..." && (
+                  <span className="ml-2 animate-pulse">⏳</span>
+                )}
+              </span>
             </div>
             <button
               onClick={() => setDarkMode(!darkMode)}

@@ -153,13 +153,22 @@
             userId: wixUserData.userId,
             userName: wixUserData.profile?.displayName || wixUserData.profile?.nickname || 'Authenticated User',
             userEmail: wixUserData.profile?.loginEmail || '',
+            profilePhoto: wixUserData.profile?.profilePhoto || '',
+            nickname: wixUserData.profile?.nickname || wixUserData.profile?.displayName,
+            isGuest: false,
             source: 'wix-page-authenticated',
             theme: theme,
             diveLogs: wixUserData.userDiveLogs || [],
             memories: wixUserData.userMemories || []
           };
           
-          console.log('🔄 Updated widget userData:', userData);
+          console.log('🔄 Updated widget userData:', {
+            userId: userData.userId,
+            userName: userData.userName,
+            nickname: userData.nickname,
+            hasProfilePhoto: !!userData.profilePhoto,
+            source: userData.source
+          });
           
           // If iframe is ready, send updated user data
           if (this.iframe && this.isReady) {
@@ -214,13 +223,21 @@
               userData = {
                 ...userData,
                 userId: currentUser.id,  // ✅ Use the actual Wix member ID (no prefix)
-                userName: currentUser.displayName || currentUser.nickname || currentUser.loginEmail || 'Wix User',
+                userName: currentUser.displayName || currentUser.nickname || currentUser.loginEmail?.split('@')[0] || 'Wix User',
                 userEmail: currentUser.loginEmail || '',
+                nickname: currentUser.nickname || currentUser.displayName,
+                profilePhoto: currentUser.picture || '',
                 wixId: currentUser.id,
+                isGuest: false,
                 source: 'wix-authenticated',
                 theme: theme  // ✅ Keep theme
               };
-              console.log('✅ Wix user authenticated with real member ID:', userData);
+              console.log('✅ Wix user authenticated with real member ID:', {
+                userId: userData.userId,
+                userName: userData.userName,
+                nickname: userData.nickname,
+                hasPhoto: !!userData.profilePhoto
+              });
               return true;
             } else {
               console.log('ℹ️ Wix user not logged in');
