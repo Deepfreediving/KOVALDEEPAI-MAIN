@@ -76,23 +76,38 @@ async function queryDiveLogs(userId: string): Promise<string[]> {
   }
 }
 
-function generateSystemPrompt(level: 'expert' | 'beginner'): string {
-  return `You are Koval Deep AI, a freediving coach powered by Daniel Koval's training expertise.
+function generateSystemPrompt(level: 'expert' | 'beginner', embedMode: boolean = false): string {
+  const userContext = embedMode 
+    ? 'You are speaking with an authenticated member through an embedded widget on their private member page. ' 
+    : 'You are speaking with an authenticated member on their training dashboard. ';
 
-🎯 Guidelines:
-- Provide ${level}-level freediving advice based on available knowledge and personal data
-- Focus on safety, technique, and progressive training
-- Keep responses under 600 words
-- Be encouraging and practical
+  return `You are Koval Deep AI, Daniel Koval's freediving coaching system. ${userContext}Provide personalized coaching based on their progress and training history.
+
+🎯 CRITICAL REQUIREMENTS:
+- ONLY use information from the provided knowledge base below
+- If the knowledge base doesn't contain specific information, say "I don't have specific guidance on this in my training materials"
+- Never mix general freediving advice with Daniel's specific methods
+- Provide ${level}-level technical detail appropriate for the user's experience
+- Always prioritize safety and progressive training
+- Keep responses detailed but focused (under ${embedMode ? '600' : '800'} words)
+- Address the user personally as a valued member with access to exclusive training
+
+🚫 FORBIDDEN:
+- Making up training protocols not in the knowledge base
+- Combining different methodologies
+- Providing generic freediving advice when Daniel's specific approach exists
+- Recommending techniques beyond the user's certification level
 
 If information is lacking, be honest and provide general safety advice.`;
 }
 
-// ✅ FIX: Type userLevel correctly
+// ✅ FIX: Type userLevel correctly and add embed support
 async function askWithContext(
   contextChunks: string[], 
   message: string, 
-  userLevel: 'expert' | 'beginner'  // ✅ Fixed typing
+  userLevel: 'expert' | 'beginner',  // ✅ Fixed typing
+  embedMode: boolean = false,
+  diveLogContext: string = ''
 ): Promise<string> {
   if (!OPENAI_API_KEY) return "⚠️ OpenAI API is not configured.";
 
@@ -101,14 +116,19 @@ async function askWithContext(
     ? contextChunks.slice(0, 3).join('\n\n')
     : "No specific knowledge found. Provide general freediving safety advice.";
 
+  // ✅ Enhanced context with dive log data
+  const enhancedContext = diveLogContext 
+    ? `${context}\n\n${diveLogContext}`
+    : context;
+
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.7,
-      max_tokens: 800,
+      max_tokens: embedMode ? 600 : 800,
       messages: [
-        { role: 'system', content: generateSystemPrompt(userLevel) },
-        { role: 'system', content: `Knowledge Base:\n${context}` },
+        { role: 'system', content: generateSystemPrompt(userLevel, embedMode) },
+        { role: 'system', content: `Knowledge Base:\n${enhancedContext}` },
         { role: 'user', content: message }
       ]
     });
@@ -131,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'OPTIONS') return;
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-    const { message, userId = 'guest', profile = {}, embedMode = false } = req.body;
+    const { message, userId = 'guest', profile = {}, embedMode = false, diveLogs = [] } = req.body;
     
     // ✅ Enhanced validation
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -141,7 +161,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    console.log(`🚀 Chat request received from userId=${userId}`);
+    console.log(`🚀 Chat request received from userId=${userId} (embedMode=${embedMode})`);
+
+    // ✅ Process dive logs for context (similar to chat-embed.ts)
+    let diveLogContext = '';
+    if (diveLogs && diveLogs.length > 0) {
+      console.log(`📊 Processing ${diveLogs.length} dive logs for enhanced coaching context`);
+      
+      const recentDiveLogs = diveLogs
+        .slice(0, 5) // Last 5 dive logs
+        .map((log: any) => {
+          const details = [
+            `📅 ${log.date || log.timestamp?.split('T')[0] || 'Unknown date'}`,
+            `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
+            `📍 ${log.location || 'Unknown location'}`,
+            `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
+            log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
+            log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
+            log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
+            log.notes ? `📝 ${log.notes}` : ''
+          ].filter(Boolean).join(' | ');
+          
+          return details;
+        })
+        .join('\n');
+      
+      diveLogContext = `
+🏊‍♂️ MEMBER'S RECENT DIVE LOGS (Last ${Math.min(5, diveLogs.length)} dives):
+${recentDiveLogs}
+
+📈 DIVE STATISTICS:
+- Total recorded dives: ${diveLogs.length}
+- Personal best: ${profile.pb || 'Unknown'}m
+- Last dive depth: ${diveLogs[0]?.reachedDepth || diveLogs[0]?.targetDepth || 'Unknown'}m
+- Progress analysis: ${diveLogs.length >= 3 ? 'Multiple sessions recorded - analyze patterns and progression' : 'Limited data - focus on current goals'}
+      `.trim();
+      
+      console.log('✅ Generated dive log context for AI coaching');
+    }
 
     // ✅ FIX: Type memory correctly
     let memory: any = {};
@@ -162,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`📊 Context: ${contextChunks.length} knowledge + ${diveContext.length} dive logs`);
 
-    const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel);
+    const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext);
 
     // ✅ Save to memory if successful response
     if (!assistantReply.startsWith("⚠️")) {

@@ -14,7 +14,7 @@ export const COLLECTIONS = {
  * ✅ External API Endpoints
  */
 export const API_ENDPOINTS = {
-    AI_BACKEND: "https://kovaldeepai-main.vercel.app/api/chat-embed",
+    AI_BACKEND: "https://kovaldeepai-main.vercel.app/api/openai/chat",
     SEMANTIC_SEARCH: "https://kovaldeepai-main.vercel.app/api/pinecone"
 };
 

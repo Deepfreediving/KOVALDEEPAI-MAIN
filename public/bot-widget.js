@@ -299,28 +299,29 @@
         }
       }, 1000);
 
-      // ✅ PERIODIC CONNECTION TESTING
-      const testBackendConnection = async () => {
+      // ✅ TEST NEXT.JS BACKEND CONNECTION (CORRECT BACKEND)
+      const testNextJSConnection = async () => {
         try {
-          // Test the Wix backend connection
-          const response = await fetch('/_functions/wixConnection', {
+          // Test the actual Next.js backend that the widget uses
+          const response = await fetch(`${this.BASE_URL}/api/health`, {
             method: 'GET',
-            credentials: 'include'
+            headers: { 'Content-Type': 'application/json' }
           });
           
-          const status = response.ok ? '✅ Connected' : '❌ Failed';
-          console.log(`🔍 Testing backend connection... ${status} (${response.status})`);
+          const status = response.ok ? '✅ Connected' : '⚠️ Limited';
+          console.log(`🔍 Next.js backend connection: ${status} (${response.status})`);
           
           return response.ok;
         } catch (error) {
-          console.log(`🔍 Testing backend connection... ❌ Failed (network error)`);
+          console.log(`🔍 Next.js backend connection: ⚠️ Limited (${error.message})`);
           return false;
         }
       };
 
-      // Test connection periodically
-      testBackendConnection();
-      setInterval(testBackendConnection, 30000); // Every 30 seconds
+      // Test the correct backend connection (Next.js, not Wix)
+      testNextJSConnection();
+      // Check periodically but less frequently
+      setInterval(testNextJSConnection, 120000); // Every 2 minutes
 
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
