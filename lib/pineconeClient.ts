@@ -9,16 +9,10 @@ if (!PINECONE_INDEX) throw new Error("❌ Missing Pinecone index name.");
 // ✅ Singleton client
 let pineconeClient: Pinecone = (global as any)._pineconeClient;
 if (!pineconeClient) {
-  const config: any = {
-    apiKey: PINECONE_API_KEY
-  };
-  
-  // ✅ FIXED: Use controllerHostUrl if PINECONE_HOST is provided
-  if (PINECONE_HOST) {
-    config.controllerHostUrl = PINECONE_HOST;
-  }
-  
-  pineconeClient = new Pinecone(config);
+  pineconeClient = new Pinecone({
+    apiKey: PINECONE_API_KEY,
+    ...(PINECONE_HOST && { host: PINECONE_HOST })
+  });
   (global as any)._pineconeClient = pineconeClient;
 }
 
