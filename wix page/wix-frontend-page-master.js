@@ -693,8 +693,106 @@ async function loadUserData() {
             displayName: userProfile.displayName
         });
 
-        // ✅ LOAD DATA FROM ENDPOINTS INCLUDING COMPLETE PROFILE DATA
-        const [memoriesRes, diveLogsRes, localDiveLogsRes, profileRes] = await Promise.all([
+        // ✅ FIRST: Load complete member profile data from Members/FullData
+        console.log("🔍 Loading enhanced profile data from Members/FullData...");
+        let profileData = null;
+        try {
+            const profileRes = await fetch(`${MEMBER_PROFILE_API}?userId=${realUserId}`, {
+                credentials: "include",
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            profileData = await safeJson(profileRes);
+            
+            if (profileData && profileData.success && profileData.profile) {
+                console.log(`✅ Enhanced profile data loaded:`, {
+                    displayName: profileData.profile.displayName,
+                    nickname: profileData.profile.nickname,
+                    hasPhoto: !!profileData.profile.profilePhoto,
+                    email: profileData.profile.loginEmail
+                });
+                
+                // Update userProfile with rich data from Members/FullData
+                userProfile = {
+                    ...userProfile,
+                    displayName: profileData.profile.displayName || profileData.profile.nickname || userProfile.displayName,
+                    nickname: profileData.profile.nickname || profileData.profile.displayName || userProfile.nickname,
+                    loginEmail: profileData.profile.loginEmail || userProfile.loginEmail,
+                    profilePhoto: profileData.profile.profilePhoto,
+                    about: profileData.profile.about,
+                    firstName: profileData.profile.firstName,
+                    lastName: profileData.profile.lastName,
+                    phone: profileData.profile.phone,
+                    contactId: profileData.profile.contactId,
+                    isActive: profileData.profile.isActive,
+                    source: 'Members/FullData'
+                };
+                
+                console.log(`🎯 Enhanced user profile updated:`, {
+                    displayName: userProfile.displayName,
+                    nickname: userProfile.nickname,
+                    hasPhoto: !!userProfile.profilePhoto,
+                    source: userProfile.source
+                });
+            } else {
+                console.log(`⚠️ Could not load enhanced profile data, using basic wixUsers data`);
+            }
+        } catch (profileError) {
+            console.warn("⚠️ Member profile API failed:", profileError);
+        }
+
+        // ✅ FIRST: Load complete member profile data from Members/FullData
+        console.log("🔍 Loading enhanced profile data from Members/FullData...");
+        let enhancedProfile = null;
+        try {
+            const profileRes = await fetch(`${MEMBER_PROFILE_API}?userId=${realUserId}`, {
+                credentials: "include",
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            enhancedProfile = await safeJson(profileRes);
+            
+            if (enhancedProfile && enhancedProfile.success && enhancedProfile.profile) {
+                console.log(`✅ Enhanced profile data loaded:`, {
+                    displayName: enhancedProfile.profile.displayName,
+                    nickname: enhancedProfile.profile.nickname,
+                    hasPhoto: !!enhancedProfile.profile.profilePhoto,
+                    email: enhancedProfile.profile.loginEmail
+                });
+                
+                // Update userProfile with rich data from Members/FullData
+                userProfile = {
+                    ...userProfile,
+                    displayName: enhancedProfile.profile.displayName || enhancedProfile.profile.nickname || userProfile.displayName,
+                    nickname: enhancedProfile.profile.nickname || enhancedProfile.profile.displayName || userProfile.nickname,
+                    loginEmail: enhancedProfile.profile.loginEmail || userProfile.loginEmail,
+                    profilePhoto: enhancedProfile.profile.profilePhoto,
+                    about: enhancedProfile.profile.about,
+                    firstName: enhancedProfile.profile.firstName,
+                    lastName: enhancedProfile.profile.lastName,
+                    phone: enhancedProfile.profile.phone,
+                    contactId: enhancedProfile.profile.contactId,
+                    isActive: enhancedProfile.profile.isActive,
+                    source: 'Members/FullData'
+                };
+                
+                console.log(`🎯 Enhanced user profile updated:`, {
+                    displayName: userProfile.displayName,
+                    nickname: userProfile.nickname,
+                    hasPhoto: !!userProfile.profilePhoto,
+                    source: userProfile.source
+                });
+            } else {
+                console.log(`⚠️ Could not load enhanced profile data, using basic wixUsers data`);
+                console.log(`🔍 Profile response:`, enhancedProfile);
+            }
+        } catch (profileError) {
+            console.warn("⚠️ Member profile API failed:", profileError);
+        }
+
+        // ✅ THEN: Load other data (memories, dive logs, etc.)
+        console.log("📊 Loading user memories and dive logs...");
+        const [memoriesRes, diveLogsRes, localDiveLogsRes] = await Promise.all([
             fetch(`${LOAD_MEMORIES_API}?userId=${realUserId}&limit=50`, { 
                 credentials: "include",
                 headers: { 'Content-Type': 'application/json' }
@@ -716,47 +814,11 @@ async function loadUserData() {
                 console.warn("⚠️ Local dive logs API failed:", err);
                 return null;
             }),
-            // ✅ NEW: Load complete member profile data from Members/FullData
-            fetch(`${MEMBER_PROFILE_API}?userId=${realUserId}`, {
-                credentials: "include",
-                headers: { 'Content-Type': 'application/json' }
-            }).catch(err => {
-                console.warn("⚠️ Member profile API failed:", err);
-                return null;
-            })
         ]);
 
         const memoriesData = memoriesRes ? await safeJson(memoriesRes) : { data: [] };
         const diveLogsData = diveLogsRes ? await safeJson(diveLogsRes) : { data: [] };
         const localDiveLogsData = localDiveLogsRes ? await safeJson(localDiveLogsRes) : { data: [] };
-        const profileData = profileRes ? await safeJson(profileRes) : null;
-
-        // ✅ ENHANCED PROFILE DATA - Use Members/FullData if available
-        if (profileData && profileData.success && profileData.profile) {
-            console.log(`✅ Enhanced profile data loaded from Members/FullData:`, {
-                displayName: profileData.profile.displayName,
-                nickname: profileData.profile.nickname,
-                hasPhoto: !!profileData.profile.profilePhoto,
-                email: profileData.profile.loginEmail
-            });
-            
-            userProfile = {
-                ...userProfile,
-                displayName: profileData.profile.displayName || profileData.profile.nickname || userProfile.displayName,
-                nickname: profileData.profile.nickname || profileData.profile.displayName || userProfile.nickname,
-                loginEmail: profileData.profile.loginEmail || userProfile.loginEmail,
-                profilePhoto: profileData.profile.profilePhoto,
-                about: profileData.profile.about,
-                firstName: profileData.profile.firstName,
-                lastName: profileData.profile.lastName,
-                phone: profileData.profile.phone,
-                contactId: profileData.profile.contactId,
-                isActive: profileData.profile.isActive,
-                source: 'Members/FullData'
-            };
-        } else {
-            console.log(`⚠️ Could not load enhanced profile data, using basic wixUsers data`);
-        }
 
         const userMemories = memoriesData.data || [];
         let userDiveLogs = diveLogsData.data || [];
