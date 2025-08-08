@@ -1,0 +1,102 @@
+// ===== 📄 Wix App/backend/http-memberProfile.jsw =====
+// HTTP endpoint to fetch complete member profile data from Members/FullData
+
+import { getJSON, ok, notFound, serverError, badRequest } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { COLLECTIONS, LIMITS } from 'backend/config/constants.jsw';
+
+export async function get_memberProfile(request) {
+  try {
+    console.log('📊 Fetching member profile data...');
+    
+    const query = request.query;
+    const userId = query.userId || query.memberId;
+    
+    if (!userId) {
+      console.warn('⚠️ Missing userId parameter');
+      return badRequest({ 
+        error: 'userId parameter is required',
+        success: false 
+      });
+    }
+
+    console.log(`🔍 Loading profile for member: ${userId}`);
+
+    // ✅ Query Members/FullData collection for complete profile
+    const profileResults = await wixData.query(COLLECTIONS.MEMBERS)
+      .eq('_id', userId)  // Match by member ID
+      .limit(1)
+      .find();
+
+    let memberProfile = null;
+    
+    if (profileResults.items.length > 0) {
+      const profile = profileResults.items[0];
+      console.log(`✅ Found member profile: ${profile.nickname || profile.firstName || 'Unknown'}`);
+      
+      memberProfile = {
+        memberId: profile._id,
+        loginEmail: profile.loginEmail,
+        nickname: profile.nickname || profile.firstName || profile.displayName,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        displayName: profile.nickname || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.loginEmail?.split('@')[0] || 'Member',
+        profilePhoto: profile.profilePhoto,
+        coverPhoto: profile.coverPhoto,
+        about: profile.about,
+        activityStatus: profile.activityStatus,
+        lastLoginDate: profile.lastLoginDate,
+        slug: profile.slug,
+        contactId: profile.contactId,
+        phone: profile.phone,
+        updatedDate: profile._updatedDate,
+        isActive: profile.activityStatus === 'ACTIVE'
+      };
+      
+      console.log(`📊 Profile data assembled:`, {
+        memberId: memberProfile.memberId,
+        displayName: memberProfile.displayName,
+        email: memberProfile.loginEmail,
+        hasPhoto: !!memberProfile.profilePhoto,
+        isActive: memberProfile.isActive
+      });
+      
+    } else {
+      console.log(`⚠️ No profile found for member: ${userId}`);
+      // Return minimal profile data
+      memberProfile = {
+        memberId: userId,
+        displayName: 'Member',
+        nickname: 'Diver',
+        loginEmail: 'unknown@email.com',
+        isActive: false
+      };
+    }
+
+    return ok({
+      success: true,
+      profile: memberProfile,
+      memberId: userId,
+      source: 'Members/FullData',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching member profile:', error);
+    return serverError({
+      success: false,
+      error: 'Failed to fetch member profile',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// ✅ POST method for future use (updates, etc.)
+export async function post_memberProfile(request) {
+  return badRequest({
+    success: false,
+    error: 'POST method not implemented yet',
+    message: 'Use GET to retrieve member profile data'
+  });
+}
