@@ -340,7 +340,7 @@
         opacity: 0; transition: opacity 0.5s ease;
         background: ${isDark ? '#1a1a1a' : '#ffffff'};
       `;
-      this.iframe.allow = 'microphone; camera; geolocation';
+      this.iframe.allow = 'microphone; camera; geolocation; fullscreen; payment';
 
       // ✅ ENHANCED IFRAME LOADING
       this.iframe.onload = () => {

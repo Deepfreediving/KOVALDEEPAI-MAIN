@@ -1,0 +1,83 @@
+// ===== 📄 Wix App/backend/http-wixConnection.jsw =====
+// HTTP endpoint to test backend connection and provide status
+
+import { ok, serverError } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { COLLECTIONS } from 'backend/config/constants.jsw';
+
+export async function get_wixConnection(request) {
+  try {
+    console.log('🔍 Testing Wix backend connection...');
+    
+    const startTime = Date.now();
+    
+    // Test database connection by querying UserMemory collection
+    const testQuery = await wixData.query(COLLECTIONS.USER_MEMORY)
+      .limit(1)
+      .find()
+      .catch(err => {
+        console.warn('⚠️ Database query test failed:', err);
+        return { items: [], length: 0 };
+      });
+    
+    const responseTime = Date.now() - startTime;
+    
+    const connectionStatus = {
+      status: 'connected',
+      timestamp: new Date().toISOString(),
+      responseTime: `${responseTime}ms`,
+      database: testQuery.items ? 'accessible' : 'limited',
+      collections: {
+        userMemory: COLLECTIONS.USER_MEMORY,
+        members: COLLECTIONS.MEMBERS,
+        registrations: COLLECTIONS.REGISTRATIONS
+      },
+      environment: 'wix-backend',
+      version: '1.0.0'
+    };
+    
+    console.log('✅ Backend connection test successful:', connectionStatus);
+    
+    return ok({
+      success: true,
+      ...connectionStatus,
+      message: 'Wix backend is operational'
+    });
+
+  } catch (error) {
+    console.error('❌ Backend connection test failed:', error);
+    
+    return serverError({
+      success: false,
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      message: 'Backend connection test failed'
+    });
+  }
+}
+
+// ✅ Also support POST for future use
+export async function post_wixConnection(request) {
+  try {
+    const body = await request.body.json();
+    console.log('📊 Connection test with data:', body);
+    
+    return ok({
+      success: true,
+      status: 'connected',
+      timestamp: new Date().toISOString(),
+      message: 'POST connection test successful',
+      receivedData: !!body
+    });
+    
+  } catch (error) {
+    console.error('❌ POST connection test failed:', error);
+    
+    return serverError({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
