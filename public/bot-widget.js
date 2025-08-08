@@ -685,6 +685,93 @@
       
       console.log('📤 Sent unregistered user data to embed:', userData);
     }
+    
+    // ✅ ENHANCED AUTHENTICATION COMMUNICATION
+    this.setupAuthenticationBridge = () => {
+      console.log('🔐 Setting up enhanced authentication bridge...');
+      
+      // Listen for authentication requests from embedded app
+      const handleEmbedAuthRequest = (event) => {
+        if (event.origin !== this.BASE_URL) return;
+        
+        if (event.data.type === 'REQUEST_AUTH_STATUS') {
+          console.log('📨 Embed app requesting auth status');
+          
+          // Send current authentication data
+          const authData = {
+            type: 'AUTH_STATUS_RESPONSE',
+            authenticated: userData.userId && !userData.userId.startsWith('guest'),
+            user: userData,
+            timestamp: Date.now()
+          };
+          
+          this.iframe.contentWindow.postMessage(authData, this.BASE_URL);
+          console.log('📤 Sent auth status to embed:', authData);
+        }
+        
+        if (event.data.type === 'AUTH_ERROR') {
+          console.error('🚨 Authentication error from embed:', event.data.error);
+          
+          // Try to refresh authentication
+          this.refreshAuthentication();
+        }
+      };
+      
+      window.addEventListener('message', handleEmbedAuthRequest);
+    };
+    
+    // ✅ REFRESH AUTHENTICATION FUNCTION
+    this.refreshAuthentication = () => {
+      console.log('🔄 Refreshing authentication...');
+      
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          type: 'REFRESH_USER_DATA',
+          timestamp: Date.now()
+        }, '*');
+      }
+      
+      // Re-run user detection
+      detectWixUser();
+    };
+    
+    // ✅ ENHANCED ERROR MONITORING
+    this.setupErrorMonitoring = () => {
+      window.addEventListener('error', (event) => {
+        const errorData = {
+          type: 'Widget JavaScript Error',
+          message: event.error?.message || 'Unknown error',
+          stack: event.error?.stack,
+          timestamp: new Date().toISOString(),
+          url: window.location.href,
+          userId: userData?.userId
+        };
+        
+        // Send to monitoring API
+        fetch(`${this.BASE_URL}/api/monitoring/error`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(errorData)
+        }).catch(err => console.warn('Failed to send error report:', err));
+      });
+      
+      window.addEventListener('unhandledrejection', (event) => {
+        const errorData = {
+          type: 'Widget Unhandled Promise Rejection',
+          message: event.reason?.message || event.reason || 'Unknown promise rejection',
+          timestamp: new Date().toISOString(),
+          url: window.location.href,
+          userId: userData?.userId
+        };
+        
+        fetch(`${this.BASE_URL}/api/monitoring/error`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(errorData)
+        }).catch(err => console.warn('Failed to send error report:', err));
+      });
+    };
+
   }
 
   // ✅ Safe custom element registration
