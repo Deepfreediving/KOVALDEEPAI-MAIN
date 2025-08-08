@@ -736,55 +736,7 @@ async function loadUserData() {
                 });
             } else {
                 console.log(`⚠️ Could not load enhanced profile data, using basic wixUsers data`);
-            }
-        } catch (profileError) {
-            console.warn("⚠️ Member profile API failed:", profileError);
-        }
-
-        // ✅ FIRST: Load complete member profile data from Members/FullData
-        console.log("🔍 Loading enhanced profile data from Members/FullData...");
-        let enhancedProfile = null;
-        try {
-            const profileRes = await fetch(`${MEMBER_PROFILE_API}?userId=${realUserId}`, {
-                credentials: "include",
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            enhancedProfile = await safeJson(profileRes);
-            
-            if (enhancedProfile && enhancedProfile.success && enhancedProfile.profile) {
-                console.log(`✅ Enhanced profile data loaded:`, {
-                    displayName: enhancedProfile.profile.displayName,
-                    nickname: enhancedProfile.profile.nickname,
-                    hasPhoto: !!enhancedProfile.profile.profilePhoto,
-                    email: enhancedProfile.profile.loginEmail
-                });
-                
-                // Update userProfile with rich data from Members/FullData
-                userProfile = {
-                    ...userProfile,
-                    displayName: enhancedProfile.profile.displayName || enhancedProfile.profile.nickname || userProfile.displayName,
-                    nickname: enhancedProfile.profile.nickname || enhancedProfile.profile.displayName || userProfile.nickname,
-                    loginEmail: enhancedProfile.profile.loginEmail || userProfile.loginEmail,
-                    profilePhoto: enhancedProfile.profile.profilePhoto,
-                    about: enhancedProfile.profile.about,
-                    firstName: enhancedProfile.profile.firstName,
-                    lastName: enhancedProfile.profile.lastName,
-                    phone: enhancedProfile.profile.phone,
-                    contactId: enhancedProfile.profile.contactId,
-                    isActive: enhancedProfile.profile.isActive,
-                    source: 'Members/FullData'
-                };
-                
-                console.log(`🎯 Enhanced user profile updated:`, {
-                    displayName: userProfile.displayName,
-                    nickname: userProfile.nickname,
-                    hasPhoto: !!userProfile.profilePhoto,
-                    source: userProfile.source
-                });
-            } else {
-                console.log(`⚠️ Could not load enhanced profile data, using basic wixUsers data`);
-                console.log(`🔍 Profile response:`, enhancedProfile);
+                console.log(`🔍 Profile response:`, profileData);
             }
         } catch (profileError) {
             console.warn("⚠️ Member profile API failed:", profileError);

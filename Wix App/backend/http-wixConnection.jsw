@@ -3,7 +3,13 @@
 
 import { ok, serverError } from 'wix-http-functions';
 import wixData from 'wix-data';
-import { COLLECTIONS } from 'backend/config/constants.jsw';
+
+// ✅ Inline constants to avoid import issues
+const COLLECTIONS = {
+    USER_MEMORY: "@deepfreediving/kovaldeepai-app/Import1",
+    REGISTRATIONS: "KovalAIRegistrations", 
+    MEMBERS: "Members/FullData"
+};
 
 export async function get_wixConnection(request) {
   try {

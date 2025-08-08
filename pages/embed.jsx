@@ -8,7 +8,7 @@ import apiClient from "../utils/apiClient";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
-  CHAT: "/api/chat-embed",
+  CHAT: "/api/openai/chat",
   GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
   SAVE_DIVE_LOG: "/api/analyze/save-dive-log",
   DELETE_DIVE_LOG: "/api/analyze/delete-dive-log",

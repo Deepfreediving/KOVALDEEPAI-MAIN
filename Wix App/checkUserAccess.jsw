@@ -3,7 +3,28 @@
 
 import { currentMember } from 'wix-members';
 import wixData from 'wix-data';
-import { COLLECTIONS, CORS_HEADERS, ACCESS_LEVELS } from 'backend/config/constants.jsw';
+
+// ✅ Inline constants to avoid import issues
+const COLLECTIONS = {
+    USER_MEMORY: "@deepfreediving/kovaldeepai-app/Import1",
+    REGISTRATIONS: "KovalAIRegistrations", 
+    MEMBERS: "Members/FullData"
+};
+
+const CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400'
+};
+
+const ACCESS_LEVELS = {
+    GUEST: 'guest',
+    STANDARD: 'standard', 
+    PREMIUM: 'premium',
+    ADMIN: 'admin'
+};
 
 /**
  * ✅ Check if user has paid/registered access to Koval AI
