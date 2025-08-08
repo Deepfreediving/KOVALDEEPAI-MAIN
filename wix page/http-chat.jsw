@@ -132,6 +132,35 @@ export async function post_chat(request) {
                             console.log(`✅ Using ${fallbackLogs.length} fallback dive logs for analysis`);
                         }
                     }
+                    
+                    // ✅ IF STILL NO DIVE LOGS, TRY LOCAL DIVE LOGS FROM NEXT.JS API
+                    if (userDiveLogs.length === 0) {
+                        try {
+                            console.log('🔍 No Wix dive logs found, checking local dive logs...');
+                            
+                            const localResponse = await fetch('https://kovaldeepai-main.vercel.app/api/analyze/dive-logs?userId=' + effectiveUserId);
+                            if (localResponse.ok) {
+                                const localData = await localResponse.json();
+                                if (localData.success && localData.data && localData.data.length > 0) {
+                                    userDiveLogs = localData.data;
+                                    console.log(`✅ Retrieved ${userDiveLogs.length} local dive logs for AI analysis`);
+                                    
+                                    // Log sample dive log for debugging
+                                    if (userDiveLogs.length > 0) {
+                                        console.log('📊 Sample local dive log for AI:', {
+                                            discipline: userDiveLogs[0].discipline,
+                                            depth: userDiveLogs[0].reachedDepth,
+                                            date: userDiveLogs[0].date,
+                                            location: userDiveLogs[0].location,
+                                            notes: userDiveLogs[0].notes
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (localError) {
+                            console.warn('⚠️ Could not load local dive logs:', localError.message);
+                        }
+                    }
                 }
                 
             } catch (diveLogError) {
