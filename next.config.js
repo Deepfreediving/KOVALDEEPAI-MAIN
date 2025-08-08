@@ -26,6 +26,27 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
 
+  // ✅ Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    scrollRestoration: true,
+  },
+
+  // ✅ Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  // ✅ Output optimization
+  output: 'standalone',
+  
+  // ✅ Bundle optimization
+  modularizeImports: {
+    'lodash': {
+      transform: 'lodash/{{member}}',
+    },
+  },
+
   /**
    * Webpack configuration
    */
@@ -38,6 +59,33 @@ const nextConfig = {
       '@pages': path.resolve(__dirname, 'pages'),
       '@styles': path.resolve(__dirname, 'styles'),
     };
+
+    // ✅ Optimize bundle splitting
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+            priority: 10,
+          },
+          common: {
+            minChunks: 2,
+            chunks: 'all',
+            name: 'common',
+            priority: 5,
+          },
+        },
+      };
+    }
+
+    // ✅ Minimize chunk names in production
+    if (process.env.NODE_ENV === 'production' && !isServer) {
+      config.optimization.moduleIds = 'deterministic';
+      config.optimization.chunkIds = 'deterministic';
+    }
 
     config.plugins.push(...getPlugins());
 
