@@ -687,7 +687,7 @@
     }
     
     // ✅ ENHANCED AUTHENTICATION COMMUNICATION
-    this.setupAuthenticationBridge = () => {
+    setupAuthenticationBridge() {
       console.log('🔐 Setting up enhanced authentication bridge...');
       
       // Listen for authentication requests from embedded app
@@ -721,7 +721,7 @@
     };
     
     // ✅ REFRESH AUTHENTICATION FUNCTION
-    this.refreshAuthentication = () => {
+    refreshAuthentication() {
       console.log('🔄 Refreshing authentication...');
       
       if (window.parent !== window) {
@@ -736,7 +736,7 @@
     };
     
     // ✅ ENHANCED ERROR MONITORING
-    this.setupErrorMonitoring = () => {
+    setupErrorMonitoring() {
       window.addEventListener('error', (event) => {
         const errorData = {
           type: 'Widget JavaScript Error',

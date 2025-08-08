@@ -24,6 +24,7 @@
     "@wix/sdk": "^1.15.24",
     "axios": "^1.10.0",
     "browser-image-compression": "^2.0.2",
+    "critters": "^0.0.23",
     "dotenv": "^17.2.1",
     "formidable": "^3.5.4",
     "gpt-3-encoder": "^1.1.4",
