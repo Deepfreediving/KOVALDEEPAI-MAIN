@@ -1,5 +1,5 @@
-// ===== 📄 pages/api/analyze/dive-logs-2.js =====
-// FIXED API endpoint to retrieve dive logs from multiple sources
+// ===== 📄 pages/api/analyze/dive-logs.js =====
+// ENHANCED API endpoint to retrieve dive logs from multiple sources
 
 import fs from 'fs';
 import path from 'path';
