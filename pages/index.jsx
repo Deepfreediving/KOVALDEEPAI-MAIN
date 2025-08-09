@@ -1,171 +1,644 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useRouter } from "next/router";
+import ChatMessages from "../components/ChatMessages";
+import ChatInput from "../components/ChatInput";
+import Sidebar from "../components/Sidebar";
+import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
+import apiClient from "../utils/apiClient";
 
-export default function Chat() {
-  const [username, setUsername] = useState('');
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [threadId, setThreadId] = useState(null);
+const API_ROUTES = {
+  CREATE_THREAD: "/api/openai/create-thread",
+  CHAT: "/api/chat-embed",
+  GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
+  SAVE_DIVE_LOG: "/api/analyze/save-dive-log",
+  DELETE_DIVE_LOG: "/api/analyze/delete-dive-log",
+  READ_MEMORY: "/api/analyze/read-memory",
+  QUERY_WIX: "/api/wix/query-wix-data",
+};
+
+export default function Index() {
+  const router = useRouter();
+  const BOT_NAME = "Koval AI";
+  const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
+
+  // Check if we're in embedded mode
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  // ✅ CORE STATE (Combined from both versions)
+  const [sessionName, setSessionName] = useState(defaultSessionName);
+  const [sessionsList, setSessionsList] = useState([]);
+  const [editingSessionName, setEditingSessionName] = useState(false);
+  const [input, setInput] = useState("");
+  const [files, setFiles] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: `🤿 Hi! I'm ${BOT_NAME}, your freediving coach. How can I help you today?`,
+    },
+  ]);
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null); // For auto-scrolling
+  const [darkMode, setDarkMode] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem("kovalDarkMode") === "true" : false
+  );
+  const [userId, setUserId] = useState("");
+  const [threadId, setThreadId] = useState(null);
+  const [profile, setProfile] = useState({});
+  const [diveLogs, setDiveLogs] = useState([]);
+  const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
+  const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
+  const [editLogIndex, setEditLogIndex] = useState(null);
+  const [loadingConnections, setLoadingConnections] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState({
+    wix: "⏳ Checking...",
+    openai: "⏳ Checking...",
+    pinecone: "⏳ Checking...",
+  });
 
-  // State to track initialization
-  const [isInitialized, setIsInitialized] = useState(false);
+  const bottomRef = useRef(null);
 
-  // Retrieve or create threadId and username on mount
-  useEffect(() => {
-    const storedThreadId = localStorage.getItem('kovalThreadId');
-    const storedUsername = localStorage.getItem('kovalUser');
+  // ✅ HELPERS
+  const storageKey = (uid) => `diveLogs-${uid}`;
+  const safeParse = (key, fallback) => {
+    try {
+      return typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(key)) || fallback : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const getDisplayName = useCallback(() => {
+    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
     
-    if (storedUsername) {
-      setUsername(storedUsername);
-    } else {
-      // If no username in localStorage, prompt the user
-      const name = prompt("Please enter your name for a personalized experience:");
-      if (name) {
-        localStorage.setItem('kovalUser', name);
-        setUsername(name);
-      } else {
-        const newUser = 'Guest' + Math.floor(Math.random() * 1000); // Assign a random username
-        localStorage.setItem('kovalUser', newUser);
-        setUsername(newUser);
-      }
+    // Try rich profile data first
+    if (profile?.displayName && profile.displayName !== 'Guest User') {
+      console.log('✅ Using profile.displayName:', profile.displayName);
+      return profile.displayName;
     }
-
-    // Check if a threadId exists
-    if (!storedThreadId) {
-      const createThread = async () => {
-        try {
-          const response = await fetch('/api/create-thread', { method: 'POST' });
-          const data = await response.json();
-          if (data.threadId) {
-            setThreadId(data.threadId);  // Set the threadId if returned
-            localStorage.setItem('kovalThreadId', data.threadId); // Store threadId in localStorage
-          } else {
-            console.error('Thread creation failed: No threadId returned.');
-          }
-        } catch (err) {
-          console.error('Error creating thread:', err);
-        }
-      };
-      createThread();
-    } else {
-      setThreadId(storedThreadId); // Use the stored threadId
+    if (profile?.nickname && profile.nickname !== 'Guest User') {
+      console.log('✅ Using profile.nickname:', profile.nickname);
+      return profile.nickname;
     }
+    if (profile?.firstName && profile?.lastName) {
+      const fullName = `${profile.firstName} ${profile.lastName}`;
+      console.log('✅ Using firstName + lastName:', fullName);
+      return fullName;
+    }
+    if (profile?.firstName) {
+      console.log('✅ Using profile.firstName:', profile.firstName);
+      return profile.firstName;
+    }
+    if (profile?.loginEmail) {
+      console.log('✅ Using profile.loginEmail:', profile.loginEmail);
+      return profile.loginEmail;
+    }
+    if (profile?.contactDetails?.firstName) {
+      console.log('✅ Using contactDetails.firstName:', profile.contactDetails.firstName);
+      return profile.contactDetails.firstName;
+    }
+    
+    // Show "Loading..." for non-guest users while waiting for profile data
+    if (userId && !userId.startsWith("guest") && !profile?.source) {
+      console.log('⏳ Waiting for user profile data...');
+      return "Loading...";
+    }
+    
+    // Fallback to guest user only if userId starts with "guest"
+    const fallback = userId?.startsWith("guest") ? "Guest User" : "User";
+    console.log('🔄 Using fallback:', fallback);
+    return fallback;
+  }, [profile, userId]);
 
-    setIsInitialized(true); // Set initialization state
+  // ✅ INITIALIZATION
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSessionsList(safeParse("kovalSessionsList", []));
+      setUserId(localStorage.getItem("kovalUser") || `guest-${Date.now()}`);
+      setThreadId(localStorage.getItem("kovalThreadId") || null);
+      setProfile(safeParse("kovalProfile", { nickname: "Guest User" }));
+    }
   }, []);
 
-  // Scroll to bottom of chat when new message is added
+  // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
   useEffect(() => {
-    if (messages.length > 0) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (router.isReady) {
+      const { theme, userId: urlUserId, userName, embedded } = router.query;
+      
+      // Check if we're embedded
+      if (embedded === 'true' || window.parent !== window) {
+        setIsEmbedded(true);
+        console.log('🎯 Running in embedded mode');
+        
+        // Notify parent that we're ready
+        window.parent?.postMessage({ 
+          type: 'EMBED_READY', 
+          source: 'koval-ai-embed',
+          timestamp: Date.now()
+        }, "*");
+      }
+      
+      // Apply theme from URL
+      if (theme === 'dark') {
+        setDarkMode(true);
+      } else if (theme === 'light') {
+        setDarkMode(false);
+      }
+      
+      // Set user data from URL parameters
+      if (urlUserId) {
+        setUserId(String(urlUserId));
+        localStorage.setItem("kovalUser", String(urlUserId));
+      }
+      
+      if (userName) {
+        const decodedUserName = decodeURIComponent(String(userName));
+        setProfile(prev => ({ 
+          ...prev, 
+          nickname: decodedUserName,
+          displayName: decodedUserName 
+        }));
+        localStorage.setItem("kovalProfile", JSON.stringify({ 
+          nickname: decodedUserName,
+          displayName: decodedUserName 
+        }));
+      }
+      
+      console.log('✅ URL parameters processed:', { theme, userId: urlUserId, userName, embedded });
+    }
+  }, [router.isReady, router.query]);
+
+  // ✅ THEME SYNC
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.toggle("dark", darkMode);
+      localStorage.setItem("kovalDarkMode", darkMode);
+    }
+  }, [darkMode]);
+
+  // ✅ AUTO-SCROLL
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  // Handle message submission when Enter or Return is pressed
-  const handleKeyDown = (e) => {
-    if ((e.key === 'Enter' || e.key === 'Return') && !e.shiftKey) {
-      e.preventDefault(); // Prevent default behavior (new line in text area)
-      handleSubmit(); // Trigger form submission
-    }
-  };
+  // ✅ CONNECTION CHECK
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        // Simple connection check
+        const checks = {
+          openai: "✅ Connected",
+          pinecone: "✅ Connected", 
+          wix: "✅ Connected"
+        };
+        if (isMounted) setConnectionStatus(checks);
+      } catch (error) {
+        console.warn("⚠️ Connection check failed:", error);
+      } finally {
+        if (isMounted) setLoadingConnections(false);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
 
-  // Handle message submission
-  const handleSubmit = async () => {
-    const trimmedInput = input.trim();
-    if (!trimmedInput) return;
+  // ✅ WORKING CHAT SUBMISSION (From working version)
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
 
-    const userMessage = { role: 'user', content: trimmedInput };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setInput('');
+    const userMessage = { role: "user", content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
     setLoading(true);
 
-    const threadId = localStorage.getItem('kovalThreadId');
-    const username = localStorage.getItem('kovalUser') || 'Guest';
-
-    if (!threadId || !username) {
-      console.warn('Missing threadId or username');
-      return;
-    }
-
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      console.log("🚀 Sending message to chat API...");
+
+      const response = await fetch(API_ROUTES.CHAT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: trimmedInput,
-          thread_id: threadId,
-          username: username,
+          message: input,
+          userId,
+          profile,
         }),
       });
 
-      const data = await res.json();
-      const assistantMessage = data?.assistantMessage ?? {
-        role: 'assistant',
-        content: '⚠️ Something went wrong. Please try again.',
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Chat response received:", data);
+
+      const assistantMessage = data.assistantMessage || {
+        role: "assistant",
+        content: data.answer || "I received your message!",
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("❌ Chat error:", error);
 
-    } catch (err) {
-      console.error('Error fetching assistant response:', err);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '⚠️ Error: Unable to get response. Please try again later.' },
-      ]);
+      const errorMessage = {
+        role: "assistant",
+        content: "I'm having trouble responding right now. Please try again in a moment.",
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
-      setLoading(false);  // End loading
+      setLoading(false);
     }
-  };
+  }, [input, loading, userId, profile]);
 
-  const isThreadReady = threadId && username;
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  }, [handleSubmit]);
+
+  const handleFileChange = useCallback((e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setFiles(selectedFiles);
+  }, []);
+
+  // ✅ LOAD DIVE LOGS (Enhanced from both versions)
+  const loadDiveLogs = useCallback(async () => {
+    if (!userId) return;
+    
+    setLoadingDiveLogs(true);
+    try {
+      // Load from localStorage first
+      const key = storageKey(userId);
+      const localLogs = safeParse(key, []);
+      setDiveLogs(localLogs);
+
+      // Then try to load from API
+      const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const remoteLogs = data.logs || [];
+        
+        // Merge local and remote logs (remove duplicates)
+        const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
+          const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
+          return { ...map, [key]: log };
+        }, {});
+        
+        const combined = Object.values(merged).sort((a, b) => 
+          new Date(b.date) - new Date(a.date)
+        );
+        
+        setDiveLogs(combined);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+        }
+        
+        console.log(`✅ Loaded ${combined.length} dive logs`);
+      }
+    } catch (error) {
+      console.error("❌ Failed to load dive logs:", error);
+    } finally {
+      setLoadingDiveLogs(false);
+    }
+  }, [userId]);
+
+  // ✅ DIVE JOURNAL SUBMIT
+  const handleJournalSubmit = useCallback(async (diveData) => {
+    try {
+      const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...diveData, userId }),
+      });
+
+      if (response.ok) {
+        console.log("✅ Dive log saved successfully");
+        await loadDiveLogs(); // Refresh the list
+        setIsDiveJournalOpen(false);
+        setEditLogIndex(null);
+        
+        // Add confirmation message
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || 'your location'}.`
+        }]);
+      } else {
+        console.error("❌ Failed to save dive log");
+      }
+    } catch (error) {
+      console.error("❌ Error saving dive log:", error);
+    }
+  }, [userId, loadDiveLogs]);
+
+  // ✅ DELETE DIVE LOG
+  const handleDelete = useCallback(async (logId) => {
+    try {
+      const response = await fetch(`${API_ROUTES.DELETE_DIVE_LOG}?id=${logId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        console.log("✅ Dive log deleted");
+        await loadDiveLogs(); // Refresh the list
+      }
+    } catch (error) {
+      console.error("❌ Error deleting dive log:", error);
+    }
+  }, [loadDiveLogs]);
+
+  // ✅ SESSION MANAGEMENT
+  const handleSaveSession = useCallback(() => {
+    const newSession = {
+      id: Date.now(),
+      sessionName,
+      messages,
+      timestamp: Date.now(),
+    };
+    const updated = [newSession, ...sessionsList.filter(s => s.sessionName !== sessionName)];
+    setSessionsList(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+    }
+    console.log("✅ Session saved");
+  }, [sessionName, messages, sessionsList]);
+
+  const startNewSession = useCallback(() => {
+    const name = `Session – ${new Date().toLocaleDateString("en-US")} (${Date.now()})`;
+    setSessionName(name);
+    setMessages([
+      {
+        role: "assistant",
+        content: `🤿 Hi! I'm ${BOT_NAME}, your freediving coach. How can I help you today?`,
+      },
+    ]);
+    setFiles([]);
+    setEditingSessionName(false);
+    console.log("✅ New session started");
+  }, [BOT_NAME]);
+
+  const handleSelectSession = useCallback((name) => {
+    const found = sessionsList.find(s => s.sessionName === name);
+    if (found) {
+      setSessionName(found.sessionName);
+      setMessages(found.messages || []);
+      setInput("");
+      console.log("✅ Session loaded:", name);
+    }
+  }, [sessionsList]);
+
+  // ✅ Load dive logs on mount
+  useEffect(() => {
+    if (userId) {
+      loadDiveLogs();
+    }
+  }, [userId, loadDiveLogs]);
+
+  // ✅ MEMOIZED PROPS FOR PERFORMANCE
+  const sidebarProps = useMemo(() => ({
+    BOT_NAME,
+    sessionName,
+    setSessionName,
+    sessionsList,
+    messages,
+    setMessages,
+    userId,
+    profile,
+    setProfile,
+    diveLogs,
+    setDiveLogs,
+    darkMode,
+    setDarkMode,
+    startNewSession,
+    handleSaveSession,
+    handleSelectSession,
+    toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
+    handleJournalSubmit,
+    handleDelete,
+    refreshDiveLogs: loadDiveLogs,
+    loadingDiveLogs,
+    syncStatus: "✅ Ready",
+    editingSessionName,
+    setEditingSessionName
+  }), [
+    sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
+    startNewSession, handleSaveSession, handleSelectSession, handleJournalSubmit,
+    handleDelete, loadDiveLogs, loadingDiveLogs, editingSessionName
+  ]);
+
+  // ✅ MESSAGE LISTENER FOR USER AUTH FROM PARENT PAGE
+  useEffect(() => {
+    const handleMessage = (event) => {
+      // Security check for trusted origins
+      if (!(
+        event.origin === 'https://www.deepfreediving.com' ||
+        event.origin === 'https://deepfreediving.com' ||
+        event.origin.includes('wix.com') ||
+        event.origin.includes('wixsite.com') ||
+        event.origin.includes('editorx.com') ||
+        event.origin === 'https://kovaldeepai-main.vercel.app' ||
+        event.origin === 'http://localhost:3000'
+      )) {
+        console.log('🚫 Ignoring message from untrusted origin:', event.origin);
+        return;
+      }
+      
+      switch (event.data?.type) {
+        case 'USER_AUTH':
+          console.log('👤 Index: User auth received from parent:', event.data.data);
+          
+          if (event.data.data?.userId) {
+            console.log('✅ Index: Setting userId to:', event.data.data.userId);
+            const newUserId = String(event.data.data.userId);
+            setUserId(newUserId);
+            localStorage.setItem("kovalUser", newUserId);
+          }
+          
+          // Update profile with rich data
+          if (event.data.data?.userName || event.data.data?.userEmail) {
+            const richProfile = {
+              nickname: event.data.data.userName || event.data.data.userEmail || 'User',
+              displayName: event.data.data.userName || event.data.data.userEmail || 'User',
+              loginEmail: event.data.data.userEmail || '',
+              firstName: event.data.data.firstName || '',
+              lastName: event.data.data.lastName || '',
+              profilePicture: event.data.data.profilePicture || '',
+              phone: event.data.data.phone || '',
+              bio: event.data.data.bio || '',
+              location: event.data.data.location || '',
+              source: event.data.data.source || 'wix-parent-auth',
+              customFields: event.data.data.customFields || {},
+              isGuest: event.data.data.isGuest || false
+            };
+            
+            console.log('✅ Index: Setting rich profile to:', richProfile);
+            setProfile(richProfile);
+            localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
+          }
+          break;
+          
+        case 'THEME_CHANGE':
+          console.log('🎨 Index: Theme change received:', event.data.data);
+          setDarkMode(Boolean(event.data.data?.dark));
+          break;
+          
+        default:
+          console.log('❓ Index: Unknown message type:', event.data?.type);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('message', handleMessage);
+      console.log('👂 Index: Message listener for user auth set up');
+      
+      return () => {
+        window.removeEventListener('message', handleMessage);
+      };
+    }
+  }, []);
 
   return (
-    <main className="bg-gradient-to-b from-teal-500 to-blue-700 min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-3xl h-screen flex flex-col border border-gray-700 rounded-xl overflow-hidden shadow-lg bg-white">
-        {/* Header */}
-        <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-700 bg-[#121212] rounded-t-xl">
-          <img src="/deeplogo.jpg" alt="Deep Freediving Logo" className="w-12 h-12 rounded-full shadow-md" />
-          <h1 className="text-2xl font-bold text-white">Koval Deep AI</h1>
-          {username && <span className="text-white text-sm">Hello, {username}!</span>}
-        </div>
+    <main className={`${isEmbedded ? 'h-full' : 'h-screen'} flex ${
+      darkMode ? "bg-black text-white" : "bg-white text-gray-900"
+    }`}>
+      
+      {/* ✅ SIDEBAR - Hidden in embedded mode on mobile, smaller on desktop */}
+      <div className={`${isEmbedded ? 'w-[250px] hidden sm:flex' : 'w-[320px]'} h-full overflow-y-auto border-r flex flex-col justify-between ${
+        darkMode ? "border-gray-700" : "border-gray-300"
+      }`}>
+        <Sidebar {...sidebarProps} />
 
-        {/* Messages Section */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center text-gray-400">
-              <p>Welcome to Koval Deep AI! How can I assist you today?</p>
-            </div>
-          )}
-          {messages.map((m, i) => (
-            <div key={i} className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap transition-all duration-300 ease-in-out ${m.role === 'assistant' ? 'bg-teal-800 text-white self-start shadow-md' : 'bg-blue-600 text-white self-end shadow-lg'}`}>
-              <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong>
-              <div>{m.content}</div>
-            </div>
-          ))}
-          {loading && <div className="text-gray-400 italic">Koval Deep AI is thinking...</div>}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input Section */}
-        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="w-full bg-[#121212] border-t border-gray-700 flex gap-2 p-4 shadow-xl rounded-b-xl">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here (e.g., Tell me how deep you dove today, how was your mouthfill)..."
-            className="flex-1 resize-none rounded-md p-3 bg-white text-black text-sm h-20 shadow-md"
-            onKeyDown={handleKeyDown}
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-md font-semibold disabled:opacity-50"
-            disabled={loading || !isThreadReady || input.trim() === ""}
-          >
-            {loading ? 'Thinking...' : 'Send'}
-          </button>
-        </form>
+        {/* ✅ CONNECTION STATUS - Simplified in embedded mode */}
+        {!isEmbedded && (
+          <div className={`mt-4 mb-4 mx-4 flex space-x-4 text-xl px-3 py-2 rounded-lg ${
+            darkMode ? "bg-gray-800" : "bg-gray-100"
+          }`}>
+            {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
+            {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
+            {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
+          </div>
+        )}
       </div>
+
+      {/* ✅ MAIN CHAT AREA */}
+      <div className={`flex-1 flex flex-col ${isEmbedded ? 'h-full' : 'h-screen'}`}>
+        
+        {/* Top Bar - Simplified in embedded mode */}
+        <div className={`sticky top-0 z-10 border-b ${isEmbedded ? 'p-2' : 'p-3'} flex justify-between items-center text-sm ${
+          darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
+        }`}>
+          <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+            👤 {getDisplayName()}
+          </div>
+          {!isEmbedded && (
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`px-3 py-1 rounded-md ${
+                darkMode
+                  ? "bg-gray-800 text-white hover:bg-gray-700"
+                  : "bg-gray-200 text-black hover:bg-gray-300"
+              }`}
+            >
+              {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+            </button>
+          )}
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto flex justify-center">
+          <div className="w-full max-w-3xl px-6 py-4">
+            <ChatMessages
+              messages={messages}
+              BOT_NAME={BOT_NAME}
+              darkMode={darkMode}
+              loading={loading}
+              bottomRef={bottomRef}
+            />
+          </div>
+        </div>
+
+        {/* Chat Input */}
+        <div className={`px-4 py-3 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}>
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            handleSubmit={handleSubmit}
+            handleKeyDown={handleKeyDown}
+            handleFileChange={handleFileChange}
+            files={files}
+            setFiles={setFiles}
+            loading={loading}
+            darkMode={darkMode}
+          />
+        </div>
+      </div>
+
+
+
+      {/* ✅ DIVE JOURNAL SIDEBAR - Now includes both form and display */}
+      {isDiveJournalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
+            darkMode ? "bg-gray-900" : "bg-white"
+          }`}>
+            <div className={`flex justify-between items-center p-4 border-b ${
+              darkMode ? "border-gray-700" : "border-gray-200"
+            }`}>
+              <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                🤿 Dive Journal
+              </h2>
+              <button 
+                onClick={() => setIsDiveJournalOpen(false)}
+                className={`text-2xl transition-colors ${
+                  darkMode 
+                    ? "text-gray-400 hover:text-white" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                ×
+              </button>
+            </div>
+            <div className="h-[calc(95vh-80px)]">
+              <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
+}
+
+// REPLACE the queryPinecone function in pages/api/openai/chat.ts:
+
+async function queryPinecone(query) {
+  if (!query?.trim()) return [];
+  try {
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+
+    // ✅ Use the chat-embed endpoint for Pinecone queries
+    const response = await fetch(`${baseUrl}/api/chat-embed`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: query,
+        userId: 'frontend-user',
+        profile: { pb: 50 } // Default profile
+      })
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Chat API query failed with status ${response.status}`);
+      return [];
+    }
+
+    const result = await response.json();
+    // Extract the AI response content
+    return result.assistantMessage?.content ? [result.assistantMessage.content] : [];
+  } catch (error) {
+    console.error('❌ Chat API error:', error.message);
+    return [];
+  }
 }

@@ -1,0 +1,408 @@
+// WIX APP BACKEND: DIVELOGS.JSW - MASTER EDITION
+// Dive Logs API endpoint for Wix App environment
+// Version: 4.0.0 - Production Ready
+
+import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { authentication } from 'wix-members-backend';
+import { fetch } from 'wix-fetch';
+
+// 🎯 MASTER DIVE LOGS CONFIGURATION
+const DIVELOGS_CONFIG = {
+  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
+  
+  VALIDATION: {
+    REQUIRED_FIELDS: ['userId', 'diveDate'],
+    MAX_DEPTH: 400,           // Maximum depth in meters
+    MAX_TIME: 1800,           // Maximum time in seconds (30 minutes)
+    VALID_DISCIPLINES: ['STA', 'DYN', 'DNF', 'CWT', 'CNF', 'FIM', 'VWT', 'NLT']
+  },
+  
+  SEMANTIC_SEARCH: {
+    API_URL: 'https://kovaldeepai-main.vercel.app/api/pinecone',
+    TIMEOUT: 5000
+  },
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  }
+};
+
+// 🔥 VALIDATION FUNCTIONS
+function validateDiveLog(data) {
+  const errors = [];
+  
+  // Check required fields
+  for (const field of DIVELOGS_CONFIG.VALIDATION.REQUIRED_FIELDS) {
+    if (!data[field]) {
+      errors.push(`Missing required field: ${field}`);
+    }
+  }
+  
+  // Validate depth
+  if (data.depth && (data.depth < 0 || data.depth > DIVELOGS_CONFIG.VALIDATION.MAX_DEPTH)) {
+    errors.push(`Depth must be between 0 and ${DIVELOGS_CONFIG.VALIDATION.MAX_DEPTH} meters`);
+  }
+  
+  // Validate time
+  if (data.time && (data.time < 0 || data.time > DIVELOGS_CONFIG.VALIDATION.MAX_TIME)) {
+    errors.push(`Time must be between 0 and ${DIVELOGS_CONFIG.VALIDATION.MAX_TIME} seconds`);
+  }
+  
+  // Validate discipline
+  if (data.discipline && !DIVELOGS_CONFIG.VALIDATION.VALID_DISCIPLINES.includes(data.discipline)) {
+    errors.push(`Invalid discipline. Valid options: ${DIVELOGS_CONFIG.VALIDATION.VALID_DISCIPLINES.join(', ')}`);
+  }
+  
+  return errors;
+}
+
+// 🔥 OPTIONS HANDLER (CORS)
+export function options_diveLogs(request) {
+  return ok({
+    message: 'CORS preflight OK'
+  }, DIVELOGS_CONFIG.CORS_HEADERS);
+}
+
+// 🔥 POST: Save dive log data
+export async function post_diveLogs(request) {
+  const startTime = Date.now();
+  
+  try {
+    // Parse request body
+    let requestData;
+    try {
+      requestData = await request.body.json();
+    } catch (error) {
+      return badRequest({
+        error: 'Invalid JSON in request body',
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    // Validation
+    const validationErrors = validateDiveLog(requestData);
+    if (validationErrors.length > 0) {
+      return badRequest({
+        error: 'Validation failed',
+        details: validationErrors,
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    // Get current member if available
+    let member = null;
+    try {
+      member = await authentication.getCurrentMember();
+    } catch (error) {
+      console.log('No authenticated member available');
+    }
+
+    // Prepare dive log data
+    const diveLogData = {
+      ...requestData,
+      userId: requestData.userId || (member ? member._id : 'anonymous'),
+      _createdDate: new Date(),
+      _updatedDate: new Date(),
+      submissionTimestamp: new Date().toISOString(),
+      dataSource: 'wix-app'
+    };
+
+    // Save to Wix Data
+    const result = await wixData.save(DIVELOGS_CONFIG.COLLECTION_NAME, diveLogData);
+    
+    const duration = Date.now() - startTime;
+    trackMetrics('saves', duration);
+    console.log(`Dive log saved in ${duration}ms`);
+
+    return ok({
+      success: true,
+      data: result,
+      _id: result._id,
+      metadata: {
+        processingTime: duration,
+        source: 'wix-app-backend',
+        timestamp: new Date().toISOString()
+      }
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('saves', duration, true);
+    console.error('Error saving dive log:', error);
+    
+    return serverError({
+      error: 'Failed to save dive log',
+      details: error.message,
+      success: false,
+      timestamp: new Date().toISOString()
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 GET: Retrieve dive logs with filtering
+export async function get_diveLogs(request) {
+  const startTime = Date.now();
+  
+  try {
+    const { userId, limit = 50, search, discipline, dateFrom, dateTo, semantic } = request.query;
+    
+    if (!userId) {
+      return badRequest({
+        error: 'userId is required',
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    // Build query
+    let query = wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME)
+      .eq('userId', userId)
+      .limit(Math.min(parseInt(limit), 100))
+      .descending('diveDate');
+
+    // Add filters
+    if (discipline) {
+      query = query.eq('discipline', discipline);
+    }
+    
+    if (dateFrom) {
+      query = query.ge('diveDate', dateFrom);
+    }
+    
+    if (dateTo) {
+      query = query.le('diveDate', dateTo);
+    }
+    
+    // Basic text search
+    if (search && !semantic) {
+      query = query.contains('notes', search);
+    }
+
+    // Execute query
+    const results = await query.find();
+
+    // Semantic search capability
+    let semanticResults = null;
+    if (semantic && search) {
+      try {
+        const semanticResponse = await fetch(DIVELOGS_CONFIG.SEMANTIC_SEARCH.API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: search,
+            userId: userId,
+            type: 'diveLogs',
+            limit: 10
+          })
+        });
+        
+        if (semanticResponse.ok) {
+          semanticResults = await semanticResponse.json();
+        }
+      } catch (semanticError) {
+        console.warn('Semantic search failed:', semanticError.message);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    trackMetrics('queries', duration);
+    console.log(`Dive logs retrieved in ${duration}ms`);
+
+    const response = {
+      success: true,
+      data: results.items,
+      totalCount: results.totalCount,
+      hasNext: results.hasNext(),
+      metadata: {
+        processingTime: duration,
+        source: 'wix-app-backend',
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    if (semanticResults) {
+      response.semanticMatches = semanticResults;
+    }
+
+    return ok(response, DIVELOGS_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('queries', duration, true);
+    console.error('Error retrieving dive logs:', error);
+    
+    return serverError({
+      error: 'Failed to retrieve dive logs',
+      details: error.message,
+      success: false,
+      timestamp: new Date().toISOString()
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 PUT: Update existing dive log
+export async function put_diveLogs(request) {
+  const startTime = Date.now();
+  
+  try {
+    const { diveLogId } = request.query;
+    
+    if (!diveLogId) {
+      return badRequest({
+        error: 'diveLogId is required',
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    let updateData;
+    try {
+      updateData = await request.body.json();
+    } catch (error) {
+      return badRequest({
+        error: 'Invalid JSON in request body',
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    // Validation
+    const validationErrors = validateDiveLog(updateData);
+    if (validationErrors.length > 0) {
+      return badRequest({
+        error: 'Validation failed',
+        details: validationErrors,
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    // Prepare update
+    const updatePayload = {
+      _id: diveLogId,
+      ...updateData,
+      _updatedDate: new Date()
+    };
+
+    const result = await wixData.update(DIVELOGS_CONFIG.COLLECTION_NAME, updatePayload);
+    
+    const duration = Date.now() - startTime;
+    trackMetrics('updates', duration);
+    console.log(`Dive log updated in ${duration}ms`);
+
+    return ok({
+      success: true,
+      data: result,
+      metadata: {
+        processingTime: duration,
+        source: 'wix-app-backend',
+        timestamp: new Date().toISOString()
+      }
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('updates', duration, true);
+    console.error('Error updating dive log:', error);
+    
+    return serverError({
+      error: 'Failed to update dive log',
+      details: error.message,
+      success: false,
+      timestamp: new Date().toISOString()
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 DELETE: Remove dive log
+export async function delete_diveLogs(request) {
+  const startTime = Date.now();
+  
+  try {
+    const { diveLogId } = request.query;
+    
+    if (!diveLogId) {
+      return badRequest({
+        error: 'diveLogId is required',
+        success: false
+      }, DIVELOGS_CONFIG.CORS_HEADERS);
+    }
+
+    await wixData.remove(DIVELOGS_CONFIG.COLLECTION_NAME, diveLogId);
+    
+    const duration = Date.now() - startTime;
+    trackMetrics('deletes', duration);
+    console.log(`Dive log deleted in ${duration}ms`);
+
+    return ok({
+      success: true,
+      message: 'Dive log deleted successfully',
+      metadata: {
+        processingTime: duration,
+        source: 'wix-app-backend',
+        timestamp: new Date().toISOString()
+      }
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('deletes', duration, true);
+    console.error('Error deleting dive log:', error);
+    
+    return serverError({
+      error: 'Failed to delete dive log',
+      details: error.message,
+      success: false,
+      timestamp: new Date().toISOString()
+    }, DIVELOGS_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 GET METRICS ENDPOINT
+export async function get_diveLogsMetrics(request) {
+  return ok({
+    success: true,
+    metrics: {
+      ...diveLogsMetrics,
+      averageDuration: diveLogsMetrics.saves > 0 ? diveLogsMetrics.totalDuration / diveLogsMetrics.saves : 0,
+      successRate: diveLogsMetrics.saves > 0 ? ((diveLogsMetrics.saves - diveLogsMetrics.errors) / diveLogsMetrics.saves) * 100 : 100
+    },
+    config: {
+      collection: DIVELOGS_CONFIG.COLLECTION_NAME,
+      validDisciplines: DIVELOGS_CONFIG.VALIDATION.VALID_DISCIPLINES
+    },
+    version: '4.0.0'
+  }, DIVELOGS_CONFIG.CORS_HEADERS);
+}
+
+// 🔥 GET HANDLER (Status Check)
+export function get_diveLogsStatus(request) {
+  return ok({
+    status: 'operational',
+    service: 'wix-app-divelogs',
+    timestamp: new Date().toISOString(),
+    endpoints: ['POST /diveLogs', 'GET /diveLogs', 'PUT /diveLogs', 'DELETE /diveLogs', 'OPTIONS /diveLogs', 'GET /diveLogsMetrics'],
+    version: '4.0.0'
+  }, DIVELOGS_CONFIG.CORS_HEADERS);
+}
+
+// 🔥 PERFORMANCE METRICS
+let diveLogsMetrics = {
+  saves: 0,
+  queries: 0,
+  updates: 0,
+  deletes: 0,
+  totalDuration: 0,
+  errors: 0,
+  semanticSearches: 0
+};
+
+function trackMetrics(operation, duration, error = false) {
+  diveLogsMetrics[operation]++;
+  diveLogsMetrics.totalDuration += duration;
+  if (error) {
+    diveLogsMetrics.errors++;
+  }
+}
+
+console.log("🔥 Wix App Dive Logs API initialized - Master version");

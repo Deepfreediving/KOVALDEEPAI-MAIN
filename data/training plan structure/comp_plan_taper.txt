@@ -1,0 +1,78 @@
+🧠 Koval Deep AI Taper & Periodization Plan (3–6 Month Structure) Competition Plan
+MAIN TRAINING IDEALOGY FOR FREEDIVERS AND PEAKING IN MILITARY PERFORMANCE
+🔁 OVERVIEW: Phased Training Architecture
+🏁 PHASE 1 – Aerobic Capacity & Technical Base
+📆 Duration: 3–4 Weeks
+🎯 Objectives:
+Increase VO₂ max → lower HR
+Build mitochondrial + capillary density
+Start low-stress equalization drills (NPD, FRC no deeper than 25m)
+Improve glute & quad function for finning
+🛠️ Tools:
+Stairmaster, uphill hikes (HR zone 2: 60–70%)
+FRC dives (2x/week max, <25m)
+Negative diaphragm stretches (3–5x/week)
+Standard MDR warm-up routine 2–3x/week
+Static breath-holds to first contraction only
+🧠 Notes:
+Do not exceed 40-minute aerobic sessions
+No anaerobic CO₂ training yet
+If static is a goal: stop all aerobic training 2–3 weeks prior
+⚡ PHASE 2 – Anaerobic Load + Depth Stress Adaptation
+📆 Duration: 4–6 Weeks
+🎯 Objectives:
+Train lactate tolerance and CO₂ resilience
+Introduce reverse packing + early MF drills
+Begin short high-contraction statics
+🛠️ Tools:
+Anaerobic sprints (bike, finswimming, stair intervals)
+50s ON / 90–120s REST, 6–8 rounds @ 90% HR
+Dynamic apneas (short, CO₂ focused) 2x/week
+FRC progression: Add reverse packs, deeper target (28–30m)
+Equalization troubleshooting dives: start building MF to 30m
+🚨 Safety Reminders:
+Increase NDS volume each week (per ruleset)
+Never exceed one anaerobic session/day
+Emphasize full recovery between anaerobic sets
+🧱 PHASE 3 – Dive-Specific Conditioning
+📆 Duration: 3–4 Weeks
+🎯 Objectives:
+Pressure, mouthfill, and dive simulation stress
+Practice peak techniques: sink phase, MF lock, volume preservation
+🛠️ Tools:
+CWT / VWT / FRC deep dives to simulate RV
+“Sink Phase Simulators” – drop arms, MF refill mid-descent, soft palate control
+Add 2x monthly max static attempts (not more)
+1x/week anaerobic dive + 1x recovery dive
+🧠 Mouthfill Protocol:
+Determine depth of MF via FRC simulation
+Practice 2–3 partial fills vs. single large fill
+Goal: Hold volume past 40m without swallowing or leaking
+🔻 PHASE 4 – Taper & Supercompensation
+📆 Duration: 7–10 days
+🎯 Objectives:
+Reduce cumulative fatigue, allow full adaptation
+Maintain sharpness without building stress
+Minimize warm-up volume but keep quality (trigger MDR)
+📉 Load Adjustment:
+🧠 Key Concepts:
+Warm-up must trigger MDR, but not fatigue
+Focus on precision equalization, relaxation, dive feel
+Static warm-ups optional, based on symptoms
+Replace any intense drills with visualizations, float hangs, mild FRC
+🧠 AI LOGIC & DECISION RULES FOR KOVAL DEEP AI
+🔄 PHASE DETECTION
+If user provides 3–4 month window: auto-phase into 4 blocks
+If <2 months: merge Phases 1 & 2 → shorten taper to 5 days
+If goal is Static-focused: skip anaerobic CO₂, extend taper
+--- TABLE ---
+Phase | Focus | Duration | Training Type
+Phase 1 | Aerobic Capacity + Technique Base | 3–4 weeks | Low intensity, high volume
+Phase 2 | Anaerobic Capacity + Equalization/CO₂ Work | 4–6 weeks | Moderate-high intensity
+Phase 3 | Dive-Specific Peak Conditioning | 3–4 weeks | Specific stressors (pressure, sink phase, MF)
+Phase 4 | Taper (Supercompensation Phase) | 1–2 weeks | Reduced volume, high specificity
+--- TABLE ---
+Week | Volume | Intensity
+T-2 | ↓ 30% | Maintain
+T-1 | ↓ 50% | ↓ Slightly (maintain specificity)
+Final 3 Days | ↓ 70–80% | Only warm-up, 1–2 target dives

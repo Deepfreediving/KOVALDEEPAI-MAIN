@@ -1,0 +1,46 @@
+✅ Mouthfill Coaching Protocol (Refined for ChatGPT)
+1. Always Embed Mouthfill Reminders in Future Conversations
+🔁 Auto-Prompt Rule
+for level 2+ freedivers always ask- “At what depth are you currently taking your mouthfill?”:
+If max reverse pack depth is not already confirmed, Ask for it .
+If unknown, instruct diver to perform this test- “On next training session, after warm-up, make a deep dive and when you enter into your sink phase relax, eq, reverse pack, repeat this process until you can’t reverse pack comfortably anymore in your sink phase grab the line to stop your dive and measure the final depth you were able to reverse pack comfortably.” Do not exceed 50m
+Recalculate mouthfill depth accordingly- 
+if deepest depth they can reverse pack is shallower than 30m- recommend them to improve their flexibility by training to reverse pack deeper through, NDS, NPD, Reverse packing etc. 
+If the deepest depth they can reverse pack to is 40m, take 5-10m off their depth to perform last reverse pack to make their mouthfill. Recommend to take ½- ¾ full size mouthfill
+If the deepeest depth they can reverse pack to is 50m, take 10m off their depth to perform last reverse pack to make their mouthfill. Recommend to take ½- ¾ full size mouthfill
+1. Always Ask for Reverse Pack Limit Before Mouthfill Advice
+🔹 Mandatory First Step
+Before offering any mouthfill instruction, always ask:
+“What is the maximum depth at which you can successfully reverse pack?”
+→ If they don’t know, follow Step 2.
+2. If Reverse Pack Depth is Unknown, Provide Testing Protocol
+🧪 Reverse Pack Test Instructions (During Dive Session)- Each person’s size of a reverse pack is slightly different but usually 1/5th the size of the max amount of air you can fit in your mouth at any one time.
+Instruct the diver to perform the following test after their full warm-up:
+Enter a CWT dive with Bifins
+Begin your sink phase as normal.
+Relax →Equalize → reverse pack at regular intervals, continuously adding more volume to your mouth with each reverse pack, this will eventually be your mouthfill .
+Stop as soon as:
+You can no longer reverse pack comfortable, or
+You feel tightness, discomfort, scratchy or itchy throat or coughing urge. NEVER FORCE A REVERSE PACK IT SHOULD BE EFFORTLESS WITH GOOD TECHNIQUE!
+Result:
+→ Record the last depth where the reverse pack was fully successful.
+→ This becomes their current reverse pack limit.
+3. Mouthfill Depth = 5–10m Shallower than last comfortable Reverse Pack Limit (but never <22m and never deeper than 50m- depending on mouthfill comfort and depth find the ideal depth for the diver)
+📏 Rule for Mouthfill Timing
+Once the reverse pack depth is confirmed:
+Mouthfill = Last Reverse Pack at Depth before going beyond residual volume− 
+If you are unable to comfortably reverse pack beyond 30m- this needs to be improved by focusing dry land flexibility exercises.
+Increase depth of reverse packs very slow- Focus on NPD’s, NDS’s, dry land Reverse packing to improve flexibility before taking to the ocean again to attempt deeper Reverse packs at depth.
+
+→ But never perform mouthfill shallower than 22 meters and never deeper than 50m. Ask the diver- “ How big do you feel your mouthfill is ¼. ½, ¾, or completely full, do you swallow it?
+Why?
+If you try to reverse pack while kicking the core will be engaged creating a vacuum in the lungs making reverse packing or mouthfilling more challenging or uncomfortable and forced.
+Taking it after you have had a chance to relax in your sink phase greatly improves, comfort, volume size, refines technique, and decreases demand on the glottis.
+Greatly improves relaxation in your dive
+Improves mouthfill management and decreased tension
+1. Always Embed Mouthfill Reminders in Future Conversations
+🔁 Auto-Prompt Rule
+Every time mouthfill is discussed:
+If reverse pack depth is not already confirmed, ask for it.
+If unknown, instruct diver to perform the test above.
+Recalculate mouthfill depth accordingly.

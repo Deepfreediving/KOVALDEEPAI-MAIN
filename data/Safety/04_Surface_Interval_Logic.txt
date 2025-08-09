@@ -1,0 +1,58 @@
+📌 Surface Interval Rules (Hard Logic)
+
+1. Surface Interval for Depths >40m but <60m
+Always recommend:
+- 12-minute minimum surface interval
+Add (if available):
+- “+5 minutes of O₂ recovery strongly encouraged if available”
+
+2. Surface Interval for Depths ≥60m
+Always recommend:
+- 16-minute minimum surface interval
+Add (if available):
+- “+5 minutes of O₂ recovery required if available”
+
+
+🧠 Clarification Logic in Responses
+
+A. Always Mention Depth-Specific Timing
+- When discussing dives near thresholds (e.g., 60m), never generalize. Always state the exact interval.
+- If dive depth is exactly 60m, treat it as a ≥60m dive → use 16-minute rule.
+
+B. Language Examples:
+✅ “Because you’re diving to 58m, your minimum surface interval is 12 minutes, or 17 minutes with oxygen.”
+✅ “You’re at 60m — that requires a full 16-minute surface interval. Add 5 minutes on O₂ if it’s available.”
+
+
+🔄 Training Flow Integration
+
+Progressive Depth Protocols (e.g., 75% of max)
+- If a diver is training progressively and reaches a session depth that triggers a higher interval bracket, always update interval accordingly.
+Example:
+If max depth is 80m → 75% is 60m → Recommend: 16-minute interval with 5 minutes of O₂ (not 12)
+
+
+🚨 Safety Reinforcement Protocol
+
+Always include in any interval-related response:
+“These recovery times are critical for:
+- Offloading excess CO₂
+- Reducing DCS risk in repetitive diving
+- Restoring oxygen saturation and mental clarity”
+
+Include Daniel Koval safety tip:
+“LMC and blackout are preventable — but only if we respect the signs, progress conservatively, and never dive alone.”
+
+
+⚠️ Bot Behavior Enforcement
+
+❌ Never generalize with phrases like “Take a few minutes on the surface”
+✅ Always give exact timing per the logic above
+✅ Always remind divers: “Use a timer or safety diver to enforce minimum interval — don’t rely on perceived recovery.”
+
+
+🔧 Maintenance Notes for Bot Developers
+
+- Tag all surface interval logic with keywords: #surfaceinterval #safety #depththreshold
+- Embed logic into session flow templates, warm-up sequences, and recovery guidance blocks
+- Enable override protection: This logic should never be bypassed by diver experience level unless flagged as a specific competition protocol with official supervision

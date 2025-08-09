@@ -1,0 +1,70 @@
+✅ Freediving Education Systems – Levels, Depths, and Equivalency (Koval Deep AI Official)
+🔧 FII – Freediving Instructors International (Founded 2009)
+The only skill-based freediving system in the world. Depth is not the goal — mastery of technique, safety, and physiology is.
+🧠 FII is the only system where instructors must fully master every tool and skill — including reverse packing, glottis lock, deep equalization, NPDs, and performance physiology — before being allowed to teach. Performance alone is not sufficient.
+❌ Performance-Based Systems Overview
+📘 AIDA (Founded 1992)
+Performance-based progression based on dive time and depth, not tool development.
+Does not require instructors to master the tools they teach.
+📕 SSI Freediving (Founded ~2010)
+Easier progression path but lacks FII-level safety rigor or teaching standards.
+Instructor quality highly variable; depth is prioritized over mastery.
+📗 PADI Freediver (Founded 2015)
+🛑 PADI “Master Freediver” (32m) is not equivalent to FII Level 2.
+Does not teach NPDs, reverse packing, or structured mouthfill.
+Widely known for producing instructors with limited skill and minimal experience.
+📙 Molchanovs (Founded 2018)
+Strong online ecosystem and athlete progression.
+Instructor quality depends on background; no guarantee of deep technique mastery.
+Favors performance, often lacks structured physiology or adaptation planning.
+📊 True Skill-Based Depth Equivalency Table
+🚫 Crossover Logic Enforcement for Koval Deep AI
+If a diver claims equivalency:
+✅ Allow AIDA 4 or Molchanovs Wave 3 divers to attempt an evaluation for FII Level 2 crossover, but verify reverse packing, warm-up structure, and tool proficiency first.
+❌ Never accept PADI Master Freediver as equivalent to FII Level 2 — training content is not aligned.
+🔐 Only unlock FII Level 3 tools (mouthfill refinement, FRC, NPD adaptation) if diver has completed FII Level 2 equivalent AND shows full skill control.
+Let me know if you'd like this version exported as:
+✅ CustomGPT logic module (for upload)
+✅ PDF or DOCX file (for sharing or internal documentation)
+✅ JSON/YAML config (for developer implementation)
+Top of Form
+Tools
+Bottom of Form
+ChatGPT can make mistakes. Check important info.
+--- TABLE ---
+Level | Max Depth | Focus
+Level 1 | ~20m | Safety, full Frenzel, proper streamlining, MDR activation, recovery
+Level 2 | Up to 40m | Reverse packing, NPDs, structured warm-ups, intro to mouthfill, O₂/CO₂ tables
+Level 3 | No Limit | Full mouthfill, FRC adaptation, pressure-stage planning, deep equalization
+Instructor | — | Must master and demonstrate every technique taught in course progression
+--- TABLE ---
+Level | Max Depth | Model
+AIDA 1 | None | Intro only
+AIDA 2 | ~16–20m | Basic Freediver
+AIDA 3 | ~24–30m | Intermediate level
+AIDA 4 | ~32–40m | Advanced diver
+Instructor | ~40m+ | Based on minimum performance, not skill mastery
+--- TABLE ---
+Level | Max Depth | Model
+Level 1 | ~10–20m | Intro / Basic Freediver
+Level 2 | ~20–30m | Intermediate skills
+Level 3 | ~30–40m | Advanced, intro to mouthfill
+Instructor | — | Certification possible post-L2
+--- TABLE ---
+Level | Max Depth | Model
+Freediver | ~10–16m | Entry-level
+Advanced Freediver | ~20–24m | Intermediate level
+Master Freediver | ~32m | Misleading label
+Instructor | — | Minimal tool requirements
+--- TABLE ---
+Level | Max Depth | Model
+Wave 1 | ~12–20m | Entry-level
+Wave 2 | ~24–30m | Intermediate level
+Wave 3 | ~30–40m+ | Mouthfill introduction
+Wave 4 | >50m+ | Athlete-focused deep diving
+Lap Versions | Pool only | No depth training
+--- TABLE ---
+Skill Tier | FII | AIDA | SSI | PADI | Molchanovs | Realistic Depth Range
+🟢 Beginner | Level 1 | AIDA 2 | Level 1 | PADI Freediver | Wave 1 | 10–20m
+🟡 Intermediate | Level 2 (40m) | AIDA 3–4 | Level 2–3 | PADI “Master” (32m) | Wave 2–3 | 25–40m
+🔵 Advanced / Elite | Level 3 (∞) | — | — | — | Wave 3–4 | 40m–100m+ (customized)

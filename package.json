@@ -2,40 +2,68 @@
   "name": "koval-deep-ai",
   "version": "1.0.0",
   "description": "Koval Deep AI - A Next.js application with Pinecone and OpenAI integration",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "build:analyze": "BUNDLE_ANALYZE=true next build",
+    "postinstall": "next build",
+    "start:ts": "ts-node -r tsconfig-paths/register scripts/ingest-documents.ts"
   },
-  "engines": {
-    "node": ">=14.x"
-  },
-  "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.27.6",
-    "@next/bundle-analyzer": "^13.5.5",
-    "@pinecone-database/pinecone": "^2.2.2",
-    "@types/react": "^19.1.8",
+    "@pinecone-database/pinecone": "^6.1.2",
+    "@wix/data": "^1.0.270",
+    "@wix/sdk": "^1.15.24",
     "axios": "^1.10.0",
-    "dotenv": "^10.0.0",
-    "next": "^15.3.5",
-    "openai": "^5.9.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "react-markdown": "^10.1.0"
+    "browser-image-compression": "^2.0.2",
+    "critters": "^0.0.23",
+    "dotenv": "^17.2.1",
+    "formidable": "^3.5.4",
+    "gpt-3-encoder": "^1.1.4",
+    "multer": "^2.0.2",
+    "next": "^15.4.1",
+    "next-connect": "^1.0.0",
+    "openai": "^5.10.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "tesseract.js": "^6.0.1",
+    "uuid": "^11.1.0",
+    "vercel": "^32.0.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.0",
-    "@babel/eslint-parser": "^7.28.0",
-    "@babel/preset-react": "^7.27.1",
+    "@next/bundle-analyzer": "^15.4.1",
+    "@types/express": "^5.0.3",
+    "@types/formidable": "^3.4.5",
+    "@types/multer": "^2.0.0",
+    "@types/next": "^8.0.7",
+    "@types/node": "^20.19.9",
+    "@types/react": "^18.2.40",
+    "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.21",
-    "eslint": "^8.0.0",
-    "eslint-config-next": "^13.5.5",
-    "eslint-plugin-next": "^0.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.4.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.1",
     "eslint-plugin-react": "^7.37.5",
     "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
     "tailwindcss": "^3.4.17",
-    "typescript": "^4.8.4"
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^3.10.0",
+    "typescript": "^4.9.5",
+    "webpack": "^5.100.2",
+    "webpack-bundle-analyzer": "^4.10.2"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.5"
   }
 }

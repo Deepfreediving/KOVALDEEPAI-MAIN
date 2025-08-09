@@ -1,0 +1,20 @@
+{
+  "id": "8b315b71-22b9-40c6-af86-841ceee3f534",
+  "date": "2025-07-26",
+  "disciplineType": "depth",
+  "discipline": "FIM",
+  "location": "Ocean",
+  "targetDepth": "80",
+  "reachedDepth": "80",
+  "mouthfillDepth": "30",
+  "issueDepth": "75",
+  "squeeze": false,
+  "exit": "clean",
+  "durationOrDistance": "80",
+  "attemptType": "training",
+  "notes": "tense",
+  "totalDiveTime": "3:05",
+  "issueComment": "swallowed around 75",
+  "surfaceProtocol": "clean",
+  "timestamp": "2025-07-27T01:30:02.215Z"
+}
