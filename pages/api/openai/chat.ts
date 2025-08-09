@@ -121,26 +121,168 @@ async function askWithContext(
     ? `${context}\n\n${diveLogContext}`
     : context;
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      max_tokens: embedMode ? 600 : 800,
-      messages: [
-        { role: 'system', content: generateSystemPrompt(userLevel, embedMode) },
-        { role: 'system', content: `Knowledge Base:\n${enhancedContext}` },
-        { role: 'user', content: message }
-      ]
-    });
+  let retryCount = 0;
+  const maxRetries = 3;
+  const baseDelay = 1000; // 1 second
 
-    const reply = response?.choices?.[0]?.message?.content?.trim() || "⚠️ No response generated.";
-    console.log("✅ OpenAI response received");
-    return reply;
+  while (retryCount < maxRetries) {
+    try {
+      console.log(`🔄 OpenAI request attempt ${retryCount + 1}/${maxRetries}`);
+      
+      // ✅ Add timeout controller
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
 
-  } catch (error: any) {
-    console.error('❌ OpenAI API error:', error.message);
-    return "⚠️ There was an error reaching OpenAI.";
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        max_tokens: embedMode ? 600 : 800,
+        messages: [
+          { role: 'system', content: generateSystemPrompt(userLevel, embedMode) },
+          { role: 'system', content: `Knowledge Base:\n${enhancedContext}` },
+          { role: 'user', content: message }
+        ]
+      });
+
+      clearTimeout(timeoutId);
+
+      // ✅ Enhanced response validation
+      if (!response) {
+        throw new Error('No response received from OpenAI');
+      }
+
+      if (!response.choices || response.choices.length === 0) {
+        throw new Error('No choices returned from OpenAI');
+      }
+
+      const choice = response.choices[0];
+      if (!choice || !choice.message) {
+        throw new Error('Invalid choice structure from OpenAI');
+      }
+
+      const reply = choice.message.content?.trim();
+      if (!reply || reply.length === 0) {
+        throw new Error('Empty response content from OpenAI');
+      }
+
+      console.log("✅ OpenAI response received successfully");
+      return reply;
+
+    } catch (error: any) {
+      retryCount++;
+      console.error(`❌ OpenAI API error (attempt ${retryCount}/${maxRetries}):`, error.message);
+      
+      // ✅ Enhanced error classification
+      const isRetryableError = 
+        error.code === 'rate_limit_exceeded' ||
+        error.code === 'server_error' ||
+        error.code === 'timeout' ||
+        error.status >= 500 ||
+        error.name === 'AbortError' ||
+        error.message.includes('timeout') ||
+        error.message.includes('network') ||
+        error.message.includes('ECONNRESET') ||
+        error.message.includes('ETIMEDOUT');
+
+      // ✅ If this is the last retry or non-retryable error, return fallback
+      if (retryCount >= maxRetries || !isRetryableError) {
+        console.error(`❌ Final OpenAI error after ${retryCount} attempts:`, error.message);
+        
+        // ✅ Provide different fallback messages based on error type
+        if (error.code === 'insufficient_quota' || error.message.includes('quota')) {
+          return "⚠️ I'm currently experiencing high demand. Please try again in a few minutes, or contact support if this persists.";
+        } else if (error.code === 'rate_limit_exceeded') {
+          return "⚠️ Too many requests at once. Please wait a moment and try again.";
+        } else if (error.code === 'invalid_api_key') {
+          return "⚠️ Authentication issue with AI service. Please contact support.";
+        } else if (error.name === 'AbortError' || error.message.includes('timeout')) {
+          return "⚠️ The AI is taking longer than usual to respond. Please try asking a shorter question or try again.";
+        } else {
+          return "⚠️ I'm having technical difficulties connecting to the AI service. Please try again in a moment, and if the issue persists, contact support.";
+        }
+      }
+
+      // ✅ Exponential backoff for retryable errors
+      const delay = baseDelay * Math.pow(2, retryCount - 1);
+      console.log(`⏳ Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
+
+  // This should never be reached, but just in case
+  return "⚠️ Maximum retry attempts exceeded. Please try again later.";
+}
+
+// ✅ Generate fallback response when OpenAI fails
+function generateFallbackResponse(
+  message: string, 
+  userLevel: 'expert' | 'beginner', 
+  contextChunks: string[], 
+  diveLogContext: string
+): string {
+  const lowerMessage = message.toLowerCase();
+  
+  // ✅ Safety-first responses based on common questions
+  if (lowerMessage.includes('depth') || lowerMessage.includes('deep')) {
+    return `I'm currently having technical difficulties connecting to my AI coaching system, but I can provide this important safety guidance:
+
+🚨 **Safety First**: Never attempt depths beyond your current certification and comfort level. Always dive with a qualified buddy and follow proper safety protocols.
+
+💭 For ${userLevel === 'expert' ? 'advanced' : 'beginner'} freedivers like yourself, progressive training is key. Start shallow and gradually increase depth only when you've mastered the fundamentals.
+
+📚 Please refer to Daniel Koval's training materials in your member area, and consider booking a 1-on-1 session for personalized depth progression guidance.
+
+🔄 Please try asking your question again in a moment - my AI system should be back online shortly.`;
+  }
+  
+  if (lowerMessage.includes('breath') || lowerMessage.includes('hold')) {
+    return `My AI coaching system is temporarily unavailable, but here's essential breathwork guidance:
+
+🫁 **Breath Hold Safety**: Always practice breath holds in a safe environment with proper supervision. Never practice breath holds in water without a certified safety diver.
+
+🧘 Focus on relaxation techniques - tension is the enemy of efficient breath holds. Progressive training with proper rest intervals is more effective than pushing limits.
+
+💡 For ${userLevel === 'expert' ? 'advanced' : 'beginner'} level training, refer to Daniel's specific breathwork protocols in your training materials.
+
+🔄 Try your question again in a moment when my AI system reconnects.`;
+  }
+  
+  if (lowerMessage.includes('technique') || lowerMessage.includes('form')) {
+    return `While my AI system reconnects, here's fundamental technique guidance:
+
+🏊‍♂️ **Proper Form**: Streamlined body position, relaxed muscles, and efficient movement patterns are essential for freediving success.
+
+📖 Your member training materials contain Daniel Koval's specific technique breakdowns for your level.
+
+🎯 Focus on one technique element at a time rather than trying to perfect everything simultaneously.
+
+🔄 Please try your question again shortly - I'll have full access to your training context once my system is back online.`;
+  }
+  
+  // ✅ Generic fallback with context hints
+  let fallback = `I'm experiencing a temporary connection issue with my AI coaching system, but I'm still here to help! 
+
+🤿 While I reconnect, here are some general guidelines for ${userLevel} level freedivers:
+
+`;
+
+  // ✅ Add context-specific hints if available
+  if (contextChunks.length > 0) {
+    fallback += `📚 I found relevant information in Daniel Koval's training materials that should help with your question. `;
+  }
+  
+  if (diveLogContext) {
+    fallback += `📊 I can see your recent dive history and will provide personalized coaching once my system reconnects. `;
+  }
+  
+  fallback += `
+🔄 Please try asking your question again in about 30 seconds - my AI should be back online shortly.
+
+💡 In the meantime, you can browse your training materials or book a 1-on-1 session with Daniel for immediate personalized guidance.
+
+🚨 **Safety Reminder**: Always follow proper safety protocols and never exceed your current training level.`;
+
+  return fallback;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -221,21 +363,46 @@ ${recentDiveLogs}
 
     const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext);
 
+    // ✅ Enhanced response validation and fallback handling
+    let responseMetadata = { 
+      userLevel, 
+      depthRange, 
+      contextChunks: contextChunks.length, 
+      diveContext: diveContext.length, 
+      processingTime: Date.now() - startTime, 
+      embedMode 
+    };
+
+    // ✅ Check if OpenAI returned an error message
+    if (assistantReply.startsWith("⚠️")) {
+      console.warn('⚠️ OpenAI returned error response:', assistantReply);
+      
+      // ✅ Provide fallback coaching advice based on context
+      let fallbackResponse = generateFallbackResponse(message, userLevel, contextChunks, diveLogContext);
+      
+      return res.status(200).json({
+        assistantMessage: { role: 'assistant', content: fallbackResponse },
+        metadata: { 
+          ...responseMetadata,
+          fallbackUsed: true,
+          originalError: assistantReply
+        }
+      });
+    }
+
     // ✅ Save to memory if successful response
-    if (!assistantReply.startsWith("⚠️")) {
-      try {
-        await saveUserMemory(userId, {
-          logs: [{
-            userMessage: message.slice(0, 500),
-            assistantReply: assistantReply.slice(0, 1000),
-            timestamp: new Date().toISOString()
-          }],
-          profile: mergedProfile
-        });
-        console.log(`✅ Memory saved for ${userId}`);
-      } catch (saveError) {
-        console.warn('⚠️ Could not save memory:', saveError);
-      }
+    try {
+      await saveUserMemory(userId, {
+        logs: [{
+          userMessage: message.slice(0, 500),
+          assistantReply: assistantReply.slice(0, 1000),
+          timestamp: new Date().toISOString()
+        }],
+        profile: mergedProfile
+      });
+      console.log(`✅ Memory saved for ${userId}`);
+    } catch (saveError) {
+      console.warn('⚠️ Could not save memory:', saveError);
     }
 
     const processingTime = Date.now() - startTime;
@@ -244,12 +411,8 @@ ${recentDiveLogs}
     return res.status(200).json({
       assistantMessage: { role: 'assistant', content: assistantReply },
       metadata: { 
-        userLevel, 
-        depthRange, 
-        contextChunks: contextChunks.length, 
-        diveContext: diveContext.length, 
-        processingTime, 
-        embedMode 
+        ...responseMetadata,
+        processingTime
       }
     });
 
@@ -275,6 +438,6 @@ export const config = {
   api: { 
     bodyParser: { sizeLimit: '2mb' }, 
     responseLimit: false, 
-    timeout: 30000 
+    timeout: 45000 // ✅ Increased to 45 seconds to accommodate retries
   } 
 };

@@ -492,11 +492,23 @@ async function sendChatMessage(message, userId, sessionId = null) {
     logError('Wix chat failed, trying Next.js fallback:', error);
     ENDPOINT_STATUS.wix.chat = 'error';
     
-    // Fallback to Next.js
+    // Fallback to Next.js - fix parameter format
     try {
+      // ✅ Convert userMessage to message for Next.js API
+      const nextjsRequestData = {
+        message: requestData.userMessage,  // ✅ Convert to 'message' for Next.js API
+        userId: requestData.userId,
+        profile: {},
+        embedMode: false
+      };
+      
+      if (requestData.sessionId) {
+        nextjsRequestData.sessionId = requestData.sessionId;
+      }
+      
       const result = await makeRequest(
         FRONTEND_CONFIG.BACKEND_ENDPOINTS.nextjs.chat,
-        { body: JSON.stringify(requestData), method: 'POST' },
+        { body: JSON.stringify(nextjsRequestData), method: 'POST' },  // ✅ Use converted data
         'nextjs-chat'
       );
       
