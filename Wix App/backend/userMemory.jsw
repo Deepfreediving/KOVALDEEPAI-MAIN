@@ -1,0 +1,208 @@
+// WIX APP BACKEND: HTTP-USERMEMORY.JSW - MASTER EDITION  
+// User memory management endpoint for Wix App environment
+// Version: 4.0.0 - Production Ready
+
+import { ok, badRequest, serverError } from 'wix-http-functions';
+import { fetch } from 'wix-fetch';
+import { currentMember } from 'wix-members';
+
+// 🎯 MASTER USER MEMORY CONFIGURATION
+const MEMORY_CONFIG = {
+  API_ENDPOINTS: {
+    VERCEL_BACKEND: 'https://kovaldeepai-main.vercel.app/api/user-memory',
+    FALLBACK_BACKEND: 'https://kovaldeepai-main.vercel.app/api/memory'
+  },
+  
+  VALIDATION: {
+    MAX_MEMORY_SIZE: 10000,
+    MIN_MEMORY_SIZE: 1,
+    REQUIRED_FIELDS: ['userId', 'memoryData']
+  },
+  
+  PERFORMANCE: {
+    REQUEST_TIMEOUT: 10000,
+    RETRY_ATTEMPTS: 2
+  },
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  }
+};
+
+// 🔥 POST: SAVE USER MEMORY
+export async function post_userMemory(request) {
+  const startTime = Date.now();
+  
+  try {
+    // Parse request body
+    let requestData;
+    try {
+      requestData = await request.body.json();
+    } catch (error) {
+      return badRequest({
+        error: 'Invalid JSON in request body',
+        headers: MEMORY_CONFIG.CORS_HEADERS
+      });
+    }
+
+    // Validate required fields
+    const { userId, memoryData, memoryType } = requestData;
+    
+    if (!userId || typeof userId !== 'string') {
+      return badRequest({
+        error: 'userId is required and must be a string',
+        headers: MEMORY_CONFIG.CORS_HEADERS
+      });
+    }
+
+    if (!memoryData) {
+      return badRequest({
+        error: 'memoryData is required',
+        headers: MEMORY_CONFIG.CORS_HEADERS
+      });
+    }
+
+    // Get current member for additional context
+    let member = null;
+    try {
+      member = await currentMember.getMember();
+    } catch (error) {
+      console.log('No authenticated member available');
+    }
+
+    // Prepare memory save request
+    const memoryRequest = {
+      userId: userId,
+      memoryData: memoryData,
+      memoryType: memoryType || 'general',
+      source: 'wix-app',
+      timestamp: new Date().toISOString(),
+      memberContext: member ? {
+        memberId: member._id,
+        loginEmail: member.loginEmail
+      } : null
+    };
+
+    // Call Vercel backend to save memory
+    const response = await fetch(MEMORY_CONFIG.API_ENDPOINTS.VERCEL_BACKEND, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(memoryRequest)
+    });
+
+    if (!response.ok) {
+      console.error(`Memory backend error: ${response.status}`);
+      throw new Error(`Memory backend returned ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    const duration = Date.now() - startTime;
+    console.log(`Memory save completed in ${duration}ms`);
+
+    return ok({
+      ...result,
+      metadata: {
+        processingTime: duration,
+        source: 'wix-app-backend',
+        operation: 'save-memory',
+        timestamp: new Date().toISOString()
+      }
+    }, MEMORY_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    console.error('User memory save error:', error);
+    
+    return serverError({
+      error: 'Memory service temporarily unavailable',
+      details: error.message,
+      operation: 'save-memory',
+      timestamp: new Date().toISOString()
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 GET: RETRIEVE USER MEMORY
+export async function get_userMemory(request) {
+  const startTime = Date.now();
+  
+  try {
+    const userId = request.query.userId;
+    const memoryType = request.query.memoryType;
+    
+    if (!userId) {
+      return badRequest({
+        error: 'userId parameter is required',
+        headers: MEMORY_CONFIG.CORS_HEADERS
+      });
+    }
+
+    // Get current member for additional context
+    let member = null;
+    try {
+      member = await currentMember.getMember();
+    } catch (error) {
+      console.log('No authenticated member available');
+    }
+
+    // Build query parameters
+    const queryParams = new URLSearchParams({
+      userId: userId,
+      source: 'wix-app'
+    });
+    
+    if (memoryType) {
+      queryParams.append('memoryType', memoryType);
+    }
+
+    // Call Vercel backend to retrieve memory
+    const response = await fetch(`${MEMORY_CONFIG.API_ENDPOINTS.VERCEL_BACKEND}?${queryParams}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error(`Memory backend error: ${response.status}`);
+      throw new Error(`Memory backend returned ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    const duration = Date.now() - startTime;
+    console.log(`Memory retrieval completed in ${duration}ms`);
+
+    return ok({
+      ...result,
+      metadata: {
+        processingTime: duration,
+        source: 'wix-app-backend',
+        operation: 'get-memory',
+        timestamp: new Date().toISOString()
+      }
+    }, MEMORY_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    console.error('User memory retrieval error:', error);
+    
+    return serverError({
+      error: 'Memory service temporarily unavailable',
+      details: error.message,
+      operation: 'get-memory',
+      timestamp: new Date().toISOString()
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 OPTIONS HANDLER (CORS)
+export function options_userMemory(request) {
+  return ok({
+    message: 'CORS preflight OK'
+  }, MEMORY_CONFIG.CORS_HEADERS);
+}
