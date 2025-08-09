@@ -4,6 +4,34 @@
 // Date: August 8, 2025
 
 import wixUsers from 'wix-users';
+import { fetch } from 'wix-fetch';
+import { backend } from 'wix-backend';
+
+// 🛡️ GLOBAL ERROR HANDLER - Catch any unhandled errors
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    // ✅ Add null check for event.error to prevent the very error we're trying to catch!
+    if (event && event.error) {
+      console.error('🚨 Global error caught:', event.error);
+      console.error('🚨 Error details:', {
+        message: event.message || 'No message',
+        filename: event.filename || 'Unknown file',
+        lineno: event.lineno || 0,
+        colno: event.colno || 0
+      });
+    } else {
+      console.error('🚨 Global error event with no error object:', event);
+    }
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event && event.reason) {
+      console.error('🚨 Unhandled promise rejection:', event.reason);
+    } else {
+      console.error('🚨 Unhandled promise rejection with no reason:', event);
+    }
+  });
+}
 
 // 🎯 MASTER CONFIGURATION - Single Perfect Version
 const FRONTEND_CONFIG = {
@@ -11,11 +39,11 @@ const FRONTEND_CONFIG = {
   
   BACKEND_ENDPOINTS: {
     wix: {
-      chat: "https://www.deepfreediving.com/_functions/chat",
-      userMemory: "https://www.deepfreediving.com/_functions/userMemory", 
-      diveLogs: "https://www.deepfreediving.com/_functions/diveLogs",
-      userProfile: "https://www.deepfreediving.com/_functions/getUserProfile",
-      testConnection: "https://www.deepfreediving.com/_functions/wixConnection"
+      chat: "/_functions/chat",
+      userMemory: "/_functions/userMemory", 
+      diveLogs: "/_functions/diveLogs",
+      userProfile: "/_functions/memberProfile",
+      testConnection: "/_functions/test"
     },
     nextjs: {
       chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
@@ -173,8 +201,14 @@ class WixBatchManager {
   }
 
   async makeActualRequest(requestData) {
-    // This will be implemented in the actual request logic
-    throw new Error("makeActualRequest must be implemented");
+    // Implement actual request logic here
+    return this.processRequest(requestData);
+  }
+
+  async processRequest(requestData) {
+    const { url, options } = requestData;
+    const response = await fetch(url, options);
+    return response.json();
   }
 }
 
@@ -298,7 +332,7 @@ function logError(message, error = null) {
   }
 }
 
-// 🔥 ENHANCED HTTP REQUEST FUNCTION
+// 🔥 ENHANCED HTTP REQUEST FUNCTION WITH WIX BACKEND SUPPORT
 async function makeRequest(url, options = {}, endpoint = 'unknown') {
   const startTime = Date.now();
   
@@ -325,14 +359,54 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
   requestLimiter.recordRequest(requestType);
 
   try {
+    // 🔥 Try wix-backend for internal function calls first
+    if (url.startsWith('/_functions/')) {
+      const functionName = url.replace('/_functions/', '');
+      logDebug(`🔄 Trying wix-backend for ${functionName}`);
+      
+      try {
+        let result;
+        let requestData = {};
+        
+        // Parse request data safely
+        if (options.body) {
+          try {
+            requestData = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+          } catch (parseError) {
+            requestData = options.body;
+          }
+        }
+        
+        if (options.method === 'POST' || !options.method) {
+          result = await backend[functionName](requestData);
+        } else if (options.method === 'GET') {
+          result = await backend[functionName]();
+        }
+        
+        const duration = Date.now() - startTime;
+        performanceTracker.trackRequest(endpoint, duration, true);
+        logDebug(`✅ wix-backend request to ${endpoint} successful (${duration}ms)`);
+        
+        // Cache successful responses
+        if (options.method === 'GET') {
+          dataCache.set(cacheKey, result);
+        }
+        
+        return result;
+      } catch (backendError) {
+        logDebug(`⚠️ wix-backend failed for ${functionName}, trying fetch...`);
+      }
+    }
+    
+    // 🔥 Fallback to regular fetch
     const requestOptions = {
-      method: 'POST',
+      method: options.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-API-Version': currentMode,
         ...options.headers
       },
-      body: options.body ? JSON.stringify(options.body) : null,
+      body: options.body || null,
       ...options
     };
 
@@ -379,7 +453,7 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
 
 async function sendChatMessage(message, userId, sessionId = null) {
   const requestData = {
-    message: message,
+    userMessage: message,  // Changed from 'message' to 'userMessage' for backend compatibility
     userId: userId
   };
   
@@ -391,14 +465,14 @@ async function sendChatMessage(message, userId, sessionId = null) {
   requestData.context = {
     timestamp: new Date().toISOString(),
     mode: currentMode,
-    userAgent: navigator.userAgent
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Wix-App'
   };
 
   try {
     // Try Wix backend first
     const result = await makeRequest(
       FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.chat,
-      { body: requestData },
+      { body: JSON.stringify(requestData), method: 'POST' },
       'wix-chat'
     );
     
@@ -413,7 +487,7 @@ async function sendChatMessage(message, userId, sessionId = null) {
     try {
       const result = await makeRequest(
         FRONTEND_CONFIG.BACKEND_ENDPOINTS.nextjs.chat,
-        { body: requestData },
+        { body: JSON.stringify(requestData), method: 'POST' },
         'nextjs-chat'
       );
       
@@ -443,7 +517,7 @@ async function saveUserMemory(userId, memoryContent, memoryType = 'general') {
 
   return await makeRequest(
     FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory,
-    { body: requestData },
+    { body: JSON.stringify(requestData), method: 'POST' },
     'user-memory'
   );
 }
@@ -485,7 +559,7 @@ async function saveDiveLog(userId, diveData) {
 
   const result = await makeRequest(
     FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
-    { body: requestData },
+    { body: JSON.stringify(requestData), method: 'POST' },
     'dive-logs'
   );
 
@@ -499,7 +573,7 @@ async function testConnection() {
   try {
     const result = await makeRequest(
       FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.testConnection,
-      { body: { test: true } },
+      { body: JSON.stringify({ test: true }), method: 'POST' },
       'test-connection'
     );
     
@@ -557,55 +631,84 @@ function hideTypingIndicator(widget) {
 
 // 🔥 MAIN APPLICATION INITIALIZATION
 $w.onReady(async function () {
-  logDebug("✅ Koval-AI Wix app initializing...");
-  logDebug(`🔧 Current mode: ${currentMode}`);
-
-  // Find and initialize AI widget
-  const aiWidget = findAIWidget();
-  
-  if (!aiWidget) {
-    logError("❌ Could not find AI widget");
-    return;
-  }
-
-  // Test initial connection (master mode always enabled)
   try {
-    await testConnection();
-    logDebug("✅ Backend connection established");
-  } catch (error) {
-    logError("⚠️ Backend connection test failed:", error);
-  }
+    logDebug("✅ Koval-AI Wix app initializing...");
+    logDebug(`🔧 Current mode: ${currentMode}`);
 
-  // Get current user
-  let currentUser = null;
-  try {
-    currentUser = await wixUsers.getCurrentUser();
-    if (currentUser) {
-      logDebug(`👤 User authenticated: ${currentUser.id}`);
-      
-      // Load user profile (master mode always enabled)
-      try {
-        const profile = await getUserProfile(currentUser.id);
-        logDebug("📋 User profile loaded");
-      } catch (error) {
-        logDebug("Could not load user profile:", error);
-      }
-    } else {
-      logDebug("👤 No authenticated user");
+    // Find and initialize AI widget
+    const aiWidget = findAIWidget();
+    
+    if (!aiWidget) {
+      logError("❌ Could not find AI widget");
+      return;
     }
-  } catch (error) {
-    logError("Error getting current user:", error);
-  }
+
+    // Test initial connection (master mode always enabled)
+    try {
+      await testConnection();
+      logDebug("✅ Backend connection established");
+    } catch (error) {
+      logError("⚠️ Backend connection test failed:", error);
+    }
+
+    // Get current user
+    let currentUser = null;
+    try {
+      // ✅ Use wixUsers.currentUser instead of getCurrentUser() in Wix Apps
+      currentUser = wixUsers.currentUser;
+      if (currentUser && currentUser.loggedIn) {
+        logDebug(`👤 User authenticated: ${currentUser.id}`);
+        
+        // Load user profile (master mode always enabled)
+        try {
+          const profile = await getUserProfile(currentUser.id);
+          logDebug("📋 User profile loaded");
+        } catch (error) {
+          logDebug("Could not load user profile:", error);
+        }
+      } else {
+        logDebug("👤 No authenticated user or user not logged in");
+      }
+    } catch (error) {
+      logError("Error getting current user:", error);
+    }
 
   // Set up message handling
   if (aiWidget.onMessage) {
     aiWidget.onMessage(async (event) => {
       try {
+        // ✅ Comprehensive null checking to prevent any errors
+        if (!event) {
+          console.warn('⚠️ Null event received');
+          return;
+        }
+        
+        if (!event.data) {
+          console.warn('⚠️ Event missing data');
+          return;
+        }
+        
+        if (typeof event.data !== 'object') {
+          console.warn('⚠️ Event data is not an object:', typeof event.data);
+          return;
+        }
+        
+        if (!event.data.hasOwnProperty('type')) {
+          console.warn('⚠️ Event data missing type property');
+          return;
+        }
+        
         const { type, data } = event.data;
+        
+        // ✅ Additional safety check for type
+        if (!type || typeof type !== 'string') {
+          console.warn('⚠️ Invalid type in message:', type);
+          return;
+        }
         
         switch (type) {
           case 'chat':
-            if (currentUser) {
+            if (currentUser && data && data.message) {
               showTypingIndicator(aiWidget);
               
               try {
@@ -640,12 +743,12 @@ $w.onReady(async function () {
             break;
             
           case 'saveMemory':
-            if (currentUser) {
+            if (currentUser && data && data.content) {
               try {
                 await saveUserMemory(
                   currentUser.id,
                   data.content,
-                  data.type
+                  data.type || 'general'
                 );
                 
                 aiWidget.postMessage({
@@ -664,7 +767,7 @@ $w.onReady(async function () {
             break;
             
           case 'saveDiveLog':
-            if (currentUser) {
+            if (currentUser && data) {
               try {
                 await saveDiveLog(currentUser.id, data);
                 
@@ -713,30 +816,53 @@ $w.onReady(async function () {
     });
   }
 
-  // Send initial status to widget
-  aiWidget.postMessage({
-    type: 'initialized',
-    data: {
-      mode: currentMode,
-      user: currentUser ? { id: currentUser.id } : null,
-      endpoints: ENDPOINT_STATUS
+    // Send initial status to widget
+    if (aiWidget && aiWidget.postMessage) {
+      try {
+        aiWidget.postMessage({
+          type: 'initialized',
+          data: {
+            mode: currentMode,
+            user: currentUser ? { id: currentUser.id } : null,
+            endpoints: ENDPOINT_STATUS
+          }
+        });
+      } catch (error) {
+        logError("Error sending initial status to widget:", error);
+      }
     }
-  });
 
-  logDebug("🚀 Koval-AI app fully initialized");
+    logDebug("🚀 Koval-AI app fully initialized");
+    
+  } catch (error) {
+    console.error("❌ Critical error during app initialization:", error);
+    // Try to show error to user if possible
+    try {
+      if (aiWidget && aiWidget.postMessage) {
+        aiWidget.postMessage({
+          type: 'error',
+          data: { message: 'App initialization failed' }
+        });
+      }
+    } catch (e) {
+      console.error("❌ Could not even send error message:", e);
+    }
+  }
 });
 
 // 🔥 EXPORT FUNCTIONS FOR EXTERNAL USE
-export {
-  sendChatMessage,
-  saveUserMemory,
-  getUserProfile,
-  saveDiveLog,
-  testConnection,
-  performanceTracker,
-  dataCache,
-  FRONTEND_CONFIG,
-  ENDPOINT_STATUS
-};
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    sendChatMessage,
+    saveUserMemory,
+    getUserProfile,
+    saveDiveLog,
+    testConnection,
+    performanceTracker,
+    dataCache,
+    FRONTEND_CONFIG,
+    ENDPOINT_STATUS
+  };
+}
 
 console.log("🔥 Wix App Frontend Master initialized - Single perfect version");

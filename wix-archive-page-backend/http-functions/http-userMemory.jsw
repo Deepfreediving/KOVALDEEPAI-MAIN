@@ -754,7 +754,7 @@ function updateMetrics(apiVersion, duration, status) {
   }
 }
 
-// 🔄 GET METRICS ENDPOINT (Expert/Optimized only)
+// 🔄 GET METRICS ENDPOINT 
 export async function get_userMemoryMetrics(request) {
   const apiVersion = request.headers['x-api-version'] || 'expert';
   

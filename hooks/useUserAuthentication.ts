@@ -54,6 +54,12 @@ export function useUserAuthentication() {
               return;
             }
 
+            // Comprehensive null check before accessing event.data.type
+            if (!event.data || typeof event.data !== 'object' || !event.data.type) {
+              console.warn("⚠️ Invalid event data structure");
+              return;
+            }
+
             if (event.data.type === "USER_DATA_RESPONSE" || event.data.type === "USER_AUTH_DATA") {
               const userData = event.data.userData || event.data.data;
               
