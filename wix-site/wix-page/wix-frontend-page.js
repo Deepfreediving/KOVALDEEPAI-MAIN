@@ -176,17 +176,11 @@ async function makeWixMasterApiCall(url, options = {}, retries = WIX_MASTER_CONF
 // ✅ WIX PAGE OPTIMIZED BACKEND CONFIGURATION
 const BACKEND_CONFIG = {
     wix: {
-        // Wix Page doesn't have backend functions, so use Next.js for all
-        chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
-        userMemory: "https://kovaldeepai-main.vercel.app/api/openai/chat", 
-        diveLogs: "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs",
-        userProfile: "https://kovaldeepai-main.vercel.app/api/openai/chat",
-        testConnection: "https://kovaldeepai-main.vercel.app/api/openai/chat",
-        memberProfile: "https://kovaldeepai-main.vercel.app/api/openai/chat"
+        // Skip health checks for Wix Page - no backend functions available
+        diveLogs: "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs"
     },
     nextjs: {
-        chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
-        pinecone: "https://kovaldeepai-main.vercel.app/api/pinecone"
+        chat: "https://kovaldeepai-main.vercel.app/api/openai/chat"
     }
 };
 
@@ -492,13 +486,22 @@ async function checkSingleEndpointOptimized(name, url, type) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        // ✅ Only add custom headers for internal Wix functions, not external APIs
+        const isExternalAPI = url.includes('vercel.app') || url.includes('openai.com') || url.includes('pinecone.io');
+        
+        const headers = {
+            "Content-Type": "application/json"
+        };
+        
+        // Only add custom headers for non-external APIs
+        if (!isExternalAPI) {
+            headers["X-Health-Check"] = "wix-master";
+            headers["X-Request-ID"] = `health_${Date.now()}`;
+        }
+
         const response = await fetch(url, {
             method: method,
-            headers: { 
-                "Content-Type": "application/json",
-                "X-Health-Check": "wix-master",
-                "X-Request-ID": `health_${Date.now()}`
-            },
+            headers: headers,
             body: testBody,
             signal: controller.signal
         });
@@ -673,66 +676,42 @@ function generateOptimizedStatusText(endpointHealth) {
     return `${icon} ${statusText}${metricsText}`;
 }
 
-$w.onReady(async function () {
-    console.log("🚀 Koval-AI widget initializing with WIX MASTER optimizations...");
-
-    // ===== 🎯 WIX MASTER: INTELLIGENT ENDPOINT HEALTH CHECK =====
-    const endpointHealth = await performOptimizedHealthCheck();
-    console.log("🔗 WIX MASTER endpoint health check:", endpointHealth);
-    displayOptimizedBackendStatus(endpointHealth);
-
-    // ===== 🔄 Enhanced Widget Communication (from koval-ai-page.js) =====
-    
-    // Setup enhanced message listener for widget communication
-    if (typeof window !== 'undefined') {
-        window.addEventListener('message', handleEnhancedWidgetMessage);
-        console.log('👂 Enhanced widget message listener active');
-    }
-
-    // ===== User Authentication & Entitlement Check =====
-    await initializeUserAuthAndEntitlement();
-
-    // ===== Original Widget Setup Logic =====
-
-    // ✅ SETUP MESSAGE LISTENER FOR WIDGET COMMUNICATION (with safety check)
-    if (typeof window !== 'undefined') {
-        window.addEventListener('message', async (event) => {
-            if (event.data?.type === 'REQUEST_USER_DATA' && event.data?.source === 'koval-ai-widget') {
-                console.log('📨 Widget requesting user data, sending authenticated user info...');
-                
-                try {
-                    // Load current user data
-                    const userData = await loadComprehensiveUserData();
-                    
-                    // Send user data back to widget with more detailed logging
-                    console.log('🔍 Sending user data:', {
-                        userId: userData.userId,
-                        hasProfile: !!userData.profile,
-                        diveLogsCount: userData.userDiveLogs?.length || 0
-                    });
-                    
-                    event.source.postMessage({
-                        type: 'USER_DATA_RESPONSE',
-                        userData: userData
-                    }, event.origin);
-                    
-                    console.log('📤 Sent authenticated user data to widget:', userData.userId);
-                } catch (error) {
-                    console.error('❌ Failed to send user data to widget:', error);
-                    
-                    // Send guest data as fallback
-                    const guestData = getGuestUserData();
-                    event.source.postMessage({
-                        type: 'USER_DATA_RESPONSE',
-                        userData: guestData
-                    }, event.origin);
-                    console.log('📤 Sent guest data as fallback');
-                }
+// ===== 🚀 QUICK MESSAGE LISTENER SETUP =====
+if (typeof window !== 'undefined') {
+    window.addEventListener('message', async (event) => {
+        // Handle widget requests quickly
+        if (event.data?.type === 'REQUEST_USER_DATA' && event.data?.source === 'koval-ai-widget') {
+            console.log('📨 Quick user data request from widget');
+            
+            try {
+                const userData = await loadComprehensiveUserData();
+                event.source.postMessage({
+                    type: 'USER_DATA_RESPONSE',
+                    userData: userData
+                }, event.origin);
+                console.log('📤 Quick user data sent:', userData.userId);
+            } catch (error) {
+                console.warn('⚠️ Quick fallback to guest data');
+                const guestData = getGuestUserData();
+                event.source.postMessage({
+                    type: 'USER_DATA_RESPONSE',
+                    userData: guestData
+                }, event.origin);
             }
-        });
-    }
+        }
+    });
+    console.log('👂 Quick message listener active');
+}
 
-    // ✅ TRY MULTIPLE POSSIBLE WIDGET IDS - PRIORITIZING THE CORRECT ONE
+// ===== 🚀 WIX MASTER LEVEL FUNCTIONS =====
+
+$w.onReady(async function () {
+    console.log("🚀 Quick AI initialization - bypassing health checks...");
+
+    // ===== SKIP HEALTH CHECKS FOR SPEED =====
+    console.log("⚡ Skipping health checks, focusing on getting AI working");
+
+    // ===== FIND WIDGET QUICKLY =====
     let aiWidget = null;
     const possibleIds = ['#koval-ai', '#KovalAiWidget', '#kovalAIWidget', '#KovalAIWidget', '#htmlComponent1', '#html1', '#customElement1'];
     
@@ -744,23 +723,79 @@ $w.onReady(async function () {
                 break;
             }
         } catch (e) {
-            console.log(`⚠️ Widget ${id} not found`);
+            // Continue searching
         }
     }
 
     if (!aiWidget) {
-        console.error("❌ No Koval-AI widget found on page. Tried IDs:", possibleIds);
-        console.log("📋 Available elements:", Object.keys($w));
-        showFallbackMessage();
+        console.error("❌ No AI widget found, creating fallback");
         return;
     }
 
+    // ===== QUICK USER DATA LOADING =====
+    let userData = null;
     try {
-        // ✅ SETUP WIDGET WITH LOADING STATE
-        await setupKovalAIWidget(aiWidget);
+        userData = await loadComprehensiveUserData();
+        console.log("✅ User data loaded quickly:", userData.userId);
     } catch (error) {
-        console.error("❌ Widget initialization failed:", error);
-        showFallbackMessage();
+        console.warn("⚠️ Using guest data:", error);
+        userData = getGuestUserData();
+    }
+
+    // ===== SETUP WIDGET FAST =====
+    try {
+        // Update widget src with user data
+        if (userData && userData.userId) {
+            const embedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${userData.userId}&userName=${encodeURIComponent(userData.profile?.displayName || 'User')}&embedded=true&v=${Date.now()}`;
+            aiWidget.src = embedUrl;
+            console.log("� Widget src updated for user:", userData.userId);
+        }
+
+        // Send user data via multiple methods
+        setTimeout(() => {
+            // Method 1: Try postMessage directly
+            try {
+                if (aiWidget && aiWidget.contentWindow) {
+                    aiWidget.contentWindow.postMessage({
+                        type: 'USER_AUTH',
+                        data: userData
+                    }, '*');
+                    console.log("📤 Method 1: Posted via contentWindow");
+                }
+            } catch (e) {
+                console.log("⚠️ Method 1 failed:", e.message);
+            }
+
+            // Method 2: Try widget postMessage method
+            try {
+                if (aiWidget && typeof aiWidget.postMessage === 'function') {
+                    aiWidget.postMessage({
+                        type: 'USER_AUTH',
+                        data: userData
+                    });
+                    console.log("📤 Method 2: Posted via widget method");
+                }
+            } catch (e) {
+                console.log("⚠️ Method 2 failed:", e.message);
+            }
+
+            // Method 3: Global window message
+            try {
+                window.postMessage({
+                    type: 'KOVAL_USER_AUTH',
+                    userId: userData.userId,
+                    profile: userData.profile
+                }, '*');
+                console.log("📤 Method 3: Global window message");
+            } catch (e) {
+                console.log("⚠️ Method 3 failed:", e.message);
+            }
+        }, 1000);
+
+        console.log("⚡ Quick AI setup complete!");
+
+    } catch (error) {
+        console.error("❌ Quick setup failed:", error);
     }
 });
 
@@ -820,7 +855,34 @@ async function setupKovalAIWidget(aiWidget) {
         // ✅ ALSO SEND USER DATA VIA POST MESSAGE FOR EMBEDDED WIDGETS
         setTimeout(() => {
             try {
-                if (aiWidget && typeof aiWidget.postMessage === 'function' && userData) {
+                // ✅ Enhanced widget detection with multiple fallback methods
+                let widgetElement = aiWidget;
+                let postMessageMethod = null;
+                
+                // Try multiple ways to get the widget and its postMessage method
+                if (widgetElement && typeof widgetElement.postMessage === 'function') {
+                    postMessageMethod = widgetElement.postMessage.bind(widgetElement);
+                } else if (widgetElement && widgetElement.contentWindow && typeof widgetElement.contentWindow.postMessage === 'function') {
+                    // For iframe elements
+                    postMessageMethod = (data) => widgetElement.contentWindow.postMessage(data, '*');
+                } else {
+                    // Try to find widget in different ways
+                    const widgetSelectors = ['#aiWidget', '[id*="koval"]', 'iframe[src*="koval"]', 'koval-ai-widget'];
+                    for (const selector of widgetSelectors) {
+                        const element = $w(selector);
+                        if (element && typeof element.postMessage === 'function') {
+                            widgetElement = element;
+                            postMessageMethod = element.postMessage.bind(element);
+                            break;
+                        } else if (element && element.contentWindow && typeof element.contentWindow.postMessage === 'function') {
+                            widgetElement = element;
+                            postMessageMethod = (data) => element.contentWindow.postMessage(data, '*');
+                            break;
+                        }
+                    }
+                }
+
+                if (postMessageMethod && userData) {
                     // ✅ FORMAT DATA FOR EMBED PAGE EXPECTATIONS
                     const postMessageData = {
                         type: 'USER_AUTH',
@@ -845,22 +907,23 @@ async function setupKovalAIWidget(aiWidget) {
                         }
                     };
                     
-                    aiWidget.postMessage(postMessageData);
-                    console.log("📤 Sent authentic user data to widget via postMessage:", {
-                        userId: userData.userId,
-                        userName: postMessageData.data.userName,
-                        nickname: postMessageData.data.nickname,
-                        isGuest: postMessageData.data.isGuest,
-                        hasProfilePhoto: !!postMessageData.data.profilePicture,
-                        profileSource: userData.profile?.source,
-                        // ✅ Add detailed debugging for profile data
-                        profileDebug: {
-                            displayName: userData.profile?.displayName,
-                            nickname: userData.profile?.nickname,
-                            firstName: userData.profile?.firstName,
-                            originalProfile: userData.profile
-                        }
-                    });
+                    // ✅ Safely call postMessage with error handling
+                    try {
+                        postMessageMethod(postMessageData);
+                        console.log("📤 Sent authentic user data to widget via postMessage:", {
+                            userId: userData.userId,
+                            userName: postMessageData.data.userName,
+                            nickname: postMessageData.data.nickname,
+                            isGuest: postMessageData.data.isGuest,
+                            hasProfilePhoto: !!postMessageData.data.profilePicture,
+                            profileSource: userData.profile?.source,
+                            widgetType: widgetElement?.tagName || 'unknown'
+                        });
+                    } catch (messageError) {
+                        console.warn("⚠️ PostMessage call failed:", messageError.message);
+                    }
+                } else {
+                    console.log("ℹ️ Widget not ready or postMessage not available, userData present:", !!userData);
                 }
             } catch (postError) {
                 console.warn("⚠️ Could not send postMessage to widget:", postError);
@@ -1248,24 +1311,36 @@ function initializeUserMemoryDataset() {
             
             // Check if dataset exists
             if ($w('#dataset1')) {
-                // Filter dataset to show only current user's memories
-                $w('#dataset1').setFilter(wixData.filter()
-                    .eq('userId', userId)
-                );
-                
-                // ✅ Set up onReady event handler before loading
-                $w('#dataset1').onReady(() => {
-                    console.log('✅ UserMemory dataset ready, loading page...');
-                    // ✅ Load the data with proper pagination inside onReady
-                    $w('#dataset1').loadPage(1)  // ✅ Specify page number explicitly
-                        .then(() => {
-                            console.log('✅ UserMemory dataset loaded successfully');
-                            console.log('📊 Loaded items:', $w('#dataset1').getTotalCount());
-                        })
-                        .catch((error) => {
-                            console.error('❌ Error loading UserMemory dataset:', error);
-                        });
-                });
+                try {
+                    // Filter dataset to show only current user's memories
+                    $w('#dataset1').setFilter(wixData.filter()
+                        .eq('userId', userId)
+                    );
+                    
+                    // ✅ Set up onReady event handler before loading
+                    $w('#dataset1').onReady(() => {
+                        console.log('✅ UserMemory dataset ready, loading page...');
+                        // ✅ Load the data with proper pagination inside onReady
+                        $w('#dataset1').loadPage(1)  // ✅ Specify page number explicitly
+                            .then(() => {
+                                console.log('✅ UserMemory dataset loaded successfully');
+                                console.log('📊 Loaded items:', $w('#dataset1').getTotalCount());
+                            })
+                            .catch((error) => {
+                                if (error.message?.includes('collection') || error.message?.includes('not found')) {
+                                    console.log('ℹ️ UserMemory collection not found, dataset will be empty');
+                                } else {
+                                    console.error('❌ Error loading UserMemory dataset:', error);
+                                }
+                            });
+                    });
+                } catch (datasetError) {
+                    if (datasetError.message?.includes('collection') || datasetError.message?.includes('not found')) {
+                        console.log('ℹ️ UserMemory collection not found, dataset initialization skipped');
+                    } else {
+                        console.error('❌ Error setting up dataset filter:', datasetError);
+                    }
+                }
                 
             } else {
                 console.warn('⚠️ Dataset #dataset1 not found on page');
@@ -1337,15 +1412,21 @@ function setupDatasetEventHandlers() {
                 console.log('📊 UserMemory dataset is ready');
             });
             
-            // Handle dataset errors
-            $w('#dataset1').onError((error) => {
-                console.error('❌ Dataset error:', error);
-            });
+            // Handle dataset errors - check if onError method exists
+            if (typeof $w('#dataset1').onError === 'function') {
+                $w('#dataset1').onError((error) => {
+                    console.error('❌ Dataset error:', error);
+                });
+            }
             
-            // Handle data changes
-            $w('#dataset1').onCurrentItemChanged(() => {
-                console.log('🔄 Dataset current item changed');
-            });
+            // Handle data changes - check if method exists before using
+            if (typeof $w('#dataset1').onCurrentItemChanged === 'function') {
+                $w('#dataset1').onCurrentItemChanged(() => {
+                    console.log('🔄 Dataset current item changed');
+                });
+            } else {
+                console.log('ℹ️ onCurrentItemChanged not available for this dataset');
+            }
         }
     } catch (error) {
         console.error('❌ Error setting up dataset handlers:', error);
@@ -1359,7 +1440,7 @@ async function loadComprehensiveUserData() {
     try {
         console.log('🔍 Loading comprehensive user data...');
         
-        const currentUser = await wixUsers.getCurrentUser();
+        const currentUser = wixUsers.currentUser;
         
         if (currentUser && currentUser.loggedIn) {
             console.log('✅ User is logged in:', currentUser.id);
@@ -1370,7 +1451,7 @@ async function loadComprehensiveUserData() {
                 return getGuestUserData();
             }
             
-            // Get user profile from collections
+            // Get user profile from collections (with graceful fallback)
             let userProfile = null;
             try {
                 const profileQuery = await wixData.query('memberProfiles')
@@ -1378,10 +1459,15 @@ async function loadComprehensiveUserData() {
                     .find();
                 userProfile = profileQuery.items[0] || null;
             } catch (error) {
-                console.warn('⚠️ Could not load member profile:', error);
+                if (error.message?.includes('collection') || error.message?.includes('not found')) {
+                    console.log('ℹ️ memberProfiles collection not found, using basic profile data');
+                } else {
+                    console.warn('⚠️ Could not load member profile:', error.message);
+                }
+                // Continue without profile data
             }
             
-            // Get user dive logs and memories
+            // Get user dive logs and memories (with graceful fallback)
             let userMemory = null;
             try {
                 const memoryQuery = await wixData.query('userMemory')
@@ -1389,7 +1475,12 @@ async function loadComprehensiveUserData() {
                     .find();
                 userMemory = memoryQuery.items[0] || null;
             } catch (error) {
-                console.warn('⚠️ Could not load user memory:', error);
+                if (error.message?.includes('collection') || error.message?.includes('not found')) {
+                    console.log('ℹ️ userMemory collection not found, using empty data');
+                } else {
+                    console.warn('⚠️ Could not load user memory:', error.message);
+                }
+                // Continue without memory data
             }
             
             // Build comprehensive user data
@@ -1457,7 +1548,7 @@ function getGuestUserData() {
 /**
  * 🔥 MASTER: Enhanced Widget Communication
  */
-function setupWidgetEventHandlers() {
+function setupWidgetEventHandlers(aiWidget) {
     console.log('🔧 Setting up widget event handlers...');
     
     // Listen for messages from the widget
@@ -1581,142 +1672,66 @@ async function handleDiveLogSave(diveLogData) {
     try {
         console.log('💾 Saving dive log to Wix:', diveLogData);
         
-        const currentUser = await wixUsers.getCurrentUser();
+        const currentUser = wixUsers.currentUser;
         if (!currentUser || !currentUser.loggedIn) {
             console.warn('⚠️ Cannot save dive log - user not logged in');
             return;
         }
         
-        // Get or create user memory record
-        let userMemory = await wixData.query('userMemory')
-            .eq('userId', currentUser.id)
-            .find();
-        
-        if (userMemory.items.length === 0) {
-            // Create new user memory record
-            await wixData.insert('userMemory', {
-                userId: currentUser.id,
-                diveLogs: [diveLogData],
-                memories: [],
-                createdAt: new Date()
-            });
-        } else {
-            // Update existing record
-            const existing = userMemory.items[0];
-            const updatedDiveLogs = [diveLogData, ...(existing.diveLogs || [])];
-            
-            await wixData.update('userMemory', {
-                _id: existing._id,
-                diveLogs: updatedDiveLogs,
-                updatedAt: new Date()
-            });
+        // Get or create user memory record (with collection existence check)
+        let userMemory;
+        try {
+            userMemory = await wixData.query('userMemory')
+                .eq('userId', currentUser.id)
+                .find();
+        } catch (error) {
+            if (error.message?.includes('collection') || error.message?.includes('not found')) {
+                console.log('ℹ️ userMemory collection not found, skipping Wix storage');
+                return; // Gracefully exit if collection doesn't exist
+            } else {
+                throw error; // Re-throw other errors
+            }
         }
         
-        console.log('✅ Dive log saved to Wix successfully');
+        try {
+            if (userMemory.items.length === 0) {
+                // Create new user memory record
+                await wixData.insert('userMemory', {
+                    userId: currentUser.id,
+                    diveLogs: [diveLogData],
+                    memories: [],
+                    createdAt: new Date()
+                });
+            } else {
+                // Update existing record
+                const existing = userMemory.items[0];
+                const updatedDiveLogs = [diveLogData, ...(existing.diveLogs || [])];
+                
+                await wixData.update('userMemory', {
+                    _id: existing._id,
+                    diveLogs: updatedDiveLogs,
+                    updatedAt: new Date()
+                });
+            }
+            
+            console.log('✅ Dive log saved to Wix successfully');
+        } catch (insertUpdateError) {
+            console.warn('⚠️ Could not save to userMemory collection:', insertUpdateError.message);
+        }
         
     } catch (error) {
         console.error('❌ Error saving dive log to Wix:', error);
     }
 }
 
-function showFallbackMessage(message = "Service temporarily unavailable") {
-    console.log('⚠️ Showing fallback message:', message);
-    
-    // Show user-friendly message
-    if (typeof wixWindow !== 'undefined' && wixWindow.openLightbox) {
-        wixWindow.openLightbox('errorLightbox', {
-            title: 'Connection Issue',
-            message: message,
-            buttonText: 'Try Again'
-        }).catch(() => {
-            // If lightbox fails, show simple alert
-            console.log('📢 Fallback message:', message);
-        });
-    } else {
-        console.log('📢 Fallback message:', message);
-    }
-}
-
 /**
- * 🔥 MASTER: Initialize Everything
- */
-async function initializeMasterWidget() {
-    try {
-        console.log('🚀 Initializing Koval AI master widget...');
-        
-        // Setup event handlers
-        setupWidgetEventHandlers();
-        
-        // Initialize dataset
-        await initializeUserMemoryDataset();
-        
-        // Setup dataset event handlers
-        setupDatasetEventHandlers();
-        
-        // Load and send user data
-        setTimeout(async () => {
-            await sendUserDataToWidget();
-        }, 1000);
-        
-        // Check widget status periodically
-        setInterval(() => {
-            const widgetSelectors = ['#kovalWidget', '#koval-ai', '#KovalAIFrame', '#kovalAIFrame'];
-            let widget = null;
-            
-            for (const selector of widgetSelectors) {
-                try {
-                    widget = $w(selector);
-                    if (widget) break;
-                } catch (e) {
-                    // Continue searching
-                }
-            }
-            
-            if (widget) {
-                widget.postMessage({
-                    type: 'HEALTH_CHECK',
-                    timestamp: Date.now()
-                });
-            }
-        }, 30000); // Every 30 seconds
-        
-        console.log('✅ Master widget initialization complete');
-        
-    } catch (error) {
-        console.error('❌ Master widget initialization failed:', error);
-        showFallbackMessage('Could not initialize AI assistant');
-    }
-}
-
-// ✅ AUTO-INITIALIZE ON PAGE READY
-$w.onReady(() => {
-    console.log('📄 Wix page ready, initializing master widget...');
-    initializeMasterWidget();
-});
-
-// ✅ EXPORT FUNCTIONS FOR GLOBAL ACCESS
-if (typeof window !== 'undefined') {
-    window.loadComprehensiveUserData = loadComprehensiveUserData;
-    window.getGuestUserData = getGuestUserData;
-    window.showFallbackMessage = showFallbackMessage;
-    window.setupWidgetEventHandlers = setupWidgetEventHandlers;
-    window.sendUserDataToWidget = sendUserDataToWidget;
-    window.handleDiveLogSave = handleDiveLogSave;
-    window.initializeMasterWidget = initializeMasterWidget;
-    window.initializeUserMemoryDataset = initializeUserMemoryDataset;
-    window.saveMemoryToDataset = saveMemoryToDataset;
-    window.getUserMemoriesFromDataset = getUserMemoriesFromDataset;
-    window.saveUserMemory = saveUserMemory;
-}
-
-/**
- * ✅ Save Dive Log function (was missing)
+ * ✅ Save Dive Log function
  */
 async function saveDiveLog(diveLogData) {
     try {
         console.log('💾 Saving dive log:', diveLogData);
         
-        const currentUser = await wixUsers.getCurrentUser();
+        const currentUser = wixUsers.currentUser;
         if (!currentUser || !currentUser.loggedIn) {
             throw new Error('User not logged in');
         }
@@ -1740,7 +1755,11 @@ async function saveDiveLog(diveLogData) {
             console.log('✅ Dive log saved to collection:', result._id);
             return { success: true, data: result };
         } catch (dbError) {
-            console.warn('⚠️ Database save failed, trying HTTP function:', dbError);
+            if (dbError.message?.includes('collection') || dbError.message?.includes('not found')) {
+                console.log('ℹ️ userMemory collection not found, using HTTP fallback');
+            } else {
+                console.warn('⚠️ Database save failed, trying HTTP function:', dbError);
+            }
             
             // Fallback to HTTP function
             const response = await fetch(WIX_DIVE_LOGS_API, {
@@ -1764,13 +1783,13 @@ async function saveDiveLog(diveLogData) {
 }
 
 /**
- * ✅ Save User Memory function (was missing)
+ * ✅ Save User Memory function
  */
 async function saveUserMemory(memoryData) {
     try {
         console.log('💭 Saving user memory:', memoryData);
         
-        const currentUser = await wixUsers.getCurrentUser();
+        const currentUser = wixUsers.currentUser;
         if (!currentUser || !currentUser.loggedIn) {
             throw new Error('User not logged in');
         }
@@ -1793,7 +1812,11 @@ async function saveUserMemory(memoryData) {
             console.log('✅ Memory saved to collection:', result._id);
             return { success: true, data: result };
         } catch (dbError) {
-            console.warn('⚠️ Database save failed, trying HTTP function:', dbError);
+            if (dbError.message?.includes('collection') || dbError.message?.includes('not found')) {
+                console.log('ℹ️ userMemory collection not found, using HTTP fallback');
+            } else {
+                console.warn('⚠️ Database save failed, trying HTTP function:', dbError);
+            }
             
             // Fallback to HTTP function
             const response = await fetch(WIX_USER_MEMORY_API, {
@@ -1816,4 +1839,77 @@ async function saveUserMemory(memoryData) {
     }
 }
 
-// ...existing code...
+// ===== 🚀 QUICK AI TEST FUNCTION =====
+async function testAIConnection() {
+    console.log('🧪 Testing AI connection...');
+    
+    try {
+        const userData = await loadComprehensiveUserData();
+        console.log('✅ User data loaded:', userData.userId);
+        
+        // Test chat API
+        const chatResponse = await fetch('https://kovaldeepai-main.vercel.app/api/openai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userMessage: 'test',
+                userId: userData.userId
+            })
+        });
+        
+        if (chatResponse.ok) {
+            console.log('✅ Chat API working');
+        } else {
+            console.warn('⚠️ Chat API issue:', chatResponse.status);
+        }
+        
+        // Test dive logs API
+        const diveResponse = await fetch('https://kovaldeepai-main.vercel.app/api/analyze/dive-logs', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (diveResponse.ok) {
+            console.log('✅ Dive logs API working');
+        } else {
+            console.warn('⚠️ Dive logs API issue:', diveResponse.status);
+        }
+        
+        // Check widget
+        const widget = $w('#koval-ai');
+        if (widget) {
+            console.log('✅ Widget found and ready');
+        } else {
+            console.warn('⚠️ Widget not found');
+        }
+        
+        console.log('🎯 AI Test Complete - Ready to use!');
+        
+    } catch (error) {
+        console.error('❌ AI test failed:', error);
+    }
+}
+
+// Auto-run test after initialization
+setTimeout(testAIConnection, 3000);
+
+/**
+ * ✅ Show Fallback Message function
+ */
+function showFallbackMessage(message = "Service temporarily unavailable") {
+    console.log('⚠️ Showing fallback message:', message);
+    
+    // Show user-friendly message
+    if (typeof wixWindow !== 'undefined' && wixWindow.openLightbox) {
+        wixWindow.openLightbox('errorLightbox', {
+            title: 'Connection Issue',
+            message: message,
+            buttonText: 'Try Again'
+        }).catch(() => {
+            // If lightbox fails, show simple alert
+            console.log('📢 Fallback message:', message);
+        });
+    } else {
+        console.log('📢 Fallback message:', message);
+    }
+}

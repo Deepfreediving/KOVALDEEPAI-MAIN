@@ -1,6 +1,8 @@
 {
   "version": 2,
   "framework": "nextjs",
+  "buildCommand": "next build",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)wix-site/**' ':(exclude)Wix App/**' ':(exclude)wix page/**' ':(exclude)wix guides/**'",
   "rewrites": [
     {
       "source": "/api/(.*)",
