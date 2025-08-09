@@ -1,21 +1,14 @@
-// 🔥 HTTP-CHAT-MASTER.JSW - ALL-IN-ONE CHAT API
-// Consolidates: http-chat.jsw + http-chat-expert.jsw (empty)
-// Version: 4.0.0 - Master Consolidated Edition
-// Date: August 8, 2025
+// HTTP-CHAT.JSW - WIX BACKEND CHAT API
+// Version: 4.0.0 - Production Edition
+// Wix Backend HTTP Functions for Chat Processing
 
 import wixData from 'wix-data';
 import { fetch } from 'wix-fetch';
 import { currentMember } from 'wix-members';
 import { ok, badRequest, serverError } from 'wix-http-functions';
 
-// 🎯 MASTER CONFIGURATION
+// Chat API Configuration
 const CHAT_CONFIG = {
-  API_VERSIONS: {
-    BASIC: 'basic',           // Simple chat forwarding
-    EXPERT: 'expert',         // Enhanced member detection + analytics
-    OPTIMIZED: 'optimized'    // Performance tracking + smart caching
-  },
-  
   API_ENDPOINTS: {
     AI_BACKEND: 'https://kovaldeepai-main.vercel.app/api/openai/chat',
     LOCAL_DIVE_LOGS: 'https://kovaldeepai-main.vercel.app/api/analyze/dive-logs',
@@ -37,8 +30,8 @@ const CHAT_CONFIG = {
   PERFORMANCE: {
     SLOW_QUERY_THRESHOLD: 3000,
     ENABLE_ANALYTICS: true,
-    CACHE_TTL: 300000,        // 5 minutes
-    REQUEST_TIMEOUT: 15000    // 15 seconds
+    CACHE_TTL: 300000,
+    REQUEST_TIMEOUT: 15000
   },
   
   ERROR_MESSAGES: {
@@ -50,15 +43,15 @@ const CHAT_CONFIG = {
   }
 };
 
-// 🔥 CORS HEADERS
+// CORS Headers for API responses
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
-// 🔥 PERFORMANCE METRICS (Expert/Optimized levels)
+// Performance tracking metrics
 let chatMetrics = {
   requests: 0,
   responses: 0,
@@ -67,22 +60,11 @@ let chatMetrics = {
   memberDetections: 0,
   diveLogsRetrieved: 0,
   aiBackendCalls: 0,
-  slowRequests: 0,
-  byVersion: {
-    basic: { requests: 0, duration: 0 },
-    expert: { requests: 0, duration: 0 },
-    optimized: { requests: 0, duration: 0 }
-  }
+  slowRequests: 0
 };
 
-// 🔥 UTILITY FUNCTIONS
-function getApiVersion(request) {
-  return request.headers['x-api-version'] || 
-         request.query.version || 
-         CHAT_CONFIG.API_VERSIONS.EXPERT; // Default to expert
-}
-
-function createResponse(status, data, request) {
+// Utility Functions
+function createResponse(status, data) {
   return {
     status,
     body: data,
@@ -90,10 +72,8 @@ function createResponse(status, data, request) {
   };
 }
 
-function trackMetrics(version, operation, duration, success = true) {
+function trackMetrics(operation, duration, success = true) {
   chatMetrics.requests++;
-  chatMetrics.byVersion[version].requests++;
-  chatMetrics.byVersion[version].duration += duration;
   chatMetrics.totalDuration += duration;
   
   if (success) {
@@ -104,7 +84,7 @@ function trackMetrics(version, operation, duration, success = true) {
   
   if (duration > CHAT_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD) {
     chatMetrics.slowRequests++;
-    console.log(`🐌 Slow chat request: ${duration}ms`);
+    console.log(`Slow chat request: ${duration}ms`);
   }
   
   // Track specific operations
@@ -121,36 +101,41 @@ function trackMetrics(version, operation, duration, success = true) {
   }
 }
 
-function logDebug(message, data = null, version = 'expert') {
-  if (version !== 'basic') {
-    console.log(message, data || '');
-  }
+function logDebug(message, data = null) {
+  console.log(message, data || '');
 }
 
 function logError(message, error = null) {
   console.error(message, error || '');
 }
 
-// 🔥 ENHANCED MEMBER DETECTION
-async function detectMember(userId, version = 'expert') {
+// API Version Detection (Master level default)
+function getApiVersion(request) {
+  return request.headers['x-api-version'] || 
+         request.query.version || 
+         'master'; // Default to master level
+}
+
+// Enhanced member detection
+async function detectMember(userId) {
   const startTime = Date.now();
   
   try {
     let effectiveUserId = userId || 'member';
     
-    // Expert/Optimized: Enhanced member detection
-    if (version !== 'basic' && effectiveUserId.startsWith('guest-')) {
-      logDebug('⚠️ Guest user detected, attempting member resolution...', null, version);
+    // Guest user detection
+    if (effectiveUserId.startsWith('guest-')) {
+      logDebug('Guest user detected, attempting member resolution...');
       
       try {
         // Try to get the real user ID from Wix Members service
         const member = await currentMember.getMember();
         if (member && member._id) {
           effectiveUserId = member._id;
-          logDebug(`✅ Found actual member ID: ${effectiveUserId}`, null, version);
+          logDebug(`Found actual member ID: ${effectiveUserId}`);
         }
       } catch (memberError) {
-        logDebug('⚠️ Could not get member from wix-members:', memberError.message, version);
+        logDebug('Could not get member from wix-members:', memberError.message);
         
         // Fallback: Try known member IDs
         for (const testId of CHAT_CONFIG.VALIDATION.KNOWN_MEMBER_IDS) {
@@ -162,30 +147,30 @@ async function detectMember(userId, version = 'expert') {
             
             if (testResults.items.length > 0) {
               effectiveUserId = testId;
-              logDebug(`✅ Using known member ID with dive logs: ${effectiveUserId}`, null, version);
+              logDebug(`Using known member ID with dive logs: ${effectiveUserId}`);
               break;
             }
           } catch (testError) {
-            logDebug(`⚠️ Test failed for member ID ${testId}:`, testError.message, version);
+            logDebug(`Test failed for member ID ${testId}:`, testError.message);
           }
         }
       }
     }
     
     const duration = Date.now() - startTime;
-    trackMetrics(version, 'memberDetection', duration);
+    trackMetrics('memberDetection', duration);
     
     return effectiveUserId;
     
   } catch (error) {
     const duration = Date.now() - startTime;
-    trackMetrics(version, 'memberDetection', duration, false);
+    trackMetrics('memberDetection', duration, false);
     throw error;
   }
 }
 
 // 🔥 ENHANCED DIVE LOGS RETRIEVAL
-async function retrieveDiveLogs(userId, providedLogs = [], version = 'expert') {
+async function retrieveDiveLogs(userId, providedLogs = [], version = 'master') {
   const startTime = Date.now();
   
   try {
@@ -210,8 +195,8 @@ async function retrieveDiveLogs(userId, providedLogs = [], version = 'expert') {
       userDiveLogs = results.items;
       logDebug(`✅ Retrieved ${userDiveLogs.length} dive logs from Wix database`, null, version);
       
-      // Expert/Optimized: Fallback strategies if no logs found
-      if (version !== 'basic' && userDiveLogs.length === 0) {
+      // Master level: Fallback strategies if no logs found
+      if (userDiveLogs.length === 0) {
         logDebug('🔍 No dive logs found, checking database contents...', null, version);
         
         // Check for any dive logs in the database
@@ -253,7 +238,7 @@ async function retrieveDiveLogs(userId, providedLogs = [], version = 'expert') {
                 userDiveLogs = localData.data;
                 logDebug(`✅ Retrieved ${userDiveLogs.length} local dive logs`, null, version);
                 
-                if (version === 'optimized' && userDiveLogs.length > 0) {
+                if (version === 'master' && userDiveLogs.length > 0) {
                   logDebug('📊 Sample local dive log:', {
                     discipline: userDiveLogs[0].discipline,
                     depth: userDiveLogs[0].reachedDepth,
@@ -285,7 +270,7 @@ async function retrieveDiveLogs(userId, providedLogs = [], version = 'expert') {
 }
 
 // 🔥 ENHANCED AI BACKEND CALL
-async function callAIBackend(payload, version = 'expert') {
+async function callAIBackend(payload, version = 'master') {
   const startTime = Date.now();
   
   try {
@@ -379,12 +364,10 @@ export async function post_chat(request) {
       lastDiveLocation: userDiveLogs[0]?.location || "Unknown"
     };
 
-    // Expert/Optimized: Add metadata
-    if (version !== 'basic') {
-      userProfile.analysisTimestamp = new Date().toISOString();
-      userProfile.apiVersion = version;
-      userProfile.memberDetectionMethod = userId?.startsWith('guest-') ? 'enhanced' : 'direct';
-    }
+    // Master level: Add metadata
+    userProfile.analysisTimestamp = new Date().toISOString();
+    userProfile.apiVersion = version;
+    userProfile.memberDetectionMethod = userId?.startsWith('guest-') ? 'enhanced' : 'direct';
 
     // Prepare AI payload
     const payload = {
@@ -394,15 +377,13 @@ export async function post_chat(request) {
       diveLogs: userDiveLogs
     };
 
-    // Expert/Optimized: Add request context
-    if (version !== 'basic') {
-      payload.context = {
-        version: version,
-        timestamp: new Date().toISOString(),
-        diveLogsSource: userDiveLogs.length > 0 ? 'wix-database' : 'none',
-        performanceTracking: true
-      };
-    }
+    // Master level: Add request context
+    payload.context = {
+      version: version,
+      timestamp: new Date().toISOString(),
+      diveLogsSource: userDiveLogs.length > 0 ? 'wix-database' : 'none',
+      performanceTracking: true
+    };
 
     // Call AI backend
     const data = await callAIBackend(payload, version);
@@ -427,23 +408,19 @@ export async function post_chat(request) {
       timestamp: new Date().toISOString()
     };
 
-    // Expert/Optimized: Add enhanced metadata
-    if (version !== 'basic') {
-      response.performance = {
-        duration: `${duration}ms`,
-        version: version,
-        memberDetection: effectiveUserId !== userId ? 'enhanced' : 'direct',
-        diveLogsFound: userDiveLogs.length
-      };
-      
-      if (version === 'optimized') {
-        response.metrics = {
-          requestCount: chatMetrics.requests,
-          averageResponseTime: chatMetrics.requests > 0 ? chatMetrics.totalDuration / chatMetrics.requests : 0,
-          successRate: chatMetrics.requests > 0 ? (chatMetrics.responses / chatMetrics.requests) * 100 : 0
-        };
-      }
-    }
+    // Master level: Add enhanced metadata
+    response.performance = {
+      duration: `${duration}ms`,
+      version: version,
+      memberDetection: effectiveUserId !== userId ? 'enhanced' : 'direct',
+      diveLogsFound: userDiveLogs.length
+    };
+    
+    response.metrics = {
+      requestCount: chatMetrics.requests,
+      averageResponseTime: chatMetrics.requests > 0 ? chatMetrics.totalDuration / chatMetrics.requests : 0,
+      successRate: chatMetrics.requests > 0 ? (chatMetrics.responses / chatMetrics.requests) * 100 : 0
+    };
 
     return createResponse(200, response, request);
 
@@ -463,17 +440,10 @@ export async function post_chat(request) {
 }
 
 /**
- * GET: Retrieve chat metrics (expert/optimized only)
+ * GET: Retrieve chat metrics (master level)
  */
 export async function get_chatMetrics(request) {
   const version = getApiVersion(request);
-  
-  if (version === 'basic') {
-    return createResponse(403, {
-      error: 'Metrics available in expert/optimized versions only',
-      success: false
-    }, request);
-  }
   
   return createResponse(200, {
     success: true,

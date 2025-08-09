@@ -1,4 +1,4 @@
-// 🔥 HTTP-DIVELOGS-MASTER.JSW - ALL-IN-ONE DIVE LOGS API
+// 🔥 HTTP-DIVELOGS.JSW - ALL-IN-ONE DIVE LOGS API
 // Consolidates: http-diveLogs + http-diveLogs-expert (empty)
 // Version: 4.0.0 - Master Consolidated Edition
 // Date: August 8, 2025
@@ -7,14 +7,15 @@ import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
 import wixUsersBackend from 'wix-users-backend';
 import { fetch } from 'wix-fetch';
-import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils-master.jsw';
+import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils.jsw';
 
 // 🎯 MASTER CONFIGURATION
 const DIVELOGS_CONFIG = {
   API_VERSIONS: {
-    BASIC: 'basic',           // Simple CRUD operations
-    EXPERT: 'expert',         // Advanced features + semantic search
-    OPTIMIZED: 'optimized'    // Index-aware + performance tracking
+    BASIC: 'basic',           // Legacy support only
+    EXPERT: 'expert',         // Legacy support only  
+    OPTIMIZED: 'optimized',   // Legacy support only
+    MASTER: 'master'          // Current standard level
   },
   
   COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
@@ -89,11 +90,9 @@ function validateDiveLog(data, version = 'basic') {
     errors.push(`Invalid discipline: ${data.discipline}`);
   }
   
-  // Expert/Optimized level validations
-  if (version !== 'basic') {
-    if (data.diveDate && !isValidDate(data.diveDate)) {
-      errors.push('Invalid date format');
-    }
+  // Master level validations (always enabled)
+  if (data.diveDate && !isValidDate(data.diveDate)) {
+    errors.push('Invalid date format');
   }
   
   return errors;
@@ -121,7 +120,7 @@ function createResponse(status, data, request) {
 function getApiVersion(request) {
   return request.headers['x-api-version'] || 
          request.query.version || 
-         DIVELOGS_CONFIG.API_VERSIONS.EXPERT; // Default to expert
+         DIVELOGS_CONFIG.API_VERSIONS.MASTER; // Default to master
 }
 
 // 🔥 PERFORMANCE TRACKING
@@ -188,19 +187,15 @@ export async function post_diveLogs(request) {
       apiVersion: version
     };
     
-    // Expert/Optimized: Add additional tracking
-    if (version !== 'basic') {
-      diveLogData.submissionTimestamp = new Date().toISOString();
-      diveLogData.dataSource = 'wix-api';
-      
-      // Optimized: Add performance hints
-      if (version === 'optimized') {
-        diveLogData.indexHints = {
-          primaryQuery: ['userId', 'diveDate'],
-          searchable: ['discipline', 'location', 'notes']
-        };
-      }
-    }
+    // Master level: Add additional tracking (always enabled)
+    diveLogData.submissionTimestamp = new Date().toISOString();
+    diveLogData.dataSource = 'wix-api';
+    
+    // Master level: Add performance hints
+    diveLogData.indexHints = {
+      primaryQuery: ['userId', 'diveDate'],
+      searchable: ['discipline', 'location', 'notes']
+    };
     
     // Save to Wix Data
     const result = await wixData.save(DIVELOGS_CONFIG.COLLECTION_NAME, diveLogData);
@@ -213,12 +208,10 @@ export async function post_diveLogs(request) {
       data: result,
       _id: result._id,
       version: version,
-      ...(version !== 'basic' && { 
-        performance: { 
-          duration: `${duration}ms`,
-          version: version
-        }
-      })
+      performance: { 
+        duration: `${duration}ms`,
+        version: version
+      }
     }, request);
     
   } catch (error) {
@@ -285,9 +278,9 @@ export async function get_diveLogs(request) {
     // Execute query
     const results = await query.find();
     
-    // Expert/Optimized: Semantic search capability
+    // Master level: Semantic search capability (always enabled)
     let semanticResults = null;
-    if ((version === 'expert' || version === 'optimized') && semantic && search) {
+    if (semantic && search) {
       try {
         const semanticResponse = await fetch(DIVELOGS_CONFIG.SEMANTIC_SEARCH_API, {
           method: 'POST',
@@ -320,16 +313,14 @@ export async function get_diveLogs(request) {
       version: version
     };
     
-    // Expert/Optimized: Add enhanced data
-    if (version !== 'basic') {
-      response.performance = {
-        duration: `${duration}ms`,
-        queryOptimization: results.items.length > 0 ? 'indexed' : 'scan'
-      };
-      
-      if (semanticResults) {
-        response.semanticMatches = semanticResults;
-      }
+    // Master level: Add enhanced data (always enabled)
+    response.performance = {
+      duration: `${duration}ms`,
+      queryOptimization: results.items.length > 0 ? 'indexed' : 'scan'
+    };
+    
+    if (semanticResults) {
+      response.semanticMatches = semanticResults;
     }
     
     return createResponse(200, response, request);
@@ -395,9 +386,7 @@ export async function put_diveLogs(request) {
       success: true,
       data: result,
       version: version,
-      ...(version !== 'basic' && { 
-        performance: { duration: `${duration}ms` }
-      })
+      performance: { duration: `${duration}ms` }
     }, request);
     
   } catch (error) {
@@ -441,9 +430,7 @@ export async function delete_diveLogs(request) {
       success: true,
       message: 'Dive log deleted successfully',
       version: version,
-      ...(version !== 'basic' && { 
-        performance: { duration: `${duration}ms` }
-      })
+      performance: { duration: `${duration}ms` }
     }, request);
     
   } catch (error) {

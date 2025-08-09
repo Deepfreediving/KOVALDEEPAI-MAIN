@@ -1,11 +1,11 @@
-// 🔥 HTTP-USERMEMORY-MASTER.JSW - ALL-IN-ONE USER MEMORY API
+// 🔥 HTTP-USERMEMORY.JSW - ALL-IN-ONE USER MEMORY API
 // Consolidates: http-userMemory + http-userMemory-optimized + http-userMemory-expert
 // Version: 4.0.0 - Master Consolidated Edition
 // Date: August 8, 2025
 
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
-import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils-master.jsw';
+import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils.jsw';
 
 // 🎯 MASTER CONFIGURATION
 const MEMORY_CONFIG = {
