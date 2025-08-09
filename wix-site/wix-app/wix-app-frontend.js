@@ -5,7 +5,13 @@
 
 import wixUsers from 'wix-users';
 import { fetch } from 'wix-fetch';
-import { backend } from 'wix-backend';
+// Backend imports for direct function calls (try-catch wrapped)
+let backend = null;
+try {
+  backend = require('backend');
+} catch (backendError) {
+  console.warn('⚠️ Backend module not available, using fetch fallback');
+}
 
 // 🛡️ GLOBAL ERROR HANDLER - Catch any unhandled errors
 if (typeof window !== 'undefined') {
@@ -359,10 +365,10 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
   requestLimiter.recordRequest(requestType);
 
   try {
-    // 🔥 Try wix-backend for internal function calls first
-    if (url.startsWith('/_functions/')) {
+    // Try backend for internal function calls first (if available)
+    if (url.startsWith('/_functions/') && backend) {
       const functionName = url.replace('/_functions/', '');
-      logDebug(`🔄 Trying wix-backend for ${functionName}`);
+      logDebug(`🔄 Trying backend for ${functionName}`);
       
       try {
         let result;
@@ -385,7 +391,7 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
         
         const duration = Date.now() - startTime;
         performanceTracker.trackRequest(endpoint, duration, true);
-        logDebug(`✅ wix-backend request to ${endpoint} successful (${duration}ms)`);
+        logDebug(`✅ backend request to ${endpoint} successful (${duration}ms)`);
         
         // Cache successful responses
         if (options.method === 'GET') {
@@ -394,16 +400,19 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
         
         return result;
       } catch (backendError) {
-        logDebug(`⚠️ wix-backend failed for ${functionName}, trying fetch...`);
+        logDebug(`⚠️ backend failed for ${functionName}, trying fetch...`);
       }
     }
     
-    // 🔥 Fallback to regular fetch
+    // Fallback to regular fetch
+    // Only add custom headers for internal Wix functions, not external APIs
+    const isExternalAPI = endpoint.includes('vercel.app') || endpoint.includes('openai.com') || endpoint.includes('pinecone.io');
+    
     const requestOptions = {
       method: options.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Version': currentMode,
+        ...(isExternalAPI ? {} : { 'X-API-Version': currentMode }),
         ...options.headers
       },
       body: options.body || null,
@@ -631,12 +640,14 @@ function hideTypingIndicator(widget) {
 
 // 🔥 MAIN APPLICATION INITIALIZATION
 $w.onReady(async function () {
+  let aiWidget = null; // Declare at function scope
+  
   try {
     logDebug("✅ Koval-AI Wix app initializing...");
     logDebug(`🔧 Current mode: ${currentMode}`);
 
     // Find and initialize AI widget
-    const aiWidget = findAIWidget();
+    aiWidget = findAIWidget();
     
     if (!aiWidget) {
       logError("❌ Could not find AI widget");
@@ -674,7 +685,7 @@ $w.onReady(async function () {
     }
 
   // Set up message handling
-  if (aiWidget.onMessage) {
+  if (aiWidget && aiWidget.onMessage) {
     aiWidget.onMessage(async (event) => {
       try {
         // ✅ Comprehensive null checking to prevent any errors
@@ -720,25 +731,31 @@ $w.onReady(async function () {
                 
                 hideTypingIndicator(aiWidget);
                 
-                aiWidget.postMessage({
-                  type: 'chatResponse',
-                  data: response
-                });
+                if (aiWidget && aiWidget.postMessage) {
+                  aiWidget.postMessage({
+                    type: 'chatResponse',
+                    data: response
+                  });
+                }
                 
               } catch (error) {
                 hideTypingIndicator(aiWidget);
                 logError('Chat error:', error);
                 
-                aiWidget.postMessage({
-                  type: 'error',
-                  data: { message: 'Failed to send message' }
-                });
+                if (aiWidget && aiWidget.postMessage) {
+                  aiWidget.postMessage({
+                    type: 'error',
+                    data: { message: 'Failed to send message' }
+                  });
+                }
               }
             } else {
-              aiWidget.postMessage({
-                type: 'error',
-                data: { message: 'Please log in to chat' }
-              });
+              if (aiWidget && aiWidget.postMessage) {
+                aiWidget.postMessage({
+                  type: 'error',
+                  data: { message: 'Please log in to chat' }
+                });
+              }
             }
             break;
             
@@ -751,17 +768,21 @@ $w.onReady(async function () {
                   data.type || 'general'
                 );
                 
-                aiWidget.postMessage({
-                  type: 'memorySaved',
-                  data: { success: true }
-                });
+                if (aiWidget && aiWidget.postMessage) {
+                  aiWidget.postMessage({
+                    type: 'memorySaved',
+                    data: { success: true }
+                  });
+                }
                 
               } catch (error) {
                 logError('Memory save error:', error);
-                aiWidget.postMessage({
-                  type: 'error',
-                  data: { message: 'Failed to save memory' }
-                });
+                if (aiWidget && aiWidget.postMessage) {
+                  aiWidget.postMessage({
+                    type: 'error',
+                    data: { message: 'Failed to save memory' }
+                  });
+                }
               }
             }
             break;
@@ -771,47 +792,57 @@ $w.onReady(async function () {
               try {
                 await saveDiveLog(currentUser.id, data);
                 
-                aiWidget.postMessage({
-                  type: 'diveLogSaved',
-                  data: { success: true }
-                });
+                if (aiWidget && aiWidget.postMessage) {
+                  aiWidget.postMessage({
+                    type: 'diveLogSaved',
+                    data: { success: true }
+                  });
+                }
                 
               } catch (error) {
                 logError('Dive log save error:', error);
-                aiWidget.postMessage({
-                  type: 'error',
-                  data: { message: 'Failed to save dive log' }
-                });
+                if (aiWidget && aiWidget.postMessage) {
+                  aiWidget.postMessage({
+                    type: 'error',
+                    data: { message: 'Failed to save dive log' }
+                  });
+                }
               }
             }
             break;
             
           case 'getMetrics':
-            aiWidget.postMessage({
-              type: 'metrics',
-              data: {
-                performance: performanceTracker.getStats(),
-                cache: dataCache.getStats(),
-                endpoints: ENDPOINT_STATUS,
-                mode: currentMode
-              }
-            });
+            if (aiWidget && aiWidget.postMessage) {
+              aiWidget.postMessage({
+                type: 'metrics',
+                data: {
+                  performance: performanceTracker.getStats(),
+                  cache: dataCache.getStats(),
+                  endpoints: ENDPOINT_STATUS,
+                  mode: currentMode
+                }
+              });
+            }
             break;
             
           case 'setMode':
             // Master mode doesn't support mode switching
-            aiWidget.postMessage({
-              type: 'error',
-              data: { message: 'Master version operates in single perfect mode' }
-            });
+            if (aiWidget && aiWidget.postMessage) {
+              aiWidget.postMessage({
+                type: 'error',
+                data: { message: 'Master version operates in single perfect mode' }
+              });
+            }
             break;
         }
       } catch (error) {
         logError('Message handling error:', error);
-        aiWidget.postMessage({
-          type: 'error',
-          data: { message: 'Internal error' }
-        });
+        if (aiWidget && aiWidget.postMessage) {
+          aiWidget.postMessage({
+            type: 'error',
+            data: { message: 'Internal error' }
+          });
+        }
       }
     });
   }
@@ -837,15 +868,15 @@ $w.onReady(async function () {
   } catch (error) {
     console.error("❌ Critical error during app initialization:", error);
     // Try to show error to user if possible
-    try {
-      if (aiWidget && aiWidget.postMessage) {
+    if (aiWidget && aiWidget.postMessage) {
+      try {
         aiWidget.postMessage({
           type: 'error',
           data: { message: 'App initialization failed' }
         });
+      } catch (e) {
+        console.error("❌ Could not even send error message:", e);
       }
-    } catch (e) {
-      console.error("❌ Could not even send error message:", e);
     }
   }
 });

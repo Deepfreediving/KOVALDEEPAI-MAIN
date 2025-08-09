@@ -46,6 +46,10 @@
     ".next",
     "out",
     "public/wix-widget-loader-v3.js",
-    "**/wix-widget-loader*.js"
+    "**/wix-widget-loader*.js",
+    "wix-site/**",
+    "Wix App/**",
+    "wix page/**",
+    "wix guides/**"
   ]
 }
