@@ -1,0 +1,11 @@
+// ===== 📄 Ultra-minimal test version =====
+// Copy this EXACT content to Wix Blocks as http-test.jsw
+
+import { ok } from 'wix-http-functions';
+
+export function get_test() {
+  return ok({ 
+    status: 'working',
+    timestamp: new Date().toISOString()
+  });
+}

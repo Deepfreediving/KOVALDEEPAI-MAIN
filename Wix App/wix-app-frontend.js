@@ -1,12 +1,12 @@
 import wixUsers from 'wix-users';
 
 // ✅ CORRECTED API ENDPOINTS TO MATCH YOUR BACKEND FUNCTIONS
-const CHAT_API = "https://www.deepfreediving.com/_functions/chat";  // ✅ Your post_chat function
-const USER_MEMORY_API = "https://www.deepfreediving.com/_functions/http-userMemory";  // ✅ Your http-userMemory.jsw
-const TEST_CONNECTION_API = "https://www.deepfreediving.com/_functions/testConnection";  // ✅ Your get_testConnection
+const CHAT_API = "https://www.deepfreediving.com/_functions/chat";  // ✅ Your http-chat.jsw 
+const USER_MEMORY_API = "https://www.deepfreediving.com/_functions/userMemory";  // ✅ Your http-userMemory.jsw
+const TEST_CONNECTION_API = "https://www.deepfreediving.com/_functions/wixConnection";  // ✅ Your http-wixConnection.jsw
 
 // ✅ BACKUP: Direct to your Next.js backend if Wix functions fail
-const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/chat-embed";
+const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
 const PINECONE_API = "https://kovaldeepai-main.vercel.app/api/pinecone";
 
 const DEBUG_MODE = true;

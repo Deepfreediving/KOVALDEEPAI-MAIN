@@ -1,6 +1,7 @@
 // ===== 📄 Wix App/backend/http-wixConnection.jsw =====
 // HTTP endpoint to test backend connection and provide status
 
+// ✅ Correct import syntax for Wix backend functions
 import { ok, serverError } from 'wix-http-functions';
 import wixData from 'wix-data';
 
