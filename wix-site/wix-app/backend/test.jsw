@@ -162,4 +162,35 @@ export function options_test(request) {
   };
 }
 
+// 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
+// These functions are called directly by the frontend using backend.test() etc.
+export async function test(requestData) {
+  // Create a mock request object that matches the HTTP function signature
+  const mockRequest = {
+    body: {
+      json: () => Promise.resolve(requestData)
+    },
+    headers: {},
+    query: {},
+    method: 'POST'
+  };
+  
+  // Call the main HTTP function and extract the response body
+  const result = await post_test(mockRequest);
+  return result.body || result;
+}
+
+// Wrapper for GET operations
+export async function getTest(requestData) {
+  const mockRequest = {
+    body: { json: () => Promise.resolve({}) },
+    headers: {},
+    query: requestData || {},
+    method: 'GET'
+  };
+  
+  const result = await get_test(mockRequest);
+  return result.body || result;
+}
+
 console.log("🔥 Enhanced Test API initialized - AI integration ready");

@@ -144,3 +144,20 @@ export function get_chat(request) {
     version: '4.0.0'
   }, CHAT_CONFIG.CORS_HEADERS);
 }
+
+// 🔥 WRAPPER FUNCTION FOR DIRECT BACKEND CALLS
+// This function is called directly by the frontend using backend.chat()
+export async function chat(requestData) {
+  // Create a mock request object that matches the HTTP function signature
+  const mockRequest = {
+    body: {
+      json: () => Promise.resolve(requestData)
+    },
+    headers: {},
+    query: {}
+  };
+  
+  // Call the main HTTP function and extract the response body
+  const result = await post_chat(mockRequest);
+  return result.body || result;
+}

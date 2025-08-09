@@ -206,3 +206,34 @@ export function options_userMemory(request) {
     message: 'CORS preflight OK'
   }, MEMORY_CONFIG.CORS_HEADERS);
 }
+
+// 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
+// These functions are called directly by the frontend using backend.userMemory() etc.
+export async function userMemory(requestData) {
+  // Create a mock request object that matches the HTTP function signature
+  const mockRequest = {
+    body: {
+      json: () => Promise.resolve(requestData)
+    },
+    headers: {},
+    query: {},
+    method: 'POST'
+  };
+  
+  // Call the main HTTP function and extract the response body
+  const result = await post_userMemory(mockRequest);
+  return result.body || result;
+}
+
+// Wrapper for GET operations
+export async function getUserMemory(requestData) {
+  const mockRequest = {
+    body: { json: () => Promise.resolve({}) },
+    headers: {},
+    query: requestData || {},
+    method: 'GET'
+  };
+  
+  const result = await get_userMemory(mockRequest);
+  return result.body || result;
+}

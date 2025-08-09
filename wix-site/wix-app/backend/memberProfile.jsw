@@ -480,4 +480,35 @@ export async function get_memberProfileMetrics(request) {
   });
 }
 
+// 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
+// These functions are called directly by the frontend using backend.getUserProfile() etc.
+export async function getUserProfile(requestData) {
+  // Create a mock request object that matches the HTTP function signature
+  const mockRequest = {
+    body: { json: () => Promise.resolve({}) },
+    headers: {},
+    query: requestData || {},
+    method: 'GET'
+  };
+  
+  // Call the main HTTP function and extract the response body
+  const result = await get_memberProfile(mockRequest);
+  return result.body || result;
+}
+
+// Alternative wrapper name that matches the file name
+export async function memberProfile(requestData) {
+  const mockRequest = {
+    body: {
+      json: () => Promise.resolve(requestData)
+    },
+    headers: {},
+    query: {},
+    method: 'POST'
+  };
+  
+  const result = await post_memberProfile(mockRequest);
+  return result.body || result;
+}
+
 console.log("🔥 Master Member Profile API initialized - Perfect version for freediving community");

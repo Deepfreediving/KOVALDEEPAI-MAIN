@@ -405,4 +405,35 @@ function trackMetrics(operation, duration, error = false) {
   }
 }
 
+// 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
+// These functions are called directly by the frontend using backend.diveLogs() etc.
+export async function diveLogs(requestData) {
+  // Create a mock request object that matches the HTTP function signature
+  const mockRequest = {
+    body: {
+      json: () => Promise.resolve(requestData)
+    },
+    headers: {},
+    query: {},
+    method: 'POST'
+  };
+  
+  // Call the main HTTP function and extract the response body
+  const result = await post_diveLogs(mockRequest);
+  return result.body || result;
+}
+
+// Wrapper for GET operations
+export async function getDiveLogs(requestData) {
+  const mockRequest = {
+    body: { json: () => Promise.resolve({}) },
+    headers: {},
+    query: requestData || {},
+    method: 'GET'
+  };
+  
+  const result = await get_diveLogs(mockRequest);
+  return result.body || result;
+}
+
 console.log("🔥 Wix App Dive Logs API initialized - Master version");
