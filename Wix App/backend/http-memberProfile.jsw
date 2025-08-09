@@ -1,4 +1,14 @@
-// � WIX APP BACKEND: HTTP-MEMBERPROFILE.JSW - ENHANCED EDITION
+// 🔥 WIX APP BACKEND: HTTP-MEMBERPROFILE.JSW - MASTER EDITION
+// Optimized for OpenAI & Pinecone integration with Wix best practices
+// Version: 4.0.0 - Single Perfect Version for Freediving
+// Date: August 8, 2025
+
+import { ok, notFound, serverError, badRequest } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { currentMember } from 'wix-members';
+import { fetch } from 'wix-fetch';
+
+// 🎯 MASTER CONFIGURATION - Single Perfect VersionP BACKEND: HTTP-MEMBERPROFILE.JSW - ENHANCED EDITION
 // Optimized for OpenAI & Pinecone integration with Wix best practices
 // Version: 4.0.0 - Production Ready
 // Date: August 8, 2025
@@ -11,9 +21,7 @@ import { fetch } from 'wix-fetch';
 // 🎯 ENHANCED CONFIGURATION - Wix Best Practices
 const MEMBER_CONFIG = {
   API_VERSIONS: {
-    BASIC: 'basic',           // Simple profile fetch
-    EXPERT: 'expert',         // Enhanced with AI context
-    OPTIMIZED: 'optimized'    // Performance + AI integration
+    MASTER: 'master'          // Single perfect version for freediving
   },
   
   COLLECTIONS: {
@@ -73,7 +81,7 @@ let profileMetrics = {
 function getApiVersion(request) {
   return request.headers['x-api-version'] || 
          request.query.version || 
-         MEMBER_CONFIG.API_VERSIONS.EXPERT; // Default to expert
+         MEMBER_CONFIG.API_VERSIONS.MASTER; // Default to master
 }
 
 function createResponse(status, data) {
@@ -93,25 +101,23 @@ function trackMetrics(operation, duration, success = true) {
   if (operation === 'ai') profileMetrics.aiEnhancements++;
 }
 
-// 🔥 ENHANCED MEMBER DETECTION - Wix Best Practice
-async function detectCurrentMember(userId, version = 'expert') {
+// 🔥 ENHANCED MEMBER DETECTION - Master Level
+async function detectCurrentMember(userId) {
   try {
     // Try provided userId first
     if (userId && !userId.startsWith('guest-')) {
       return userId;
     }
     
-    // Expert/Optimized: Enhanced member detection
-    if (version !== 'basic') {
-      try {
-        const member = await currentMember.getMember();
-        if (member && member._id) {
-          console.log(`✅ Detected authenticated member: ${member._id}`);
-          return member._id;
-        }
-      } catch (memberError) {
-        console.warn('⚠️ Could not get current member:', memberError.message);
+    // Master level: Always use enhanced member detection
+    try {
+      const member = await currentMember.getMember();
+      if (member && member._id) {
+        console.log(`✅ Detected authenticated member: ${member._id}`);
+        return member._id;
       }
+    } catch (memberError) {
+      console.warn('⚠️ Could not get current member:', memberError.message);
     }
     
     return userId || 'unknown';
@@ -121,9 +127,9 @@ async function detectCurrentMember(userId, version = 'expert') {
   }
 }
 
-// 🔥 AI CONTEXT ENHANCEMENT - OpenAI Integration
-async function enhanceProfileWithAI(memberProfile, version = 'expert') {
-  if (version === 'basic' || !MEMBER_CONFIG.PERFORMANCE.ENABLE_AI_CONTEXT) {
+// 🔥 AI CONTEXT ENHANCEMENT - OpenAI Integration (Always Enabled)
+async function enhanceProfileWithAI(memberProfile) {
+  if (!MEMBER_CONFIG.PERFORMANCE.ENABLE_AI_CONTEXT) {
     return memberProfile;
   }
   
@@ -173,10 +179,8 @@ async function enhanceProfileWithAI(memberProfile, version = 'expert') {
   }
 }
 
-// 🔥 PINECONE INTEGRATION - Vector Storage
-async function syncProfileToPinecone(memberProfile, version = 'optimized') {
-  if (version !== 'optimized') return;
-  
+// 🔥 PINECONE INTEGRATION - Vector Storage (Always Enabled)
+async function syncProfileToPinecone(memberProfile) {
   try {
     // Generate embedding for profile
     const profileVector = await fetch(MEMBER_CONFIG.AI_INTEGRATION.OPENAI_ENDPOINTS.EMBEDDING, {
@@ -236,7 +240,7 @@ export async function get_memberProfile(request) {
     }
 
     // Enhanced member detection
-    const effectiveUserId = await detectCurrentMember(requestedUserId, version);
+    const effectiveUserId = await detectCurrentMember(requestedUserId);
     console.log(`🔍 Loading profile for member: ${effectiveUserId}`);
 
     // Query Members/FullData collection with Wix best practices
@@ -277,15 +281,11 @@ export async function get_memberProfile(request) {
         profileStrength: calculateProfileStrength(profile)
       };
       
-      // Expert/Optimized: Add AI context
-      if (version !== 'basic') {
-        memberProfile = await enhanceProfileWithAI(memberProfile, version);
-      }
+      // Master level: Always add AI context
+      memberProfile = await enhanceProfileWithAI(memberProfile);
       
-      // Optimized: Sync to Pinecone for vector search
-      if (version === 'optimized') {
-        syncProfileToPinecone(memberProfile, version);
-      }
+      // Master level: Always sync to Pinecone for vector search
+      syncProfileToPinecone(memberProfile);
       
       console.log(`📊 Enhanced profile data assembled:`, {
         memberId: memberProfile.memberId,
@@ -326,24 +326,20 @@ export async function get_memberProfile(request) {
       version: version
     };
 
-    // Expert/Optimized: Add performance metrics
-    if (version !== 'basic') {
-      response.performance = {
-        duration: `${duration}ms`,
-        memberDetection: effectiveUserId !== requestedUserId ? 'enhanced' : 'direct',
-        aiEnhanced: !!memberProfile.aiContext,
-        profileCompleteness: memberProfile.profileCompleteness
-      };
-      
-      if (version === 'optimized') {
-        response.metrics = {
-          totalRequests: profileMetrics.requests,
-          cacheHitRate: profileMetrics.requests > 0 ? (profileMetrics.cacheHits / profileMetrics.requests) * 100 : 0,
-          aiEnhancements: profileMetrics.aiEnhancements,
-          averageResponseTime: profileMetrics.requests > 0 ? profileMetrics.totalDuration / profileMetrics.requests : 0
-        };
-      }
-    }
+    // Master level: Always include performance metrics
+    response.performance = {
+      duration: `${duration}ms`,
+      memberDetection: effectiveUserId !== requestedUserId ? 'enhanced' : 'direct',
+      aiEnhanced: !!memberProfile.aiContext,
+      profileCompleteness: memberProfile.profileCompleteness
+    };
+    
+    response.metrics = {
+      totalRequests: profileMetrics.requests,
+      cacheHitRate: profileMetrics.requests > 0 ? (profileMetrics.cacheHits / profileMetrics.requests) * 100 : 0,
+      aiEnhancements: profileMetrics.aiEnhancements,
+      averageResponseTime: profileMetrics.requests > 0 ? profileMetrics.totalDuration / profileMetrics.requests : 0
+    };
 
     return createResponse(200, response);
 
@@ -424,8 +420,8 @@ export async function post_memberProfile(request) {
     
     const updateResult = await wixData.update(MEMBER_CONFIG.COLLECTIONS.MEMBERS, updatePayload);
     
-    // Expert/Optimized: Sync updates to AI systems
-    if (version !== 'basic' && aiSync) {
+    // Master level: Always sync updates to AI systems
+    if (aiSync) {
       // Update Pinecone vector if profile content changed
       if (sanitizedUpdates.about || sanitizedUpdates.firstName || sanitizedUpdates.lastName) {
         const updatedProfile = await get_memberProfile({ 
@@ -434,7 +430,7 @@ export async function post_memberProfile(request) {
         });
         
         if (updatedProfile.status === 200) {
-          await syncProfileToPinecone(updatedProfile.body.profile, version);
+          await syncProfileToPinecone(updatedProfile.body.profile);
         }
       }
     }
@@ -446,12 +442,10 @@ export async function post_memberProfile(request) {
       success: true,
       updated: updateResult,
       updatedFields: Object.keys(sanitizedUpdates),
-      aiSynced: version !== 'basic' && aiSync,
+      aiSynced: aiSync,
       timestamp: new Date().toISOString(),
       version: version,
-      ...(version !== 'basic' && { 
-        performance: { duration: `${duration}ms` }
-      })
+      performance: { duration: `${duration}ms` }
     });
     
   } catch (error) {
@@ -474,20 +468,14 @@ export function options_memberProfile(request) {
   return createResponse(200, {
     message: 'CORS preflight successful',
     supportedMethods: ['GET', 'POST', 'OPTIONS'],
-    supportedVersions: Object.values(MEMBER_CONFIG.API_VERSIONS)
+    version: 'master',
+    features: ['AI Enhancement', 'Pinecone Integration', 'Performance Tracking']
   });
 }
 
-// 🔥 GET METRICS - Performance Monitoring (Expert/Optimized only)
+// 🔥 GET METRICS - Performance Monitoring (Always Available)
 export async function get_memberProfileMetrics(request) {
   const version = getApiVersion(request);
-  
-  if (version === 'basic') {
-    return createResponse(403, {
-      error: 'Metrics available in expert/optimized versions only',
-      success: false
-    });
-  }
   
   return createResponse(200, {
     success: true,
@@ -502,4 +490,4 @@ export async function get_memberProfileMetrics(request) {
   });
 }
 
-console.log("🔥 Enhanced Member Profile API initialized - OpenAI & Pinecone integrated");
+console.log("🔥 Master Member Profile API initialized - Perfect version for freediving community");

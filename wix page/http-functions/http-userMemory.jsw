@@ -770,7 +770,7 @@ export async function get_userMemoryMetrics(request) {
       ...memoryMetrics,
       averageDuration: avgDuration,
       successRate: Math.round(((memoryMetrics.reads + memoryMetrics.writes - memoryMetrics.errors) / 
-                              (memoryMetrics.reads + memoryMetories.writes)) * 100) || 100
+                              (memoryMetrics.reads + memoryMetrics.writes)) * 100) || 100
     },
     timestamp: new Date().toISOString(),
     apiVersion
