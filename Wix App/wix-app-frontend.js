@@ -1,575 +1,807 @@
+// 🔥 WIX-APP-FRONTEND-MASTER.JS - ALL-IN-ONE FRONTEND SOLUTION
+// Consolidates: wix-app-frontend.js + wix-app-frontend-expert.js (empty)
+// Version: 4.0.0 - Master Consolidated Edition
+// Date: August 8, 2025
+
 import wixUsers from 'wix-users';
 
-// ✅ CORRECTED API ENDPOINTS TO MATCH YOUR BACKEND FUNCTIONS
-const CHAT_API = "https://www.deepfreediving.com/_functions/chat";  // ✅ Your http-chat.jsw 
-const USER_MEMORY_API = "https://www.deepfreediving.com/_functions/userMemory";  // ✅ Your http-userMemory.jsw
-const TEST_CONNECTION_API = "https://www.deepfreediving.com/_functions/wixConnection";  // ✅ Your http-wixConnection.jsw
+// 🎯 MASTER CONFIGURATION - ALL FRONTEND MODES
+const FRONTEND_CONFIG = {
+  MODES: {
+    BASIC: 'basic',           // Simple chat interface
+    EXPERT: 'expert',         // Advanced features + monitoring
+    OPTIMIZED: 'optimized'    // Performance optimized + analytics
+  },
+  
+  BACKEND_ENDPOINTS: {
+    wix: {
+      chat: "https://www.deepfreediving.com/_functions/chat",
+      userMemory: "https://www.deepfreediving.com/_functions/userMemory", 
+      diveLogs: "https://www.deepfreediving.com/_functions/diveLogs",
+      userProfile: "https://www.deepfreediving.com/_functions/getUserProfile",
+      testConnection: "https://www.deepfreediving.com/_functions/wixConnection"
+    },
+    nextjs: {
+      chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
+      pinecone: "https://kovaldeepai-main.vercel.app/api/pinecone"
+    }
+  },
+  
+  PERFORMANCE: {
+    REQUEST_LIMITS: { read: 80, write: 20 },
+    BATCH_DELAY: 100,         // ms
+    CACHE_TTL: 300000,        // 5 minutes
+    REQUEST_TIMEOUT: 15000,   // 15 seconds
+    RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 1000
+  },
+  
+  UI: {
+    WIDGET_IDS: ['#koval-ai', '#KovalAIFrame', '#kovalAIFrame', '#KovalAiWidget', '#kovalAIWidget'],
+    ANIMATION_DURATION: 300,
+    AUTO_SCROLL: true,
+    TYPING_INDICATOR: true
+  }
+};
 
-// ✅ BACKUP: Direct to your Next.js backend if Wix functions fail
-const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
-const PINECONE_API = "https://kovaldeepai-main.vercel.app/api/pinecone";
+// 🔥 CURRENT MODE DETECTION
+let currentMode = FRONTEND_CONFIG.MODES.EXPERT; // Default to expert
 
-const DEBUG_MODE = true;
+// 🔥 WIX EXPERT: REQUEST RATE LIMITER - AVOID WDE0014 ERRORS
+class WixRequestLimiter {
+  constructor() {
+    this.requestCounts = { read: 0, write: 0 };
+    this.resetTime = Date.now() + 60000; // Reset every minute
+    this.maxRequests = FRONTEND_CONFIG.PERFORMANCE.REQUEST_LIMITS;
+  }
 
-$w.onReady(async function () {
-    console.log("✅ Koval-AI Wix app initializing...");
+  canMakeRequest(type = 'read') {
+    this.checkReset();
+    return this.requestCounts[type] < this.maxRequests[type];
+  }
 
-    // ✅ PRIORITIZE WIX BLOCKS SPECIFIC IDS - KovalAIFrame and koval-ai
-    let aiWidget = null;
-    const possibleIds = ['#koval-ai', '#KovalAIFrame', '#kovalAIFrame', '#KovalAiWidget', '#kovalAIWidget'];
+  recordRequest(type = 'read') {
+    this.checkReset();
+    this.requestCounts[type]++;
+    if (currentMode !== 'basic') {
+      console.log(`📊 Request count: ${type} ${this.requestCounts[type]}/${this.maxRequests[type]}`);
+    }
+  }
+
+  checkReset() {
+    if (Date.now() > this.resetTime) {
+      this.requestCounts = { read: 0, write: 0 };
+      this.resetTime = Date.now() + 60000;
+      if (currentMode !== 'basic') {
+        console.log("🔄 Request limiter reset");
+      }
+    }
+  }
+
+  waitTime(type = 'read') {
+    this.checkReset();
+    if (this.canMakeRequest(type)) return 0;
+    return this.resetTime - Date.now();
+  }
+}
+
+// 🔥 WIX EXPERT: INTELLIGENT CACHING SYSTEM
+class WixDataCache {
+  constructor() {
+    this.cache = new Map();
+    this.cacheExpiry = new Map();
+    this.defaultTTL = FRONTEND_CONFIG.PERFORMANCE.CACHE_TTL;
+    this.enabled = currentMode !== 'basic';
+  }
+
+  set(key, value, ttl = this.defaultTTL) {
+    if (!this.enabled) return;
+    this.cache.set(key, value);
+    this.cacheExpiry.set(key, Date.now() + ttl);
+  }
+
+  get(key) {
+    if (!this.enabled || !this.cache.has(key)) return null;
     
-    for (const id of possibleIds) {
-        try {
-            aiWidget = $w(id);
-            if (aiWidget) {
-                console.log(`✅ Found Koval AI widget with ID: ${id}`);
-                console.log(`🎯 Widget type: ${aiWidget.type || 'custom'}`);
-                break;
-            }
-        } catch (e) {
-            console.log(`⚠️ Widget ${id} not found`);
-        }
+    if (Date.now() > this.cacheExpiry.get(key)) {
+      this.cache.delete(key);
+      this.cacheExpiry.delete(key);
+      return null;
+    }
+    
+    return this.cache.get(key);
+  }
+
+  invalidate(pattern) {
+    if (!this.enabled) return;
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+        this.cacheExpiry.delete(key);
+      }
+    }
+  }
+
+  clear() {
+    this.cache.clear();
+    this.cacheExpiry.clear();
+  }
+
+  getStats() {
+    return {
+      size: this.cache.size,
+      enabled: this.enabled,
+      ttl: this.defaultTTL
+    };
+  }
+}
+
+// 🔥 WIX EXPERT: BATCH REQUEST MANAGER
+class WixBatchManager {
+  constructor() {
+    this.pendingRequests = [];
+    this.batchTimeout = null;
+    this.batchDelay = FRONTEND_CONFIG.PERFORMANCE.BATCH_DELAY;
+    this.enabled = currentMode === 'optimized';
+  }
+
+  addRequest(requestData) {
+    if (!this.enabled) {
+      return this.makeActualRequest(requestData);
     }
 
-    if (!aiWidget) {
-        console.error("❌ No Koval-AI widget found on page. Expected IDs: #koval-ai or #KovalAIFrame");
-        console.log("🔍 Available elements on page:", Object.keys($w).filter(k => k.startsWith('#')));
-        showFallbackUI();
-        return;
-    }
-
-    console.log(`🚀 Successfully connected to Koval AI widget: ${aiWidget.id || 'unknown'}`);
-    console.log(`📋 Widget properties:`, {
-        id: aiWidget.id,
-        type: aiWidget.type,
-        hasPostMessage: typeof aiWidget.postMessage === 'function',
-        hasOnMessage: typeof aiWidget.onMessage === 'function'
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.push({ ...requestData, resolve, reject });
+      
+      if (this.batchTimeout) {
+        clearTimeout(this.batchTimeout);
+      }
+      
+      this.batchTimeout = setTimeout(() => {
+        this.processBatch();
+      }, this.batchDelay);
     });
+  }
 
-    // ✅ TEST CONNECTION FIRST
-    const connectionStatus = await testBackendConnection();
-    console.log("🔗 Backend connection status:", connectionStatus);
+  async processBatch() {
+    const requests = [...this.pendingRequests];
+    this.pendingRequests = [];
+    this.batchTimeout = null;
 
-    // ✅ SETUP WIDGET WITH IMPROVED ERROR HANDLING
-    try {
-        await setupKovalAIWidget(aiWidget);
-    } catch (error) {
-        console.error("❌ Widget setup failed:", error);
-        showFallbackUI();
+    // Process requests in parallel
+    const promises = requests.map(req => this.makeActualRequest(req));
+    const results = await Promise.allSettled(promises);
+
+    results.forEach((result, index) => {
+      const request = requests[index];
+      if (result.status === 'fulfilled') {
+        request.resolve(result.value);
+      } else {
+        request.reject(result.reason);
+      }
+    });
+  }
+
+  async makeActualRequest(requestData) {
+    // This will be implemented in the actual request logic
+    throw new Error("makeActualRequest must be implemented");
+  }
+}
+
+// 🔥 PERFORMANCE METRICS (Expert/Optimized modes)
+class PerformanceTracker {
+  constructor() {
+    this.metrics = {
+      requests: 0,
+      responses: 0,
+      errors: 0,
+      totalDuration: 0,
+      cacheHits: 0,
+      rateLimitHits: 0,
+      slowRequests: 0,
+      byEndpoint: {}
+    };
+    this.enabled = currentMode !== 'basic';
+  }
+
+  trackRequest(endpoint, duration, success = true, cached = false) {
+    if (!this.enabled) return;
+
+    this.metrics.requests++;
+    this.metrics.totalDuration += duration;
+
+    if (success) {
+      this.metrics.responses++;
+    } else {
+      this.metrics.errors++;
     }
+
+    if (cached) {
+      this.metrics.cacheHits++;
+    }
+
+    if (duration > 3000) {
+      this.metrics.slowRequests++;
+    }
+
+    // Track by endpoint
+    if (!this.metrics.byEndpoint[endpoint]) {
+      this.metrics.byEndpoint[endpoint] = {
+        requests: 0,
+        duration: 0,
+        errors: 0
+      };
+    }
+
+    this.metrics.byEndpoint[endpoint].requests++;
+    this.metrics.byEndpoint[endpoint].duration += duration;
+    if (!success) {
+      this.metrics.byEndpoint[endpoint].errors++;
+    }
+  }
+
+  getStats() {
+    if (!this.enabled) return { message: 'Metrics available in expert/optimized modes only' };
+    
+    return {
+      ...this.metrics,
+      averageDuration: this.metrics.requests > 0 ? this.metrics.totalDuration / this.metrics.requests : 0,
+      successRate: this.metrics.requests > 0 ? (this.metrics.responses / this.metrics.requests) * 100 : 0
+    };
+  }
+
+  reset() {
+    this.metrics = {
+      requests: 0,
+      responses: 0,
+      errors: 0,
+      totalDuration: 0,
+      cacheHits: 0,
+      rateLimitHits: 0,
+      slowRequests: 0,
+      byEndpoint: {}
+    };
+  }
+}
+
+// 🔥 INITIALIZE COMPONENTS
+const requestLimiter = new WixRequestLimiter();
+const dataCache = new WixDataCache();
+const batchManager = new WixBatchManager();
+const performanceTracker = new PerformanceTracker();
+
+// 🔥 ENDPOINT STATUS TRACKING
+const ENDPOINT_STATUS = {
+  wix: {
+    chat: null,
+    userMemory: null,
+    diveLogs: null,
+    userProfile: null,
+    testConnection: null
+  },
+  nextjs: {
+    chat: null,
+    pinecone: null
+  },
+  rateLimitHits: 0,
+  timeoutCount: 0,
+  lastOptimizedCheck: null
+};
+
+// 🔥 WIX ERROR CODES MAPPING
+const WIX_ERROR_CODES = {
+  'WDE0014': 'Requests per minute quota exceeded',
+  'WDE0028': 'Operation time limit exceeded',
+  'WDE0009': 'Single-item request payload too large (512 KB limit)',
+  'WDE0109': 'Bulk operation payload too large (4 MB limit)',
+  'WDE0001': 'Invalid collection ID',
+  'WDE0002': 'Item not found',
+  'WDE0003': 'Permission denied'
+};
+
+// 🔥 MODE CONFIGURATION
+function setMode(mode) {
+  if (Object.values(FRONTEND_CONFIG.MODES).includes(mode)) {
+    currentMode = mode;
+    
+    // Update component settings
+    dataCache.enabled = mode !== 'basic';
+    batchManager.enabled = mode === 'optimized';
+    performanceTracker.enabled = mode !== 'basic';
+    
+    console.log(`🔧 Mode set to: ${mode}`);
+    return true;
+  }
+  return false;
+}
+
+// 🔥 UTILITY FUNCTIONS
+function logDebug(message, data = null) {
+  if (currentMode !== 'basic') {
+    console.log(message, data || '');
+  }
+}
+
+function logError(message, error = null) {
+  console.error(message, error || '');
+  if (currentMode !== 'basic' && error) {
+    performanceTracker.trackRequest('error', 0, false);
+  }
+}
+
+// 🔥 ENHANCED HTTP REQUEST FUNCTION
+async function makeRequest(url, options = {}, endpoint = 'unknown') {
+  const startTime = Date.now();
+  
+  // Check cache first (expert/optimized modes)
+  const cacheKey = `${url}_${JSON.stringify(options)}`;
+  if (currentMode !== 'basic') {
+    const cached = dataCache.get(cacheKey);
+    if (cached) {
+      performanceTracker.trackRequest(endpoint, Date.now() - startTime, true, true);
+      logDebug(`💾 Cache hit for ${endpoint}`);
+      return cached;
+    }
+  }
+
+  // Check rate limits (expert/optimized modes)
+  if (currentMode !== 'basic') {
+    const requestType = options.method === 'POST' || options.method === 'PUT' ? 'write' : 'read';
+    if (!requestLimiter.canMakeRequest(requestType)) {
+      const waitTime = requestLimiter.waitTime(requestType);
+      logDebug(`⏱️ Rate limit hit, waiting ${waitTime}ms`);
+      ENDPOINT_STATUS.rateLimitHits++;
+      
+      if (waitTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+    requestLimiter.recordRequest(requestType);
+  }
+
+  try {
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Version': currentMode,
+        ...options.headers
+      },
+      body: options.body ? JSON.stringify(options.body) : null,
+      ...options
+    };
+
+    logDebug(`🚀 Making ${requestOptions.method} request to ${endpoint}`);
+
+    const response = await fetch(url, requestOptions);
+    const data = await response.json();
+
+    const duration = Date.now() - startTime;
+    
+    if (response.ok) {
+      // Cache successful responses (expert/optimized modes)
+      if (currentMode !== 'basic' && requestOptions.method === 'GET') {
+        dataCache.set(cacheKey, data);
+      }
+      
+      performanceTracker.trackRequest(endpoint, duration, true);
+      logDebug(`✅ Request to ${endpoint} successful (${duration}ms)`);
+      
+      return data;
+    } else {
+      performanceTracker.trackRequest(endpoint, duration, false);
+      throw new Error(`HTTP ${response.status}: ${data.error || 'Unknown error'}`);
+    }
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    performanceTracker.trackRequest(endpoint, duration, false);
+    logError(`❌ Request to ${endpoint} failed:`, error);
+    
+    // Handle specific Wix errors
+    if (error.message.includes('WDE')) {
+      const errorCode = error.message.match(/WDE\d+/)?.[0];
+      if (errorCode && WIX_ERROR_CODES[errorCode]) {
+        logError(`Wix Error ${errorCode}: ${WIX_ERROR_CODES[errorCode]}`);
+      }
+    }
+    
+    throw error;
+  }
+}
+
+// 🔥 API FUNCTIONS WITH VERSION SUPPORT
+
+async function sendChatMessage(message, userId, sessionId = null) {
+  const requestData = {
+    message: message,
+    userId: userId
+  };
+  
+  if (sessionId) {
+    requestData.sessionId = sessionId;
+  }
+
+  // Expert/Optimized: Add context and preferences
+  if (currentMode !== 'basic') {
+    requestData.context = {
+      timestamp: new Date().toISOString(),
+      mode: currentMode,
+      userAgent: navigator.userAgent
+    };
+  }
+
+  try {
+    // Try Wix backend first
+    const result = await makeRequest(
+      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.chat,
+      { body: requestData },
+      'wix-chat'
+    );
+    
+    ENDPOINT_STATUS.wix.chat = 'active';
+    return result;
+    
+  } catch (error) {
+    logError('Wix chat failed, trying Next.js fallback:', error);
+    ENDPOINT_STATUS.wix.chat = 'error';
+    
+    // Fallback to Next.js
+    try {
+      const result = await makeRequest(
+        FRONTEND_CONFIG.BACKEND_ENDPOINTS.nextjs.chat,
+        { body: requestData },
+        'nextjs-chat'
+      );
+      
+      ENDPOINT_STATUS.nextjs.chat = 'active';
+      return result;
+      
+    } catch (fallbackError) {
+      ENDPOINT_STATUS.nextjs.chat = 'error';
+      throw fallbackError;
+    }
+  }
+}
+
+async function saveUserMemory(userId, memoryContent, memoryType = 'general') {
+  const requestData = {
+    userId: userId,
+    memoryContent: memoryContent,
+    type: memoryType
+  };
+
+  // Expert/Optimized: Add metadata
+  if (currentMode !== 'basic') {
+    requestData.metadata = {
+      source: 'wix-app',
+      mode: currentMode,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  return await makeRequest(
+    FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory,
+    { body: requestData },
+    'user-memory'
+  );
+}
+
+async function getUserProfile(userId) {
+  const cacheKey = `profile_${userId}`;
+  
+  // Check cache first
+  if (currentMode !== 'basic') {
+    const cached = dataCache.get(cacheKey);
+    if (cached) {
+      logDebug('📋 Profile loaded from cache');
+      return cached;
+    }
+  }
+
+  const result = await makeRequest(
+    `${FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userProfile}?userId=${userId}`,
+    { method: 'GET' },
+    'user-profile'
+  );
+
+  // Cache the result
+  if (currentMode !== 'basic') {
+    dataCache.set(cacheKey, result, 600000); // Cache for 10 minutes
+  }
+
+  return result;
+}
+
+async function saveDiveLog(userId, diveData) {
+  const requestData = {
+    userId: userId,
+    ...diveData
+  };
+
+  // Expert/Optimized: Add validation metadata
+  if (currentMode !== 'basic') {
+    requestData.submissionMetadata = {
+      mode: currentMode,
+      timestamp: new Date().toISOString(),
+      validation: true
+    };
+  }
+
+  const result = await makeRequest(
+    FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
+    { body: requestData },
+    'dive-logs'
+  );
+
+  // Invalidate related caches
+  if (currentMode !== 'basic') {
+    dataCache.invalidate(`diveLogs_${userId}`);
+  }
+
+  return result;
+}
+
+async function testConnection() {
+  try {
+    const result = await makeRequest(
+      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.testConnection,
+      { body: { test: true } },
+      'test-connection'
+    );
+    
+    ENDPOINT_STATUS.wix.testConnection = 'active';
+    return result;
+    
+  } catch (error) {
+    ENDPOINT_STATUS.wix.testConnection = 'error';
+    throw error;
+  }
+}
+
+// 🔥 UI MANAGEMENT FUNCTIONS
+
+function findAIWidget() {
+  for (const id of FRONTEND_CONFIG.UI.WIDGET_IDS) {
+    try {
+      const widget = $w(id);
+      if (widget) {
+        logDebug(`✅ Found AI widget: ${id}`);
+        return widget;
+      }
+    } catch (e) {
+      // Widget not found, continue searching
+    }
+  }
+  logError('❌ No AI widget found with any of the expected IDs');
+  return null;
+}
+
+function showTypingIndicator(widget) {
+  if (currentMode === 'basic' || !FRONTEND_CONFIG.UI.TYPING_INDICATOR) return;
+  
+  try {
+    // Add typing indicator to the widget
+    if (widget && widget.postMessage) {
+      widget.postMessage({ type: 'typing', show: true });
+    }
+  } catch (error) {
+    logDebug('Could not show typing indicator:', error);
+  }
+}
+
+function hideTypingIndicator(widget) {
+  if (currentMode === 'basic' || !FRONTEND_CONFIG.UI.TYPING_INDICATOR) return;
+  
+  try {
+    if (widget && widget.postMessage) {
+      widget.postMessage({ type: 'typing', show: false });
+    }
+  } catch (error) {
+    logDebug('Could not hide typing indicator:', error);
+  }
+}
+
+// 🔥 MAIN APPLICATION INITIALIZATION
+$w.onReady(async function () {
+  logDebug("✅ Koval-AI Wix app initializing...");
+  logDebug(`🔧 Current mode: ${currentMode}`);
+
+  // Find and initialize AI widget
+  const aiWidget = findAIWidget();
+  
+  if (!aiWidget) {
+    logError("❌ Could not find AI widget");
+    return;
+  }
+
+  // Test initial connection (expert/optimized modes)
+  if (currentMode !== 'basic') {
+    try {
+      await testConnection();
+      logDebug("✅ Backend connection established");
+    } catch (error) {
+      logError("⚠️ Backend connection test failed:", error);
+    }
+  }
+
+  // Get current user
+  let currentUser = null;
+  try {
+    currentUser = await wixUsers.getCurrentUser();
+    if (currentUser) {
+      logDebug(`👤 User authenticated: ${currentUser.id}`);
+      
+      // Load user profile (expert/optimized modes)
+      if (currentMode !== 'basic') {
+        try {
+          const profile = await getUserProfile(currentUser.id);
+          logDebug("📋 User profile loaded");
+        } catch (error) {
+          logDebug("Could not load user profile:", error);
+        }
+      }
+    } else {
+      logDebug("👤 No authenticated user");
+    }
+  } catch (error) {
+    logError("Error getting current user:", error);
+  }
+
+  // Set up message handling
+  if (aiWidget.onMessage) {
+    aiWidget.onMessage(async (event) => {
+      try {
+        const { type, data } = event.data;
+        
+        switch (type) {
+          case 'chat':
+            if (currentUser) {
+              showTypingIndicator(aiWidget);
+              
+              try {
+                const response = await sendChatMessage(
+                  data.message,
+                  currentUser.id,
+                  data.sessionId
+                );
+                
+                hideTypingIndicator(aiWidget);
+                
+                aiWidget.postMessage({
+                  type: 'chatResponse',
+                  data: response
+                });
+                
+              } catch (error) {
+                hideTypingIndicator(aiWidget);
+                logError('Chat error:', error);
+                
+                aiWidget.postMessage({
+                  type: 'error',
+                  data: { message: 'Failed to send message' }
+                });
+              }
+            } else {
+              aiWidget.postMessage({
+                type: 'error',
+                data: { message: 'Please log in to chat' }
+              });
+            }
+            break;
+            
+          case 'saveMemory':
+            if (currentUser) {
+              try {
+                await saveUserMemory(
+                  currentUser.id,
+                  data.content,
+                  data.type
+                );
+                
+                aiWidget.postMessage({
+                  type: 'memorySaved',
+                  data: { success: true }
+                });
+                
+              } catch (error) {
+                logError('Memory save error:', error);
+                aiWidget.postMessage({
+                  type: 'error',
+                  data: { message: 'Failed to save memory' }
+                });
+              }
+            }
+            break;
+            
+          case 'saveDiveLog':
+            if (currentUser) {
+              try {
+                await saveDiveLog(currentUser.id, data);
+                
+                aiWidget.postMessage({
+                  type: 'diveLogSaved',
+                  data: { success: true }
+                });
+                
+              } catch (error) {
+                logError('Dive log save error:', error);
+                aiWidget.postMessage({
+                  type: 'error',
+                  data: { message: 'Failed to save dive log' }
+                });
+              }
+            }
+            break;
+            
+          case 'getMetrics':
+            if (currentMode !== 'basic') {
+              aiWidget.postMessage({
+                type: 'metrics',
+                data: {
+                  performance: performanceTracker.getStats(),
+                  cache: dataCache.getStats(),
+                  endpoints: ENDPOINT_STATUS,
+                  mode: currentMode
+                }
+              });
+            } else {
+              aiWidget.postMessage({
+                type: 'error',
+                data: { message: 'Metrics available in expert/optimized modes only' }
+              });
+            }
+            break;
+            
+          case 'setMode':
+            if (setMode(data.mode)) {
+              aiWidget.postMessage({
+                type: 'modeChanged',
+                data: { mode: currentMode }
+              });
+            } else {
+              aiWidget.postMessage({
+                type: 'error',
+                data: { message: 'Invalid mode' }
+              });
+            }
+            break;
+        }
+      } catch (error) {
+        logError('Message handling error:', error);
+        aiWidget.postMessage({
+          type: 'error',
+          data: { message: 'Internal error' }
+        });
+      }
+    });
+  }
+
+  // Send initial status to widget
+  aiWidget.postMessage({
+    type: 'initialized',
+    data: {
+      mode: currentMode,
+      user: currentUser ? { id: currentUser.id } : null,
+      endpoints: ENDPOINT_STATUS
+    }
+  });
+
+  logDebug("🚀 Koval-AI app fully initialized");
 });
 
-/**
- * ✅ SETUP KOVAL AI WIDGET WITH PROPER ERROR HANDLING
- */
-async function setupKovalAIWidget(aiWidget) {
-    // ✅ SET WIDGET PROPERTIES
-    aiWidget.style = {
-        width: "100%",
-        height: "600px",
-        border: "1px solid #e1e5e9",
-        borderRadius: "12px",
-        overflow: "hidden"
-    };
+// 🔥 EXPORT FUNCTIONS FOR EXTERNAL USE
+export {
+  setMode,
+  sendChatMessage,
+  saveUserMemory,
+  getUserProfile,
+  saveDiveLog,
+  testConnection,
+  performanceTracker,
+  dataCache,
+  FRONTEND_CONFIG,
+  ENDPOINT_STATUS
+};
 
-    // ✅ LOAD USER DATA WITH TIMEOUT
-    const userData = await Promise.race([
-        loadUserData(),
-        new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('User data load timeout')), 10000)
-        )
-    ]);
-
-    console.log("📊 Loaded user data:", userData);
-
-    // ✅ SEND INITIAL DATA TO WIDGET
-    try {
-        aiWidget.postMessage({
-            type: 'USER_AUTH',
-            data: {
-                userId: userData.userId,
-                profile: userData.profile,
-                diveLogs: userData.userDiveLogs,
-                memories: userData.userMemories,
-                connectionStatus: await testBackendConnection()
-            }
-        });
-    } catch (msgError) {
-        console.error("❌ Failed to send initial data to widget:", msgError);
-    }
-
-    // ✅ SETUP MESSAGE LISTENER WITH SPECIFIC WIDGET REFERENCE
-    try {
-        if (typeof aiWidget.onMessage === 'function') {
-            aiWidget.onMessage((event) => {
-                try {
-                    console.log("📨 Message received from Koval AI widget:", event.data?.type);
-                    handleWidgetMessage(event.data, aiWidget);
-                } catch (handlerError) {
-                    console.error("❌ Widget message handler error:", handlerError);
-                }
-            });
-            console.log("✅ Message listener attached to Koval AI widget");
-        } else {
-            console.warn("⚠️ Widget does not support onMessage - using global listener");
-            // Fallback to global message listener
-            if (typeof window !== 'undefined') {
-                window.addEventListener('message', (event) => {
-                    if (event.data?.source === 'koval-ai' || event.data?.type) {
-                        handleWidgetMessage(event.data, aiWidget);
-                    }
-                });
-            }
-        }
-    } catch (msgError) {
-        console.error("❌ Failed to setup message listener:", msgError);
-    }
-
-    console.log("✅ Koval-AI widget initialized successfully");
-}
-
-/**
- * ✅ TEST BACKEND CONNECTION
- */
-async function testBackendConnection() {
-    try {
-        console.log("🔍 Testing backend connection...");
-        
-        const response = await fetch(TEST_CONNECTION_API, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            timeout: 5000
-        });
-
-        const data = await safeJson(response);
-        
-        return {
-            wix: response.ok ? "✅ Connected" : "❌ Failed",
-            status: response.status,
-            timestamp: new Date().toISOString()
-        };
-        
-    } catch (error) {
-        console.warn("⚠️ Backend connection test failed:", error);
-        return {
-            wix: "❌ Failed",
-            status: 0,
-            error: error.message,
-            timestamp: new Date().toISOString()
-        };
-    }
-}
-
-/**
- * ✅ HANDLE MESSAGES FROM KOVAL AI WIDGET
- */
-async function handleWidgetMessage(data, widgetRef = null) {
-    if (!data || !data.type) return;
-
-    console.log("📨 Koval AI widget message received:", data.type);
-
-    // ✅ GET WIDGET REFERENCE - PRIORITIZE PASSED REFERENCE
-    const widget = widgetRef || $w('#koval-ai') || $w('#KovalAIFrame');
-    
-    if (!widget) {
-        console.error("❌ No widget reference available for message handling");
-        return;
-    }
-
-    try {
-        switch (data.type) {
-            case 'CHAT_MESSAGE':
-                const response = await sendChatMessage(data.message, data.userId);
-                widget.postMessage({
-                    type: 'AI_RESPONSE',
-                    data: response
-                });
-                break;
-
-            case 'SAVE_DIVE_LOG':
-                const saveResult = await saveDiveLog(data.diveLog);
-                if (saveResult) {
-                    const updatedData = await loadUserData();
-                    widget.postMessage({
-                        type: 'DATA_UPDATE',
-                        data: updatedData
-                    });
-                }
-                break;
-
-            case 'SAVE_MEMORY':
-                await saveUserMemory(data.memory);
-                break;
-
-            case 'WIDGET_RESIZE':
-                if (data.height && data.height > 200 && data.height < 1000) {
-                    widget.style.height = `${data.height}px`;
-                }
-                break;
-
-            case 'REQUEST_USER_DATA':
-                const userData = await loadUserData();
-                widget.postMessage({
-                    type: 'USER_DATA_UPDATE',
-                    data: userData
-                });
-                break;
-
-            default:
-                if (DEBUG_MODE) console.log("🔄 Unhandled Koval AI widget message:", data.type);
-        }
-    } catch (error) {
-        console.error(`❌ Error handling Koval AI widget message ${data.type}:`, error);
-        
-        // ✅ TRY MULTIPLE WIDGET REFERENCES FOR ERROR REPORTING
-        const errorWidget = widgetRef || $w('#koval-ai') || $w('#KovalAIFrame');
-        if (errorWidget && typeof errorWidget.postMessage === 'function') {
-            errorWidget.postMessage({
-                type: 'ERROR',
-                data: {
-                    message: `Failed to handle ${data.type}`,
-                    error: error.message
-                }
-            });
-        }
-    }
-}
-
-/**
- * ✅ ENHANCED USER DATA LOADING
- */
-async function loadUserData() {
-    const defaultUser = {
-        userId: 'guest-' + Date.now(),
-        profile: { 
-            nickname: 'Guest User', 
-            totalDives: 0,
-            pb: 0,
-            isGuest: true
-        },
-        userMemories: [],
-        userDiveLogs: [],
-        totalDives: 0,
-        lastDive: null
-    };
-
-    try {
-        // ✅ SIMPLIFIED: GET REAL MEMBER ID DIRECTLY FROM WIX USERS
-        let realUserId = null;
-        let userProfile = {};
-        
-        // ✅ CHECK WIX USER LOGIN STATUS FIRST (This is the real member ID)
-        if (wixUsers.currentUser.loggedIn) {
-            realUserId = wixUsers.currentUser.id; // This IS the real Wix member ID
-            console.log("✅ Widget got authenticated member ID:", realUserId);
-            
-            userProfile = {
-                loginEmail: wixUsers.currentUser.loginEmail || 'unknown@email.com',
-                displayName: wixUsers.currentUser.displayName || 'Authenticated User',
-                nickname: wixUsers.currentUser.displayName || 'Diver',
-                isGuest: false
-            };
-
-            // ✅ PROFILE DATA: Using wixUsers only (no direct wix-data access from frontend)
-            // Additional profile data should be fetched via backend HTTP functions if needed
-        } else {
-            console.log("👤 Widget: No authenticated user found, using guest data");
-            return defaultUser;
-        }
-
-        console.log(`👤 Widget loading data for authenticated user: ${userProfile.displayName} (${realUserId})`);
-
-        // ✅ VALIDATE THAT WE HAVE A REAL WIX MEMBER ID
-        if (!realUserId || realUserId.startsWith('guest-') || realUserId.startsWith('wix-guest-')) {
-            console.warn("⚠️ Widget: Invalid or guest userId detected:", realUserId);
-            return defaultUser;
-        }
-
-        // ✅ LOG THE MEMBER ID FORMAT FOR DEBUGGING
-        console.log("🔍 Widget member ID format check:", {
-            userId: realUserId,
-            isValidFormat: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(realUserId),
-            loginStatus: wixUsers.currentUser.loggedIn,
-            displayName: userProfile.displayName
-        });
-
-        // ✅ LOAD USER MEMORIES USING REAL USER ID
-        const memoriesResponse = await fetch(`${USER_MEMORY_API}?userId=${realUserId}&limit=50`, { 
-            method: "GET",
-            credentials: "include",
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const memoriesData = await safeJson(memoriesResponse);
-        const userMemories = memoriesData.data || [];
-
-        // ✅ SEPARATE DIVE LOGS FROM MEMORIES
-        const diveLogs = userMemories.filter(item => 
-            item.discipline || item.targetDepth || item.reachedDepth
-        );
-        const memories = userMemories.filter(item => 
-            item.memoryContent || item.logEntry
-        );
-
-        const personalBest = diveLogs.length > 0 
-            ? Math.max(...diveLogs.map(d => d.reachedDepth || d.targetDepth || 0))
-            : 0;
-
-        return {
-            userId: realUserId, // ✅ NOW USING REAL MEMBER ID
-            profile: {
-                ...userProfile,
-                totalDives: diveLogs.length,
-                pb: personalBest,
-                currentDepth: personalBest || 20,
-                isInstructor: false,
-                isGuest: false
-            },
-            userMemories: memories,
-            userDiveLogs: diveLogs,
-            totalDives: diveLogs.length,
-            lastDive: diveLogs[0] || null
-        };
-
-    } catch (err) {
-        console.error("❌ Error loading user data:", err);
-        return { 
-            ...defaultUser, 
-            userId: realUserId || (wixUsers.currentUser.loggedIn ? wixUsers.currentUser.id : defaultUser.userId),
-            profile: {
-                ...defaultUser.profile,
-                isGuest: !wixUsers.currentUser.loggedIn
-            }
-        };
-    }
-}
-
-/**
- * ✅ IMPROVED CHAT MESSAGE FUNCTION
- */
-async function sendChatMessage(message, userId) {
-    try {
-        console.log("🤖 Sending chat message:", message);
-
-        // Load user data to get dive logs
-        const userData = await loadUserData();
-
-        // ✅ TRY WIX BACKEND FIRST
-        let response = await fetch(CHAT_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ 
-                userMessage: message,  // ✅ Using userMessage for Wix backend
-                userId: userId || userData.userId || 'guest',
-                profile: userData.profile,
-                diveLogs: userData.userDiveLogs || []  // ✅ Include dive logs
-            })
-        });
-
-        // ✅ FALLBACK TO NEXT.JS BACKEND IF WIX FAILS
-        if (!response.ok) {
-            console.warn("⚠️ Wix backend failed, trying Next.js backup...");
-            response = await fetch(BACKUP_CHAT_API, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    message: message,  // ✅ Using message for Next.js backend
-                    userId: userId || userData.userId || 'guest',
-                    profile: userData.profile,
-                    diveLogs: userData.userDiveLogs || []  // ✅ Include dive logs for backup too
-                })
-            });
-        }
-
-        if (!response.ok) {
-            throw new Error(`Both backends failed. Status: ${response.status}`);
-        }
-
-        const data = await safeJson(response);
-        console.log("✅ Chat response received");
-
-        return {
-            success: true,
-            aiResponse: data.aiResponse || data.assistantMessage?.content || "I received your message!",
-            metadata: data.metadata || {},
-            source: response.url.includes('deepfreediving.com') ? 'wix' : 'nextjs'
-        };
-
-    } catch (err) {
-        console.error("❌ Chat message failed:", err);
-        return {
-            success: false,
-            aiResponse: "I'm having trouble responding right now. Please try again in a moment.",
-            error: err.message,
-            timestamp: new Date().toISOString()
-        };
-    }
-}
-
-/**
- * ✅ SAVE DIVE LOG (using user memory API)
- */
-async function saveDiveLog(diveLog) {
-    try {
-        if (!wixUsers.currentUser.loggedIn) {
-            console.warn("⚠️ Cannot save dive log - user not logged in");
-            return false;
-        }
-
-        const userId = wixUsers.currentUser.id;
-        console.log("💾 Saving dive log for user:", userId);
-
-        const response = await fetch(USER_MEMORY_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ 
-                userId, 
-                diveLog: {
-                    ...diveLog,
-                    timestamp: new Date().toISOString(),
-                    source: 'wix-widget'
-                },
-                type: 'diveLog'
-            })
-        });
-
-        const data = await safeJson(response);
-        if (data.success) {
-            console.log("✅ Dive log saved successfully");
-            return true;
-        } else {
-            throw new Error(data.error || 'Save failed');
-        }
-
-    } catch (err) {
-        console.error("❌ Error saving dive log:", err);
-        return false;
-    }
-}
-
-/**
- * ✅ SAVE USER MEMORY
- */
-async function saveUserMemory(memory) {
-    try {
-        if (!wixUsers.currentUser.loggedIn) return false;
-
-        const userId = wixUsers.currentUser.id;
-        const response = await fetch(USER_MEMORY_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ 
-                userId, 
-                memoryContent: memory.content || memory.memoryContent,
-                logEntry: memory.logEntry || '',
-                sessionName: memory.sessionName || 'Chat Session',
-                timestamp: new Date().toISOString(),
-                type: 'memory'
-            })
-        });
-
-        const data = await safeJson(response);
-        console.log("✅ Memory saved:", data.success);
-        return data.success;
-
-    } catch (err) {
-        console.error("❌ Error saving memory:", err);
-        return false;
-    }
-}
-
-/**
- * ✅ SHOW FALLBACK UI IF WIDGET FAILS
- */
-function showFallbackUI() {
-    const fallbackHTML = `
-        <div style="
-            padding: 40px 20px; 
-            text-align: center; 
-            color: #333;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px;
-            margin: 20px;
-        ">
-            <h2>🤿 Koval AI Freediving Coach</h2>
-            <p style="margin: 20px 0; opacity: 0.9;">
-                I'm having trouble loading right now, but I'm here to help with your freediving journey!
-            </p>
-            <button onclick="location.reload()" style="
-                background: rgba(255,255,255,0.2);
-                color: white;
-                border: 2px solid rgba(255,255,255,0.3);
-                padding: 12px 24px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 16px;
-                margin: 10px;
-            ">
-                🔄 Try Again
-            </button>
-            <div style="margin-top: 30px; font-size: 14px; opacity: 0.7;">
-                <p>📧 Contact support if this persists</p>
-                <p>Looking for: #koval-ai or #KovalAIFrame</p>
-            </div>
-        </div>
-    `;
-
-    try {
-        // ✅ TRY MULTIPLE WIDGET IDS FOR FALLBACK
-        const fallbackWidget = $w('#koval-ai') || $w('#KovalAIFrame') || $w('#kovalAIWidget');
-        if (fallbackWidget) {
-            fallbackWidget.html = fallbackHTML;
-        } else {
-            console.error("❌ Could not find any widget element for fallback UI");
-        }
-    } catch (error) {
-        console.error("❌ Could not show fallback UI:", error);
-    }
-}
-
-/**
- * ✅ SAFE JSON PARSER WITH BETTER ERROR HANDLING
- */
-async function safeJson(response) {
-    try {
-        if (!response.ok) {
-            console.warn(`⚠️ Response not OK: ${response.status} ${response.statusText}`);
-            return { 
-                data: null, 
-                error: `HTTP ${response.status}: ${response.statusText}`,
-                success: false 
-            };
-        }
-        
-        const text = await response.text();
-        if (!text.trim()) {
-            return { data: null, error: 'Empty response', success: false };
-        }
-        
-        const json = JSON.parse(text);
-        return { ...json, success: json.success !== false };
-        
-    } catch (err) {
-        console.warn("⚠️ JSON parse failed:", err);
-        return { 
-            data: null, 
-            error: 'Invalid JSON response: ' + err.message,
-            success: false 
-        };
-    }
-}
-
-/**
- * ✅ PERIODIC CONNECTION CHECK (optional)
- */
-setInterval(async () => {
-    if (DEBUG_MODE) {
-        const status = await testBackendConnection();
-        console.log("🔄 Periodic connection check:", status);
-    }
-}, 60000); // Check every minute
+console.log("🔥 Wix App Frontend Master initialized - All modes supported");

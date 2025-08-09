@@ -314,29 +314,72 @@
         }
       }, 1000);
 
-      // ✅ TEST NEXT.JS BACKEND CONNECTION (CORRECT BACKEND)
+      // ✅ ENHANCED NEXT.JS BACKEND CONNECTION TEST
       const testNextJSConnection = async () => {
         try {
-          // Test the actual Next.js backend that the widget uses
+          // Test the enhanced health endpoint
           const response = await fetch(`${this.BASE_URL}/api/health`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
           });
           
-          const status = response.ok ? '✅ Connected' : '⚠️ Limited';
-          console.log(`🔍 Next.js backend connection: ${status} (${response.status})`);
-          
-          return response.ok;
+          if (response.ok) {
+            const healthData = await response.json();
+            console.log(`✅ Next.js backend healthy: v${healthData.version || 'unknown'}`, {
+              wixIntegration: healthData.features?.wixIntegration || false,
+              bridgeAPIs: healthData.features?.bridgeAPIs || false,
+              uptime: healthData.uptime ? `${Math.round(healthData.uptime)}s` : 'unknown'
+            });
+            return true;
+          } else {
+            console.log(`⚠️ Next.js backend limited: ${response.status}`);
+            return false;
+          }
         } catch (error) {
-          console.log(`🔍 Next.js backend connection: ⚠️ Limited (${error.message})`);
+          console.log(`⚠️ Next.js backend limited: ${error.message}`);
           return false;
         }
       };
 
-      // Test the correct backend connection (Next.js, not Wix)
+      // ✅ COMPREHENSIVE SYSTEM HEALTH CHECK
+      const performSystemHealthCheck = async () => {
+        try {
+          const response = await fetch(`${this.BASE_URL}/api/system/health-check`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            const health = await response.json();
+            console.log(`🏥 System health: ${health.status}`, {
+              healthy: health.summary?.healthy || 0,
+              warnings: health.summary?.warning || 0,
+              errors: health.summary?.error || 0,
+              totalTime: health.totalResponseTime ? `${health.totalResponseTime}ms` : 'unknown'
+            });
+            
+            // Update UI based on health status
+            if (health.status === 'error') {
+              console.warn('� System has errors - some features may be limited');
+            } else if (health.status === 'warning') {
+              console.warn('⚠️ System has warnings - performance may be affected');
+            }
+            
+            return health.status === 'healthy';
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not perform system health check:', error.message);
+        }
+        return false;
+      };
+
+      // Test the enhanced backend connections
       testNextJSConnection();
-      // Check periodically but less frequently
+      performSystemHealthCheck();
+      
+      // Check health periodically but less frequently
       setInterval(testNextJSConnection, 120000); // Every 2 minutes
+      setInterval(performSystemHealthCheck, 300000); // Every 5 minutes
 
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');

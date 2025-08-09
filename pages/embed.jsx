@@ -8,12 +8,17 @@ import apiClient from "../utils/apiClient";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
-  CHAT: "/api/openai/chat",
-  GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
+  // ✅ Use enhanced bridge APIs for better Wix integration
+  CHAT: "/api/wix/chat-bridge",
+  CHAT_FALLBACK: "/api/openai/chat",
+  GET_DIVE_LOGS: "/api/wix/dive-logs-bridge",
+  GET_DIVE_LOGS_FALLBACK: "/api/analyze/get-dive-logs",
+  GET_USER_PROFILE: "/api/wix/user-profile-bridge",
   SAVE_DIVE_LOG: "/api/analyze/save-dive-log",
   DELETE_DIVE_LOG: "/api/analyze/delete-dive-log",
   READ_MEMORY: "/api/analyze/read-memory",
   QUERY_WIX: "/api/wix/query-wix-data",
+  HEALTH_CHECK: "/api/system/health-check",
 };
 
 export default function Embed() {
@@ -399,7 +404,7 @@ export default function Embed() {
     return () => { isMounted = false; };
   }, []);
 
-  // ✅ WORKING CHAT SUBMISSION (From working version)
+  // ✅ ENHANCED CHAT SUBMISSION with Bridge API Integration
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -410,43 +415,81 @@ export default function Embed() {
     setLoading(true);
 
     try {
-      console.log("🚀 Sending message to chat API...");
+      console.log("🚀 Sending message to enhanced chat bridge API...");
 
+      // ✅ Use enhanced chat bridge with dive logs context
       const response = await fetch(API_ROUTES.CHAT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          userMessage: input,
           userId,
           profile,
+          embedMode: true,
+          diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
+          conversationHistory: messages.slice(-6), // Last 3 conversation pairs
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        console.warn(`⚠️ Chat bridge failed (${response.status}), trying fallback...`);
+        
+        // ✅ Fallback to direct chat API
+        const fallbackResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: input,
+            userId,
+            profile,
+            embedMode: true,
+            diveLogs: diveLogs.slice(0, 5),
+          }),
+        });
+
+        if (!fallbackResponse.ok) {
+          throw new Error(`Both chat APIs failed: Bridge ${response.status}, Fallback ${fallbackResponse.status}`);
+        }
+
+        const fallbackData = await fallbackResponse.json();
+        console.log("✅ Fallback chat response received:", fallbackData);
+
+        const assistantMessage = fallbackData.assistantMessage || {
+          role: "assistant",
+          content: fallbackData.answer || fallbackData.aiResponse || "I received your message!",
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        return;
       }
 
       const data = await response.json();
-      console.log("✅ Chat response received:", data);
+      console.log("✅ Enhanced chat bridge response received:", data);
 
-      const assistantMessage = data.assistantMessage || {
+      const assistantMessage = {
         role: "assistant",
-        content: data.answer || "I received your message!",
+        content: data.aiResponse || data.assistantMessage?.content || data.answer || "I received your message!",
       };
+
+      // Add metadata if available
+      if (data.metadata) {
+        assistantMessage.metadata = data.metadata;
+        console.log(`📊 Chat metadata: ${data.metadata.processingTime}ms, source: ${data.source}`);
+      }
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("❌ Chat error:", error);
+      console.error("❌ Enhanced chat error:", error);
 
       const errorMessage = {
         role: "assistant",
-        content: "I'm having trouble responding right now. Please try again in a moment.",
+        content: "I'm having trouble responding right now. Please try again in a moment, and I'll be happy to help with your freediving training!",
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
-  }, [input, loading, userId, profile]);
+  }, [input, loading, userId, profile, diveLogs, messages]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -460,23 +503,35 @@ export default function Embed() {
     setFiles(selectedFiles);
   }, []);
 
-  // ✅ LOAD DIVE LOGS (Enhanced with better error handling)
+  // ✅ ENHANCED DIVE LOGS LOADING with Bridge API Integration
   const loadDiveLogs = useCallback(async () => {
     if (!userId) return;
     
     setLoadingDiveLogs(true);
     try {
-      // Load from localStorage first
+      // Load from localStorage first for immediate display
       const key = storageKey(userId);
       const localLogs = safeParse(key, []);
       setDiveLogs(localLogs);
+      console.log(`📱 Loaded ${localLogs.length} local dive logs`);
 
-      // Then try to load from API - but don't fail if API is not available
+      // ✅ Try enhanced dive logs bridge API
       try {
-        const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
+        const response = await fetch(API_ROUTES.GET_DIVE_LOGS, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            limit: 50,
+            includeAnalysis: true
+          })
+        });
+        
         if (response.ok) {
           const data = await response.json();
-          const remoteLogs = data.logs || [];
+          const remoteLogs = data.diveLogs || [];
+          
+          console.log(`🌉 Bridge API loaded ${remoteLogs.length} dive logs from ${data.source}`);
           
           // Merge local and remote logs (remove duplicates)
           const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
@@ -493,12 +548,36 @@ export default function Embed() {
             localStorage.setItem(storageKey(userId), JSON.stringify(combined));
           }
           
-          console.log(`✅ Loaded ${combined.length} dive logs`);
+          console.log(`✅ Total dive logs after merge: ${combined.length}`);
         } else {
-          console.log("ℹ️ API not available, using local logs only");
+          console.warn(`⚠️ Bridge API failed (${response.status}), trying fallback...`);
+          
+          // ✅ Fallback to direct API
+          const fallbackResponse = await fetch(`${API_ROUTES.GET_DIVE_LOGS_FALLBACK}?userId=${userId}`);
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            const fallbackLogs = fallbackData.logs || [];
+            
+            console.log(`📱 Fallback API loaded ${fallbackLogs.length} dive logs`);
+            
+            // Merge with local logs
+            const merged = [...localLogs, ...fallbackLogs].reduce((map, log) => {
+              const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
+              return { ...map, [key]: log };
+            }, {});
+            
+            const combined = Object.values(merged).sort((a, b) => 
+              new Date(b.date) - new Date(a.date)
+            );
+            
+            setDiveLogs(combined);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+            }
+          }
         }
       } catch (apiError) {
-        console.log("ℹ️ API not available, using local logs only");
+        console.log("ℹ️ APIs not available, using local logs only:", apiError.message);
       }
     } catch (error) {
       console.error("❌ Failed to load dive logs:", error);

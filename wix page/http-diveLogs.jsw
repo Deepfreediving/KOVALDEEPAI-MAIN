@@ -1,544 +1,491 @@
-// =======================================================
-// 📄 File: http-diveLogs.jsw - MERGED VERSION
-// Description: Comprehensive backend functions for managing user dive logs.
-// Combines simple Next.js integration with advanced search capabilities
-// Handles both direct API calls and Wix site integration
-// =======================================================
+// 🔥 HTTP-DIVELOGS-MASTER.JSW - ALL-IN-ONE DIVE LOGS API
+// Consolidates: http-diveLogs + http-diveLogs-expert (empty)
+// Version: 4.0.0 - Master Consolidated Edition
+// Date: August 8, 2025
 
+import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
 import wixUsersBackend from 'wix-users-backend';
 import { fetch } from 'wix-fetch';
-import { ok, badRequest, serverError } from 'wix-http-functions';
+import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils-master.jsw';
 
-// ✅ CONFIGURATION
-const COLLECTION_ID = "@deepfreediving/kovaldeepai-app/Import1";
-const SEMANTIC_SEARCH_API = "https://kovaldeepai-main.vercel.app/api/pinecone";
-const MAX_RESULTS = 100;
+// 🎯 MASTER CONFIGURATION
+const DIVELOGS_CONFIG = {
+  API_VERSIONS: {
+    BASIC: 'basic',           // Simple CRUD operations
+    EXPERT: 'expert',         // Advanced features + semantic search
+    OPTIMIZED: 'optimized'    // Index-aware + performance tracking
+  },
+  
+  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
+  SEMANTIC_SEARCH_API: 'https://kovaldeepai-main.vercel.app/api/pinecone',
+  
+  VALIDATION: {
+    REQUIRED_FIELDS: ['userId', 'diveDate'],
+    MAX_DEPTH: 400,           // Maximum depth in meters
+    MAX_TIME: 1800,           // Maximum time in seconds (30 minutes)
+    VALID_DISCIPLINES: ['STA', 'DYN', 'DNF', 'CWT', 'CNF', 'FIM', 'VWT', 'NLT']
+  },
+  
+  PERFORMANCE: {
+    SLOW_QUERY_THRESHOLD: 2500,
+    ENABLE_ANALYTICS: true,
+    SEMANTIC_SEARCH_TIMEOUT: 5000
+  }
+};
 
-// ✅ Response helpers (inline since http-utils.jsw might not exist)
-function createResponse(status, data, request) {
-    return {
-        status,
-        body: data,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }
-    };
+// 🔥 PERFORMANCE METRICS (Expert/Optimized levels)
+let diveLogsMetrics = {
+  saves: 0,
+  queries: 0,
+  semanticSearches: 0,
+  totalDuration: 0,
+  errors: 0,
+  slowQueries: 0,
+  byVersion: {
+    basic: { requests: 0, duration: 0 },
+    expert: { requests: 0, duration: 0 },
+    optimized: { requests: 0, duration: 0 }
+  }
+};
+
+// 🔥 DATA VALIDATION SCHEMA
+const DIVELOG_SCHEMA = {
+  userId: { type: 'string', required: true },
+  diveDate: { type: 'string', required: true },
+  discipline: { type: 'string', enum: DIVELOGS_CONFIG.VALIDATION.VALID_DISCIPLINES },
+  reachedDepth: { type: 'number', min: 0, max: DIVELOGS_CONFIG.VALIDATION.MAX_DEPTH },
+  diveTime: { type: 'number', min: 0, max: DIVELOGS_CONFIG.VALIDATION.MAX_TIME },
+  notes: { type: 'string', maxLength: 2000 },
+  location: { type: 'string', maxLength: 200 },
+  waterTemp: { type: 'number' },
+  visibility: { type: 'string' },
+  equipment: { type: 'object' }
+};
+
+// 🔥 VALIDATION ENGINE
+function validateDiveLog(data, version = 'basic') {
+  const errors = [];
+  
+  // Required fields check
+  DIVELOGS_CONFIG.VALIDATION.REQUIRED_FIELDS.forEach(field => {
+    if (!data[field]) {
+      errors.push(`Missing required field: ${field}`);
+    }
+  });
+  
+  // Depth validation
+  if (data.reachedDepth && (data.reachedDepth < 0 || data.reachedDepth > DIVELOGS_CONFIG.VALIDATION.MAX_DEPTH)) {
+    errors.push(`Invalid depth: ${data.reachedDepth}m (max: ${DIVELOGS_CONFIG.VALIDATION.MAX_DEPTH}m)`);
+  }
+  
+  // Time validation
+  if (data.diveTime && (data.diveTime < 0 || data.diveTime > DIVELOGS_CONFIG.VALIDATION.MAX_TIME)) {
+    errors.push(`Invalid time: ${data.diveTime}s (max: ${DIVELOGS_CONFIG.VALIDATION.MAX_TIME}s)`);
+  }
+  
+  // Discipline validation
+  if (data.discipline && !DIVELOGS_CONFIG.VALIDATION.VALID_DISCIPLINES.includes(data.discipline)) {
+    errors.push(`Invalid discipline: ${data.discipline}`);
+  }
+  
+  // Expert/Optimized level validations
+  if (version !== 'basic') {
+    if (data.diveDate && !isValidDate(data.diveDate)) {
+      errors.push('Invalid date format');
+    }
+  }
+  
+  return errors;
 }
 
-const successResponse = (request, data) => createResponse(200, data, request);
-const badRequestResponse = (request, message) => createResponse(400, { error: message, success: false }, request);
-const unauthorizedResponse = (request, message) => createResponse(401, { error: message, success: false }, request);
-const serverErrorResponse = (request, message) => createResponse(500, { error: message, success: false }, request);
-const baseResponse = (status, request) => ({ status, headers: createResponse(status, {}, request).headers });
+// 🔥 UTILITY FUNCTIONS
+function isValidDate(dateString) {
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date);
+}
+
+function createResponse(status, data, request) {
+  return {
+    status,
+    body: data,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version'
+    }
+  };
+}
+
+function getApiVersion(request) {
+  return request.headers['x-api-version'] || 
+         request.query.version || 
+         DIVELOGS_CONFIG.API_VERSIONS.EXPERT; // Default to expert
+}
+
+// 🔥 PERFORMANCE TRACKING
+function trackMetrics(version, operation, duration, error = false) {
+  diveLogsMetrics.byVersion[version].requests++;
+  diveLogsMetrics.byVersion[version].duration += duration;
+  diveLogsMetrics.totalDuration += duration;
+  
+  switch(operation) {
+    case 'save':
+      diveLogsMetrics.saves++;
+      break;
+    case 'query':
+      diveLogsMetrics.queries++;
+      break;
+    case 'semanticSearch':
+      diveLogsMetrics.semanticSearches++;
+      break;
+  }
+  
+  if (error) diveLogsMetrics.errors++;
+  if (duration > DIVELOGS_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD) {
+    diveLogsMetrics.slowQueries++;
+    console.log(`🐌 Slow dive logs query: ${duration}ms`);
+  }
+}
+
+// 🔥 MAIN API ENDPOINTS
 
 /**
- * ✅ OPTIONS: Preflight requests
+ * OPTIONS: Preflight requests
  */
 export function options_diveLogs(request) {
-    return baseResponse(204, request);
+  return createResponse(204, {}, request);
 }
 
 /**
- * ✅ POST: Save dive log data 
- * Handles both Next.js API calls and direct submissions
+ * POST: Save dive log data 
+ * Supports all API versions with appropriate feature sets
  */
 export async function post_diveLogs(request) {
-    try {
-        console.log('💾 diveLogs POST function called');
-        
-        // ✅ USER IDENTIFICATION
-        let userId;
-        try {
-            const currentUser = await wixUsersBackend.currentUser;
-            userId = currentUser?.id;
-        } catch (authError) {
-            console.log("ℹ️ No authenticated user");
-        }
-
-        // ✅ PARSE REQUEST BODY
-        const body = await parseRequestBody(request);
-        
-        if (!userId && body.userId) {
-            userId = body.userId;
-        }
-
-        if (!userId) {
-            return unauthorizedResponse(request, "User not identified");
-        }
-
-        // Handle both formats: direct diveLog object or nested in body.diveLog
-        const diveLogData = body.diveLog || body;
-        
-        if (!diveLogData || (!diveLogData.discipline && !diveLogData.disciplineType)) {
-            console.log('❌ Missing dive log data');
-            return badRequest({
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Missing dive log data'
-                })
-            });
-        }
-
-        console.log(`📊 Saving dive log for user: ${userId}`);
-        console.log(`📝 Dive: ${diveLogData.discipline || diveLogData.disciplineType} at ${diveLogData.location}`);
-
-        // ✅ VALIDATE DIVE LOG DATA
-        const validationError = validateDiveLog(diveLogData);
-        if (validationError) {
-            return badRequestResponse(request, validationError);
-        }
-
-        // ✅ PREPARE DIVE LOG ENTRY
-        const timestamp = new Date();
-        const uniqueKey = diveLogData.id || `dive-${userId}-${timestamp.getTime()}`;
-
-        const diveLogEntry = {
-            userId,
-            uniqueKey,
-            timestamp,
-            type: 'dive-log',
-            source: 'dive-logs-api',
-            
-            // Core dive log data - comprehensive mapping
-            ...mapDiveLogFields(diveLogData),
-            
-            // For AI context
-            memoryContent: `Dive Log: ${diveLogData.discipline || diveLogData.disciplineType} at ${diveLogData.location}, reached ${diveLogData.reachedDepth}m (target: ${diveLogData.targetDepth}m). ${diveLogData.notes || 'No additional notes.'}`,
-            logEntry: `${diveLogData.date}: ${diveLogData.discipline || diveLogData.disciplineType} dive at ${diveLogData.location}`
-        };
-
-        // ✅ SAVE TO WIX DATABASE
-        let saved;
-        try {
-            // Check if dive log already exists (prevent duplicates)
-            const existing = await wixData.query(COLLECTION_ID)
-                .eq("userId", userId)
-                .eq("uniqueKey", uniqueKey)
-                .find();
-                
-            if (existing.items.length > 0) {
-                // Update existing dive log
-                saved = await wixData.update(COLLECTION_ID, {
-                    _id: existing.items[0]._id,
-                    ...diveLogEntry
-                });
-                console.log('✅ Updated existing dive log in Wix');
-            } else {
-                // Create new dive log
-                saved = await wixData.insert(COLLECTION_ID, diveLogEntry);
-                console.log('✅ Created new dive log in Wix');
-            }
-        } catch (dbError) {
-            console.error('❌ Database save error:', dbError);
-            return serverErrorResponse(request, "Failed to save dive log to database");
-        }
-
-        // ✅ SYNC TO NEXT.JS BACKEND (non-blocking)
-        syncDiveLogToBackend(saved).catch(err => {
-            console.warn("⚠️ Backend sync failed:", err.message);
-        });
-
-        // Return response in both formats for compatibility
-        const responseData = {
-            success: true,
-            message: 'Dive log saved successfully to Wix',
-            data: [saved], // Array format for compatibility
-            diveLogId: saved._id,
-            timestamp: timestamp.toISOString()
-        };
-
-        // Use Wix HTTP functions format for Next.js calls, or standard format for others
-        if (body.diveLog) {
-            // Next.js API call format
-            return ok({
-                body: JSON.stringify(responseData)
-            });
-        } else {
-            // Standard Wix format
-            return successResponse(request, responseData);
-        }
-        
-    } catch (error) {
-        console.error('❌ diveLogs POST error:', error);
-        return serverError({
-            body: JSON.stringify({
-                success: false,
-                error: 'Failed to save dive log',
-                details: error.message
-            })
-        });
+  const startTime = Date.now();
+  const version = getApiVersion(request);
+  
+  try {
+    const requestData = await request.body.json();
+    
+    // Validation
+    const validationErrors = validateDiveLog(requestData, version);
+    if (validationErrors.length > 0) {
+      trackMetrics(version, 'save', Date.now() - startTime, true);
+      return createResponse(400, {
+        error: 'Validation failed',
+        details: validationErrors,
+        success: false
+      }, request);
     }
+    
+    // Add metadata based on version
+    const diveLogData = {
+      ...requestData,
+      _createdDate: new Date(),
+      _updatedDate: new Date(),
+      apiVersion: version
+    };
+    
+    // Expert/Optimized: Add additional tracking
+    if (version !== 'basic') {
+      diveLogData.submissionTimestamp = new Date().toISOString();
+      diveLogData.dataSource = 'wix-api';
+      
+      // Optimized: Add performance hints
+      if (version === 'optimized') {
+        diveLogData.indexHints = {
+          primaryQuery: ['userId', 'diveDate'],
+          searchable: ['discipline', 'location', 'notes']
+        };
+      }
+    }
+    
+    // Save to Wix Data
+    const result = await wixData.save(DIVELOGS_CONFIG.COLLECTION_NAME, diveLogData);
+    
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'save', duration);
+    
+    return createResponse(200, {
+      success: true,
+      data: result,
+      _id: result._id,
+      version: version,
+      ...(version !== 'basic' && { 
+        performance: { 
+          duration: `${duration}ms`,
+          version: version
+        }
+      })
+    }, request);
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'save', duration, true);
+    
+    console.error('❌ Error saving dive log:', error);
+    return createResponse(500, {
+      error: 'Failed to save dive log',
+      details: error.message,
+      success: false,
+      version: version
+    }, request);
+  }
 }
 
 /**
- * ✅ GET: Retrieve dive logs with enhanced search capabilities
+ * GET: Retrieve dive logs with advanced filtering
+ * Supports semantic search in expert/optimized modes
  */
 export async function get_diveLogs(request) {
-    try {
-        // ✅ USER IDENTIFICATION
-        let userId = request.query?.userId;
-        
-        try {
-            const currentUser = await wixUsersBackend.currentUser;
-            if (currentUser?.id) {
-                userId = currentUser.id;
-            }
-        } catch (authError) {
-            console.log("ℹ️ No authenticated user, using query userId");
-        }
-
-        if (!userId) {
-            return unauthorizedResponse(request, "User not identified. Please provide userId parameter or log in.");
-        }
-
-        const { 
-            q: searchQuery, 
-            limit = 50, 
-            skip = 0,
-            discipline,
-            location,
-            minDepth,
-            maxDepth,
-            dateFrom,
-            dateTo,
-            sortBy = 'timestamp',
-            sortOrder = 'desc'
-        } = request.query;
-
-        console.log(`📊 Loading dive logs for user: ${userId}`);
-        console.log(`🔍 Search query: "${searchQuery}", filters applied: ${!!discipline || !!location || !!minDepth}`);
-
-        let items = [];
-        let totalCount = 0;
-        let searchType = 'database';
-
-        // ✅ SEMANTIC SEARCH if query provided
-        if (searchQuery && searchQuery.trim().length > 2) {
-            try {
-                const semanticResults = await performSemanticDiveSearch(searchQuery, userId, parseInt(limit));
-                if (semanticResults.success) {
-                    items = semanticResults.data.filter(item => isDiveLog(item));
-                    totalCount = items.length;
-                    searchType = 'semantic';
-                }
-            } catch (semanticError) {
-                console.warn("⚠️ Semantic search failed, falling back to database search:", semanticError);
-            }
-        }
-
-        // ✅ DATABASE SEARCH (if no query or semantic search failed)
-        if (!searchQuery || searchType === 'database') {
-            const dbResults = await performDiveLogDatabaseSearch(
-                userId, searchQuery, parseInt(limit), parseInt(skip), 
-                { discipline, location, minDepth, maxDepth, dateFrom, dateTo },
-                sortBy, sortOrder
-            );
-            items = dbResults.items;
-            totalCount = dbResults.totalCount;
-            searchType = 'database';
-        }
-
-        // ✅ ENHANCE ITEMS WITH COMPUTED FIELDS
-        const enhancedItems = items.map(item => ({
-            ...item,
-            searchType,
-            // Computed fields
-            depthAchieved: item.reachedDepth || item.targetDepth || 0,
-            depthProgress: item.reachedDepth && item.targetDepth ? 
-                Math.round((item.reachedDepth / item.targetDepth) * 100) : 0,
-            hasNotes: !!(item.notes && item.notes.trim()),
-            daysSinceLog: item.timestamp ? 
-                Math.floor((new Date() - new Date(item.timestamp)) / (1000 * 60 * 60 * 24)) : 0,
-            isDiveLog: true
-        }));
-
-        return successResponse(request, {
-            success: true,
-            count: enhancedItems.length,
-            totalCount,
-            data: enhancedItems,
-            searchType,
-            query: searchQuery,
-            userId,
-            pagination: {
-                limit: parseInt(limit),
-                skip: parseInt(skip),
-                hasMore: parseInt(skip) + enhancedItems.length < totalCount
-            }
+  const startTime = Date.now();
+  const version = getApiVersion(request);
+  
+  try {
+    const { userId, limit = 50, search, discipline, dateFrom, dateTo, semantic } = request.query;
+    
+    if (!userId) {
+      trackMetrics(version, 'query', Date.now() - startTime, true);
+      return createResponse(400, {
+        error: 'userId is required',
+        success: false
+      }, request);
+    }
+    
+    // Build query based on version
+    let query = wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME)
+      .eq('userId', userId)
+      .limit(Math.min(parseInt(limit), 100)); // Cap at 100
+    
+    // Add filters
+    if (discipline) {
+      query = query.eq('discipline', discipline);
+    }
+    
+    if (dateFrom) {
+      query = query.ge('diveDate', dateFrom);
+    }
+    
+    if (dateTo) {
+      query = query.le('diveDate', dateTo);
+    }
+    
+    // Basic text search
+    if (search && !semantic) {
+      query = query.contains('notes', search);
+    }
+    
+    // Expert/Optimized: Enhanced ordering
+    if (version !== 'basic') {
+      query = query.descending('diveDate');
+    }
+    
+    // Execute query
+    const results = await query.find();
+    
+    // Expert/Optimized: Semantic search capability
+    let semanticResults = null;
+    if ((version === 'expert' || version === 'optimized') && semantic && search) {
+      try {
+        const semanticResponse = await fetch(DIVELOGS_CONFIG.SEMANTIC_SEARCH_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: search,
+            userId: userId,
+            type: 'diveLogs',
+            limit: 10
+          })
         });
         
-    } catch (error) {
-        console.error('❌ diveLogs GET error:', error);
-        return serverErrorResponse(request, "Failed to retrieve dive logs");
-    }
-}
-
-/**
- * ✅ HELPER FUNCTIONS
- */
-
-/**
- * Parse request body safely
- */
-async function parseRequestBody(request) {
-    try {
-        const bodyText = await request.body.text();
-        return JSON.parse(bodyText);
-    } catch (parseError) {
-        console.warn("⚠️ Failed to parse request body:", parseError);
-        return {};
-    }
-}
-
-/**
- * Validate dive log data
- */
-function validateDiveLog(diveLog) {
-    if (!diveLog) return "Missing dive log data";
-    
-    // At minimum, we need either discipline or disciplineType
-    if (!diveLog.discipline && !diveLog.disciplineType) {
-        return "Missing discipline information";
-    }
-    
-    // Validate numeric fields if present
-    const numericFields = ['targetDepth', 'reachedDepth', 'mouthfillDepth', 'issueDepth'];
-    for (const field of numericFields) {
-        if (diveLog[field] !== undefined && diveLog[field] !== null && diveLog[field] !== '') {
-            const num = parseFloat(diveLog[field]);
-            if (isNaN(num) || num < 0) {
-                return `Invalid ${field}: must be a positive number`;
-            }
+        if (semanticResponse.ok) {
+          semanticResults = await semanticResponse.json();
+          trackMetrics(version, 'semanticSearch', Date.now() - startTime);
         }
+      } catch (semanticError) {
+        console.warn('⚠️ Semantic search failed:', semanticError.message);
+      }
     }
     
-    return null; // No validation errors
-}
-
-/**
- * Map dive log fields to database format
- */
-function mapDiveLogFields(diveLog) {
-    return {
-        date: diveLog.date ? new Date(diveLog.date) : new Date(),
-        disciplineType: String(diveLog.disciplineType || ''),
-        discipline: String(diveLog.discipline || ''),
-        location: String(diveLog.location || ''),
-        targetDepth: parseFloat(diveLog.targetDepth) || 0,
-        reachedDepth: parseFloat(diveLog.reachedDepth) || 0,
-        mouthfillDepth: parseFloat(diveLog.mouthfillDepth) || 0,
-        issueDepth: parseFloat(diveLog.issueDepth) || 0,
-        issueComment: String(diveLog.issueComment || ''),
-        durationOrDistance: String(diveLog.durationOrDistance || ''),
-        totalDiveTime: String(diveLog.totalDiveTime || ''),
-        attemptType: String(diveLog.attemptType || ''),
-        exit: String(diveLog.exit || ''),
-        surfaceProtocol: String(diveLog.surfaceProtocol || ''),
-        squeeze: Boolean(diveLog.squeeze),
-        notes: String(diveLog.notes || '')
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'query', duration);
+    
+    const response = {
+      success: true,
+      data: results.items,
+      totalCount: results.totalCount,
+      hasNext: results.hasNext(),
+      version: version
     };
-}
-
-/**
- * Check if an item is a dive log
- */
-function isDiveLog(item) {
-    return item && (
-        item.type === 'dive-log' || 
-        item.discipline || 
-        item.disciplineType || 
-        (item.targetDepth && item.targetDepth > 0) ||
-        (item.reachedDepth && item.reachedDepth > 0)
-    );
-}
-
-/**
- * Perform semantic dive search via Next.js API
- */
-async function performSemanticDiveSearch(query, userId, limit = 20) {
-    try {
-        console.log("🔍 Performing semantic dive search via Next.js API");
-
-        const response = await fetch(SEMANTIC_SEARCH_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'query',
-                query: `dive log ${query}`, // Prefix to focus on dive logs
-                topK: limit,
-                filter: { 
-                    userId: { $eq: userId },
-                    type: { $eq: 'user-memory' }
-                }
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Semantic search API returned ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (!data.success || !data.matches) {
-            throw new Error('Invalid response from semantic search API');
-        }
-
-        // Map Pinecone results to dive log format
-        const items = data.matches
-            .filter(match => isDiveLogMatch(match))
-            .map(match => ({
-                _id: match.id,
-                userId: match.metadata?.userId || userId,
-                discipline: match.metadata?.discipline || '',
-                location: match.metadata?.location || '',
-                targetDepth: match.metadata?.targetDepth || 0,
-                reachedDepth: match.metadata?.reachedDepth || 0,
-                timestamp: match.metadata?.timestamp || new Date().toISOString(),
-                notes: match.metadata?.notes || '',
-                score: match.score,
-                searchType: 'semantic'
-            }));
-
-        return {
-            success: true,
-            data: items,
-            count: items.length
-        };
-
-    } catch (error) {
-        console.error("❌ Semantic dive search error:", error);
-        return {
-            success: false,
-            error: error.message
-        };
+    
+    // Expert/Optimized: Add enhanced data
+    if (version !== 'basic') {
+      response.performance = {
+        duration: `${duration}ms`,
+        queryOptimization: results.items.length > 0 ? 'indexed' : 'scan'
+      };
+      
+      if (semanticResults) {
+        response.semanticMatches = semanticResults;
+      }
     }
+    
+    return createResponse(200, response, request);
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'query', duration, true);
+    
+    console.error('❌ Error retrieving dive logs:', error);
+    return createResponse(500, {
+      error: 'Failed to retrieve dive logs',
+      details: error.message,
+      success: false,
+      version: version
+    }, request);
+  }
 }
 
 /**
- * Check if semantic search match is dive log related
+ * PUT: Update existing dive log
  */
-function isDiveLogMatch(match) {
-    const metadata = match.metadata || {};
-    return metadata.discipline || 
-           metadata.disciplineType || 
-           metadata.targetDepth || 
-           metadata.reachedDepth ||
-           (metadata.type && metadata.type.includes('dive'));
-}
-
-/**
- * Perform database search for dive logs
- */
-async function performDiveLogDatabaseSearch(userId, searchQuery, limit, skip, filters, sortBy, sortOrder) {
-    try {
-        console.log("🗄️ Performing dive log database search");
-
-        let query = wixData.query(COLLECTION_ID)
-            .eq("userId", userId);
-
-        // Filter for dive logs (items with depth data or dive log type)
-        const diveLogQuery = wixData.query(COLLECTION_ID)
-            .eq("userId", userId)
-            .or(
-                wixData.query(COLLECTION_ID).eq("type", "dive-log"),
-                wixData.query(COLLECTION_ID).gt("targetDepth", 0),
-                wixData.query(COLLECTION_ID).gt("reachedDepth", 0)
-            );
-
-        // Apply filters
-        if (filters.discipline) {
-            diveLogQuery.contains("discipline", filters.discipline);
-        }
-        if (filters.location) {
-            diveLogQuery.contains("location", filters.location);
-        }
-        if (filters.minDepth) {
-            diveLogQuery.ge("reachedDepth", parseFloat(filters.minDepth));
-        }
-        if (filters.maxDepth) {
-            diveLogQuery.le("reachedDepth", parseFloat(filters.maxDepth));
-        }
-        if (filters.dateFrom) {
-            diveLogQuery.ge("date", new Date(filters.dateFrom));
-        }
-        if (filters.dateTo) {
-            diveLogQuery.le("date", new Date(filters.dateTo));
-        }
-
-        // Apply text search if provided
-        if (searchQuery && searchQuery.trim()) {
-            diveLogQuery.or(
-                wixData.query(COLLECTION_ID).contains("discipline", searchQuery),
-                wixData.query(COLLECTION_ID).contains("location", searchQuery),
-                wixData.query(COLLECTION_ID).contains("notes", searchQuery)
-            );
-        }
-
-        // Apply sorting
-        if (sortOrder === 'desc') {
-            diveLogQuery.descending(sortBy);
-        } else {
-            diveLogQuery.ascending(sortBy);
-        }
-
-        // Apply pagination
-        diveLogQuery.skip(skip).limit(Math.min(limit, MAX_RESULTS));
-
-        const result = await diveLogQuery.find();
-
-        return {
-            items: result.items || [],
-            totalCount: result.totalCount || result.items?.length || 0
-        };
-
-    } catch (error) {
-        console.error("❌ Database search error:", error);
-        return {
-            items: [],
-            totalCount: 0
-        };
+export async function put_diveLogs(request) {
+  const startTime = Date.now();
+  const version = getApiVersion(request);
+  
+  try {
+    const { diveLogId } = request.query;
+    const updateData = await request.body.json();
+    
+    if (!diveLogId) {
+      trackMetrics(version, 'save', Date.now() - startTime, true);
+      return createResponse(400, {
+        error: 'diveLogId is required',
+        success: false
+      }, request);
     }
+    
+    // Validation
+    const validationErrors = validateDiveLog(updateData, version);
+    if (validationErrors.length > 0) {
+      trackMetrics(version, 'save', Date.now() - startTime, true);
+      return createResponse(400, {
+        error: 'Validation failed',
+        details: validationErrors,
+        success: false
+      }, request);
+    }
+    
+    // Prepare update
+    const updatePayload = {
+      _id: diveLogId,
+      ...updateData,
+      _updatedDate: new Date(),
+      lastModifiedVersion: version
+    };
+    
+    const result = await wixData.update(DIVELOGS_CONFIG.COLLECTION_NAME, updatePayload);
+    
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'save', duration);
+    
+    return createResponse(200, {
+      success: true,
+      data: result,
+      version: version,
+      ...(version !== 'basic' && { 
+        performance: { duration: `${duration}ms` }
+      })
+    }, request);
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'save', duration, true);
+    
+    console.error('❌ Error updating dive log:', error);
+    return createResponse(500, {
+      error: 'Failed to update dive log',
+      details: error.message,
+      success: false,
+      version: version
+    }, request);
+  }
 }
 
 /**
- * Sync dive log to Next.js backend (non-blocking)
+ * DELETE: Remove dive log
  */
-async function syncDiveLogToBackend(diveLogData) {
-    if (!diveLogData) return;
-
-    try {
-        const payload = {
-            userId: diveLogData.userId,
-            diveLog: {
-                id: diveLogData.uniqueKey,
-                discipline: diveLogData.discipline,
-                location: diveLogData.location,
-                targetDepth: diveLogData.targetDepth,
-                reachedDepth: diveLogData.reachedDepth,
-                notes: diveLogData.notes,
-                date: diveLogData.date
-            }
-        };
-
-        // Call Next.js backend to handle embeddings and analysis
-        const response = await fetch('https://kovaldeepai-main.vercel.app/api/userMemory/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            console.warn(`⚠️ Backend sync failed: ${response.status}`);
-        } else {
-            console.log('✅ Successfully synced dive log to Next.js backend');
-        }
-
-    } catch (error) {
-        console.warn("⚠️ Backend sync error:", error.message);
-        // Don't throw - this is non-critical
+export async function delete_diveLogs(request) {
+  const startTime = Date.now();
+  const version = getApiVersion(request);
+  
+  try {
+    const { diveLogId } = request.query;
+    
+    if (!diveLogId) {
+      trackMetrics(version, 'query', Date.now() - startTime, true);
+      return createResponse(400, {
+        error: 'diveLogId is required',
+        success: false
+      }, request);
     }
+    
+    await wixData.remove(DIVELOGS_CONFIG.COLLECTION_NAME, diveLogId);
+    
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'query', duration);
+    
+    return createResponse(200, {
+      success: true,
+      message: 'Dive log deleted successfully',
+      version: version,
+      ...(version !== 'basic' && { 
+        performance: { duration: `${duration}ms` }
+      })
+    }, request);
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics(version, 'query', duration, true);
+    
+    console.error('❌ Error deleting dive log:', error);
+    return createResponse(500, {
+      error: 'Failed to delete dive log',
+      details: error.message,
+      success: false,
+      version: version
+    }, request);
+  }
 }
+
+/**
+ * Expert/Optimized: Get performance metrics
+ */
+export async function get_diveLogsMetrics(request) {
+  const version = getApiVersion(request);
+  
+  if (version === 'basic') {
+    return createResponse(403, {
+      error: 'Metrics available in expert/optimized versions only',
+      success: false
+    }, request);
+  }
+  
+  return createResponse(200, {
+    success: true,
+    metrics: diveLogsMetrics,
+    config: DIVELOGS_CONFIG,
+    version: version
+  }, request);
+}
+
+// 🔥 BACKWARD COMPATIBILITY LAYER
+// Legacy function names for existing integrations
+export const saveDiveLog = post_diveLogs;
+export const getDiveLogs = get_diveLogs;
+export const updateDiveLog = put_diveLogs;
+export const deleteDiveLog = delete_diveLogs;
+
+console.log("🔥 Dive Logs Master API initialized - All versions supported");
