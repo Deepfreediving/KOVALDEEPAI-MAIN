@@ -36,35 +36,52 @@ export async function post_chat(request) {
   const startTime = Date.now();
   
   try {
-    // Parse request body
+    // Parse request body (improved error handling)
     let requestData;
     try {
-      requestData = await request.body.json();
+      // First get the raw body text, then parse JSON
+      const requestBody = await request.body.text();
+      console.log('📥 Received request body:', requestBody ? 'Present' : 'Empty');
+      
+      if (!requestBody || requestBody.trim() === '') {
+        return badRequest({
+          error: 'Empty request body',
+          headers: CHAT_CONFIG.CORS_HEADERS
+        });
+      }
+      
+      requestData = JSON.parse(requestBody);
+      console.log('✅ Request data parsed successfully');
     } catch (error) {
+      console.error('❌ JSON parsing error:', error.message);
       return badRequest({
         error: 'Invalid JSON in request body',
+        details: error.message,
         headers: CHAT_CONFIG.CORS_HEADERS
       });
     }
 
     // Validate message
-    const { message, userId, sessionId } = requestData;
+    const { message, userMessage, userId, sessionId } = requestData;
     
-    if (!message || typeof message !== 'string') {
+    // Support both 'message' and 'userMessage' parameter names
+    const actualMessage = message || userMessage;
+    
+    if (!actualMessage || typeof actualMessage !== 'string') {
       return badRequest({
-        error: 'Message is required and must be a string',
+        error: 'Message is required and must be a string (use "message" or "userMessage" parameter)',
         headers: CHAT_CONFIG.CORS_HEADERS
       });
     }
 
-    if (message.length < CHAT_CONFIG.VALIDATION.MIN_MESSAGE_LENGTH) {
+    if (actualMessage.length < CHAT_CONFIG.VALIDATION.MIN_MESSAGE_LENGTH) {
       return badRequest({
         error: 'Message too short',
         headers: CHAT_CONFIG.CORS_HEADERS
       });
     }
 
-    if (message.length > CHAT_CONFIG.VALIDATION.MAX_MESSAGE_LENGTH) {
+    if (actualMessage.length > CHAT_CONFIG.VALIDATION.MAX_MESSAGE_LENGTH) {
       return badRequest({
         error: 'Message too long',
         headers: CHAT_CONFIG.CORS_HEADERS
@@ -81,7 +98,7 @@ export async function post_chat(request) {
 
     // Prepare request for AI backend
     const aiRequest = {
-      message: message.trim(),
+      message: actualMessage.trim(),
       userId: userId || (member ? member._id : 'anonymous'),
       sessionId: sessionId || 'wix-app-session',
       source: 'wix-app',
@@ -117,13 +134,26 @@ export async function post_chat(request) {
     }, CHAT_CONFIG.CORS_HEADERS);
 
   } catch (error) {
-    console.error('Chat endpoint error:', error);
+    console.error('❌ Chat endpoint error:', error);
     
-    return serverError({
+    // More detailed error response based on error type
+    const errorResponse = {
       error: 'Chat service temporarily unavailable',
       details: error.message,
-      timestamp: new Date().toISOString()
-    }, CHAT_CONFIG.CORS_HEADERS);
+      timestamp: new Date().toISOString(),
+      source: 'wix-app-backend'
+    };
+    
+    // Add specific error context if available
+    if (error.code) {
+      errorResponse.errorCode = error.code;
+    }
+    
+    if (error.response?.status) {
+      errorResponse.upstreamStatus = error.response.status;
+    }
+    
+    return serverError(errorResponse, CHAT_CONFIG.CORS_HEADERS);
   }
 }
 
@@ -148,16 +178,38 @@ export function get_chat(request) {
 // 🔥 WRAPPER FUNCTION FOR DIRECT BACKEND CALLS
 // This function is called directly by the frontend using backend.chat()
 export async function chat(requestData) {
-  // Create a mock request object that matches the HTTP function signature
-  const mockRequest = {
-    body: {
-      json: () => Promise.resolve(requestData)
-    },
-    headers: {},
-    query: {}
-  };
+  console.log('🔄 Chat wrapper called with:', JSON.stringify(requestData, null, 2));
   
-  // Call the main HTTP function and extract the response body
-  const result = await post_chat(mockRequest);
-  return result.body || result;
+  try {
+    // Validate input data
+    if (!requestData || typeof requestData !== 'object') {
+      throw new Error('Invalid request data - must be an object');
+    }
+    
+    // Create a mock request object that matches the HTTP function signature
+    const mockRequest = {
+      body: {
+        text: () => Promise.resolve(JSON.stringify(requestData)),
+        json: () => Promise.resolve(requestData)
+      },
+      headers: {},
+      query: {}
+    };
+    
+    // Call the main HTTP function and extract the response body
+    const result = await post_chat(mockRequest);
+    console.log('✅ Chat wrapper successful, result status:', result.status || 'unknown');
+    
+    return result.body || result;
+  } catch (error) {
+    console.error('❌ Chat wrapper error:', error);
+    
+    // Return a structured error response instead of throwing
+    return {
+      error: 'Chat wrapper failed',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      success: false
+    };
+  }
 }

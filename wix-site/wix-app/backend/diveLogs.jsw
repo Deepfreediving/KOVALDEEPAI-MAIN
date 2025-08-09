@@ -72,13 +72,27 @@ export async function post_diveLogs(request) {
   const startTime = Date.now();
   
   try {
-    // Parse request body
+    // Parse request body (improved error handling)
     let requestData;
     try {
-      requestData = await request.body.json();
+      // First get the raw body text, then parse JSON
+      const requestBody = await request.body.text();
+      console.log('📥 Received dive log request body:', requestBody ? 'Present' : 'Empty');
+      
+      if (!requestBody || requestBody.trim() === '') {
+        return badRequest({
+          error: 'Empty request body',
+          success: false
+        }, DIVELOGS_CONFIG.CORS_HEADERS);
+      }
+      
+      requestData = JSON.parse(requestBody);
+      console.log('✅ Dive log request data parsed successfully');
     } catch (error) {
+      console.error('❌ JSON parsing error:', error.message);
       return badRequest({
         error: 'Invalid JSON in request body',
+        details: error.message,
         success: false
       }, DIVELOGS_CONFIG.CORS_HEADERS);
     }
@@ -408,19 +422,41 @@ function trackMetrics(operation, duration, error = false) {
 // 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
 // These functions are called directly by the frontend using backend.diveLogs() etc.
 export async function diveLogs(requestData) {
-  // Create a mock request object that matches the HTTP function signature
-  const mockRequest = {
-    body: {
-      json: () => Promise.resolve(requestData)
-    },
-    headers: {},
-    query: {},
-    method: 'POST'
-  };
+  console.log('🔄 DiveLogs wrapper called with:', JSON.stringify(requestData, null, 2));
   
-  // Call the main HTTP function and extract the response body
-  const result = await post_diveLogs(mockRequest);
-  return result.body || result;
+  try {
+    // Validate input data
+    if (!requestData || typeof requestData !== 'object') {
+      throw new Error('Invalid request data - must be an object');
+    }
+    
+    // Create a mock request object that matches the HTTP function signature
+    const mockRequest = {
+      body: {
+        text: () => Promise.resolve(JSON.stringify(requestData)),
+        json: () => Promise.resolve(requestData)
+      },
+      headers: {},
+      query: {},
+      method: 'POST'
+    };
+    
+    // Call the main HTTP function and extract the response body
+    const result = await post_diveLogs(mockRequest);
+    console.log('✅ DiveLogs wrapper successful, result status:', result.status || 'unknown');
+    
+    return result.body || result;
+  } catch (error) {
+    console.error('❌ DiveLogs wrapper error:', error);
+    
+    // Return a structured error response instead of throwing
+    return {
+      error: 'DiveLogs wrapper failed',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      success: false
+    };
+  }
 }
 
 // Wrapper for GET operations
