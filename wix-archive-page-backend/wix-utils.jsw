@@ -6,7 +6,7 @@
 import wixData from 'wix-data';
 
 // 🎯 MASTER CONFIGURATION - ALL UTILITY LEVELS
-export const MASTER_CONFIG = {
+const MASTER_CONFIG = {
   UTILITY_LEVELS: {
     BASIC: 'basic',           // Simple queries, basic error handling
     EXPERT: 'expert',         // Advanced patterns, monitoring
@@ -38,7 +38,7 @@ export const MASTER_CONFIG = {
 };
 
 // 🔥 INDEX PATTERNS - Latest Wix Documentation
-export const INDEX_PATTERNS = {
+const INDEX_PATTERNS = {
   'UserMemory': {
     primary: ['userId', '_createdDate'],
     composite: ['userId', 'type', '_createdDate'],
@@ -56,10 +56,10 @@ export const INDEX_PATTERNS = {
 };
 
 // 🔥 SUPPORTED OPERATORS for index optimization
-export const INDEX_OPERATORS = ['eq', 'gt', 'gte', 'lt', 'lte', 'hasSome'];
+const INDEX_OPERATORS = ['eq', 'gt', 'gte', 'lt', 'lte', 'hasSome'];
 
 // 🔥 WIX ERROR CODES - Complete mapping
-export const WIX_ERROR_CODES = {
+const WIX_ERROR_CODES = {
   'WDE0001': 'Invalid collection ID - Check collection name format',
   'WDE0002': 'Item not found - Item may have been deleted',
   'WDE0003': 'Permission denied - Check user permissions',
@@ -79,7 +79,7 @@ export const WIX_ERROR_CODES = {
  * 🚀 MASTER INDEX-OPTIMIZED QUERY BUILDER
  * Combines all features from previous versions with latest optimizations
  */
-export class WixUtilsMaster {
+class WixUtilsMaster {
   constructor(collectionName, utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT) {
     this.collectionName = collectionName;
     this.utilityLevel = utilityLevel;
@@ -403,7 +403,7 @@ export class WixUtilsMaster {
 /**
  * Get user memories with configurable optimization level
  */
-export async function getUserMemories(userId, options = {}) {
+async function getUserMemories(userId, options = {}) {
   const {
     type = null,
     limit = MASTER_CONFIG.QUERY_LIMITS.DEFAULT_PAGE_SIZE,
@@ -433,7 +433,7 @@ export async function getUserMemories(userId, options = {}) {
 /**
  * Get dive logs with configurable optimization level
  */
-export async function getDiveLogs(userId, options = {}) {
+async function getDiveLogs(userId, options = {}) {
   const {
     minDepth = null,
     maxDepth = null,
@@ -466,7 +466,7 @@ export async function getDiveLogs(userId, options = {}) {
 /**
  * Get user profile with optimal index usage
  */
-export async function getUserProfile(userId, options = {}) {
+async function getUserProfile(userId, options = {}) {
   const { 
     consistentRead = false,
     utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT 
@@ -502,7 +502,7 @@ export async function getUserProfile(userId, options = {}) {
 /**
  * 🔥 MASTER BULK OPERATIONS with level-aware error handling
  */
-export async function bulkInsert(collectionName, items, options = {}) {
+async function bulkInsert(collectionName, items, options = {}) {
   const { 
     batchSize = MASTER_CONFIG.QUERY_LIMITS.BULK_BATCH_SIZE,
     retryFailures = true,
@@ -580,7 +580,7 @@ export async function bulkInsert(collectionName, items, options = {}) {
 }
 
 // 🔄 BACKWARD COMPATIBILITY LAYER
-export const COMPATIBILITY_LAYER = {
+const COMPATIBILITY_LAYER = {
   // Legacy function names point to new master functions
   getOptimizedUserMemories: (userId, options) => getUserMemories(userId, {...options, utilityLevel: 'optimized'}),
   getOptimizedDiveLogs: (userId, options) => getDiveLogs(userId, {...options, utilityLevel: 'optimized'}),
@@ -599,8 +599,14 @@ export const COMPATIBILITY_LAYER = {
 // Export everything
 export {
   WixUtilsMaster as default,
+  WixUtilsMaster,
   MASTER_CONFIG,
   INDEX_PATTERNS,
   INDEX_OPERATORS,
-  WIX_ERROR_CODES
+  WIX_ERROR_CODES,
+  getUserMemories,
+  getDiveLogs,
+  getUserProfile,
+  bulkInsert,
+  COMPATIBILITY_LAYER
 };

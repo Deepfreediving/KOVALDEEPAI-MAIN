@@ -58,7 +58,7 @@
             
             // Try to get rich profile data from backend
             try {
-              const profileResponse = await fetch('/_functions/getUserProfile', {
+              const profileResponse = await fetch('/_functions/memberProfile', {
                 method: 'GET',
                 credentials: 'include'
               });
@@ -250,18 +250,53 @@
         
         // Set up message listener for iframe communication
         window.addEventListener('message', (event) => {
-          if (event.origin !== CONFIG.API_BASE) return;
-          
-          console.log('📨 Message from widget:', event.data);
-          
-          // Handle widget messages
-          if (event.data.type === 'WIDGET_READY') {
-            // Send user data when widget is ready
-            iframe.contentWindow.postMessage({
-              type: 'USER_AUTH',
-              data: userData
-            }, CONFIG.API_BASE);
-            console.log('📤 Sent user data to widget');
+          try {
+            // ✅ Multiple layers of null checking
+            if (!event) {
+              console.warn('⚠️ Null event received');
+              return;
+            }
+            
+            if (!event.origin) {
+              console.warn('⚠️ Event missing origin');
+              return;
+            }
+            
+            if (event.origin !== CONFIG.API_BASE) {
+              return;
+            }
+            
+            if (!event.data) {
+              console.warn('⚠️ Event missing data');
+              return;
+            }
+            
+            if (typeof event.data !== 'object') {
+              console.warn('⚠️ Event data is not an object:', typeof event.data);
+              return;
+            }
+            
+            if (!event.data || !event.data.hasOwnProperty('type') || !event.data.type) {
+              console.warn('⚠️ Event data missing type property');
+              return;
+            }
+            
+            console.log('📨 Message from widget:', event.data);
+            
+            // Handle widget messages - with additional null check
+            const messageType = event.data?.type;
+            if (messageType === 'WIDGET_READY') {
+              // Send user data when widget is ready
+              if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                  type: 'USER_AUTH',
+                  data: userData
+                }, CONFIG.API_BASE);
+                console.log('📤 Sent user data to widget');
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error in message listener:', error);
           }
         });
         

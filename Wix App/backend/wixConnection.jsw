@@ -46,7 +46,7 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version, x-request-id, X-Request-Id'
 };
 
 // 🔥 CONNECTION METRICS
@@ -504,7 +504,7 @@ export function options_wixConnection(request) {
     message: 'CORS preflight successful',
     supportedMethods: ['GET', 'POST', 'OPTIONS'],
     version: 'master',
-    features: ['Full Wix Integration', 'AI Services', 'Database Access']
+    features: ['Full Wix Integration', 'AI Services', 'Database Access'],
     testCapabilities: ['wix-database', 'openai-integration', 'pinecone-vector', 'vercel-app']
   });
 }

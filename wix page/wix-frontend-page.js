@@ -173,15 +173,16 @@ async function makeWixMasterApiCall(url, options = {}, retries = WIX_MASTER_CONF
 // ===== 🔄 Enhanced Widget Communication & Entitlement Logic =====
 // (Merged from koval-ai-page.js)
 
-// ✅ WIX MASTER OPTIMIZED BACKEND CONFIGURATION
+// ✅ WIX PAGE OPTIMIZED BACKEND CONFIGURATION
 const BACKEND_CONFIG = {
     wix: {
-        chat: "/_functions/chat",
-        userMemory: "/_functions/userMemory", 
-        diveLogs: "/_functions/diveLogs",
-        userProfile: "/_functions/getUserProfile",
-        testConnection: "/_functions/wixConnection",
-        memberProfile: "/_functions/memberProfile"
+        // Wix Page doesn't have backend functions, so use Next.js for all
+        chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
+        userMemory: "https://kovaldeepai-main.vercel.app/api/openai/chat", 
+        diveLogs: "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs",
+        userProfile: "https://kovaldeepai-main.vercel.app/api/openai/chat",
+        testConnection: "https://kovaldeepai-main.vercel.app/api/openai/chat",
+        memberProfile: "https://kovaldeepai-main.vercel.app/api/openai/chat"
     },
     nextjs: {
         chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
@@ -311,14 +312,14 @@ const WIX_ERROR_CODES = {
     'WDE0202': 'Database overloaded - Reduce request frequency'
 };
 
-// ✅ WIX MASTER: OPTIMIZED API ENDPOINTS WITH CONSISTENT NAMING
-const WIX_CONNECTION_API = "/_functions/wixConnection";
-const MEMBER_PROFILE_API = "/_functions/memberProfile";
-const TEST_API = "/_functions/test";
-const WIX_CHAT_API = "/_functions/chat";
-const WIX_DIVE_LOGS_API = "/_functions/diveLogs";
-const WIX_USER_MEMORY_API = "/_functions/userMemory";
-const WIX_GET_USER_PROFILE_API = "/_functions/getUserProfile";  // ✅ Available in Website Backend
+// ✅ WIX PAGE: DIRECT NEXT.JS API ENDPOINTS (NO WIX FUNCTIONS)
+const WIX_CONNECTION_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+const MEMBER_PROFILE_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+const TEST_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+const WIX_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+const WIX_DIVE_LOGS_API = "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs";
+const WIX_USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+const WIX_GET_USER_PROFILE_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
 
 // ✅ NEXT.JS BACKEND FALLBACKS
 const CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Next.js fallback
@@ -904,13 +905,15 @@ async function handleEnhancedWidgetMessage(event) {
                 break;
                 
             case 'CHAT_MESSAGE':
-                console.log('💬 Chat message from widget:', event.data.data);
+                console.log('💬 Chat message from widget:', event.data?.data);
                 // Handle chat messages if needed
                 break;
                 
             case 'SAVE_DIVE_LOG':
-                console.log('💾 Saving dive log from widget via enhanced handler:', event.data.data);
-                await saveDiveLogFromWidget(event.data.data);
+                console.log('💾 Saving dive log from widget via enhanced handler:', event.data?.data);
+                if (event.data?.data) {
+                    await saveDiveLogFromWidget(event.data.data);
+                }
                 break;
                 
             default:
@@ -929,7 +932,7 @@ async function initializeUserAuthAndEntitlement() {
         console.log('🔄 Initializing user authentication and entitlement...');
         
         // 1. Check if user is logged in
-        if (!wixUsers.currentUser.loggedIn) {
+        if (!wixUsers.currentUser || !wixUsers.currentUser.loggedIn) {
             console.log('👤 User not logged in, prompting login...');
             await wixUsers.promptLogin();
         }
@@ -1239,7 +1242,7 @@ if (typeof wixWindow !== 'undefined' && wixWindow.onEditModeChange) {
 function initializeUserMemoryDataset() {
     try {
         // ✅ Set up dataset filtering by current user
-        if (wixUsers.currentUser.loggedIn) {
+        if (wixUsers.currentUser && wixUsers.currentUser.loggedIn) {
             const userId = wixUsers.currentUser.id;
             console.log('🔍 Filtering UserMemory dataset for user:', userId);
             
@@ -1250,15 +1253,20 @@ function initializeUserMemoryDataset() {
                     .eq('userId', userId)
                 );
                 
-                // ✅ Load the data with proper pagination
-                $w('#dataset1').loadPage(1)  // ✅ Specify page number explicitly
-                    .then(() => {
-                        console.log('✅ UserMemory dataset loaded successfully');
-                        console.log('📊 Loaded items:', $w('#dataset1').getTotalCount());
-                    })
-                    .catch((error) => {
-                        console.error('❌ Error loading UserMemory dataset:', error);
-                    });
+                // ✅ Set up onReady event handler before loading
+                $w('#dataset1').onReady(() => {
+                    console.log('✅ UserMemory dataset ready, loading page...');
+                    // ✅ Load the data with proper pagination inside onReady
+                    $w('#dataset1').loadPage(1)  // ✅ Specify page number explicitly
+                        .then(() => {
+                            console.log('✅ UserMemory dataset loaded successfully');
+                            console.log('📊 Loaded items:', $w('#dataset1').getTotalCount());
+                        })
+                        .catch((error) => {
+                            console.error('❌ Error loading UserMemory dataset:', error);
+                        });
+                });
+                
             } else {
                 console.warn('⚠️ Dataset #dataset1 not found on page');
             }
@@ -1275,7 +1283,7 @@ function initializeUserMemoryDataset() {
  */
 async function saveMemoryToDataset(memoryData) {
     try {
-        if (!wixUsers.currentUser.loggedIn) {
+        if (!wixUsers.currentUser || !wixUsers.currentUser.loggedIn) {
             throw new Error('User not logged in');
         }
         
@@ -1500,7 +1508,9 @@ function setupWidgetEventHandlers() {
                     break;
                     
                 case 'SAVE_DIVE_LOG':
-                    handleDiveLogSave(event.data.diveLog);
+                    if (event.data?.diveLog) {
+                        handleDiveLogSave(event.data.diveLog);
+                    }
                     break;
             }
         });
@@ -1699,4 +1709,111 @@ if (typeof window !== 'undefined') {
     window.saveUserMemory = saveUserMemory;
 }
 
-console.log("🔥 Wix Frontend Master Page - Single perfect version loaded");
+/**
+ * ✅ Save Dive Log function (was missing)
+ */
+async function saveDiveLog(diveLogData) {
+    try {
+        console.log('💾 Saving dive log:', diveLogData);
+        
+        const currentUser = await wixUsers.getCurrentUser();
+        if (!currentUser || !currentUser.loggedIn) {
+            throw new Error('User not logged in');
+        }
+        
+        // Prepare dive log data
+        const diveLogRecord = {
+            userId: currentUser.id,
+            diveDate: diveLogData.diveDate || new Date(),
+            location: diveLogData.location || '',
+            depth: diveLogData.depth || 0,
+            time: diveLogData.time || 0,
+            notes: diveLogData.notes || '',
+            type: 'dive-log',
+            timestamp: new Date(),
+            ...diveLogData
+        };
+        
+        // Try to save to wixData collection
+        try {
+            const result = await wixData.insert('userMemory', diveLogRecord);
+            console.log('✅ Dive log saved to collection:', result._id);
+            return { success: true, data: result };
+        } catch (dbError) {
+            console.warn('⚠️ Database save failed, trying HTTP function:', dbError);
+            
+            // Fallback to HTTP function
+            const response = await fetch(WIX_DIVE_LOGS_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(diveLogRecord)
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                return { success: true, data: result };
+            } else {
+                throw new Error(result.error || 'Failed to save dive log');
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error saving dive log:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * ✅ Save User Memory function (was missing)
+ */
+async function saveUserMemory(memoryData) {
+    try {
+        console.log('💭 Saving user memory:', memoryData);
+        
+        const currentUser = await wixUsers.getCurrentUser();
+        if (!currentUser || !currentUser.loggedIn) {
+            throw new Error('User not logged in');
+        }
+        
+        // Prepare memory data
+        const memoryRecord = {
+            userId: currentUser.id,
+            memoryContent: memoryData.content || memoryData.memoryContent || '',
+            logEntry: memoryData.logEntry || '',
+            sessionName: memoryData.sessionName || 'Page Session',
+            type: memoryData.type || 'memory',
+            timestamp: new Date(),
+            metadata: memoryData.metadata || {},
+            ...memoryData
+        };
+        
+        // Try to save to wixData collection
+        try {
+            const result = await wixData.insert('userMemory', memoryRecord);
+            console.log('✅ Memory saved to collection:', result._id);
+            return { success: true, data: result };
+        } catch (dbError) {
+            console.warn('⚠️ Database save failed, trying HTTP function:', dbError);
+            
+            // Fallback to HTTP function
+            const response = await fetch(WIX_USER_MEMORY_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(memoryRecord)
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                return { success: true, data: result };
+            } else {
+                throw new Error(result.error || 'Failed to save memory');
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error saving user memory:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ...existing code...

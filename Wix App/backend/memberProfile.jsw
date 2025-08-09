@@ -1,24 +1,14 @@
-// 🔥 WIX APP BACKEND: HTTP-MEMBERPROFILE.JSW - MASTER EDITION
+// 🔥 WIX APP BACKEND: MEMBERPROFILE.JSW - MASTER EDITION
 // Optimized for OpenAI & Pinecone integration with Wix best practices
 // Version: 4.0.0 - Single Perfect Version for Freediving
-// Date: August 8, 2025
+// Date: August 9, 2025
 
 import { ok, notFound, serverError, badRequest } from 'wix-http-functions';
 import wixData from 'wix-data';
 import { currentMember } from 'wix-members';
 import { fetch } from 'wix-fetch';
 
-// 🎯 MASTER CONFIGURATION - Single Perfect VersionP BACKEND: HTTP-MEMBERPROFILE.JSW - ENHANCED EDITION
-// Optimized for OpenAI & Pinecone integration with Wix best practices
-// Version: 4.0.0 - Production Ready
-// Date: August 8, 2025
-
-import { ok, notFound, serverError, badRequest } from 'wix-http-functions';
-import wixData from 'wix-data';
-import { currentMember } from 'wix-members';
-import { fetch } from 'wix-fetch';
-
-// 🎯 ENHANCED CONFIGURATION - Wix Best Practices
+// 🎯 MASTER CONFIGURATION - Single Perfect Version
 const MEMBER_CONFIG = {
   API_VERSIONS: {
     MASTER: 'master'          // Single perfect version for freediving

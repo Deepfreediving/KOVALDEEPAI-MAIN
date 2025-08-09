@@ -85,6 +85,11 @@
 
       // ✅ LISTEN FOR USER DATA FROM PARENT WIX PAGE
       const handleParentMessage = (event) => {
+        // ✅ Add null check to prevent "Cannot read properties of null" error
+        if (!event || !event.data || !event.data.type) {
+          return;
+        }
+        
         // Filter out noisy TPA2 infrastructure messages but keep important ones
         const isImportantMessage = event.data && (
           event.data.type === 'USER_DATA_RESPONSE' ||
@@ -787,6 +792,11 @@
       // Listen for authentication requests from embedded app
       const handleEmbedAuthRequest = (event) => {
         if (event.origin !== this.BASE_URL) return;
+        
+        // ✅ Add null check to prevent errors
+        if (!event || !event.data || !event.data.type) {
+          return;
+        }
         
         if (event.data.type === 'REQUEST_AUTH_STATUS') {
           console.log('📨 Embed app requesting auth status');
