@@ -476,9 +476,11 @@ async function checkSingleEndpointOptimized(name, url, type) {
         let testBody = null;
         if (method === "POST") {
             testBody = JSON.stringify({
-                userMessage: "health check",
+                message: "health check",  // ✅ Fixed: Use 'message' instead of 'userMessage'
                 userId: "test_user",
-                minimal: true
+                minimal: true,
+                profile: {},
+                embedMode: false
             });
         }
 
@@ -1847,13 +1849,15 @@ async function testAIConnection() {
         const userData = await loadComprehensiveUserData();
         console.log('✅ User data loaded:', userData.userId);
         
-        // Test chat API
+        // Test chat API with correct parameter format
         const chatResponse = await fetch('https://kovaldeepai-main.vercel.app/api/openai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userMessage: 'test',
-                userId: userData.userId
+                message: 'test',  // ✅ Fixed: Use 'message' instead of 'userMessage'
+                userId: userData.userId,
+                profile: userData.profile || {},
+                embedMode: false
             })
         });
         
