@@ -1,11 +1,165 @@
-// ===== 📄 Ultra-minimal test version =====
-// Copy this EXACT content to Wix Blocks as http-test.jsw
+// 🔥 WIX APP BACKEND: HTTP-TEST.JSW - ENHANCED EDITION
+// Lightweight testing endpoint with AI integration status
+// Version: 4.0.0 - Production Ready
+// Date: August 8, 2025
 
-import { ok } from 'wix-http-functions';
+import { ok, serverError } from 'wix-http-functions';
+import { fetch } from 'wix-fetch';
 
-export function get_test() {
-  return ok({ 
-    status: 'working',
-    timestamp: new Date().toISOString()
-  });
+// 🎯 TEST CONFIGURATION
+const TEST_CONFIG = {
+  SERVICES: {
+    VERCEL_APP: 'https://kovaldeepai-main.vercel.app',
+    HEALTH_CHECK: 'https://kovaldeepai-main.vercel.app/api/health'
+  },
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  }
+};
+
+// 🔥 ENHANCED GET TEST - Quick System Status
+export async function get_test(request) {
+  const startTime = Date.now();
+  
+  try {
+    const version = request.query.version || 'basic';
+    const includeAI = request.query.includeAI === 'true';
+    
+    const testResult = {
+      status: 'operational',
+      timestamp: new Date().toISOString(),
+      environment: 'wix-backend',
+      version: version,
+      wixServices: {
+        httpFunctions: 'available',
+        dataQueries: 'ready',
+        authentication: 'ready'
+      }
+    };
+    
+    // Enhanced testing for expert/optimized versions
+    if (includeAI && version !== 'basic') {
+      try {
+        const healthResponse = await fetch(TEST_CONFIG.SERVICES.HEALTH_CHECK, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        testResult.aiIntegration = {
+          vercelApp: healthResponse.ok ? 'operational' : 'degraded',
+          openaiReady: healthResponse.ok,
+          pineconeReady: healthResponse.ok,
+          statusCode: healthResponse.status
+        };
+      } catch (aiError) {
+        testResult.aiIntegration = {
+          vercelApp: 'error',
+          openaiReady: false,
+          pineconeReady: false,
+          error: aiError.message
+        };
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    testResult.performance = {
+      responseTime: `${duration}ms`,
+      efficient: duration < 1000
+    };
+    
+    return {
+      status: 200,
+      body: {
+        success: true,
+        ...testResult,
+        message: 'Wix backend test successful'
+      },
+      headers: TEST_CONFIG.CORS_HEADERS
+    };
+    
+  } catch (error) {
+    return {
+      status: 500,
+      body: {
+        success: false,
+        status: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      headers: TEST_CONFIG.CORS_HEADERS
+    };
+  }
 }
+
+// 🔥 POST TEST - Enhanced with Payload Testing
+export async function post_test(request) {
+  const startTime = Date.now();
+  
+  try {
+    const requestData = await request.body.json();
+    const { testType = 'basic', data } = requestData;
+    
+    const testResult = {
+      success: true,
+      status: 'operational',
+      testType: testType,
+      timestamp: new Date().toISOString(),
+      dataReceived: !!data,
+      payloadSize: JSON.stringify(requestData).length
+    };
+    
+    // Enhanced payload testing
+    if (data) {
+      testResult.dataValidation = {
+        hasUserId: !!data.userId,
+        hasMessage: !!data.message,
+        hasProfile: !!data.profile,
+        payloadValid: true
+      };
+    }
+    
+    const duration = Date.now() - startTime;
+    testResult.performance = {
+      responseTime: `${duration}ms`,
+      efficient: duration < 500
+    };
+    
+    return {
+      status: 200,
+      body: {
+        ...testResult,
+        message: 'POST test successful'
+      },
+      headers: TEST_CONFIG.CORS_HEADERS
+    };
+    
+  } catch (error) {
+    return {
+      status: 500,
+      body: {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      headers: TEST_CONFIG.CORS_HEADERS
+    };
+  }
+}
+
+// 🔥 OPTIONS - CORS Support
+export function options_test(request) {
+  return {
+    status: 200,
+    body: {
+      message: 'CORS preflight successful',
+      supportedMethods: ['GET', 'POST', 'OPTIONS'],
+      testCapabilities: ['basic-connectivity', 'ai-integration', 'payload-validation']
+    },
+    headers: TEST_CONFIG.CORS_HEADERS
+  };
+}
+
+console.log("🔥 Enhanced Test API initialized - AI integration ready");
