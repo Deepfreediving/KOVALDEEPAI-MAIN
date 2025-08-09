@@ -641,7 +641,7 @@
       console.log('🔐 Verifying user access for:', user.id);
       
       try {
-        // Check via your Wix backend function
+        // Check via your Wix backend function (updated endpoint structure)
         const response = await fetch('/_functions/checkUserAccess', {
           method: 'POST',
           headers: {
@@ -730,7 +730,7 @@
         this.postMessage('USER_AUTH', userData);
         this.postMessage('ACCESS_DENIED', { 
           message: 'Registration required',
-          registrationUrl: '/_functions/registerForProgram' 
+          registrationUrl: '/_functions/registerForProgram'  // ✅ Correct Wix endpoint structure
         });
       }
       

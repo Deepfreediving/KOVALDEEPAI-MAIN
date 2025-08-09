@@ -9,9 +9,9 @@ const endpoints = [
     "/_functions/chat", 
     "/_functions/userMemory",
     "/_functions/diveLogs",
-    "/_functions/loadMemories",
-    "/_functions/getUserMemory",
-    "/_functions/saveToUserMemory"
+    "/_functions/getUserProfile",
+    "/_functions/memberProfile",  // For App Blocks
+    "/_functions/test"  // For App Blocks testing
 ];
 
 async function testEndpoint(url) {
