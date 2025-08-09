@@ -37,8 +37,8 @@ const FRONTEND_CONFIG = {
       chat: "/_functions/chat",
       userMemory: "/_functions/userMemory", 
       diveLogs: "/_functions/diveLogs",
-      userProfile: "/_functions/memberProfile",
-      testConnection: "/_functions/test"
+      userProfile: "/_functions/getUserProfile",
+      testConnection: "/_functions/wixConnection"
     },
     nextjs: {
       chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",

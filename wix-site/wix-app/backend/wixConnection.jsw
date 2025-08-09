@@ -542,4 +542,22 @@ export async function delete_wixConnection(request) {
   });
 }
 
+// 🔥 WRAPPER FUNCTION FOR DIRECT BACKEND CALLS  
+// This function is called directly by the frontend using backend.wixConnection()
+export async function wixConnection(requestData) {
+  // Create a mock request object that matches the HTTP function signature
+  const mockRequest = {
+    body: {
+      json: () => Promise.resolve(requestData)
+    },
+    headers: {},
+    query: {},
+    method: 'POST'
+  };
+  
+  // Call the main HTTP function and extract the response body
+  const result = await post_wixConnection(mockRequest);
+  return result.body || result;
+}
+
 console.log("🔥 Enhanced Wix Connection API initialized - Full AI stack integration");

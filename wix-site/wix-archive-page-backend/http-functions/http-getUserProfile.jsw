@@ -120,13 +120,36 @@ export async function get_getUserProfile(request) {
 }
 
 /**
+ * OPTIONS: Handle preflight requests
+ */
+export function options_getUserProfile(request) {
+    return {
+        status: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-version'
+        }
+    };
+}
+
+/**
  * 📍 BASIC IMPLEMENTATION - Simple profile retrieval
  */
 async function handleBasicProfileRequest(request) {
   const { userId } = request.query;
   
   if (!userId) {
-    return badRequest({ error: 'userId is required' });
+    return badRequest({
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: { 
+        success: false,
+        error: 'userId is required' 
+      }
+    });
   }
   
   try {
@@ -137,20 +160,46 @@ async function handleBasicProfileRequest(request) {
       .find();
     
     if (memberResult.items.length === 0) {
-      return notFound({ error: 'User profile not found', userId });
+      return notFound({
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: { 
+          success: false,
+          error: 'User profile not found', 
+          userId 
+        }
+      });
     }
     
     const member = memberResult.items[0];
     const profile = mapMemberFields(member, 'basic');
     
     return ok({
-      success: true,
-      profile,
-      apiVersion: 'basic'
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: {
+        success: true,
+        profile,
+        apiVersion: 'basic'
+      }
     });
   } catch (error) {
     console.error('Basic profile lookup error:', error);
-    return serverError({ error: 'Failed to retrieve profile' });
+    return serverError({
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: { 
+        success: false,
+        error: 'Failed to retrieve profile',
+        details: error.message 
+      }
+    });
   }
 }
 
