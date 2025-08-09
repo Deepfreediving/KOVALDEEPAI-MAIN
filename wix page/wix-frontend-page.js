@@ -1,9 +1,17 @@
-// ===== 🔥 WIX EXPERT-LEVEL CONFIGURATION =====
+// ===== 🔥 WIX MASTER-LEVEL CONFIGURATION =====
+
+// Required Wix imports for page functionality
+import wixData from 'wix-data';
+import wixUsers from 'wix-users';
+import wixWindow from 'wix-window';
+import wixLocation from 'wix-location';
+import { currentMember } from 'wix-members';
 
 /**
- * 🔥 EXPERT: Advanced configuration following latest Wix Data API best practices
+ * 🔥 MASTER: Advanced configuration following latest Wix Data API best practices
+ * Single perfect version for freediving community
  */
-const WIX_EXPERT_CONFIG = {
+const WIX_MASTER_CONFIG = {
     DATA_LIMITS: {
         READ_REQUESTS_PER_MINUTE: 3000,
         WRITE_REQUESTS_PER_MINUTE: 1500,
@@ -26,9 +34,9 @@ const WIX_EXPERT_CONFIG = {
 };
 
 /**
- * 🔥 EXPERT: Performance and analytics tracking
+ * 🔥 MASTER: Performance and analytics tracking
  */
-class WixExpertAnalytics {
+class WixMasterAnalytics {
     constructor() {
         this.metrics = {
             totalRequests: 0,
@@ -51,7 +59,7 @@ class WixExpertAnalytics {
         if (operation === 'write') this.metrics.writeRequests++;
         
         if (error) this.metrics.errors++;
-        if (duration > WIX_EXPERT_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD) {
+        if (duration > WIX_MASTER_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD) {
             this.metrics.slowQueries++;
         }
         
@@ -68,8 +76,8 @@ class WixExpertAnalytics {
             this.performanceLog = this.performanceLog.slice(-100);
         }
         
-        if (WIX_EXPERT_CONFIG.MONITORING.LOG_ALL_QUERIES) {
-            console.log(`📊 WIX EXPERT - ${operation}: ${duration}ms, items: ${itemCount}${error ? ', ERROR: ' + error.message : ''}`);
+        if (WIX_MASTER_CONFIG.MONITORING.LOG_ALL_QUERIES) {
+            console.log(`📊 WIX MASTER - ${operation}: ${duration}ms, items: ${itemCount}${error ? ', ERROR: ' + error.message : ''}`);
         }
     }
     
@@ -90,11 +98,11 @@ class WixExpertAnalytics {
     }
 }
 
-// 🔥 EXPERT: Initialize analytics
-const wixExpertAnalytics = new WixExpertAnalytics();
+// 🔥 MASTER: Initialize analytics
+const wixMasterAnalytics = new WixMasterAnalytics();
 
 /**
- * 🔥 EXPERT: Enhanced error classification for retry logic
+ * 🔥 MASTER: Enhanced error classification for retry logic
  */
 function isWixRetryableError(error) {
     const retryablePatterns = [
@@ -112,18 +120,18 @@ function isWixRetryableError(error) {
 }
 
 /**
- * 🔥 EXPERT: Exponential backoff with jitter
+ * 🔥 MASTER: Exponential backoff with jitter
  */
-function calculateRetryDelay(attempt, baseDelay = WIX_EXPERT_CONFIG.PERFORMANCE.RETRY_BASE_DELAY) {
+function calculateRetryDelay(attempt, baseDelay = WIX_MASTER_CONFIG.PERFORMANCE.RETRY_BASE_DELAY) {
     const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
     const jitter = Math.random() * 0.1 * exponentialDelay; // 10% jitter
     return Math.min(exponentialDelay + jitter, 10000); // Max 10s delay
 }
 
 /**
- * 🔥 EXPERT: Resilient API call with advanced retry logic
+ * 🔥 MASTER: Resilient API call with advanced retry logic
  */
-async function makeWixExpertApiCall(url, options = {}, retries = WIX_EXPERT_CONFIG.PERFORMANCE.RETRY_MAX_ATTEMPTS) {
+async function makeWixMasterApiCall(url, options = {}, retries = WIX_MASTER_CONFIG.PERFORMANCE.RETRY_MAX_ATTEMPTS) {
     const startTime = Date.now();
     const operation = options.method === 'POST' ? 'write' : 'read';
     
@@ -131,7 +139,7 @@ async function makeWixExpertApiCall(url, options = {}, retries = WIX_EXPERT_CONF
         try {
             const response = await fetch(url, {
                 ...options,
-                signal: AbortSignal.timeout(WIX_EXPERT_CONFIG.DATA_LIMITS.REQUEST_TIMEOUT)
+                signal: AbortSignal.timeout(WIX_MASTER_CONFIG.DATA_LIMITS.REQUEST_TIMEOUT)
             });
             
             if (!response.ok) {
@@ -142,21 +150,21 @@ async function makeWixExpertApiCall(url, options = {}, retries = WIX_EXPERT_CONF
             const result = await response.json();
             const duration = Date.now() - startTime;
             
-            wixExpertAnalytics.recordQuery(operation, duration, result.data?.length || 0);
+            wixMasterAnalytics.recordQuery(operation, duration, result.data?.length || 0);
             
             return result;
             
         } catch (error) {
-            console.warn(`⚠️ WIX EXPERT - Attempt ${attempt}/${retries} failed:`, error.message);
+            console.warn(`⚠️ WIX MASTER - Attempt ${attempt}/${retries} failed:`, error.message);
             
             if (attempt === retries || !isWixRetryableError(error)) {
                 const duration = Date.now() - startTime;
-                wixExpertAnalytics.recordQuery(operation, duration, 0, error);
+                wixMasterAnalytics.recordQuery(operation, duration, 0, error);
                 throw error;
             }
             
             const delay = calculateRetryDelay(attempt);
-            console.log(`🔄 WIX EXPERT - Retrying in ${delay}ms...`);
+            console.log(`🔄 WIX MASTER - Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
@@ -165,7 +173,7 @@ async function makeWixExpertApiCall(url, options = {}, retries = WIX_EXPERT_CONF
 // ===== 🔄 Enhanced Widget Communication & Entitlement Logic =====
 // (Merged from koval-ai-page.js)
 
-// ✅ WIX EXPERT OPTIMIZED BACKEND CONFIGURATION
+// ✅ WIX MASTER OPTIMIZED BACKEND CONFIGURATION
 const BACKEND_CONFIG = {
     wix: {
         chat: "/_functions/chat",
@@ -181,7 +189,7 @@ const BACKEND_CONFIG = {
     }
 };
 
-// ✅ WIX EXPERT: ADVANCED REQUEST CACHE & INTELLIGENT RATE LIMITING
+// ✅ WIX MASTER: ADVANCED REQUEST CACHE & INTELLIGENT RATE LIMITING
 const REQUEST_CACHE = new Map();
 const CACHE_EXPIRY = new Map();
 
@@ -226,7 +234,7 @@ const RATE_LIMITER = {
     }
 };
 
-// ✅ WIX EXPERT: ENHANCED CACHING FUNCTIONS
+// ✅ WIX MASTER: ENHANCED CACHING FUNCTIONS
 const CACHE_MANAGER = {
     set: (key, value, ttl = 300000) => { // 5 minutes default
         REQUEST_CACHE.set(key, value);
@@ -260,7 +268,7 @@ const CACHE_MANAGER = {
     }
 };
 
-// ✅ WIX EXPERT: COMPREHENSIVE ENDPOINT STATUS WITH ERROR CODE TRACKING
+// ✅ WIX MASTER: COMPREHENSIVE ENDPOINT STATUS WITH ERROR CODE TRACKING
 const ENDPOINT_STATUS = {
     wix: {
         chat: { working: null, lastChecked: null, errorCode: null, responseTime: null },
@@ -286,7 +294,7 @@ const ENDPOINT_STATUS = {
     }
 };
 
-// ✅ WIX EXPERT: COMPREHENSIVE ERROR CODE MAPPING
+// ✅ WIX MASTER: COMPREHENSIVE ERROR CODE MAPPING
 const WIX_ERROR_CODES = {
     'WDE0001': 'Invalid collection ID - Check collection name format',
     'WDE0002': 'Item not found - Item may have been deleted',
@@ -303,7 +311,7 @@ const WIX_ERROR_CODES = {
     'WDE0202': 'Database overloaded - Reduce request frequency'
 };
 
-// ✅ WIX EXPERT: OPTIMIZED API ENDPOINTS WITH CONSISTENT NAMING
+// ✅ WIX MASTER: OPTIMIZED API ENDPOINTS WITH CONSISTENT NAMING
 const WIX_CONNECTION_API = "/_functions/wixConnection";
 const MEMBER_PROFILE_API = "/_functions/memberProfile";
 const TEST_API = "/_functions/test";
@@ -325,10 +333,10 @@ const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
 
 const DEBUG_MODE = true;
 
-// ===== 🚀 WIX EXPERT LEVEL FUNCTIONS =====
+// ===== 🚀 WIX MASTER LEVEL FUNCTIONS =====
 
 /**
- * ✅ WIX EXPERT: OPTIMIZED HEALTH CHECK WITH BATCHING AND INTELLIGENT CACHING
+ * ✅ WIX MASTER: OPTIMIZED HEALTH CHECK WITH BATCHING AND INTELLIGENT CACHING
  */
 async function performOptimizedHealthCheck() {
     const cacheKey = 'health_check_optimized';
@@ -358,7 +366,7 @@ async function performOptimizedHealthCheck() {
         }
     };
 
-    console.log("🔍 Starting WIX EXPERT optimized health check...");
+    console.log("🔍 Starting WIX MASTER optimized health check...");
     const startTime = Date.now();
 
     // ✅ BATCH ENDPOINT CHECKS TO MINIMIZE REQUESTS
@@ -447,13 +455,13 @@ async function performOptimizedHealthCheck() {
     const cacheTTL = results.summary.working > (results.summary.total * 0.7) ? 45000 : 15000;
     CACHE_MANAGER.set(cacheKey, results, cacheTTL);
 
-    console.log(`📊 WIX EXPERT Health: ${results.summary.working}/${results.summary.total} working (${totalTime}ms total, ${results.summary.averageResponseTime}ms avg)`);
+    console.log(`📊 WIX MASTER Health: ${results.summary.working}/${results.summary.total} working (${totalTime}ms total, ${results.summary.averageResponseTime}ms avg)`);
     
     return results;
 }
 
 /**
- * ✅ WIX EXPERT: OPTIMIZED SINGLE ENDPOINT CHECK WITH ERROR CODE DETECTION
+ * ✅ WIX MASTER: OPTIMIZED SINGLE ENDPOINT CHECK WITH ERROR CODE DETECTION
  */
 async function checkSingleEndpointOptimized(name, url, type) {
     const startTime = Date.now();
@@ -487,7 +495,7 @@ async function checkSingleEndpointOptimized(name, url, type) {
             method: method,
             headers: { 
                 "Content-Type": "application/json",
-                "X-Health-Check": "wix-expert",
+                "X-Health-Check": "wix-master",
                 "X-Request-ID": `health_${Date.now()}`
             },
             body: testBody,
@@ -560,7 +568,7 @@ async function checkSingleEndpointOptimized(name, url, type) {
 }
 
 /**
- * ✅ WIX EXPERT: OPTIMIZED BACKEND STATUS DISPLAY WITH RICH METRICS
+ * ✅ WIX MASTER: OPTIMIZED BACKEND STATUS DISPLAY WITH RICH METRICS
  */
 function displayOptimizedBackendStatus(endpointHealth) {
     const statusText = generateOptimizedStatusText(endpointHealth);
@@ -580,19 +588,19 @@ function displayOptimizedBackendStatus(endpointHealth) {
 
     if (statusElement && typeof statusElement.text !== 'undefined') {
         statusElement.text = statusText;
-        console.log("✅ Updated WIX EXPERT status display");
+        console.log("✅ Updated WIX MASTER status display");
     } else {
-        console.log("📊 WIX EXPERT Backend Status:", statusText);
+        console.log("📊 WIX MASTER Backend Status:", statusText);
         
         // ✅ CREATE FLOATING STATUS INDICATOR IF POSSIBLE
         try {
             if (typeof document !== 'undefined' && document.body) {
-                const existingStatus = document.getElementById('wix-expert-status');
+                const existingStatus = document.getElementById('wix-master-status');
                 if (existingStatus) existingStatus.remove();
                 
                 const healthColor = endpointHealth.summary.working > 0 ? '#28a745' : '#dc3545';
                 const statusHtml = `
-                    <div id="wix-expert-status" style="
+                    <div id="wix-master-status" style="
                         position: fixed;
                         top: 10px;
                         right: 10px;
@@ -615,7 +623,7 @@ function displayOptimizedBackendStatus(endpointHealth) {
                 
                 // Auto-remove after 8 seconds
                 setTimeout(() => {
-                    const status = document.getElementById('wix-expert-status');
+                    const status = document.getElementById('wix-master-status');
                     if (status) status.remove();
                 }, 8000);
             }
@@ -626,7 +634,7 @@ function displayOptimizedBackendStatus(endpointHealth) {
 }
 
 /**
- * ✅ WIX EXPERT: GENERATE RICH STATUS TEXT WITH METRICS
+ * ✅ WIX MASTER: GENERATE RICH STATUS TEXT WITH METRICS
  */
 function generateOptimizedStatusText(endpointHealth) {
     const { summary } = endpointHealth;
@@ -665,11 +673,11 @@ function generateOptimizedStatusText(endpointHealth) {
 }
 
 $w.onReady(async function () {
-    console.log("🚀 Koval-AI widget initializing with WIX EXPERT optimizations...");
+    console.log("🚀 Koval-AI widget initializing with WIX MASTER optimizations...");
 
-    // ===== 🎯 WIX EXPERT: INTELLIGENT ENDPOINT HEALTH CHECK =====
+    // ===== 🎯 WIX MASTER: INTELLIGENT ENDPOINT HEALTH CHECK =====
     const endpointHealth = await performOptimizedHealthCheck();
-    console.log("🔗 WIX EXPERT endpoint health check:", endpointHealth);
+    console.log("🔗 WIX MASTER endpoint health check:", endpointHealth);
     displayOptimizedBackendStatus(endpointHealth);
 
     // ===== 🔄 Enhanced Widget Communication (from koval-ai-page.js) =====
@@ -693,7 +701,7 @@ $w.onReady(async function () {
                 
                 try {
                     // Load current user data
-                    const userData = await loadUserData();
+                    const userData = await loadComprehensiveUserData();
                     
                     // Send user data back to widget with more detailed logging
                     console.log('🔍 Sending user data:', {
@@ -772,7 +780,7 @@ async function setupKovalAIWidget(aiWidget) {
     let userData = null;
     try {
         userData = await Promise.race([
-            loadUserData(),
+            loadComprehensiveUserData(),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('User data load timeout')), 10000)
             )
@@ -1016,8 +1024,8 @@ async function updateWidgetWithUserData(member) {
  */
 async function sendEnhancedUserDataToWidget() {
     try {
-        // ✅ Use the same enhanced loadUserData function that loads rich profile data
-        const fullUserData = await loadUserData();
+        // ✅ Use the same enhanced loadComprehensiveUserData function that loads rich profile data
+        const fullUserData = await loadComprehensiveUserData();
         
         // ✅ Format for widget consumption
         const userData = {
@@ -1223,7 +1231,7 @@ if (typeof wixWindow !== 'undefined' && wixWindow.onEditModeChange) {
     });
 }
 
-// ===== � WIX EXPERT: ENHANCED DATASET INTEGRATION =====
+// ===== 🎯 WIX MASTER: ENHANCED DATASET INTEGRATION =====
 
 /**
  * ✅ Initialize UserMemory Dataset with proper filtering
@@ -1299,9 +1307,20 @@ async function saveMemoryToDataset(memoryData) {
     }
 }
 
-/**
- * ✅ Setup dataset event handlers
- */
+function getUserMemoriesFromDataset() {
+    try {
+        if ($w('#dataset1')) {
+            const memories = $w('#dataset1').getCurrentPageItems();
+            console.log('📋 Retrieved memories from dataset:', memories.length);
+            return memories;
+        }
+        return [];
+    } catch (error) {
+        console.error('❌ Error getting memories from dataset:', error);
+        return [];
+    }
+}
+
 function setupDatasetEventHandlers() {
     try {
         if ($w('#dataset1')) {
@@ -1315,68 +1334,369 @@ function setupDatasetEventHandlers() {
                 console.error('❌ Dataset error:', error);
             });
             
-            // ✅ Check if onCurrentItemChanged exists before using it
-            if (typeof $w('#dataset1').onCurrentItemChanged === 'function') {
-                $w('#dataset1').onCurrentItemChanged(() => {
-                    console.log('🔄 Dataset current item changed');
-                });
-            } else {
-                console.warn('⚠️ onCurrentItemChanged not available for this dataset type');
-            }
+            // Handle data changes
+            $w('#dataset1').onCurrentItemChanged(() => {
+                console.log('🔄 Dataset current item changed');
+            });
         }
     } catch (error) {
         console.error('❌ Error setting up dataset handlers:', error);
     }
 }
 
-// ✅ Initialize dataset integration
-setTimeout(() => {
-    initializeUserMemoryDataset();
-    setupDatasetEventHandlers();
-}, 1000); // Give page time to load
-
 /**
- * ✅ SYNC LOCAL DIVE LOGS TO WIX DATABASE
+ * 🔥 MASTER: Enhanced User Data Loading
  */
-async function syncLocalDiveLogsToWix(userId, localDiveLogs) {
-    console.log(`🔄 Syncing ${localDiveLogs.length} local dive logs to Wix for user: ${userId}`);
-    
-    for (const diveLog of localDiveLogs) {
-        try {
-            // Convert local dive log format to Wix format
-            const wixDiveLog = {
-                userId: userId,
-                ...diveLog,
-                type: 'dive-log',
-                source: 'local-sync',
-                timestamp: diveLog.timestamp || new Date().toISOString(),
-                memoryContent: `Dive Log: ${diveLog.discipline} at ${diveLog.location}, reached ${diveLog.reachedDepth}m (target: ${diveLog.targetDepth}m). ${diveLog.notes || 'No additional notes.'}`,
-                logEntry: `${diveLog.date}: ${diveLog.discipline} dive at ${diveLog.location}`
+async function loadComprehensiveUserData() {
+    try {
+        console.log('🔍 Loading comprehensive user data...');
+        
+        const currentUser = await wixUsers.getCurrentUser();
+        
+        if (currentUser && currentUser.loggedIn) {
+            console.log('✅ User is logged in:', currentUser.id);
+            
+            // Validate user ID format
+            if (!currentUser.id || currentUser.id.startsWith('guest-') || currentUser.id.startsWith('wix-guest-')) {
+                console.warn("⚠️ Invalid or guest user ID:", currentUser.id);
+                return getGuestUserData();
+            }
+            
+            // Get user profile from collections
+            let userProfile = null;
+            try {
+                const profileQuery = await wixData.query('memberProfiles')
+                    .eq('userId', currentUser.id)
+                    .find();
+                userProfile = profileQuery.items[0] || null;
+            } catch (error) {
+                console.warn('⚠️ Could not load member profile:', error);
+            }
+            
+            // Get user dive logs and memories
+            let userMemory = null;
+            try {
+                const memoryQuery = await wixData.query('userMemory')
+                    .eq('userId', currentUser.id)
+                    .find();
+                userMemory = memoryQuery.items[0] || null;
+            } catch (error) {
+                console.warn('⚠️ Could not load user memory:', error);
+            }
+            
+            // Build comprehensive user data
+            const userData = {
+                userId: currentUser.id,
+                profile: {
+                    id: currentUser.id,
+                    displayName: currentUser.nickname || currentUser.displayName || userProfile?.firstName || 'User',
+                    nickname: currentUser.nickname || userProfile?.firstName || 'User',
+                    loginEmail: currentUser.loginEmail || '',
+                    firstName: userProfile?.firstName || '',
+                    lastName: userProfile?.lastName || '',
+                    profilePhoto: currentUser.picture || userProfile?.profilePicture || '',
+                    phone: userProfile?.phone || '',
+                    bio: userProfile?.bio || '',
+                    location: userProfile?.location || '',
+                    loggedIn: true
+                },
+                userDiveLogs: userMemory?.diveLogs || [],
+                userMemories: userMemory?.memories || [],
+                isGuest: false
             };
             
-            // Save to Wix database via API
-            const response = await fetch(DIVE_LOGS_API, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                    userId: userId,
-                    diveLog: wixDiveLog
-                })
+            console.log('✅ Comprehensive user data loaded:', {
+                userId: userData.userId,
+                diveLogsCount: userData.userDiveLogs.length,
+                memoriesCount: userData.userMemories.length
             });
             
-            if (response.ok) {
-                console.log(`✅ Synced dive log ${diveLog.id} to Wix`);
-            } else {
-                console.warn(`⚠️ Failed to sync dive log ${diveLog.id}:`, response.status);
-            }
-        } catch (error) {
-            console.warn(`⚠️ Error syncing dive log ${diveLog.id}:`, error.message);
+            return userData;
+        } else {
+            console.log('ℹ️ User not logged in');
+            return getGuestUserData();
         }
-        
-        // Small delay to avoid overwhelming the API
-        await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+        console.error('❌ Error loading comprehensive user data:', error);
+        return getGuestUserData();
+    }
+}
+
+function getGuestUserData() {
+    console.log('👤 Creating guest user data');
+    
+    return {
+        userId: `guest-${Date.now()}`,
+        profile: {
+            id: `guest-${Date.now()}`,
+            displayName: 'Guest User',
+            nickname: 'Guest User',
+            loginEmail: '',
+            firstName: '',
+            lastName: '',
+            profilePhoto: '',
+            phone: '',
+            bio: '',
+            location: '',
+            loggedIn: false
+        },
+        userDiveLogs: [],
+        userMemories: [],
+        isGuest: true
+    };
+}
+
+/**
+ * 🔥 MASTER: Enhanced Widget Communication
+ */
+function setupWidgetEventHandlers() {
+    console.log('🔧 Setting up widget event handlers...');
+    
+    // Listen for messages from the widget
+    if (typeof $w !== 'undefined' && $w.onMessage) {
+        $w.onMessage((type, data) => {
+            console.log('📨 Received message from widget:', type, data);
+            
+            switch (type) {
+                case 'WIDGET_READY':
+                    console.log('✅ Widget is ready');
+                    sendUserDataToWidget();
+                    break;
+                    
+                case 'REQUEST_USER_DATA':
+                    console.log('🔍 Widget requesting user data');
+                    sendUserDataToWidget();
+                    break;
+                    
+                case 'SAVE_DIVE_LOG':
+                    console.log('💾 Widget wants to save dive log:', data);
+                    handleDiveLogSave(data);
+                    break;
+                    
+                case 'WIDGET_ERROR':
+                    console.error('🚨 Widget error:', data);
+                    showFallbackMessage('Widget encountered an error. Please refresh the page.');
+                    break;
+                    
+                default:
+                    console.log('📝 Unknown message type:', type);
+            }
+        });
     }
     
-    console.log('✅ Local dive logs sync completed');
+    // Also listen for postMessage events (for iframe communication)
+    if (typeof window !== 'undefined') {
+        window.addEventListener('message', (event) => {
+            // Security check
+            if (!event.origin.includes('kovaldeepai') && !event.origin.includes('localhost')) {
+                return;
+            }
+            
+            console.log('📨 PostMessage from widget:', event.data);
+            
+            switch (event.data?.type) {
+                case 'REQUEST_USER_DATA':
+                    sendUserDataToWidget();
+                    break;
+                    
+                case 'SAVE_DIVE_LOG':
+                    handleDiveLogSave(event.data.diveLog);
+                    break;
+            }
+        });
+    }
 }
+
+async function sendUserDataToWidget() {
+    try {
+        console.log('📤 Sending user data to widget...');
+        
+        const userData = await loadComprehensiveUserData();
+        
+        // Find widget element
+        const widgetSelectors = ['#kovalWidget', '#koval-ai', '#KovalAIFrame', '#kovalAIFrame'];
+        let widget = null;
+        
+        for (const selector of widgetSelectors) {
+            try {
+                widget = $w(selector);
+                if (widget) break;
+            } catch (e) {
+                // Continue searching
+            }
+        }
+        
+        if (widget) {
+            // Send via Wix messaging API
+            widget.postMessage({
+                type: 'USER_DATA_RESPONSE',
+                userData: userData,
+                timestamp: Date.now()
+            });
+            
+            // Also send via postMessage for iframe
+            if (widget.src) {
+                widget.postMessage({
+                    type: 'USER_AUTH',
+                    data: userData,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        // Global broadcast as fallback
+        if (typeof window !== 'undefined') {
+            window.postMessage({
+                type: 'KOVAL_USER_AUTH',
+                userId: userData.userId,
+                profile: userData.profile,
+                diveLogs: userData.userDiveLogs,
+                memories: userData.userMemories
+            }, '*');
+        }
+        
+        // Store globally for widget access
+        if (typeof window !== 'undefined') {
+            window.KOVAL_USER_DATA = userData;
+        }
+        
+        console.log('✅ User data sent to widget');
+    } catch (error) {
+        console.error('❌ Error sending user data to widget:', error);
+        showFallbackMessage('Could not load user data');
+    }
+}
+
+async function handleDiveLogSave(diveLogData) {
+    try {
+        console.log('💾 Saving dive log to Wix:', diveLogData);
+        
+        const currentUser = await wixUsers.getCurrentUser();
+        if (!currentUser || !currentUser.loggedIn) {
+            console.warn('⚠️ Cannot save dive log - user not logged in');
+            return;
+        }
+        
+        // Get or create user memory record
+        let userMemory = await wixData.query('userMemory')
+            .eq('userId', currentUser.id)
+            .find();
+        
+        if (userMemory.items.length === 0) {
+            // Create new user memory record
+            await wixData.insert('userMemory', {
+                userId: currentUser.id,
+                diveLogs: [diveLogData],
+                memories: [],
+                createdAt: new Date()
+            });
+        } else {
+            // Update existing record
+            const existing = userMemory.items[0];
+            const updatedDiveLogs = [diveLogData, ...(existing.diveLogs || [])];
+            
+            await wixData.update('userMemory', {
+                _id: existing._id,
+                diveLogs: updatedDiveLogs,
+                updatedAt: new Date()
+            });
+        }
+        
+        console.log('✅ Dive log saved to Wix successfully');
+        
+    } catch (error) {
+        console.error('❌ Error saving dive log to Wix:', error);
+    }
+}
+
+function showFallbackMessage(message = "Service temporarily unavailable") {
+    console.log('⚠️ Showing fallback message:', message);
+    
+    // Show user-friendly message
+    if (typeof wixWindow !== 'undefined' && wixWindow.openLightbox) {
+        wixWindow.openLightbox('errorLightbox', {
+            title: 'Connection Issue',
+            message: message,
+            buttonText: 'Try Again'
+        }).catch(() => {
+            // If lightbox fails, show simple alert
+            console.log('📢 Fallback message:', message);
+        });
+    } else {
+        console.log('📢 Fallback message:', message);
+    }
+}
+
+/**
+ * 🔥 MASTER: Initialize Everything
+ */
+async function initializeMasterWidget() {
+    try {
+        console.log('🚀 Initializing Koval AI master widget...');
+        
+        // Setup event handlers
+        setupWidgetEventHandlers();
+        
+        // Initialize dataset
+        await initializeUserMemoryDataset();
+        
+        // Setup dataset event handlers
+        setupDatasetEventHandlers();
+        
+        // Load and send user data
+        setTimeout(async () => {
+            await sendUserDataToWidget();
+        }, 1000);
+        
+        // Check widget status periodically
+        setInterval(() => {
+            const widgetSelectors = ['#kovalWidget', '#koval-ai', '#KovalAIFrame', '#kovalAIFrame'];
+            let widget = null;
+            
+            for (const selector of widgetSelectors) {
+                try {
+                    widget = $w(selector);
+                    if (widget) break;
+                } catch (e) {
+                    // Continue searching
+                }
+            }
+            
+            if (widget) {
+                widget.postMessage({
+                    type: 'HEALTH_CHECK',
+                    timestamp: Date.now()
+                });
+            }
+        }, 30000); // Every 30 seconds
+        
+        console.log('✅ Master widget initialization complete');
+        
+    } catch (error) {
+        console.error('❌ Master widget initialization failed:', error);
+        showFallbackMessage('Could not initialize AI assistant');
+    }
+}
+
+// ✅ AUTO-INITIALIZE ON PAGE READY
+$w.onReady(() => {
+    console.log('📄 Wix page ready, initializing master widget...');
+    initializeMasterWidget();
+});
+
+// ✅ EXPORT FUNCTIONS FOR GLOBAL ACCESS
+if (typeof window !== 'undefined') {
+    window.loadComprehensiveUserData = loadComprehensiveUserData;
+    window.getGuestUserData = getGuestUserData;
+    window.showFallbackMessage = showFallbackMessage;
+    window.setupWidgetEventHandlers = setupWidgetEventHandlers;
+    window.sendUserDataToWidget = sendUserDataToWidget;
+    window.handleDiveLogSave = handleDiveLogSave;
+    window.initializeMasterWidget = initializeMasterWidget;
+    window.initializeUserMemoryDataset = initializeUserMemoryDataset;
+    window.saveMemoryToDataset = saveMemoryToDataset;
+    window.getUserMemoriesFromDataset = getUserMemoriesFromDataset;
+    window.saveUserMemory = saveUserMemory;
+}
+
+console.log("🔥 Wix Frontend Master Page - Single perfect version loaded");

@@ -11,9 +11,7 @@ import { currentMember } from 'wix-members';
 // 🎯 ENHANCED CONFIGURATION - Full Stack Testing
 const CONNECTION_CONFIG = {
   API_VERSIONS: {
-    BASIC: 'basic',           // Simple Wix connection test
-    EXPERT: 'expert',         // Include AI service tests
-    OPTIMIZED: 'optimized'    // Full integration test suite
+    MASTER: 'master'          // Single perfect version for freediving
   },
   
   COLLECTIONS: {
@@ -69,7 +67,7 @@ let connectionMetrics = {
 function getApiVersion(request) {
   return request.headers['x-api-version'] || 
          request.query.version || 
-         CONNECTION_CONFIG.API_VERSIONS.EXPERT;
+         CONNECTION_CONFIG.API_VERSIONS.MASTER;
 }
 
 function createResponse(status, data) {
@@ -505,7 +503,8 @@ export function options_wixConnection(request) {
   return createResponse(200, {
     message: 'CORS preflight successful',
     supportedMethods: ['GET', 'POST', 'OPTIONS'],
-    supportedVersions: Object.values(CONNECTION_CONFIG.API_VERSIONS),
+    version: 'master',
+    features: ['Full Wix Integration', 'AI Services', 'Database Access']
     testCapabilities: ['wix-database', 'openai-integration', 'pinecone-vector', 'vercel-app']
   });
 }

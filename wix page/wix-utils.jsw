@@ -599,7 +599,6 @@ export const COMPATIBILITY_LAYER = {
 // Export everything
 export {
   WixUtilsMaster as default,
-  WixUtilsMaster,
   MASTER_CONFIG,
   INDEX_PATTERNS,
   INDEX_OPERATORS,

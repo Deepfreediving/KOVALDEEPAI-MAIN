@@ -1,17 +1,13 @@
-// 🔥 WIX-APP-FRONTEND-MASTER.JS - ALL-IN-ONE FRONTEND SOLUTION
-// Consolidates: wix-app-frontend.js + wix-app-frontend-expert.js (empty)
+// 🔥 WIX-APP-FRONTEND.JS - MASTER EDITION
+// Single perfect version for freediving community
 // Version: 4.0.0 - Master Consolidated Edition
 // Date: August 8, 2025
 
 import wixUsers from 'wix-users';
 
-// 🎯 MASTER CONFIGURATION - ALL FRONTEND MODES
+// 🎯 MASTER CONFIGURATION - Single Perfect Version
 const FRONTEND_CONFIG = {
-  MODES: {
-    BASIC: 'basic',           // Simple chat interface
-    EXPERT: 'expert',         // Advanced features + monitoring
-    OPTIMIZED: 'optimized'    // Performance optimized + analytics
-  },
+  MODE: 'master',               // Single master mode
   
   BACKEND_ENDPOINTS: {
     wix: {
@@ -45,9 +41,9 @@ const FRONTEND_CONFIG = {
 };
 
 // 🔥 CURRENT MODE DETECTION
-let currentMode = FRONTEND_CONFIG.MODES.EXPERT; // Default to expert
+const currentMode = FRONTEND_CONFIG.MODE; // Always master level
 
-// 🔥 WIX EXPERT: REQUEST RATE LIMITER - AVOID WDE0014 ERRORS
+// 🔥 MASTER: REQUEST RATE LIMITER - AVOID WDE0014 ERRORS
 class WixRequestLimiter {
   constructor() {
     this.requestCounts = { read: 0, write: 0 };
@@ -63,18 +59,14 @@ class WixRequestLimiter {
   recordRequest(type = 'read') {
     this.checkReset();
     this.requestCounts[type]++;
-    if (currentMode !== 'basic') {
-      console.log(`📊 Request count: ${type} ${this.requestCounts[type]}/${this.maxRequests[type]}`);
-    }
+    console.log(`📊 Request count: ${type} ${this.requestCounts[type]}/${this.maxRequests[type]}`);
   }
 
   checkReset() {
     if (Date.now() > this.resetTime) {
       this.requestCounts = { read: 0, write: 0 };
       this.resetTime = Date.now() + 60000;
-      if (currentMode !== 'basic') {
-        console.log("🔄 Request limiter reset");
-      }
+      console.log("🔄 Request limiter reset");
     }
   }
 
@@ -85,23 +77,22 @@ class WixRequestLimiter {
   }
 }
 
-// 🔥 WIX EXPERT: INTELLIGENT CACHING SYSTEM
+// 🔥 MASTER: INTELLIGENT CACHING SYSTEM
 class WixDataCache {
   constructor() {
     this.cache = new Map();
     this.cacheExpiry = new Map();
     this.defaultTTL = FRONTEND_CONFIG.PERFORMANCE.CACHE_TTL;
-    this.enabled = currentMode !== 'basic';
+    this.enabled = true; // Always enabled in master mode
   }
 
   set(key, value, ttl = this.defaultTTL) {
-    if (!this.enabled) return;
     this.cache.set(key, value);
     this.cacheExpiry.set(key, Date.now() + ttl);
   }
 
   get(key) {
-    if (!this.enabled || !this.cache.has(key)) return null;
+    if (!this.cache.has(key)) return null;
     
     if (Date.now() > this.cacheExpiry.get(key)) {
       this.cache.delete(key);
@@ -113,7 +104,6 @@ class WixDataCache {
   }
 
   invalidate(pattern) {
-    if (!this.enabled) return;
     for (const key of this.cache.keys()) {
       if (key.includes(pattern)) {
         this.cache.delete(key);
@@ -136,13 +126,13 @@ class WixDataCache {
   }
 }
 
-// 🔥 WIX EXPERT: BATCH REQUEST MANAGER
+// 🔥 MASTER: BATCH REQUEST MANAGER
 class WixBatchManager {
   constructor() {
     this.pendingRequests = [];
     this.batchTimeout = null;
     this.batchDelay = FRONTEND_CONFIG.PERFORMANCE.BATCH_DELAY;
-    this.enabled = currentMode === 'optimized';
+    this.enabled = true; // Always enabled in master mode
   }
 
   addRequest(requestData) {
@@ -188,7 +178,7 @@ class WixBatchManager {
   }
 }
 
-// 🔥 PERFORMANCE METRICS (Expert/Optimized modes)
+// 🔥 PERFORMANCE METRICS (Always Enabled)
 class PerformanceTracker {
   constructor() {
     this.metrics = {
@@ -201,11 +191,10 @@ class PerformanceTracker {
       slowRequests: 0,
       byEndpoint: {}
     };
-    this.enabled = currentMode !== 'basic';
+    this.enabled = true; // Always enabled in master mode
   }
 
   trackRequest(endpoint, duration, success = true, cached = false) {
-    if (!this.enabled) return;
 
     this.metrics.requests++;
     this.metrics.totalDuration += duration;
@@ -241,8 +230,6 @@ class PerformanceTracker {
   }
 
   getStats() {
-    if (!this.enabled) return { message: 'Metrics available in expert/optimized modes only' };
-    
     return {
       ...this.metrics,
       averageDuration: this.metrics.requests > 0 ? this.metrics.totalDuration / this.metrics.requests : 0,
@@ -285,7 +272,7 @@ const ENDPOINT_STATUS = {
   },
   rateLimitHits: 0,
   timeoutCount: 0,
-  lastOptimizedCheck: null
+  lastMasterCheck: null
 };
 
 // 🔥 WIX ERROR CODES MAPPING
@@ -299,32 +286,14 @@ const WIX_ERROR_CODES = {
   'WDE0003': 'Permission denied'
 };
 
-// 🔥 MODE CONFIGURATION
-function setMode(mode) {
-  if (Object.values(FRONTEND_CONFIG.MODES).includes(mode)) {
-    currentMode = mode;
-    
-    // Update component settings
-    dataCache.enabled = mode !== 'basic';
-    batchManager.enabled = mode === 'optimized';
-    performanceTracker.enabled = mode !== 'basic';
-    
-    console.log(`🔧 Mode set to: ${mode}`);
-    return true;
-  }
-  return false;
-}
-
 // 🔥 UTILITY FUNCTIONS
 function logDebug(message, data = null) {
-  if (currentMode !== 'basic') {
-    console.log(message, data || '');
-  }
+  console.log(message, data || '');
 }
 
 function logError(message, error = null) {
   console.error(message, error || '');
-  if (currentMode !== 'basic' && error) {
+  if (error) {
     performanceTracker.trackRequest('error', 0, false);
   }
 }
@@ -333,31 +302,27 @@ function logError(message, error = null) {
 async function makeRequest(url, options = {}, endpoint = 'unknown') {
   const startTime = Date.now();
   
-  // Check cache first (expert/optimized modes)
+  // Check cache first (master mode)
   const cacheKey = `${url}_${JSON.stringify(options)}`;
-  if (currentMode !== 'basic') {
-    const cached = dataCache.get(cacheKey);
-    if (cached) {
-      performanceTracker.trackRequest(endpoint, Date.now() - startTime, true, true);
-      logDebug(`💾 Cache hit for ${endpoint}`);
-      return cached;
-    }
+  const cached = dataCache.get(cacheKey);
+  if (cached) {
+    performanceTracker.trackRequest(endpoint, Date.now() - startTime, true, true);
+    logDebug(`💾 Cache hit for ${endpoint}`);
+    return cached;
   }
 
-  // Check rate limits (expert/optimized modes)
-  if (currentMode !== 'basic') {
-    const requestType = options.method === 'POST' || options.method === 'PUT' ? 'write' : 'read';
-    if (!requestLimiter.canMakeRequest(requestType)) {
-      const waitTime = requestLimiter.waitTime(requestType);
-      logDebug(`⏱️ Rate limit hit, waiting ${waitTime}ms`);
-      ENDPOINT_STATUS.rateLimitHits++;
-      
-      if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
+  // Check rate limits (master mode)
+  const requestType = options.method === 'POST' || options.method === 'PUT' ? 'write' : 'read';
+  if (!requestLimiter.canMakeRequest(requestType)) {
+    const waitTime = requestLimiter.waitTime(requestType);
+    logDebug(`⏱️ Rate limit hit, waiting ${waitTime}ms`);
+    ENDPOINT_STATUS.rateLimitHits++;
+    
+    if (waitTime > 0) {
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
-    requestLimiter.recordRequest(requestType);
   }
+  requestLimiter.recordRequest(requestType);
 
   try {
     const requestOptions = {
@@ -379,8 +344,8 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
     const duration = Date.now() - startTime;
     
     if (response.ok) {
-      // Cache successful responses (expert/optimized modes)
-      if (currentMode !== 'basic' && requestOptions.method === 'GET') {
+      // Cache successful responses (master mode)
+      if (requestOptions.method === 'GET') {
         dataCache.set(cacheKey, data);
       }
       
@@ -422,14 +387,12 @@ async function sendChatMessage(message, userId, sessionId = null) {
     requestData.sessionId = sessionId;
   }
 
-  // Expert/Optimized: Add context and preferences
-  if (currentMode !== 'basic') {
-    requestData.context = {
-      timestamp: new Date().toISOString(),
-      mode: currentMode,
-      userAgent: navigator.userAgent
-    };
-  }
+  // Master mode: Add context and preferences
+  requestData.context = {
+    timestamp: new Date().toISOString(),
+    mode: currentMode,
+    userAgent: navigator.userAgent
+  };
 
   try {
     // Try Wix backend first
@@ -471,14 +434,12 @@ async function saveUserMemory(userId, memoryContent, memoryType = 'general') {
     type: memoryType
   };
 
-  // Expert/Optimized: Add metadata
-  if (currentMode !== 'basic') {
-    requestData.metadata = {
-      source: 'wix-app',
-      mode: currentMode,
-      timestamp: new Date().toISOString()
-    };
-  }
+  // Master mode: Add metadata
+  requestData.metadata = {
+    source: 'wix-app',
+    mode: currentMode,
+    timestamp: new Date().toISOString()
+  };
 
   return await makeRequest(
     FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory,
@@ -491,12 +452,10 @@ async function getUserProfile(userId) {
   const cacheKey = `profile_${userId}`;
   
   // Check cache first
-  if (currentMode !== 'basic') {
-    const cached = dataCache.get(cacheKey);
-    if (cached) {
-      logDebug('📋 Profile loaded from cache');
-      return cached;
-    }
+  const cached = dataCache.get(cacheKey);
+  if (cached) {
+    logDebug('📋 Profile loaded from cache');
+    return cached;
   }
 
   const result = await makeRequest(
@@ -506,9 +465,7 @@ async function getUserProfile(userId) {
   );
 
   // Cache the result
-  if (currentMode !== 'basic') {
-    dataCache.set(cacheKey, result, 600000); // Cache for 10 minutes
-  }
+  dataCache.set(cacheKey, result, 600000); // Cache for 10 minutes
 
   return result;
 }
@@ -519,14 +476,12 @@ async function saveDiveLog(userId, diveData) {
     ...diveData
   };
 
-  // Expert/Optimized: Add validation metadata
-  if (currentMode !== 'basic') {
-    requestData.submissionMetadata = {
-      mode: currentMode,
-      timestamp: new Date().toISOString(),
-      validation: true
-    };
-  }
+  // Master mode: Add validation metadata
+  requestData.submissionMetadata = {
+    mode: currentMode,
+    timestamp: new Date().toISOString(),
+    validation: true
+  };
 
   const result = await makeRequest(
     FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
@@ -535,9 +490,7 @@ async function saveDiveLog(userId, diveData) {
   );
 
   // Invalidate related caches
-  if (currentMode !== 'basic') {
-    dataCache.invalidate(`diveLogs_${userId}`);
-  }
+  dataCache.invalidate(`diveLogs_${userId}`);
 
   return result;
 }
@@ -578,7 +531,7 @@ function findAIWidget() {
 }
 
 function showTypingIndicator(widget) {
-  if (currentMode === 'basic' || !FRONTEND_CONFIG.UI.TYPING_INDICATOR) return;
+  if (!FRONTEND_CONFIG.UI.TYPING_INDICATOR) return;
   
   try {
     // Add typing indicator to the widget
@@ -591,7 +544,7 @@ function showTypingIndicator(widget) {
 }
 
 function hideTypingIndicator(widget) {
-  if (currentMode === 'basic' || !FRONTEND_CONFIG.UI.TYPING_INDICATOR) return;
+  if (!FRONTEND_CONFIG.UI.TYPING_INDICATOR) return;
   
   try {
     if (widget && widget.postMessage) {
@@ -615,14 +568,12 @@ $w.onReady(async function () {
     return;
   }
 
-  // Test initial connection (expert/optimized modes)
-  if (currentMode !== 'basic') {
-    try {
-      await testConnection();
-      logDebug("✅ Backend connection established");
-    } catch (error) {
-      logError("⚠️ Backend connection test failed:", error);
-    }
+  // Test initial connection (master mode always enabled)
+  try {
+    await testConnection();
+    logDebug("✅ Backend connection established");
+  } catch (error) {
+    logError("⚠️ Backend connection test failed:", error);
   }
 
   // Get current user
@@ -632,14 +583,12 @@ $w.onReady(async function () {
     if (currentUser) {
       logDebug(`👤 User authenticated: ${currentUser.id}`);
       
-      // Load user profile (expert/optimized modes)
-      if (currentMode !== 'basic') {
-        try {
-          const profile = await getUserProfile(currentUser.id);
-          logDebug("📋 User profile loaded");
-        } catch (error) {
-          logDebug("Could not load user profile:", error);
-        }
+      // Load user profile (master mode always enabled)
+      try {
+        const profile = await getUserProfile(currentUser.id);
+        logDebug("📋 User profile loaded");
+      } catch (error) {
+        logDebug("Could not load user profile:", error);
       }
     } else {
       logDebug("👤 No authenticated user");
@@ -735,36 +684,23 @@ $w.onReady(async function () {
             break;
             
           case 'getMetrics':
-            if (currentMode !== 'basic') {
-              aiWidget.postMessage({
-                type: 'metrics',
-                data: {
-                  performance: performanceTracker.getStats(),
-                  cache: dataCache.getStats(),
-                  endpoints: ENDPOINT_STATUS,
-                  mode: currentMode
-                }
-              });
-            } else {
-              aiWidget.postMessage({
-                type: 'error',
-                data: { message: 'Metrics available in expert/optimized modes only' }
-              });
-            }
+            aiWidget.postMessage({
+              type: 'metrics',
+              data: {
+                performance: performanceTracker.getStats(),
+                cache: dataCache.getStats(),
+                endpoints: ENDPOINT_STATUS,
+                mode: currentMode
+              }
+            });
             break;
             
           case 'setMode':
-            if (setMode(data.mode)) {
-              aiWidget.postMessage({
-                type: 'modeChanged',
-                data: { mode: currentMode }
-              });
-            } else {
-              aiWidget.postMessage({
-                type: 'error',
-                data: { message: 'Invalid mode' }
-              });
-            }
+            // Master mode doesn't support mode switching
+            aiWidget.postMessage({
+              type: 'error',
+              data: { message: 'Master version operates in single perfect mode' }
+            });
             break;
         }
       } catch (error) {
@@ -792,7 +728,6 @@ $w.onReady(async function () {
 
 // 🔥 EXPORT FUNCTIONS FOR EXTERNAL USE
 export {
-  setMode,
   sendChatMessage,
   saveUserMemory,
   getUserProfile,
@@ -804,4 +739,4 @@ export {
   ENDPOINT_STATUS
 };
 
-console.log("🔥 Wix App Frontend Master initialized - All modes supported");
+console.log("🔥 Wix App Frontend Master initialized - Single perfect version");
