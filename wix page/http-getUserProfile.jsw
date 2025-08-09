@@ -1,11 +1,11 @@
-// 🔥 HTTP-GETUSERPROFILE-MASTER.JSW - ALL-IN-ONE USER PROFILE API
+// 🔥 HTTP-GETUSERPROFILE.JSW - ALL-IN-ONE USER PROFILE API
 // Consolidates: http-getUserProfile + http-getUserProfile-master + http-getUserProfile-expert
 // Version: 4.0.0 - Master Consolidated Edition
 // Date: August 8, 2025
 
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
-import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils-master.jsw';
+import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils.jsw';
 
 // 🎯 MASTER CONFIGURATION
 const PROFILE_CONFIG = {
