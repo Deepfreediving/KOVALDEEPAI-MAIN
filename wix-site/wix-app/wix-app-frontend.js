@@ -60,21 +60,22 @@ if (typeof window !== 'undefined') {
 const FRONTEND_CONFIG = {
   MODE: 'master',               // Single master mode
   
-  // ✅ Updated to use direct backend function calls (Wix App best practice)
-  USE_DIRECT_BACKEND: true,     // Use direct imports instead of HTTP calls
+  // ✅ Prioritize reliable Next.js/OpenAI API over Wix backend
+  USE_DIRECT_BACKEND: true,     // Still try direct imports, but as fallback
   
   BACKEND_ENDPOINTS: {
-    // Legacy HTTP endpoints for fallback only
+    // Primary endpoints (most reliable)
+    nextjs: {
+      chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
+      pinecone: "https://kovaldeepai-main.vercel.app/api/pinecone"
+    },
+    // Secondary endpoints (fallback only)
     wix: {
       chat: "/_functions/chat",
       userMemory: "/_functions/userMemory", 
       diveLogs: "/_functions/diveLogs",
       userProfile: "/_functions/getUserProfile",
       testConnection: "/_functions/wixConnection"
-    },
-    nextjs: {
-      chat: "https://kovaldeepai-main.vercel.app/api/openai/chat",
-      pinecone: "https://kovaldeepai-main.vercel.app/api/pinecone"
     }
   },
   
@@ -504,68 +505,79 @@ async function sendChatMessage(message, userId, sessionId = null) {
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Wix-App'
   };
 
+  // 🚀 PRIMARY: Use Next.js/OpenAI API (most reliable)
   try {
-    // ✅ Use direct backend function call (Wix App best practice)
-    if (FRONTEND_CONFIG.USE_DIRECT_BACKEND && backend && typeof backend.chat === 'function') {
-      logDebug('🔄 Calling backend.chat directly...');
-      const result = await backend.chat(requestData);
-      ENDPOINT_STATUS.wix.chat = 'active';
-      logDebug('✅ Direct backend.chat call successful');
-      return result;
+    logDebug('� Using primary Next.js/OpenAI API...');
+    
+    // ✅ Convert userMessage to message for Next.js API
+    const nextjsRequestData = {
+      message: requestData.userMessage,  // ✅ Convert to 'message' for Next.js API
+      userId: requestData.userId,
+      profile: {},
+      embedMode: false
+    };
+    
+    if (requestData.sessionId) {
+      nextjsRequestData.sessionId = requestData.sessionId;
     }
     
-    // Legacy fallback to HTTP endpoint
-    logDebug('🔄 Falling back to HTTP chat endpoint...');
     const result = await makeRequest(
-      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.chat,
-      { body: JSON.stringify(requestData), method: 'POST' },
-      'wix-chat'
+      FRONTEND_CONFIG.BACKEND_ENDPOINTS.nextjs.chat,
+      { body: JSON.stringify(nextjsRequestData), method: 'POST' },
+      'nextjs-chat'
     );
     
-    ENDPOINT_STATUS.wix.chat = 'active';
-    logDebug('✅ HTTP chat call successful');
+    ENDPOINT_STATUS.nextjs.chat = 'active';
+    logDebug('✅ Primary Next.js/OpenAI API successful');
     return result;
     
-  } catch (error) {
-    logError('❌ Wix chat failed, trying Next.js fallback:', error);
-    ENDPOINT_STATUS.wix.chat = 'error';
+  } catch (primaryError) {
+    logDebug('⚠️ Primary Next.js API failed, trying Wix backend...', primaryError.message);
+    ENDPOINT_STATUS.nextjs.chat = 'error';
     
-    // Fallback to Next.js - fix parameter format
+    // 🔄 FALLBACK: Try Wix backend (secondary)
     try {
-      // ✅ Convert userMessage to message for Next.js API
-      const nextjsRequestData = {
-        message: requestData.userMessage,  // ✅ Convert to 'message' for Next.js API
-        userId: requestData.userId,
-        profile: {},
-        embedMode: false
-      };
-      
-      if (requestData.sessionId) {
-        nextjsRequestData.sessionId = requestData.sessionId;
+      // Try direct backend function call first
+      if (FRONTEND_CONFIG.USE_DIRECT_BACKEND && backend && typeof backend.chat === 'function') {
+        logDebug('🔄 Trying direct Wix backend call...');
+        const result = await backend.chat(requestData);
+        ENDPOINT_STATUS.wix.chat = 'active';
+        logDebug('✅ Wix direct backend call successful');
+        return result;
       }
       
+      // Try HTTP endpoint
+      logDebug('🔄 Trying Wix HTTP endpoint...');
       const result = await makeRequest(
-        FRONTEND_CONFIG.BACKEND_ENDPOINTS.nextjs.chat,
-        { body: JSON.stringify(nextjsRequestData), method: 'POST' },  // ✅ Use converted data
-        'nextjs-chat'
+        FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.chat,
+        { body: JSON.stringify(requestData), method: 'POST' },
+        'wix-chat'
       );
       
-      ENDPOINT_STATUS.nextjs.chat = 'active';
+      ENDPOINT_STATUS.wix.chat = 'active';
+      logDebug('✅ Wix HTTP endpoint successful');
       return result;
       
     } catch (fallbackError) {
-      ENDPOINT_STATUS.nextjs.chat = 'error';
+      ENDPOINT_STATUS.wix.chat = 'error';
+      logError('❌ All chat methods failed:', fallbackError);
       throw fallbackError;
     }
   }
 }
 
-async function saveUserMemory(userId, memoryContent, memoryType = 'general') {
+async function saveUserMemory(userId, memoryContent, memoryType = 'general', diveLogData = null) {
   const requestData = {
     userId: userId,
     memoryContent: memoryContent,
     type: memoryType
   };
+
+  // ✅ Add dive log data if provided for storage in userMemory collection
+  if (diveLogData) {
+    requestData.diveLogData = diveLogData;
+    requestData.sessionName = `Dive Journal - ${diveLogData.date || 'Unknown Date'}`;
+  }
 
   // Master mode: Add metadata
   requestData.metadata = {
@@ -616,16 +628,39 @@ async function saveDiveLog(userId, diveData) {
     validation: true
   };
 
-  const result = await makeRequest(
-    FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
-    { body: JSON.stringify(requestData), method: 'POST' },
-    'dive-logs'
-  );
+  // ✅ ENHANCED: Save to userMemory collection for AI retrieval
+  try {
+    // Primary: Save to userMemory collection for long-term storage and AI access
+    const memoryResult = await saveUserMemory(
+      userId, 
+      `Dive Log: ${diveData.discipline || 'Unknown'} dive to ${diveData.reachedDepth || 0}m at ${diveData.location || 'Unknown location'}`,
+      'dive-log',
+      diveData
+    );
+    
+    logDebug('✅ Dive log saved to userMemory collection for AI retrieval');
+    
+    // Invalidate related caches
+    dataCache.invalidate(`diveLogs_${userId}`);
+    dataCache.invalidate(`profile_${userId}`);
+    
+    return memoryResult;
+    
+  } catch (memoryError) {
+    logDebug('⚠️ UserMemory save failed, trying legacy diveLogs endpoint...', memoryError.message);
+    
+    // Fallback: Use legacy diveLogs endpoint
+    const result = await makeRequest(
+      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
+      { body: JSON.stringify(requestData), method: 'POST' },
+      'dive-logs'
+    );
 
-  // Invalidate related caches
-  dataCache.invalidate(`diveLogs_${userId}`);
+    // Invalidate related caches
+    dataCache.invalidate(`diveLogs_${userId}`);
 
-  return result;
+    return result;
+  }
 }
 
 async function testConnection() {
@@ -721,16 +756,16 @@ function initializeKovalApp() {
       // Don't return here - app can still function without widget
     }
 
-    // Test initial connection (master mode always enabled)
-    logDebug('🔧 Testing backend connection...');
+    // Test backend connection (optional - won't affect AI functionality)
+    logDebug('🔧 Testing Wix backend connection (optional)...');
     testConnection()
       .then(() => {
-        logDebug("✅ Backend connection established");
+        logDebug("✅ Wix backend connection available (bonus features enabled)");
       })
       .catch((error) => {
-        logError("⚠️ Backend connection test failed:", error);
+        logDebug("ℹ️ Wix backend unavailable (AI still works via Next.js API)", error.message);
         
-        // Additional debugging info
+        // Additional debugging info for development
         logDebug('🔍 Backend availability check:');
         logDebug(`- backend object exists: ${backend !== null}`);
         logDebug(`- backend is object: ${typeof backend === 'object'}`);
@@ -992,3 +1027,5 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 console.log("🔥 Wix App Frontend Master initialized - Single perfect version with Wix IDE Compatibility");
+console.log("🚀 AI Priority: Next.js/OpenAI API is PRIMARY, Wix backend is FALLBACK");
+console.log("✅ Your AI will work regardless of Wix backend status!");

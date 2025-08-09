@@ -185,6 +185,30 @@
           return;
         }
         
+        // ✅ Handle User Data Updates (e.g., when dive logs are saved)
+        if (event.data.type === 'USER_DATA_UPDATE' && event.data.userData) {
+          const updatedUserData = event.data.userData;
+          console.log('🔄 Received user data update:', updatedUserData);
+          
+          // Update the userData object with new counts
+          if (userData.userId === updatedUserData.userId) {
+            userData = {
+              ...userData,
+              diveLogsCount: updatedUserData.diveLogsCount,
+              memoriesCount: updatedUserData.memoriesCount,
+              lastUpdated: updatedUserData.lastUpdated
+            };
+            
+            console.log(`✅ Updated user data - Dive logs: ${userData.diveLogsCount}, Memories: ${userData.memoriesCount}`);
+            
+            // Forward the update to the iframe if it's ready
+            if (this.iframe && this.isReady) {
+              this.postMessage('USER_DATA_UPDATE', userData);
+            }
+          }
+          return;
+        }
+        
         if (validOrigin && event.data.type === 'USER_DATA_RESPONSE' && event.data.userData) {
           const wixUserData = event.data.userData;
           console.log('✅ Received authentic user data from Wix page:', wixUserData);
@@ -193,7 +217,7 @@
           userData = {
             ...userData,
             userId: wixUserData.userId,
-            userName: wixUserData.profile?.displayName || wixUserData.profile?.nickname || 'Authenticated User',
+            userName: wixUserData.userId,  // ✅ Show user ID directly
             userEmail: wixUserData.profile?.loginEmail || '',
             profilePhoto: wixUserData.profile?.profilePhoto || '',
             nickname: wixUserData.profile?.nickname || wixUserData.profile?.displayName,
@@ -226,7 +250,7 @@
       // ✅ ENHANCED USER DATA with better defaults
       let userData = {
         userId: 'guest-' + Date.now(),  // ✅ Use consistent guest format
-        userName: 'Guest User',
+        userName: 'guest-' + Date.now(),  // ✅ Show ID format directly
         source: 'wix-widget-enhanced',
         theme: theme,  // ✅ Pass theme to embed
         parentUrl: window.location.href
@@ -885,7 +909,7 @@
       
       const userData = {
         userId: user ? user.id : 'guest-' + Date.now(),
-        userName: user ? (user.displayName || user.nickname || 'User') : 'Guest User',
+        userName: user ? `User ID: ${user.id}` : 'User ID: guest-' + Date.now(),  // ✅ Show actual user ID
         userEmail: user ? user.loginEmail || '' : '',
         source: 'wix-unregistered-user',
         hasAccess: false,

@@ -4,6 +4,7 @@ import path from "path";
 import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
 
 const LOG_DIR = path.resolve("./data/diveLogs");
+const TMP_LOG_DIR = "/tmp/diveLogs"; // Check both locations for serverless
 const SAFE_USERID = /^[a-zA-Z0-9_-]+$/;
 
 interface DiveLog {
@@ -84,6 +85,35 @@ export default async function handler(
       }
     } catch {
       console.log(`📁 No user directory found: ${userId}/`);
+    }
+
+    // ✅ METHOD 2.5: Check /tmp directory structure (for serverless/Vercel)
+    const tmpUserPath = path.join(TMP_LOG_DIR, userId);
+    try {
+      await fs.access(tmpUserPath);
+      const tmpFiles = await fs.readdir(tmpUserPath);
+      
+      for (const file of tmpFiles) {
+        if (!file.endsWith(".json")) continue;
+
+        try {
+          const filePath = path.join(tmpUserPath, file);
+          const content = await fs.readFile(filePath, "utf8");
+          const parsed: DiveLog = JSON.parse(content);
+
+          if (parsed && typeof parsed === "object") {
+            allLogs.push(parsed);
+          }
+        } catch (parseErr) {
+          console.warn(`⚠️ Could not parse tmp file ${file}:`, parseErr);
+        }
+      }
+      
+      if (tmpFiles.length > 0) {
+        console.log(`✅ Found ${tmpFiles.length} log files in tmp directory: ${userId}/`);
+      }
+    } catch {
+      console.log(`📁 No user tmp directory found: ${userId}/`);
     }
 
     // ✅ METHOD 3: Check for direct UUID files and match by actual user data

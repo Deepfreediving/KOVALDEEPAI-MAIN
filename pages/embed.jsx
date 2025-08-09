@@ -586,7 +586,27 @@ export default function Embed() {
     }
   }, [userId]);
 
-  // ✅ DIVE JOURNAL SUBMIT (Enhanced with better error handling)
+  // ✅ SEND INITIAL USER DATA TO PARENT WIDGET (when diveLogs are loaded)
+  useEffect(() => {
+    if (userId && !loadingDiveLogs && diveLogs && window.parent && window.parent !== window) {
+      const userDataToSend = {
+        userId,
+        diveLogsCount: diveLogs.length,
+        memoriesCount: profile?.memoriesCount || 0,
+        lastUpdated: new Date().toISOString(),
+        source: 'embed-initial-load'
+      };
+      
+      window.parent.postMessage({
+        type: 'USER_DATA_UPDATE',
+        userData: userDataToSend
+      }, '*');
+      
+      console.log(`📤 Sent initial user data to widget - Dive logs: ${diveLogs.length}`);
+    }
+  }, [userId, loadingDiveLogs, diveLogs, profile]);
+
+  // ✅ DIVE JOURNAL SUBMIT (Enhanced with persistent counting)
   const handleJournalSubmit = useCallback(async (diveData) => {
     if (!userId) {
       console.error("❌ No userId available for dive log submission");
@@ -597,33 +617,109 @@ export default function Embed() {
       // Add userId to dive data
       const diveLogWithUser = { ...diveData, userId };
       
-      // Try API first, then fall back to local storage
+      // ✅ STEP 1: Save to Wix userMemory collection for long-term storage and AI retrieval
       try {
-        const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+        const wixMemoryResponse = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(diveLogWithUser),
+          body: JSON.stringify({
+            userId,
+            diveLogData: diveLogWithUser,
+            memoryContent: `Dive Log: ${diveLogWithUser.discipline || 'Unknown'} dive to ${diveLogWithUser.reachedDepth || 0}m at ${diveLogWithUser.location || 'Unknown location'}`,
+            sessionName: `Dive Journal - ${diveLogWithUser.date}`,
+            metadata: {
+              type: 'dive-log',
+              source: 'dive-journal-widget',
+              timestamp: new Date().toISOString()
+            }
+          }),
         });
-
-        if (response.ok) {
-          console.log("✅ Dive log saved to API successfully");
+        
+        if (wixMemoryResponse.ok) {
+          const wixData = await wixMemoryResponse.json();
+          console.log("✅ Dive log saved to Wix userMemory collection successfully");
+          console.log(`📊 Updated counts - Dive logs: ${wixData.diveLogsCount}, Memories: ${wixData.memoriesCount}`);
+          
+          // Update local state with accurate counts from Wix
+          setProfile(prev => ({
+            ...prev,
+            diveLogsCount: wixData.diveLogsCount,
+            memoriesCount: wixData.memoriesCount,
+            lastDiveLogSaved: new Date().toISOString()
+          }));
+          
+          // Send updated counts to parent widget
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+              type: 'USER_DATA_UPDATE',
+              userData: {
+                userId,
+                diveLogsCount: wixData.diveLogsCount,
+                memoriesCount: wixData.memoriesCount,
+                lastUpdated: new Date().toISOString()
+              }
+            }, '*');
+            console.log(`📤 Sent updated counts to widget - Dive logs: ${wixData.diveLogsCount}`);
+          }
         } else {
-          throw new Error("API save failed");
+          console.warn("⚠️ Wix userMemory save failed, falling back to Next.js API");
+          throw new Error("Wix userMemory save failed");
         }
-      } catch (apiError) {
-        console.log("ℹ️ API not available, saving to local storage only");
+      } catch (wixError) {
+        console.warn("⚠️ Wix userMemory unavailable, trying Next.js API:", wixError.message);
         
-        // Save to local storage as fallback
-        const key = storageKey(userId);
-        const existingLogs = safeParse(key, []);
-        const localId = `local-${Date.now()}`;
-        const localLog = { ...diveLogWithUser, localId, savedAt: new Date().toISOString() };
-        const updatedLogs = [localLog, ...existingLogs];
-        
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(key, JSON.stringify(updatedLogs));
+        try {
+          const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(diveLogWithUser),
+          });
+
+          if (response.ok) {
+            console.log("✅ Dive log saved to Next.js API as fallback");
+          }
+        } catch (apiError) {
+          console.warn("⚠️ Next.js API also not available for dive log save:", apiError.message);
         }
-        setDiveLogs(updatedLogs);
+      }
+      
+      // ✅ STEP 2: Also save to local storage with proper counting
+      const key = storageKey(userId);
+      const existingLogs = safeParse(key, []);
+      const localId = `local-${Date.now()}`;
+      const localLog = { 
+        ...diveLogWithUser, 
+        localId, 
+        savedAt: new Date().toISOString(),
+        id: localId // Ensure it has an ID for display
+      };
+      const updatedLogs = [localLog, ...existingLogs];
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(updatedLogs));
+        console.log(`✅ Dive log saved to localStorage. Total count: ${updatedLogs.length}`);
+      }
+      setDiveLogs(updatedLogs);
+      
+      // ✅ STEP 3: Update the profile data immediately for correct count display
+      setProfile(prev => ({
+        ...prev,
+        diveLogsCount: updatedLogs.length,
+        lastDiveLogSaved: new Date().toISOString()
+      }));
+      
+      // ✅ STEP 4: Send user data update to parent widget
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'USER_DATA_UPDATE',
+          userData: {
+            userId,
+            diveLogsCount: updatedLogs.length,
+            memoriesCount: profile?.memoriesCount || 0,
+            lastUpdated: new Date().toISOString()
+          }
+        }, '*');
+        console.log(`📤 Sent updated dive logs count (${updatedLogs.length}) to widget`);
       }
 
       // Refresh the list regardless of save method
