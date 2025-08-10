@@ -10,7 +10,7 @@ This document explains how the frontend calls backend functions and how the back
 | `backend.wixConnection()`  | `wixConnection()`  | `post_wixConnection()` |
 | `backend.diveLogs()`       | `diveLogs()`       | `post_diveLogs()`      |
 | `backend.getUserProfile()` | `getUserProfile()` | `get_memberProfile()`  |
-| `backend.userMemory()`     | `userMemory()`     | `post_userMemory()`    |
+| `backend.saveUserMemory()` | `saveUserMemory()` | `post_userMemory()`    |
 | `backend.test()`           | `test()`           | `post_test()`          |
 
 ## How It Works

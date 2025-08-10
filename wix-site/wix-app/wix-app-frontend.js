@@ -38,7 +38,7 @@ import { chat as backendChat } from 'backend/chat.jsw';
 import { wixConnection as backendWixConnection } from 'backend/wixConnection.jsw';
 import { getUserProfile as backendGetUserProfile } from 'backend/memberProfile.jsw';
 import { diveLogs as backendDiveLogs } from 'backend/diveLogs.jsw';
-import { userMemory as backendUserMemory } from 'backend/userMemory.jsw';
+import { saveUserMemory as backendUserMemory } from 'backend/userMemory.jsw';
 import { test as backendTest } from 'backend/test.jsw';
 
 // 🛡️ GLOBAL ERROR HANDLER - Wix Safe Version
