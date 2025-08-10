@@ -302,6 +302,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { message, userId = 'guest', profile = {}, embedMode = false, diveLogs = [] } = req.body;
     
+    // ✅ Extract nickname from Members/FullData profile IMMEDIATELY  
+    const getUserNickname = (profile: any): string => {
+      if (profile?.nickname && profile.nickname !== 'nickname' && profile.nickname !== 'Authenticated User') {
+        return profile.nickname;
+      }
+      if (profile?.displayName && profile.displayName !== 'displayName' && profile.displayName !== 'Authenticated User') {
+        return profile.displayName;
+      }
+      if (profile?.userName && profile.userName !== 'userName') {
+        return profile.userName;
+      }
+      if (profile?.firstName && profile?.lastName) {
+        return `${profile.firstName} ${profile.lastName}`;
+      }
+      if (profile?.firstName) {
+        return profile.firstName;
+      }
+      if (profile?.loginEmail && !profile.loginEmail.includes('unknown')) {
+        return profile.loginEmail.split('@')[0];
+      }
+      return userId && userId.startsWith('guest') ? 'Guest User' : 'User';
+    };
+
+    const nickname = getUserNickname(profile);
+    
     // ✅ Enhanced validation
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ 
@@ -310,7 +335,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    console.log(`🚀 Chat request received from userId=${userId} (embedMode=${embedMode})`);
+    console.log(`🚀 Chat request received from ${nickname} (userId=${userId}, embedMode=${embedMode})`);
+    console.log(`📊 Profile data received:`, { 
+      nickname: profile?.nickname, 
+      displayName: profile?.displayName,
+      userName: profile?.userName,
+      source: profile?.source 
+    });
 
     // ✅ Process dive logs for context (similar to chat-embed.ts)
     let diveLogContext = '';
@@ -365,35 +396,11 @@ ${recentDiveLogs}
     const userLevel = detectUserLevel(mergedProfile);
     const depthRange = getDepthRange(mergedProfile.pb || mergedProfile.currentDepth || 10);
 
-    // ✅ Extract nickname from Members/FullData profile  
-    const getUserNickname = (profile: any): string => {
-      if (profile?.nickname && profile.nickname !== 'nickname' && profile.nickname !== 'Authenticated User') {
-        return profile.nickname;
-      }
-      if (profile?.displayName && profile.displayName !== 'displayName' && profile.displayName !== 'Authenticated User') {
-        return profile.displayName;
-      }
-      if (profile?.userName && profile.userName !== 'userName') {
-        return profile.userName;
-      }
-      if (profile?.firstName && profile?.lastName) {
-        return `${profile.firstName} ${profile.lastName}`;
-      }
-      if (profile?.firstName) {
-        return profile.firstName;
-      }
-      if (profile?.loginEmail && !profile.loginEmail.includes('unknown')) {
-        return profile.loginEmail.split('@')[0];
-      }
-      return userId.startsWith('guest') ? 'Guest User' : 'User';
-    };
-
-    const nickname = getUserNickname(mergedProfile);
-    console.log(`👤 User: ${nickname} (userId: ${userId})`);
-    console.log(`📊 Profile data:`, { 
-      nickname: mergedProfile?.nickname, 
-      displayName: mergedProfile?.displayName,
-      userName: mergedProfile?.userName,
+    console.log(`👤 Processing request for ${nickname} (level: ${userLevel}, depth range: ${depthRange})`);
+    console.log(`� Merged profile data:`, { 
+      pb: mergedProfile?.pb,
+      currentDepth: mergedProfile?.currentDepth,
+      isInstructor: mergedProfile?.isInstructor,
       source: mergedProfile?.source 
     });
 
