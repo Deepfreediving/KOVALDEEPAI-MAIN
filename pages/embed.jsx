@@ -75,11 +75,11 @@ export default function Embed() {
     console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
     
     // Try rich profile data first (from Wix Collections/Members)
-    if (profile?.displayName && profile.displayName !== 'Guest User' && profile.displayName !== 'Authenticated User') {
+    if (profile?.displayName && profile.displayName !== 'nickname' && profile.displayName !== 'Authenticated User') {
       console.log('✅ Using profile.displayName:', profile.displayName);
       return profile.displayName;
     }
-    if (profile?.nickname && profile.nickname !== 'Guest User' && profile.nickname !== 'Diver') {
+    if (profile?.nickname && profile.nickname !== 'nickname' && profile.nickname !== 'Diver') {
       console.log('✅ Using profile.nickname:', profile.nickname);
       return profile.nickname;
     }
@@ -102,54 +102,43 @@ export default function Embed() {
       return profile.contactDetails.firstName;
     }
     
-    // Show "Loading..." for non-guest users while waiting for profile data
-    if (userId && !userId.startsWith("guest") && !profile?.source) {
-      console.log('⏳ Waiting for user profile data...');
+    // Always show "Loading..." while waiting for real user data - no guest fallback
+    if (userId && !profile?.source) {
+      console.log('⏳ Waiting for user profile data from Members/FullData...');
       return "Loading...";
     }
     
-    // Fallback to guest user only if userId starts with "guest"
-    const fallback = userId?.startsWith("guest") ? "Guest User" : "User";
-    console.log('🔄 Using fallback:', fallback);
-    return fallback;
+    // Final fallback - should rarely be used if auth is working correctly  
+    console.log('🔄 Using final fallback: User');
+    return "User";
   }, [profile, userId]);
 
   const getProfilePhoto = useCallback(() => {
-    if (profile?.profilePhoto) {
-      return profile.profilePhoto;
+    // Return profile photo URL if available
+    if (profile?.profilePicture && profile.profilePicture !== 'unknown') {
+      return profile.profilePicture;
     }
-    // You could add a default avatar URL here
+    if (profile?.contactDetails?.picture) {
+      return profile.contactDetails.picture;
+    }
     return null;
   }, [profile]);
 
-  // ✅ INITIALIZATION with userId validation
+  // ✅ MINIMAL INITIALIZATION - Only load sessions, wait for auth from parent
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setSessionsList(safeParse("kovalSessionsList", []));
-      
-      let storedUserId = localStorage.getItem("kovalUser") || `guest-${Date.now()}`;
-      
-      // Validate userId
-      if (!storedUserId || storedUserId === 'undefined' || storedUserId === 'null') {
-        storedUserId = `guest-${Date.now()}`;
-        console.warn('⚠️ Invalid stored userId, generated new:', storedUserId);
-      }
-      
-      setUserId(storedUserId);
-      localStorage.setItem("kovalUser", storedUserId);
-      
       setThreadId(localStorage.getItem("kovalThreadId") || null);
-      setProfile(safeParse("kovalProfile", { nickname: "Guest User" }));
     }
   }, []);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
   useEffect(() => {
     if (router.isReady) {
-      const { theme, userId: urlUserId, userName, embedded } = router.query;
-      
-      console.log('🎯 Embed page - URL parameters:', { theme, userId: urlUserId, userName, embedded });
-      
+      const { theme, userId: urlUserId, nickname, embedded } = router.query;
+
+      console.log('🎯 Embed page - URL parameters:', { theme, userId: urlUserId, nickname, embedded });
+
       // Notify parent that we're ready
       window.parent?.postMessage({ 
         type: 'EMBED_READY', 
@@ -164,34 +153,11 @@ export default function Embed() {
         setDarkMode(false);
       }
       
-      // ✅ DON'T set user data from URL immediately - wait for USER_AUTH postMessage
-      // Only apply theme from URL
-      console.log('✅ Embed URL parameters processed, waiting for USER_AUTH message...');
-      
-      // ✅ FALLBACK: If no USER_AUTH message received within 3 seconds, use URL params
-      setTimeout(() => {
-        if (userId && userId.startsWith('guest-') && urlUserId && !urlUserId.startsWith('guest-')) {
-          console.log('⏰ No USER_AUTH received, falling back to URL userId:', urlUserId);
-          const validatedUserId = String(urlUserId);
-          
-          if (validatedUserId && validatedUserId !== 'undefined' && validatedUserId !== 'null') {
-            setUserId(validatedUserId);
-            localStorage.setItem("kovalUser", validatedUserId);
-          }
-          
-          if (userName) {
-            const decodedUserName = decodeURIComponent(String(userName));
-            setProfile(prev => ({ 
-              ...prev, 
-              nickname: decodedUserName,
-              displayName: decodedUserName,
-              source: 'url-fallback'
-            }));
-          }
-        }
-      }, 3000);
-      
-      console.log('✅ Embed URL parameters processed:', { theme, userId: urlUserId, userName });
+      // ✅ REMOVED: No URL parameter fallback - always wait for proper USER_AUTH message
+      // This ensures we always get the correct nickname from Members/FullData instead of URL params
+      console.log('✅ Embed URL parameters processed, waiting for USER_AUTH message from parent...');
+
+      console.log('✅ Embed URL parameters processed:', { theme, userId: urlUserId, nickname });
     }
   }, [router.isReady, router.query]);
 
@@ -235,12 +201,10 @@ export default function Embed() {
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
             
-            // Ensure userId is always defined for components
-            if (!newUserId || newUserId === 'undefined' || newUserId === 'null') {
-              const fallbackId = `wix-guest-${Date.now()}`;
-              console.warn('⚠️ Invalid userId received, using fallback:', fallbackId);
-              setUserId(fallbackId);
-              localStorage.setItem("kovalUser", fallbackId);
+            // Validate userId is real - no fallback to guest users
+            if (!newUserId || newUserId === 'undefined' || newUserId === 'null' || newUserId.startsWith('guest-')) {
+              console.warn('⚠️ Invalid or guest userId received, waiting for real user authentication');
+              return; // Don't set invalid user data
             }
           }
           
@@ -248,10 +212,12 @@ export default function Embed() {
           if (event.data.data?.userName || event.data.data?.userEmail) {
             const richProfile = {
               nickname: event.data.data.userName || 
-                       event.data.data.firstName + ' ' + event.data.data.lastName ||
+                       (event.data.data.firstName && event.data.data.lastName ? 
+                        `${event.data.data.firstName} ${event.data.data.lastName}` : '') ||
                        event.data.data.userEmail || 'User',
               displayName: event.data.data.userName || 
-                          event.data.data.firstName + ' ' + event.data.data.lastName ||
+                          (event.data.data.firstName && event.data.data.lastName ? 
+                           `${event.data.data.firstName} ${event.data.data.lastName}` : '') ||
                           event.data.data.userEmail || 'User',
               loginEmail: event.data.data.userEmail || '',
               firstName: event.data.data.firstName || '',
@@ -268,9 +234,9 @@ export default function Embed() {
             console.log('✅ Setting rich profile to:', richProfile);
             setProfile(richProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
-            console.log('✅ Rich profile updated with Collections/Members data:', richProfile);
+            console.log('✅ Rich profile updated with Members/FullData:', richProfile);
           } else {
-            console.log('⚠️ No userName or userEmail in USER_AUTH data');
+            console.log('⚠️ No userName or userEmail in USER_AUTH data - waiting for valid user data');
           }
           
           if (event.data.data?.diveLogs) {
@@ -306,6 +272,8 @@ export default function Embed() {
               setDiveLogs(event.data.diveLogs);
               localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.diveLogs));
             }
+          } else {
+            console.log('⚠️ Invalid userId in KOVAL_USER_AUTH - waiting for valid user data');
           }
           break;
       }
@@ -346,6 +314,8 @@ export default function Embed() {
             setDiveLogs(globalUserData.userDiveLogs);
             localStorage.setItem("koval_ai_logs", JSON.stringify(globalUserData.userDiveLogs));
           }
+        } else if (globalUserData && globalUserData.userId && globalUserData.userId.startsWith('guest-')) {
+          console.log('⚠️ Found guest user data in global - waiting for real user authentication');
         }
       } catch (error) {
         console.warn('⚠️ Could not access global user data:', error);
@@ -505,7 +475,10 @@ export default function Embed() {
 
   // ✅ ENHANCED DIVE LOGS LOADING with Bridge API Integration
   const loadDiveLogs = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || userId.startsWith('guest-')) {
+      console.log('⚠️ No valid userId available for dive logs loading');
+      return;
+    }
     
     setLoadingDiveLogs(true);
     try {
@@ -608,8 +581,8 @@ export default function Embed() {
 
   // ✅ DIVE JOURNAL SUBMIT (Enhanced with persistent counting)
   const handleJournalSubmit = useCallback(async (diveData) => {
-    if (!userId) {
-      console.error("❌ No userId available for dive log submission");
+    if (!userId || userId.startsWith('guest-')) {
+      console.error("❌ No valid userId available for dive log submission");
       return;
     }
 
