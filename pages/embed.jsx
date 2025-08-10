@@ -198,14 +198,17 @@ export default function Embed() {
           if (event.data.data?.userId) {
             console.log('✅ Setting userId to:', event.data.data.userId);
             const newUserId = String(event.data.data.userId);
-            setUserId(newUserId);
-            localStorage.setItem("kovalUser", newUserId);
             
             // Validate userId is real - no fallback to guest users
             if (!newUserId || newUserId === 'undefined' || newUserId === 'null' || newUserId.startsWith('guest-')) {
               console.warn('⚠️ Invalid or guest userId received, waiting for real user authentication');
+              console.warn('⚠️ Received userId:', newUserId);
               return; // Don't set invalid user data
             }
+            
+            setUserId(newUserId);
+            localStorage.setItem("kovalUser", newUserId);
+            console.log('✅ UserId set successfully:', newUserId);
           }
           
           // Update profile with rich Wix Collections/Members data
@@ -386,6 +389,13 @@ export default function Embed() {
 
     try {
       console.log("🚀 Sending message to enhanced chat bridge API...");
+      console.log("📊 Chat context:", {
+        userId,
+        profileSource: profile?.source,
+        diveLogsCount: diveLogs?.length || 0,
+        embedMode: true
+      });
+      console.log("📝 Dive logs being sent:", diveLogs?.slice(0, 2)); // Show first 2 logs
 
       // ✅ Use enhanced chat bridge with dive logs context
       const response = await fetch(API_ROUTES.CHAT, {
@@ -475,6 +485,14 @@ export default function Embed() {
 
   // ✅ ENHANCED DIVE LOGS LOADING with Bridge API Integration
   const loadDiveLogs = useCallback(async () => {
+    console.log('🔄 LOADING DIVE LOGS...');
+    console.log('📊 Current userId:', userId);
+    console.log('📊 UserId validation:', {
+      hasUserId: !!userId,
+      isGuest: userId?.startsWith('guest-'),
+      userIdType: typeof userId
+    });
+    
     if (!userId || userId.startsWith('guest-')) {
       console.log('⚠️ No valid userId available for dive logs loading');
       return;
@@ -484,12 +502,14 @@ export default function Embed() {
     try {
       // Load from localStorage first for immediate display
       const key = storageKey(userId);
+      console.log('📂 localStorage key:', key);
       const localLogs = safeParse(key, []);
       setDiveLogs(localLogs);
       console.log(`📱 Loaded ${localLogs.length} local dive logs`);
 
       // ✅ Try enhanced dive logs bridge API
       try {
+        console.log('📡 Attempting to fetch from bridge API...');
         const response = await fetch(API_ROUTES.GET_DIVE_LOGS, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -581,17 +601,28 @@ export default function Embed() {
 
   // ✅ DIVE JOURNAL SUBMIT (Enhanced with persistent counting)
   const handleJournalSubmit = useCallback(async (diveData) => {
+    console.log('🚀 DIVE LOG SUBMISSION STARTED');
+    console.log('📊 Current userId:', userId);
+    console.log('📊 UserId type:', typeof userId);
+    console.log('📊 UserId starts with guest?:', userId?.startsWith('guest-'));
+    console.log('📊 Dive data to save:', diveData);
+    console.log('📊 Current profile:', profile);
+    
     if (!userId || userId.startsWith('guest-')) {
       console.error("❌ No valid userId available for dive log submission");
+      console.error("❌ userId:", userId);
+      console.error("❌ Profile source:", profile?.source);
       return;
     }
 
     try {
       // Add userId to dive data
       const diveLogWithUser = { ...diveData, userId };
+      console.log('📝 Dive log with user data:', diveLogWithUser);
       
       // ✅ STEP 1: Save to Wix userMemory collection for long-term storage and AI retrieval
       try {
+        console.log('📤 Attempting to save to Wix userMemory...');
         const wixMemoryResponse = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -607,6 +638,8 @@ export default function Embed() {
             }
           }),
         });
+        
+        console.log('📥 Wix userMemory response status:', wixMemoryResponse.status);
         
         if (wixMemoryResponse.ok) {
           const wixData = await wixMemoryResponse.json();
@@ -635,21 +668,28 @@ export default function Embed() {
             console.log(`📤 Sent updated counts to widget - Dive logs: ${wixData.diveLogsCount}`);
           }
         } else {
-          console.warn("⚠️ Wix userMemory save failed, falling back to Next.js API");
-          throw new Error("Wix userMemory save failed");
+          const errorText = await wixMemoryResponse.text();
+          console.warn("⚠️ Wix userMemory save failed:", wixMemoryResponse.status, errorText);
+          throw new Error(`Wix userMemory save failed: ${wixMemoryResponse.status}`);
         }
       } catch (wixError) {
         console.warn("⚠️ Wix userMemory unavailable, trying Next.js API:", wixError.message);
         
         try {
+          console.log('📤 Attempting to save to Next.js API fallback...');
           const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(diveLogWithUser),
           });
 
+          console.log('📥 Next.js API response status:', response.status);
+          
           if (response.ok) {
             console.log("✅ Dive log saved to Next.js API as fallback");
+          } else {
+            const errorText = await response.text();
+            console.warn("⚠️ Next.js API save failed:", response.status, errorText);
           }
         } catch (apiError) {
           console.warn("⚠️ Next.js API also not available for dive log save:", apiError.message);
@@ -657,8 +697,11 @@ export default function Embed() {
       }
       
       // ✅ STEP 2: Also save to local storage with proper counting
+      console.log('💾 Saving to localStorage...');
       const key = storageKey(userId);
       const existingLogs = safeParse(key, []);
+      console.log(`📂 Found ${existingLogs.length} existing logs in localStorage`);
+      
       const localId = `local-${Date.now()}`;
       const localLog = { 
         ...diveLogWithUser, 
@@ -673,6 +716,7 @@ export default function Embed() {
         console.log(`✅ Dive log saved to localStorage. Total count: ${updatedLogs.length}`);
       }
       setDiveLogs(updatedLogs);
+      console.log('📋 Updated diveLogs state with', updatedLogs.length, 'logs');
       
       // ✅ STEP 3: Update the profile data immediately for correct count display
       setProfile(prev => ({
@@ -696,6 +740,7 @@ export default function Embed() {
       }
 
       // Refresh the list regardless of save method
+      console.log('🔄 Refreshing dive logs list...');
       await loadDiveLogs();
       setIsDiveJournalOpen(false);
       setEditLogIndex(null);
@@ -714,9 +759,13 @@ export default function Embed() {
         userId: userId,
         timestamp: Date.now()
       }, "*");
+      
+      console.log('✅ DIVE LOG SUBMISSION COMPLETED SUCCESSFULLY');
 
     } catch (error) {
       console.error("❌ Error saving dive log:", error);
+      console.error("❌ Error details:", error.message);
+      console.error("❌ Error stack:", error.stack);
     }
   }, [userId, loadDiveLogs]);
 
