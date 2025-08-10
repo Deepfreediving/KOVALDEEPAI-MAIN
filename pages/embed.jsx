@@ -185,6 +185,45 @@ export default function Embed() {
       }
       
       switch (event.data?.type) {
+        case 'initialized':
+          console.log('🚀 Widget initialized with data:', event.data.data);
+          
+          if (event.data.data?.user?.id) {
+            const newUserId = String(event.data.data.user.id);
+            
+            // Validate userId is real - no fallback to guest users
+            if (!newUserId || newUserId === 'undefined' || newUserId === 'null' || newUserId.startsWith('guest-')) {
+              console.warn('⚠️ Invalid or guest userId received, waiting for real user authentication');
+              console.warn('⚠️ Received userId:', newUserId);
+              return; // Don't set invalid user data
+            }
+            
+            setUserId(newUserId);
+            localStorage.setItem("kovalUser", newUserId);
+            console.log('✅ UserId set from initialized message:', newUserId);
+            
+            // Extract profile data from the initialized message
+            if (event.data.data.user.profile) {
+              const profile = event.data.data.user.profile;
+              const initProfile = {
+                nickname: profile.displayName || profile.nickname || 'User',
+                displayName: profile.displayName || profile.nickname || 'User',
+                loginEmail: profile.loginEmail || '',
+                firstName: profile.firstName || '',
+                lastName: profile.lastName || '',
+                profilePicture: profile.profilePhoto || '',
+                about: profile.about || '',
+                source: 'wix-initialized',
+                ...profile
+              };
+              
+              console.log('✅ Setting profile from initialized message:', initProfile);
+              setProfile(initProfile);
+              localStorage.setItem("kovalProfile", JSON.stringify(initProfile));
+            }
+          }
+          break;
+          
         case 'THEME_CHANGE':
           console.log('🎨 Theme change received:', event.data.data);
           setDarkMode(Boolean(event.data.data?.dark));
