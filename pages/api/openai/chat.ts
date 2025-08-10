@@ -304,6 +304,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // ✅ Extract nickname from Members/FullData profile IMMEDIATELY  
     const getUserNickname = (profile: any): string => {
+      // First try standard Wix profile fields
       if (profile?.nickname && profile.nickname !== 'nickname' && profile.nickname !== 'Authenticated User') {
         return profile.nickname;
       }
@@ -313,15 +314,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (profile?.userName && profile.userName !== 'userName') {
         return profile.userName;
       }
+      
+      // Try name combinations
       if (profile?.firstName && profile?.lastName) {
         return `${profile.firstName} ${profile.lastName}`;
       }
       if (profile?.firstName) {
         return profile.firstName;
       }
+      
+      // Try email extraction
       if (profile?.loginEmail && !profile.loginEmail.includes('unknown')) {
         return profile.loginEmail.split('@')[0];
       }
+      
+      // Check for Wix currentUser fallback data
+      if (profile?.source?.includes('currentUser') || profile?.source?.includes('fallback')) {
+        return profile?.displayName || profile?.nickname || 'User';
+      }
+      
+      // Final fallback
       return userId && userId.startsWith('guest') ? 'Guest User' : 'User';
     };
 

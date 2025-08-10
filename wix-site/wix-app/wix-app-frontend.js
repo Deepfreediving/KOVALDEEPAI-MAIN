@@ -735,7 +735,7 @@ function hideTypingIndicator(widget) {
 }
 
 // 🔥 MAIN APPLICATION INITIALIZATION - WIX APP SAFE
-function initializeKovalApp() {
+async function initializeKovalApp() {
   let aiWidget = null; // Declare at function scope
   
   try {
@@ -778,6 +778,8 @@ function initializeKovalApp() {
 
     // Get current user
     let currentUser = null;
+    let userProfile = null;
+    
     try {
       // ✅ Use wixUsers.currentUser instead of getCurrentUser() in Wix Apps
       currentUser = wixUsers.currentUser;
@@ -785,13 +787,38 @@ function initializeKovalApp() {
         logDebug(`👤 User authenticated: ${currentUser.id}`);
         
         // Load user profile (master mode always enabled)
-        getUserProfile(currentUser.id)
-          .then((profile) => {
-            logDebug("📋 User profile loaded");
-          })
-          .catch((error) => {
-            logDebug("Could not load user profile:", error);
-          });
+        try {
+          userProfile = await getUserProfile(currentUser.id);
+          logDebug("📋 User profile loaded:", userProfile);
+          
+          // ✅ FALLBACK: If backend profile is empty, use currentUser data
+          if (!userProfile || !userProfile.nickname) {
+            logDebug("⚠️ Backend profile empty, using currentUser data as fallback");
+            userProfile = {
+              nickname: currentUser.nickname || currentUser.displayName || 'User',
+              displayName: currentUser.displayName || currentUser.nickname || 'User', 
+              firstName: currentUser.firstName || '',
+              lastName: currentUser.lastName || '',
+              loginEmail: currentUser.loginEmail || '',
+              profilePhoto: currentUser.picture || '',
+              source: 'wix-currentUser-fallback'
+            };
+          }
+        } catch (error) {
+          logDebug("Could not load user profile:", error);
+          
+          // ✅ FALLBACK: Use currentUser data directly
+          userProfile = {
+            nickname: currentUser.nickname || currentUser.displayName || 'User',
+            displayName: currentUser.displayName || currentUser.nickname || 'User',
+            firstName: currentUser.firstName || '',
+            lastName: currentUser.lastName || '',
+            loginEmail: currentUser.loginEmail || '',
+            profilePhoto: currentUser.picture || '',
+            source: 'wix-currentUser-error-fallback'
+          };
+          logDebug("📋 Using currentUser fallback profile:", userProfile);
+        }
       } else {
         logDebug("👤 No authenticated user or user not logged in");
       }
@@ -954,7 +981,10 @@ function initializeKovalApp() {
           type: 'initialized',
           data: {
             mode: currentMode,
-            user: currentUser ? { id: currentUser.id } : null,
+            user: currentUser ? {
+              id: currentUser.id,
+              profile: userProfile
+            } : null,
             endpoints: ENDPOINT_STATUS
           }
         });
