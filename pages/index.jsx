@@ -348,6 +348,15 @@ export default function Index() {
     }
   }, [loadDiveLogs]);
 
+  // ✅ WRAPPER FUNCTIONS FOR DIVE JOURNAL COMPONENT
+  const handleDiveLogSubmit = useCallback(async (diveData) => {
+    await handleJournalSubmit(diveData);
+  }, [handleJournalSubmit]);
+
+  const handleDiveLogDelete = useCallback(async (logId) => {
+    await handleDelete(logId);
+  }, [handleDelete]);
+
   // ✅ SESSION MANAGEMENT
   const handleSaveSession = useCallback(() => {
     const newSession = {
@@ -572,6 +581,86 @@ export default function Index() {
             darkMode={darkMode}
           />
         </div>
+
+        {/* Dive Journal Button & Quick Access */}
+        <div className={`px-4 py-2 border-t ${darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              onClick={() => setIsDiveJournalOpen(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                darkMode
+                  ? "bg-blue-600 hover:bg-blue-500 text-white"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }`}
+            >
+              📝 Add Dive Log
+            </button>
+            
+            <div className="flex items-center gap-3 text-sm">
+              <span className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                📊 {diveLogs.length} logs recorded
+              </span>
+              {diveLogs.length > 0 && (
+                <button
+                  onClick={() => setIsDiveJournalOpen(true)}
+                  className={`px-3 py-1 rounded-md transition-colors ${
+                    darkMode
+                      ? "text-blue-400 hover:text-blue-300 hover:bg-gray-700"
+                      : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  }`}
+                >
+                  View All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Recent Dive Logs Preview */}
+          {diveLogs.length > 0 && (
+            <div className={`mt-3 pt-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+              <div className={`text-xs font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                🏊‍♂️ Recent Dives
+              </div>
+              <div className="space-y-1">
+                {diveLogs.slice(0, 2).map((log, index) => (
+                  <div
+                    key={index}
+                    className={`text-xs p-2 rounded-md cursor-pointer transition-colors ${
+                      darkMode
+                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                        : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
+                    }`}
+                    onClick={() => setIsDiveJournalOpen(true)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">
+                        {log.reachedDepth || log.targetDepth}m - {log.discipline || 'Freedive'}
+                      </span>
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        {log.date || 'Recent'}
+                      </span>
+                    </div>
+                    {log.location && (
+                      <div className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        📍 {log.location}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {diveLogs.length > 2 && (
+                  <div
+                    className={`text-xs text-center py-1 cursor-pointer ${
+                      darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700"
+                    }`}
+                    onClick={() => setIsDiveJournalOpen(true)}
+                  >
+                    +{diveLogs.length - 2} more dives...
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
 
@@ -600,7 +689,16 @@ export default function Index() {
               </button>
             </div>
             <div className="h-[calc(95vh-80px)]">
-              <DiveJournalSidebarCard userId={userId} darkMode={darkMode} />
+              <DiveJournalSidebarCard 
+                userId={userId} 
+                darkMode={darkMode}
+                onSubmit={handleDiveLogSubmit}
+                onDelete={handleDiveLogDelete}
+                diveLogs={diveLogs}
+                loadingDiveLogs={loadingDiveLogs}
+                editLogIndex={editLogIndex}
+                setEditLogIndex={setEditLogIndex}
+              />
             </div>
           </div>
         </div>
