@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
           status: 'healthy',
           configured: true,
-          model: hasGPT4 ? 'gpt-4o-mini' : 'available',
+          model: hasGPT4 ? 'gpt-4' : 'available',
           quotaStatus: 'active',
           responseTime: Date.now() - startTime,
           modelsCount: models.length

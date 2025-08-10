@@ -306,22 +306,22 @@ const WIX_ERROR_CODES = {
     'WDE0202': 'Database overloaded - Reduce request frequency'
 };
 
-// ✅ WIX PAGE: DIRECT NEXT.JS API ENDPOINTS (NO WIX FUNCTIONS)
-const WIX_CONNECTION_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
-const MEMBER_PROFILE_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
-const TEST_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
-const WIX_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+// ✅ WIX PAGE: CORRECTED API ENDPOINTS - NO MORE OPENAI ERRORS!
+const WIX_CONNECTION_API = "/_functions/wixConnection";
+const MEMBER_PROFILE_API = "/_functions/getUserProfile";
+const TEST_API = "/_functions/test";
+const WIX_CHAT_API = "/_functions/chat";
 const WIX_DIVE_LOGS_API = "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs";
-const WIX_USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
-const WIX_GET_USER_PROFILE_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";
+const WIX_USER_MEMORY_API = "/_functions/userMemory";
+const WIX_GET_USER_PROFILE_API = "/_functions/getUserProfile";
 
-// ✅ NEXT.JS BACKEND FALLBACKS
-const CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Next.js fallback
-const USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Next.js fallback
-const DIVE_LOGS_API = "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs";  // ✅ Next.js fallback
-const LOAD_MEMORIES_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Next.js fallback
-const GET_USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Next.js fallback
-const SAVE_TO_USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Next.js fallback
+// ✅ NEXT.JS BACKEND FALLBACKS - CORRECTED
+const CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";  // ✅ Only for chat
+const USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/auth/save-user-memory";  // ✅ FIXED
+const DIVE_LOGS_API = "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs";  // ✅ Already correct
+const LOAD_MEMORIES_API = "https://kovaldeepai-main.vercel.app/api/auth/get-user-memory";  // ✅ FIXED
+const GET_USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/auth/get-user-memory";  // ✅ FIXED
+const SAVE_TO_USER_MEMORY_API = "https://kovaldeepai-main.vercel.app/api/auth/save-user-memory";  // ✅ FIXED
 
 // ✅ Keep backup the same
 const BACKUP_CHAT_API = "https://kovaldeepai-main.vercel.app/api/openai/chat";

@@ -106,7 +106,7 @@ export async function post_chat(request) {
     };
 
     // Call AI backend
-    const aiResponse = await fetch(CHAT_CONFIG.API_ENDPOINTS.FALLBACK_BACKEND, {
+    const aiResponse = await fetch(CHAT_CONFIG.API_ENDPOINTS.AI_BACKEND, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
