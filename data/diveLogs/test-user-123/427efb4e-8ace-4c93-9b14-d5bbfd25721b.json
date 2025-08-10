@@ -1,0 +1,23 @@
+{
+  "id": "dive_test-user-123_1754809648305",
+  "timestamp": "2025-08-10T07:07:28.306Z",
+  "userId": "test-user-123",
+  "date": "2024-01-15",
+  "disciplineType": "Dynamic",
+  "discipline": "DYN",
+  "location": "Test Pool",
+  "targetDepth": 25,
+  "reachedDepth": 22,
+  "mouthfillDepth": 15,
+  "issueDepth": 0,
+  "squeeze": false,
+  "exit": "Good",
+  "durationOrDistance": "120",
+  "attemptType": "Training",
+  "notes": "Test dive log submission for debugging",
+  "totalDiveTime": "2:00",
+  "issueComment": "",
+  "surfaceProtocol": "Good",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}
