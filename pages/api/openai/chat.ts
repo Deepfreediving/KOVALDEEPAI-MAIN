@@ -76,21 +76,26 @@ async function queryDiveLogs(userId: string): Promise<string[]> {
   }
 }
 
-function generateSystemPrompt(level: 'expert' | 'beginner', embedMode: boolean = false): string {
+function generateSystemPrompt(level: 'expert' | 'beginner', embedMode: boolean = false, hasDiveLogs: boolean = false): string {
   const userContext = embedMode 
     ? 'You are speaking with an authenticated member through an embedded widget on their private member page. ' 
     : 'You are speaking with an authenticated member on their training dashboard. ';
 
-  return `You are Koval Deep AI, Daniel Koval's freediving coaching system. ${userContext}Provide personalized coaching based on their progress and training history.
+  const diveLogContext = hasDiveLogs 
+    ? '📊 You have access to their personal dive log data and training history, which will be provided below. Use this data to give personalized feedback on their progression, technique improvements, and next training steps. ' 
+    : '';
+
+  return `You are Koval Deep AI, Daniel Koval's freediving coaching system. ${userContext}${diveLogContext}Provide personalized coaching based on their progress and training history.
 
 🎯 CRITICAL REQUIREMENTS:
-- ONLY use information from the provided knowledge base below
+- ${hasDiveLogs ? 'ANALYZE their personal dive logs and provide specific feedback on their progression and performance patterns' : 'ONLY use information from the provided knowledge base below'}
 - If the knowledge base doesn't contain specific information, say "I don't have specific guidance on this in my training materials"
 - Never mix general freediving advice with Daniel's specific methods
 - Provide ${level}-level technical detail appropriate for the user's experience
 - Always prioritize safety and progressive training
 - Keep responses detailed but focused (under ${embedMode ? '600' : '800'} words)
 - Address the user personally as a valued member with access to exclusive training
+${hasDiveLogs ? '- Reference specific dives, depths, and progression patterns from their log data when relevant' : ''}
 
 🚫 FORBIDDEN:
 - Making up training protocols not in the knowledge base
@@ -107,7 +112,8 @@ async function askWithContext(
   message: string, 
   userLevel: 'expert' | 'beginner',  // ✅ Fixed typing
   embedMode: boolean = false,
-  diveLogContext: string = ''
+  diveLogContext: string = '',
+  hasDiveLogs: boolean = false
 ): Promise<string> {
   if (!OPENAI_API_KEY) return "⚠️ OpenAI API is not configured.";
 
@@ -138,7 +144,7 @@ async function askWithContext(
         temperature: 0.7,
         max_tokens: embedMode ? 600 : 800,
         messages: [
-          { role: 'system', content: generateSystemPrompt(userLevel, embedMode) },
+          { role: 'system', content: generateSystemPrompt(userLevel, embedMode, hasDiveLogs) },
           { role: 'system', content: `Knowledge Base:\n${enhancedContext}` },
           { role: 'user', content: message }
         ]
@@ -361,7 +367,7 @@ ${recentDiveLogs}
 
     console.log(`📊 Context: ${contextChunks.length} knowledge + ${diveContext.length} dive logs`);
 
-    const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext);
+    const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext, !!(diveLogs && diveLogs.length > 0));
 
     // ✅ Enhanced response validation and fallback handling
     let responseMetadata = { 
