@@ -737,11 +737,52 @@ $w.onReady(async function () {
     // ===== QUICK USER DATA LOADING =====
     let userData = null;
     try {
+        console.log('🔍 DEBUGGING: About to load user data...');
+        
+        // ✅ ENHANCED DEBUG: Check authentication status first
+        try {
+            const member = await currentMember.getMember();
+            console.log('🔍 DEBUGGING: currentMember result:', {
+                hasmember: !!member,
+                memberId: member?._id,
+                loggedIn: member?.loggedIn,
+                nickname: member?.nickname
+            });
+        } catch (e) {
+            console.log('🔍 DEBUGGING: currentMember failed:', e.message);
+        }
+        
+        const wixUser = wixUsers.currentUser;
+        console.log('🔍 DEBUGGING: wixUsers.currentUser:', {
+            hasUser: !!wixUser,
+            userId: wixUser?.id,
+            loggedIn: wixUser?.loggedIn,
+            nickname: wixUser?.nickname
+        });
+        
         userData = await loadComprehensiveUserData();
-        console.log("✅ User data loaded quickly:", userData.userId);
+        console.log("✅ User data loaded:", {
+            userId: userData.userId,
+            displayName: userData.profile?.displayName
+        });
     } catch (error) {
-        console.warn("⚠️ Using guest data:", error);
-        userData = getGuestUserData();
+        console.error("❌ Authentication error:", error);
+        // Since all users should be authenticated in Wix, show error and retry
+        console.log("🔄 Retrying authentication in 2 seconds...");
+        setTimeout(async () => {
+            try {
+                userData = await loadComprehensiveUserData();
+                console.log("✅ Authentication retry successful:", userData.userId);
+                // Update widget with authenticated user data
+                const embedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${userData.userId}&userName=${encodeURIComponent(userData.profile?.displayName || 'User')}&embedded=true&v=${Date.now()}`;
+                aiWidget.src = embedUrl;
+            } catch (retryError) {
+                console.error("❌ Authentication retry failed:", retryError);
+                // Show user a message to refresh the page
+                alert("Authentication failed. Please refresh the page to continue.");
+            }
+        }, 2000);
+        return; // Exit early on authentication failure
     }
 
     // ===== SETUP WIDGET FAST =====
@@ -795,6 +836,12 @@ $w.onReady(async function () {
         }, 1000);
 
         console.log("⚡ Quick AI setup complete!");
+        
+        // ✅ ENHANCED: Initialize user authentication after widget setup
+        setTimeout(async () => {
+            console.log('🔄 Initializing user authentication flow...');
+            await initializeUserAuthAndEntitlement();
+        }, 2000);
 
     } catch (error) {
         console.error("❌ Quick setup failed:", error);
@@ -1442,16 +1489,54 @@ async function loadComprehensiveUserData() {
     try {
         console.log('🔍 Loading comprehensive user data...');
         
-        const currentUser = wixUsers.currentUser;
+        // ✅ ENHANCED: Use both wixUsers and currentMember for better detection
+        let currentUser = null;
+        let member = null;
+        
+        // Try to get authenticated member first (most reliable for Wix apps)
+        try {
+            member = await currentMember.getMember();
+            if (member && member._id) {
+                console.log('✅ Found authenticated member via currentMember:', {
+                    id: member._id,
+                    loggedIn: member.loggedIn,
+                    nickname: member.nickname,
+                    email: member.loginEmail
+                });
+                currentUser = {
+                    id: member._id,
+                    loggedIn: true, // If we get a member, they're authenticated
+                    nickname: member.nickname || member.profile?.nickname,
+                    displayName: member.profile?.nickname || member.nickname || `${member.profile?.firstName || ''} ${member.profile?.lastName || ''}`.trim(),
+                    loginEmail: member.loginEmail,
+                    picture: member.profile?.profilePhoto
+                };
+            }
+        } catch (memberError) {
+            console.log('ℹ️ currentMember not available:', memberError.message);
+        }
+        
+        // Fallback to wixUsers if currentMember failed
+        if (!currentUser) {
+            const wixUser = wixUsers.currentUser;
+            console.log('🔍 Checking wixUsers.currentUser:', {
+                hasUser: !!wixUser,
+                userId: wixUser?.id,
+                loggedIn: wixUser?.loggedIn,
+                nickname: wixUser?.nickname
+            });
+            
+            if (wixUser && wixUser.loggedIn && wixUser.id) {
+                console.log('✅ Found authenticated user via wixUsers:', wixUser.id);
+                currentUser = wixUser;
+            }
+        }
         
         if (currentUser && currentUser.loggedIn) {
-            console.log('✅ User is logged in:', currentUser.id);
+            console.log('✅ User is authenticated:', currentUser.id);
             
-            // Validate user ID format
-            if (!currentUser.id || currentUser.id.startsWith('guest-') || currentUser.id.startsWith('wix-guest-')) {
-                console.warn("⚠️ Invalid or guest user ID:", currentUser.id);
-                return getGuestUserData();
-            }
+            // Since Wix handles authentication, trust the authenticated user
+            // Don't fall back to guest - all users should be properly authenticated
             
             // Get user profile from collections (with graceful fallback)
             let userProfile = null;
@@ -1514,12 +1599,15 @@ async function loadComprehensiveUserData() {
             
             return userData;
         } else {
-            console.log('ℹ️ User not logged in');
-            return getGuestUserData();
+            console.error('❌ User not logged in - this should not happen in Wix app');
+            // Since Wix handles authentication, this should not happen
+            // Try to force authentication or show error
+            throw new Error('User authentication failed - please refresh the page');
         }
     } catch (error) {
         console.error('❌ Error loading comprehensive user data:', error);
-        return getGuestUserData();
+        // Don't fall back to guest - retry authentication or show error
+        throw new Error(`Authentication error: ${error.message}`);
     }
 }
 
