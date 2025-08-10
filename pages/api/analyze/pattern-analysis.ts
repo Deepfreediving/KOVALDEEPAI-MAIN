@@ -20,10 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`🔬 Starting systematic pattern analysis for ${userId} (${analysisType}, ${timeRange})`);
 
-    // ✅ Fetch all dive logs from UserMemory repeater
+    // ✅ Fetch all dive logs from UserMemory repeater - specific dataset
     let diveLogs = [];
     try {
-      const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&limit=100&patternAnalysisNeeded=true`);
+      const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&limit=100&patternAnalysisNeeded=true&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`);
       
       if (response.ok) {
         const { data } = await response.json();
@@ -96,13 +96,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ✅ Extract key insights and patterns
       const insights = extractPatternInsights(filteredLogs);
 
-      // ✅ Save pattern analysis results to UserMemory
+      // ✅ Save pattern analysis results to UserMemory - specific dataset
       try {
         await fetch('https://www.deepfreediving.com/_functions/userMemory', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId,
+            dataset: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1',
             title: `Pattern Analysis - ${timeRange}`,
             patternAnalysis,
             analysisType,
