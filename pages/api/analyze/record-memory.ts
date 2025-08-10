@@ -60,8 +60,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Use default threadId if not provided
-    const finalThreadId = threadId || `dive-analysis-${userId}-${Date.now()}`;
+    // Use provided threadId if valid, otherwise create a new OpenAI thread when needed
+    let finalThreadId = threadId;
+    
+    // If we have an assistant and no valid thread ID, create one
+    if (assistantId && (!finalThreadId || !finalThreadId.startsWith('thread_'))) {
+      try {
+        const thread = await openai.beta.threads.create();
+        finalThreadId = thread.id;
+        console.log(`✅ Created new OpenAI thread: ${finalThreadId}`);
+      } catch (error) {
+        console.warn('⚠️ Failed to create OpenAI thread, will skip OpenAI integration');
+        finalThreadId = `local-${userId}-${Date.now()}`;
+      }
+    } else if (!finalThreadId) {
+      // Fallback for local storage only
+      finalThreadId = `local-${userId}-${Date.now()}`;
+    }
 
     // ✅ 1. Generate a human-readable dive log summary
     const summary = `
@@ -123,7 +138,7 @@ Notes: ${log.notes}
     // ✅ 4. Send data to OpenAI Memory API (only if we have assistant ID)
     let assistantMessage = { role: 'assistant', content: '✅ Log received and coaching report saved.' };
     
-    if (assistantId) {
+    if (assistantId && finalThreadId?.startsWith('thread_')) {
       try {
         await openai.beta.threads.messages.create(finalThreadId, {
           role: 'user',

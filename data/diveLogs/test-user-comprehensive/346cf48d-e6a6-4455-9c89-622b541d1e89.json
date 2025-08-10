@@ -1,0 +1,23 @@
+{
+  "id": "dive_test-user-comprehensive_1754809987120",
+  "timestamp": "2025-08-10T07:13:07.120Z",
+  "userId": "test-user-comprehensive",
+  "date": "2024-01-20",
+  "disciplineType": "Static",
+  "discipline": "STA",
+  "location": "Training Pool",
+  "targetDepth": 0,
+  "reachedDepth": 0,
+  "mouthfillDepth": 0,
+  "issueDepth": 0,
+  "squeeze": false,
+  "exit": "Good",
+  "durationOrDistance": "180",
+  "attemptType": "PB Attempt",
+  "notes": "Good breath hold, felt relaxed throughout",
+  "totalDiveTime": "3:00",
+  "issueComment": "",
+  "surfaceProtocol": "Perfect",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}

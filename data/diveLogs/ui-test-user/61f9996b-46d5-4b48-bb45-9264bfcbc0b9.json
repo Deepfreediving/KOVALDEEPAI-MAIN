@@ -1,0 +1,23 @@
+{
+  "id": "dive_ui-test-user_1754810483466",
+  "timestamp": "2025-08-10T07:21:23.467Z",
+  "userId": "ui-test-user",
+  "date": "2025-08-10",
+  "disciplineType": "Depth",
+  "discipline": "CWT",
+  "location": "Blue Hole",
+  "targetDepth": 30,
+  "reachedDepth": 28,
+  "mouthfillDepth": 20,
+  "issueDepth": 0,
+  "squeeze": false,
+  "exit": "Good",
+  "durationOrDistance": "",
+  "attemptType": "Training",
+  "notes": "Good dive, felt comfortable at depth. Need to work on equalization below 25m.",
+  "totalDiveTime": "",
+  "issueComment": "",
+  "surfaceProtocol": "Good recovery, clear surface protocol",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}

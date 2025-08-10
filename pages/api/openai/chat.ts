@@ -343,47 +343,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source: profile?.source 
     });
 
-    // ✅ Process dive logs for context (similar to chat-embed.ts)
-    let diveLogContext = '';
-    if (diveLogs && diveLogs.length > 0) {
-      console.log(`📊 Processing ${diveLogs.length} dive logs for enhanced coaching context`);
-      console.log('📊 Sample dive log data:', diveLogs[0]); // Debug first dive log
-      
-      const recentDiveLogs = diveLogs
-        .slice(0, 5) // Last 5 dive logs
-        .map((log: any) => {
-          const details = [
-            `📅 ${log.date || log.timestamp?.split('T')[0] || 'Unknown date'}`,
-            `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
-            `📍 ${log.location || 'Unknown location'}`,
-            `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
-            log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
-            log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
-            log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
-            log.notes ? `📝 ${log.notes}` : ''
-          ].filter(Boolean).join(' | ');
-          
-          return details;
-        })
-        .join('\n');
-      
-      diveLogContext = `
-🏊‍♂️ === MEMBER'S PERSONAL DIVE LOG DATA (YOU CAN ANALYZE THIS) ===
-Recent Dive Sessions (Last ${Math.min(5, diveLogs.length)} dives):
-${recentDiveLogs}
-
-📈 DIVE STATISTICS FOR ANALYSIS:
-- Total recorded dives: ${diveLogs.length}
-- Personal best: ${profile.pb || 'Unknown'}m
-- Last dive depth: ${diveLogs[0]?.reachedDepth || diveLogs[0]?.targetDepth || 'Unknown'}m
-- Progress analysis: ${diveLogs.length >= 3 ? 'Multiple sessions recorded - analyze patterns and progression' : 'Limited data - focus on current goals'}
-
-🎯 COACHING TASK: Analyze the above dive data and provide specific feedback on their progression, technique, and next training steps.
-      `.trim();
-      
-      console.log('✅ Generated dive log context for AI coaching');
-    }
-
     // ✅ FIX: Type memory correctly
     let memory: any = {};
     try { 
@@ -407,11 +366,70 @@ ${recentDiveLogs}
     const contextChunks = await queryPinecone(message);
     const diveContext = await queryDiveLogs(userId);
 
+    // ✅ Load actual dive logs for detailed analysis
+    let localDiveLogs = [];
+    try {
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        localDiveLogs = data.logs || [];
+        console.log(`🗃️ Loaded ${localDiveLogs.length} local dive logs for detailed analysis`);
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not load detailed dive logs:', err);
+    }
+
+    // ✅ Use local dive logs OR request dive logs, prioritizing local
+    const allDiveLogs = localDiveLogs.length > 0 ? localDiveLogs : (diveLogs || []);
+    
+    // ✅ Process dive logs for context (using both local and request dive logs)
+    let diveLogContext = '';
+    if (allDiveLogs && allDiveLogs.length > 0) {
+      console.log(`📊 Processing ${allDiveLogs.length} dive logs for enhanced coaching context`);
+      console.log('📊 Sample dive log data:', allDiveLogs[0]); // Debug first dive log
+      
+      const recentDiveLogs = allDiveLogs
+        .slice(0, 5) // Last 5 dive logs
+        .map((log: any) => {
+          const details = [
+            `📅 ${log.date || log.timestamp?.split('T')[0] || 'Unknown date'}`,
+            `🏊‍♂️ ${log.discipline || log.disciplineType || 'Unknown discipline'}`,
+            `📍 ${log.location || 'Unknown location'}`,
+            `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
+            log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : '',
+            log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : '',
+            log.issueComment ? `💭 Issue: ${log.issueComment}` : '',
+            log.notes ? `📝 ${log.notes}` : ''
+          ].filter(Boolean).join(' | ');
+          
+          return details;
+        })
+        .join('\n');
+      
+      diveLogContext = `
+🏊‍♂️ === MEMBER'S PERSONAL DIVE LOG DATA (YOU CAN ANALYZE THIS) ===
+Recent Dive Sessions (Last ${Math.min(5, allDiveLogs.length)} dives):
+${recentDiveLogs}
+
+📈 DIVE STATISTICS FOR ANALYSIS:
+- Total recorded dives: ${allDiveLogs.length}
+- Personal best: ${profile.pb || 'Unknown'}m
+- Last dive depth: ${allDiveLogs[0]?.reachedDepth || allDiveLogs[0]?.targetDepth || 'Unknown'}m
+- Progress analysis: ${allDiveLogs.length >= 3 ? 'Multiple sessions recorded - analyze patterns and progression' : 'Limited data - focus on current goals'}
+
+🎯 COACHING TASK: Analyze the above dive data and provide specific feedback on their progression, technique, and next training steps.
+      `.trim();
+      console.log('✅ Generated dive log context for AI coaching');
+    }
+    
     console.log(`📊 Context: ${contextChunks.length} knowledge + ${diveContext.length} dive logs`);
     console.log(`📊 Dive log context length: ${diveLogContext.length} characters`);
-    console.log(`📊 Has dive logs flag: ${!!(diveLogs && diveLogs.length > 0)}`);
+    console.log(`📊 Has dive logs flag: ${!!(allDiveLogs && allDiveLogs.length > 0)}`);
 
-    const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext, !!(diveLogs && diveLogs.length > 0));
+    const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext, !!(allDiveLogs && allDiveLogs.length > 0));
 
     // ✅ Enhanced response validation and fallback handling
     let responseMetadata = { 
