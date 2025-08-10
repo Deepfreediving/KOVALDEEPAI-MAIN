@@ -365,7 +365,37 @@ ${recentDiveLogs}
     const userLevel = detectUserLevel(mergedProfile);
     const depthRange = getDepthRange(mergedProfile.pb || mergedProfile.currentDepth || 10);
 
-    console.log(`👤 User: ${userLevel} level, ${depthRange} target`);
+    // ✅ Extract nickname from Members/FullData profile  
+    const getUserNickname = (profile: any): string => {
+      if (profile?.nickname && profile.nickname !== 'nickname' && profile.nickname !== 'Authenticated User') {
+        return profile.nickname;
+      }
+      if (profile?.displayName && profile.displayName !== 'displayName' && profile.displayName !== 'Authenticated User') {
+        return profile.displayName;
+      }
+      if (profile?.userName && profile.userName !== 'userName') {
+        return profile.userName;
+      }
+      if (profile?.firstName && profile?.lastName) {
+        return `${profile.firstName} ${profile.lastName}`;
+      }
+      if (profile?.firstName) {
+        return profile.firstName;
+      }
+      if (profile?.loginEmail && !profile.loginEmail.includes('unknown')) {
+        return profile.loginEmail.split('@')[0];
+      }
+      return userId.startsWith('guest') ? 'Guest User' : 'User';
+    };
+
+    const nickname = getUserNickname(mergedProfile);
+    console.log(`👤 User: ${nickname} (userId: ${userId})`);
+    console.log(`📊 Profile data:`, { 
+      nickname: mergedProfile?.nickname, 
+      displayName: mergedProfile?.displayName,
+      userName: mergedProfile?.userName,
+      source: mergedProfile?.source 
+    });
 
     const contextChunks = await queryPinecone(message);
     const diveContext = await queryDiveLogs(userId);
