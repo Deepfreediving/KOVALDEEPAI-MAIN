@@ -77,22 +77,66 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         console.log('🌐 Syncing dive log to Wix UserMemory collection...');
         
-        // ✅ Format as UserMemory entry (NOT diveLogs collection)
+        // ✅ Format for Wix UserMemory Repeater - Optimized for Pattern Analysis
         const userMemoryData = {
           userId,
-          memoryContent: `Dive Log: ${localLogData.discipline} dive to ${localLogData.reachedDepth}m at ${localLogData.location}`,
-          logEntry: JSON.stringify(localLogData), // Full dive log as JSON
-          sessionName: `Dive Journal - ${localLogData.date}`,
+          title: `${localLogData.discipline} - ${localLogData.location} (${localLogData.reachedDepth}m)`,
+          date: localLogData.date,
+          discipline: localLogData.discipline,
+          disciplineType: localLogData.disciplineType,
+          location: localLogData.location,
+          targetDepth: localLogData.targetDepth,
+          reachedDepth: localLogData.reachedDepth,
+          mouthfillDepth: localLogData.mouthfillDepth || 0,
+          issueDepth: localLogData.issueDepth || 0,
+          issueComment: localLogData.issueComment || '',
+          exit: localLogData.exit,
+          durationOrDistance: localLogData.durationOrDistance,
+          attemptType: localLogData.attemptType,
+          notes: localLogData.notes,
+          totalDiveTime: localLogData.totalDiveTime || '',
+          surfaceProtocol: localLogData.surfaceProtocol || '',
+          squeeze: localLogData.squeeze || false,
           timestamp: localLogData.timestamp,
+          // ✅ Analysis fields for AI pattern recognition
+          progressionScore: calculateProgressionScore(localLogData),
+          riskFactors: identifyRiskFactors(localLogData),
+          technicalNotes: extractTechnicalNotes(localLogData),
+          // ✅ Metadata for systematic analysis
           metadata: {
-            type: 'dive-log',
-            discipline: localLogData.discipline,
-            reachedDepth: localLogData.reachedDepth,
-            location: localLogData.location,
-            date: localLogData.date,
-            source: 'dive-journal-submission'
+            type: 'dive-journal-entry',
+            analysisStatus: 'pending',
+            patternAnalysisNeeded: true,
+            source: 'koval-ai-widget',
+            version: '2.0'
           }
         };
+
+        // ✅ Helper functions for AI analysis preparation
+        function calculateProgressionScore(log: any): number {
+          // Simple progression scoring (0-100)
+          const depthRatio = (log.reachedDepth / log.targetDepth) * 100;
+          const comfortBonus = log.exit === 'Good' ? 10 : 0;
+          const issuesPenalty = log.issueDepth > 0 ? -20 : 0;
+          return Math.max(0, Math.min(100, depthRatio + comfortBonus + issuesPenalty));
+        }
+
+        function identifyRiskFactors(log: any): string[] {
+          const risks = [];
+          if (log.squeeze) risks.push('squeeze-reported');
+          if (log.issueDepth > 0) risks.push('depth-issue');
+          if (log.exit !== 'Good') risks.push('difficult-exit');
+          if (log.reachedDepth > log.targetDepth * 1.1) risks.push('depth-exceeded');
+          return risks;
+        }
+
+        function extractTechnicalNotes(log: any): string {
+          const notes = [];
+          if (log.mouthfillDepth > 0) notes.push(`Mouthfill at ${log.mouthfillDepth}m`);
+          if (log.issueComment) notes.push(`Issue: ${log.issueComment}`);
+          if (log.surfaceProtocol) notes.push(`Surface: ${log.surfaceProtocol}`);
+          return notes.join(' | ');
+        }
 
         // ✅ Save to UserMemory collection (your 50GB permanent storage)
         const wixResponse = await axios.post(
