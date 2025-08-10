@@ -163,7 +163,7 @@ export default async function handler(
           ? `https://${process.env.VERCEL_URL}` 
           : 'http://localhost:3000';
           
-        const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&type=dive-log`, {
+        const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&type=dive-log&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`, {
           headers: { 'Accept': 'application/json' }
         });
         
@@ -190,15 +190,22 @@ export default async function handler(
 
     }
 
-    // ✅ Remove duplicates and sort
+    // ✅ Remove duplicates (only by ID, allow similar dives) and sort
     const uniqueLogs = allLogs.reduce((acc: DiveLog[], log: DiveLog) => {
-      const existingIndex = acc.findIndex(existing => 
-        existing.id === log.id || 
-        (existing.date === log.date && existing.targetDepth === log.targetDepth && existing.reachedDepth === log.reachedDepth)
-      );
+      // Only remove if exact same ID (not similar dive data)
+      const existingIndex = acc.findIndex(existing => existing.id === log.id);
       
       if (existingIndex === -1) {
         acc.push(log);
+      } else {
+        // If same ID but different data, keep the more recent one
+        const existingLog = acc[existingIndex];
+        const logTime = new Date(log.timestamp || log.date || 0).getTime();
+        const existingTime = new Date(existingLog.timestamp || existingLog.date || 0).getTime();
+        
+        if (logTime > existingTime) {
+          acc[existingIndex] = log; // Replace with newer version
+        }
       }
       return acc;
     }, []);

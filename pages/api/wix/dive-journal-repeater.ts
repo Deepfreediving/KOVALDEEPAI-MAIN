@@ -58,7 +58,9 @@ async function saveDiveJournalToRepeater(req: NextApiRequest, res: NextApiRespon
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        // ✅ UserMemory repeater fields
+        // ✅ UserMemory repeater fields - target specific dataset
+        dataset: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1', // ✅ Exact dataset from Wix Editor  
+        collection: 'diveJournalLogs',
         userId,
         title,
         date,
@@ -104,11 +106,25 @@ async function saveDiveJournalToRepeater(req: NextApiRequest, res: NextApiRespon
         data: wixData
       });
     } else {
-      console.error('❌ Wix UserMemory repeater save failed:', wixResponse.status);
+      const errorText = await wixResponse.text();
+      console.error('❌ Wix UserMemory repeater save failed:', wixResponse.status, errorText);
+      
+      // ✅ Provide helpful error messages based on status
+      let errorMessage = 'Failed to save to Wix repeater';
+      if (wixResponse.status === 404) {
+        errorMessage = 'Wix backend function not found - please deploy userMemory function';
+      } else if (wixResponse.status === 403) {
+        errorMessage = 'Permission denied - check UserMemory dataset permissions';
+      } else if (wixResponse.status >= 500) {
+        errorMessage = 'Wix backend error - check backend function logs';
+      }
+      
       return res.status(500).json({
         success: false,
-        error: 'Failed to save to Wix repeater',
-        status: wixResponse.status
+        error: errorMessage,
+        status: wixResponse.status,
+        details: errorText.substring(0, 200),
+        helpUrl: 'See WIX-BACKEND-TEMPLATE.js for deployment instructions'
       });
     }
 
@@ -132,8 +148,8 @@ async function getDiveJournalFromRepeater(req: NextApiRequest, res: NextApiRespo
   console.log(`📋 Loading dive journal entries from UserMemory repeater for ${userId}`);
 
   try {
-    // ✅ Query your Wix UserMemory collection
-    let queryUrl = `https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&limit=${limit}`;
+    // ✅ Query your Wix UserMemory collection - specific dataset
+    let queryUrl = `https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&limit=${limit}&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`;
     
     if (analysisStatus) {
       queryUrl += `&analysisStatus=${analysisStatus}`;
@@ -192,8 +208,8 @@ export async function analyzeSingleDiveLog(diveLogId: string, userId: string) {
   try {
     console.log(`🔍 Analyzing individual dive log ${diveLogId} for ${userId}`);
     
-    // ✅ Get the specific dive log from UserMemory
-    const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?itemId=${diveLogId}`, {
+    // ✅ Get the specific dive log from UserMemory - specific dataset
+    const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?itemId=${diveLogId}&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`, {
       headers: { 'Accept': 'application/json' }
     });
 
@@ -253,12 +269,13 @@ Provide specific coaching feedback for this dive including:
     if (chatResponse.ok) {
       const analysis = await chatResponse.json();
       
-      // ✅ Update the dive log with analysis
+      // ✅ Update the dive log with analysis - specific dataset
       await fetch('https://www.deepfreediving.com/_functions/userMemory', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId: diveLogId,
+          dataset: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1',
           analysis: analysis.assistantMessage.content,
           analysisStatus: 'completed',
           analyzedAt: new Date().toISOString()

@@ -80,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // ✅ Format for Wix UserMemory Repeater - Optimized for Pattern Analysis
         const userMemoryData = {
           userId,
+          dataset: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1', // ✅ Target specific dataset
           title: `${localLogData.discipline} - ${localLogData.location} (${localLogData.reachedDepth}m)`,
           date: localLogData.date,
           discipline: localLogData.discipline,
@@ -165,8 +166,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } else {
           console.warn('⚠️ Wix backend sync failed but local saved:', wixResponse.data);
         }
-      } catch (wixError) {
-        console.error('❌ Wix backend sync error (but local saved):', (wixError as any).message);
+      } catch (wixError: any) {
+        // ✅ Enhanced error handling for Wix sync
+        const errorMessage = wixError.response?.data?.error || wixError.message || 'Unknown error';
+        const errorStatus = wixError.response?.status || 'Unknown';
+        
+        console.error(`❌ Wix backend sync error (but local saved): ${errorStatus} - ${errorMessage}`);
+        
+        // ✅ Don't fail the entire request - local save succeeded
+        // Mark the log as needing sync retry
+        try {
+          const retryLogData = { 
+            ...localLogData, 
+            syncedToWix: false,
+            wixSyncError: errorMessage,
+            wixSyncErrorAt: new Date().toISOString(),
+            needsWixSync: true
+          };
+          await saveLogEntry(userId, retryLogData);
+          console.log('✅ Marked dive log for Wix sync retry');
+        } catch (markError) {
+          console.warn('⚠️ Could not mark log for sync retry:', markError);
+        }
       }
     })(); // Self-executing async function for background processing
 

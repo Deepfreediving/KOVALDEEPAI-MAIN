@@ -12,10 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { diveLogId, userId, diveLogData } = req.body;
+    const { diveLogId, userId, diveLogData, diveLog: legacyDiveLog } = req.body;
 
-    if (!diveLogId && !diveLogData) {
-      return res.status(400).json({ error: 'diveLogId or diveLogData required' });
+    if (!diveLogId && !diveLogData && !legacyDiveLog) {
+      return res.status(400).json({ error: 'diveLogId, diveLogData, or diveLog required' });
     }
 
     if (!userId) {
@@ -24,29 +24,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`🔍 Analyzing individual dive log for ${userId}`);
 
-    let diveLog = diveLogData;
+    let diveLog = diveLogData || legacyDiveLog;
 
-    // ✅ If only ID provided, fetch from Wix UserMemory
-    if (diveLogId && !diveLogData) {
+    // ✅ If only ID provided, try to fetch from local storage first, then Wix
+    if (diveLogId && !diveLog) {
       try {
-        const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?itemId=${diveLogId}`, {
-          headers: { 'Accept': 'application/json' }
-        });
+        // First try to get from local dive logs
+        const baseUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3001';
+        
+        const localResponse = await fetch(`${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
+        if (localResponse.ok) {
+          const localData = await localResponse.json();
+          diveLog = localData.logs?.find((log: any) => log.id === diveLogId);
+          console.log(`📁 Found dive log in local storage: ${!!diveLog}`);
+        }
 
-        if (response.ok) {
-          const { data } = await response.json();
-          diveLog = data[0];
-        } else {
-          return res.status(404).json({ error: 'Dive log not found' });
+        // If not found locally, try Wix UserMemory
+        if (!diveLog) {
+          const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?itemId=${diveLogId}`, {
+            headers: { 'Accept': 'application/json' }
+          });
+
+          if (response.ok) {
+            const { data } = await response.json();
+            diveLog = data[0];
+            console.log(`🌐 Found dive log in Wix UserMemory: ${!!diveLog}`);
+          }
         }
       } catch (error) {
         console.error('❌ Failed to fetch dive log:', error);
-        return res.status(500).json({ error: 'Failed to fetch dive log from Wix' });
       }
     }
 
     if (!diveLog) {
-      return res.status(404).json({ error: 'Dive log data not available' });
+      return res.status(404).json({ 
+        error: 'Dive log not found', 
+        details: 'Could not find dive log in local storage or Wix UserMemory',
+        searchedId: diveLogId
+      });
     }
 
     // ✅ Create comprehensive analysis prompt
