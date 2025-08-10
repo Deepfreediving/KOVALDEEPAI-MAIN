@@ -3,12 +3,12 @@
 // Version: 4.0.0 - Production Ready
 
 import { ok, badRequest, serverError } from 'wix-http-functions';
-import wixData from 'wix-data';
+import { userMemory } from 'wix-users-backend';
 import { authentication } from 'wix-members-backend';
 
 // 🎯 MASTER USER MEMORY CONFIGURATION
 const MEMORY_CONFIG = {
-  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1', // ✅ Your actual Wix collection name
+  DATASET_NAME: '@deepfreediving/kovaldeepai-app/Import1', // ✅ Changed to DATASET_NAME for UserMemory API
   
   VALIDATION: {
     MAX_MEMORY_SIZE: 50000, // Increased for dive log storage
@@ -76,14 +76,13 @@ export async function post_userMemory(request) {
       console.log('No authenticated member available');
     }
 
-    // Check if user already has a memory record
+    // Check if user already has a memory record using UserMemory API
     let userMemoryRecord = null;
     try {
-      const existingQuery = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
-        .eq('userId', userId)
-        .find();
+      userMemoryRecord = await userMemory.get(userId, {
+        dataset: MEMORY_CONFIG.DATASET_NAME
+      });
       
-      userMemoryRecord = existingQuery.items[0] || null;
       console.log(`📋 ${userMemoryRecord ? 'Found existing' : 'No existing'} memory record for user ${userId}`);
     } catch (error) {
       console.warn('⚠️ Error checking existing memory record:', error.message);
@@ -124,7 +123,9 @@ export async function post_userMemory(request) {
           updateData.memoriesCount = updateData.memories.length;
         }
 
-        const result = await wixData.update(MEMORY_CONFIG.COLLECTION_NAME, updateData);
+        const result = await userMemory.set(userId, updateData, {
+          dataset: MEMORY_CONFIG.DATASET_NAME
+        });
         console.log(`✅ Updated user memory record with new dive log. Total dive logs: ${updatedDiveLogs.length}`);
         
         const duration = Date.now() - startTime;
@@ -161,7 +162,9 @@ export async function post_userMemory(request) {
           _updatedDate: new Date()
         };
         
-        const result = await wixData.save(MEMORY_CONFIG.COLLECTION_NAME, newRecord);
+        const result = await userMemory.set(userId, newRecord, {
+          dataset: MEMORY_CONFIG.DATASET_NAME
+        });
         console.log(`✅ Created new user memory record with first dive log`);
         
         const duration = Date.now() - startTime;
@@ -189,7 +192,7 @@ export async function post_userMemory(request) {
     console.error('❌ User memory save error:', error);
     
     return serverError({
-      error: 'Failed to save to user memory collection',
+      error: 'Failed to save to UserMemory dataset',
       details: error.message,
       operation: 'save-dive-log',
       timestamp: new Date().toISOString()
@@ -220,13 +223,11 @@ export async function get_userMemory(request) {
       console.log('No authenticated member available');
     }
 
-    // Query the userMemory collection directly
+    // Query the UserMemory dataset directly using UserMemory API
     try {
-      const query = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
-        .eq('userId', userId)
-        .find();
-      
-      const userMemoryRecord = query.items[0] || null;
+      const userMemoryRecord = await userMemory.get(userId, {
+        dataset: MEMORY_CONFIG.DATASET_NAME
+      });
       
       if (userMemoryRecord) {
         console.log(`📋 Found user memory record with ${userMemoryRecord.diveLogsCount || 0} dive logs`);
@@ -251,7 +252,7 @@ export async function get_userMemory(request) {
           ...responseData,
           metadata: {
             processingTime: duration,
-            source: 'wix-collection',
+            source: 'wix-usermemory-api',
             operation: 'get-user-memory',
             timestamp: new Date().toISOString()
           }
@@ -273,7 +274,7 @@ export async function get_userMemory(request) {
           _id: null,
           metadata: {
             processingTime: duration,
-            source: 'wix-collection',
+            source: 'wix-usermemory-api',
             operation: 'get-user-memory',
             timestamp: new Date().toISOString(),
             message: 'No records found for this user'
@@ -281,10 +282,10 @@ export async function get_userMemory(request) {
         }, MEMORY_CONFIG.CORS_HEADERS);
       }
       
-    } catch (collectionError) {
-      console.error('❌ Error querying userMemory collection:', collectionError);
+    } catch (userMemoryError) {
+      console.error('❌ Error querying UserMemory dataset:', userMemoryError);
       
-      // Return a fallback response if collection query fails
+      // Return a fallback response if UserMemory query fails
       const duration = Date.now() - startTime;
       return ok({
         success: false,
@@ -293,13 +294,13 @@ export async function get_userMemory(request) {
         memoriesCount: 0,
         diveLogs: [],
         memories: [],
-        error: 'Collection query failed',
+        error: 'UserMemory query failed',
         metadata: {
           processingTime: duration,
-          source: 'wix-collection-fallback',
+          source: 'wix-usermemory-fallback',
           operation: 'get-user-memory',
           timestamp: new Date().toISOString(),
-          errorDetails: collectionError.message
+          errorDetails: userMemoryError.message
         }
       }, MEMORY_CONFIG.CORS_HEADERS);
     }
@@ -308,7 +309,7 @@ export async function get_userMemory(request) {
     console.error('❌ User memory retrieval error:', error);
     
     return serverError({
-      error: 'Failed to retrieve from user memory collection',
+      error: 'Failed to retrieve from UserMemory dataset',
       details: error.message,
       operation: 'get-user-memory',
       timestamp: new Date().toISOString()
@@ -324,9 +325,9 @@ export function options_userMemory(request) {
 }
 
 // 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
-// These functions are called directly by the frontend using backend.userMemory() etc.
-export async function userMemory(requestData) {
-  console.log('🔄 UserMemory wrapper called with:', JSON.stringify(requestData, null, 2));
+// These functions are called directly by the frontend using backend.saveUserMemory() etc.
+export async function saveUserMemory(requestData) {
+  console.log('🔄 SaveUserMemory wrapper called with:', JSON.stringify(requestData, null, 2));
   
   try {
     // Validate input data
@@ -347,15 +348,15 @@ export async function userMemory(requestData) {
     
     // Call the main HTTP function and extract the response body
     const result = await post_userMemory(mockRequest);
-    console.log('✅ UserMemory wrapper successful, result status:', result.status || 'unknown');
+    console.log('✅ SaveUserMemory wrapper successful, result status:', result.status || 'unknown');
     
     return result.body || result;
   } catch (error) {
-    console.error('❌ UserMemory wrapper error:', error);
+    console.error('❌ SaveUserMemory wrapper error:', error);
     
     // Return a structured error response instead of throwing
     return {
-      error: 'UserMemory wrapper failed',
+      error: 'SaveUserMemory wrapper failed',
       details: error.message,
       timestamp: new Date().toISOString(),
       success: false

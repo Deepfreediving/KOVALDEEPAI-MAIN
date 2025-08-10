@@ -36,7 +36,7 @@ User Input → wix-app-frontend.js → *.jsw files → @deepfreediving/kovaldeep
 
 ### **Fallback System:**
 
-1. **Primary:** Direct backend function calls (`backend.saveUserMemory()`)
+1. **Primary:** Direct backend function calls (`backend.userMemory()`)
 2. **Secondary:** HTTP endpoints (`/_functions/userMemory`)
 3. **Tertiary:** Next.js API for chat functionality
 
