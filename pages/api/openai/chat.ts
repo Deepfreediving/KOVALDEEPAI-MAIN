@@ -82,20 +82,21 @@ function generateSystemPrompt(level: 'expert' | 'beginner', embedMode: boolean =
     : 'You are speaking with an authenticated member on their training dashboard. ';
 
   const diveLogContext = hasDiveLogs 
-    ? '📊 You have access to their personal dive log data and training history, which will be provided below. Use this data to give personalized feedback on their progression, technique improvements, and next training steps. ' 
+    ? '📊 IMPORTANT: You have FULL ACCESS to their personal dive log data and training history. This data will be provided in the knowledge base below. Analyze their specific dives, progression patterns, and performance to give personalized coaching feedback. ' 
     : '';
 
   return `You are Koval Deep AI, Daniel Koval's freediving coaching system. ${userContext}${diveLogContext}Provide personalized coaching based on their progress and training history.
 
 🎯 CRITICAL REQUIREMENTS:
-- ${hasDiveLogs ? 'ANALYZE their personal dive logs and provide specific feedback on their progression and performance patterns' : 'ONLY use information from the provided knowledge base below'}
+- ${hasDiveLogs ? 'YOU CAN AND MUST ANALYZE their personal dive logs - the data is provided in the Knowledge Base section below. Reference specific dives, depths, dates, and progression patterns.' : 'ONLY use information from the provided knowledge base below'}
+- When you see dive log data, provide specific analysis of their performance, progression, and areas for improvement
 - If the knowledge base doesn't contain specific information, say "I don't have specific guidance on this in my training materials"
 - Never mix general freediving advice with Daniel's specific methods
 - Provide ${level}-level technical detail appropriate for the user's experience
 - Always prioritize safety and progressive training
 - Keep responses detailed but focused (under ${embedMode ? '600' : '800'} words)
 - Address the user personally as a valued member with access to exclusive training
-${hasDiveLogs ? '- Reference specific dives, depths, and progression patterns from their log data when relevant' : ''}
+${hasDiveLogs ? '- When dive log data is present, focus your response on analyzing their actual performance and providing personalized improvement recommendations' : ''}
 
 🚫 FORBIDDEN:
 - Making up training protocols not in the knowledge base
@@ -315,6 +316,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let diveLogContext = '';
     if (diveLogs && diveLogs.length > 0) {
       console.log(`📊 Processing ${diveLogs.length} dive logs for enhanced coaching context`);
+      console.log('📊 Sample dive log data:', diveLogs[0]); // Debug first dive log
       
       const recentDiveLogs = diveLogs
         .slice(0, 5) // Last 5 dive logs
@@ -335,14 +337,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .join('\n');
       
       diveLogContext = `
-🏊‍♂️ MEMBER'S RECENT DIVE LOGS (Last ${Math.min(5, diveLogs.length)} dives):
+🏊‍♂️ === MEMBER'S PERSONAL DIVE LOG DATA (YOU CAN ANALYZE THIS) ===
+Recent Dive Sessions (Last ${Math.min(5, diveLogs.length)} dives):
 ${recentDiveLogs}
 
-📈 DIVE STATISTICS:
+📈 DIVE STATISTICS FOR ANALYSIS:
 - Total recorded dives: ${diveLogs.length}
 - Personal best: ${profile.pb || 'Unknown'}m
 - Last dive depth: ${diveLogs[0]?.reachedDepth || diveLogs[0]?.targetDepth || 'Unknown'}m
 - Progress analysis: ${diveLogs.length >= 3 ? 'Multiple sessions recorded - analyze patterns and progression' : 'Limited data - focus on current goals'}
+
+🎯 COACHING TASK: Analyze the above dive data and provide specific feedback on their progression, technique, and next training steps.
       `.trim();
       
       console.log('✅ Generated dive log context for AI coaching');
@@ -366,6 +371,8 @@ ${recentDiveLogs}
     const diveContext = await queryDiveLogs(userId);
 
     console.log(`📊 Context: ${contextChunks.length} knowledge + ${diveContext.length} dive logs`);
+    console.log(`📊 Dive log context length: ${diveLogContext.length} characters`);
+    console.log(`📊 Has dive logs flag: ${!!(diveLogs && diveLogs.length > 0)}`);
 
     const assistantReply = await askWithContext([...contextChunks, ...diveContext], message, userLevel, embedMode, diveLogContext, !!(diveLogs && diveLogs.length > 0));
 
