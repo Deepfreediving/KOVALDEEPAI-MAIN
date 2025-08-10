@@ -324,7 +324,6 @@
                   source: 'wix-blocks-authenticated',
                   theme: theme
                 };
-                console.log('✅ Wix Blocks user authenticated:', userData);
                 
                 // Update iframe if ready
                 if (this.iframe && this.isReady) {
@@ -753,47 +752,47 @@
           this.iframe.style.opacity = '1';
         }
         
-        // Re-check user registration status
-        this.checkUserRegistration();
+        // Get user data from Wix Members/FullData for UserMemory
+        this.getUserDataFromWix();
       }
     }
 
-    // ✅ CHECK USER REGISTRATION STATUS
-    checkUserRegistration() {
-      console.log('🔍 Checking user registration status...');
+    // ✅ GET USER DATA FROM WIX MEMBERS/FULLDATA FOR USERMEMORY  
+    getUserDataFromWix() {
+      console.log('🔍 Getting user data from Wix Members/FullData for UserMemory...');
       
-      // Check if user is registered for your program
+      // Request rich user profile from Wix page
       if (window.parent !== window) {
         try {
           window.parent.postMessage({
-            type: 'CHECK_USER_REGISTRATION',
+            type: 'GET_MEMBER_PROFILE',
             source: 'koval-ai-widget',
             timestamp: Date.now()
           }, '*');
-          console.log('📤 Sent registration check to parent');
+          console.log('📤 Requested member profile from Wix page');
         } catch (error) {
-          console.error('❌ Failed to check registration:', error);
+          console.error('❌ Failed to request member profile:', error);
         }
       }
       
-      // Also check via Wix Members API
-      this.detectRegisteredWixUser();
+      // Also try direct Wix API access
+      this.detectWixMemberData();
     }
 
-    // ✅ ENHANCED USER DETECTION FOR REGISTERED USERS
-    detectRegisteredWixUser() {
+    // ✅ DETECT WIX MEMBER DATA FOR USERMEMORY
+    detectWixMemberData() {
       try {
-        // Method 1: Check if user is logged in and has access
+        // Method 1: Check wixUsers API for member data
         if (typeof window !== 'undefined' && window.wixUsers && window.wixUsers.currentUser) {
           const currentUser = window.wixUsers.currentUser;
-          console.log('🔍 Checking registered user status:', currentUser);
+          console.log('🔍 Checking Wix member data:', currentUser);
           
           if (currentUser.loggedIn === true && currentUser.id) {
-            // User is logged in, now check if they're registered for your program
-            this.verifyUserAccess(currentUser);
+            // Extract rich profile data for UserMemory
+            this.handleMemberData(currentUser);
           } else {
-            console.log('ℹ️ User not logged in - showing guest interface');
-            this.handleUnregisteredUser();
+            console.log('ℹ️ User not logged in - using guest mode');
+            this.handleGuestUser();
           }
         }
         
@@ -801,140 +800,96 @@
         if (typeof $w !== 'undefined' && $w && $w.user) {
           $w.user.currentUser.then((user) => {
             if (user && user.loggedIn && user.id) {
-              this.verifyUserAccess(user);
+              this.handleMemberData(user);
+            } else {
+              this.handleGuestUser();
             }
           }).catch((error) => {
             console.warn('⚠️ $w.user API error:', error);
+            this.handleGuestUser();
           });
         }
       } catch (error) {
-        console.warn('⚠️ User detection failed:', error);
+        console.warn('⚠️ Member data detection failed:', error);
+        this.handleGuestUser();
       }
     }
 
-    // ✅ VERIFY USER HAS ACCESS TO YOUR PROGRAM
-    async verifyUserAccess(user) {
-      console.log('🔐 Verifying user access for:', user.id);
+    // ✅ HANDLE AUTHENTICATED MEMBER DATA
+    handleMemberData(user) {
+      console.log('✅ Processing Wix member data for UserMemory');
       
-      try {
-        // Check via your Wix backend function with timeout and better error handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch('/_functions/checkUserAccess', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            userEmail: user.loginEmail
-          }),
-          credentials: 'include',
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          // Use safe JSON parsing
-          const accessData = await safeJsonParse(response);
-          if (accessData) {
-            console.log('✅ Access verification result:', accessData);
-            
-            if (accessData.hasAccess) {
-              // User has paid/registered access
-              this.handleRegisteredUser(user, accessData);
-            } else {
-              // User is logged in but hasn't paid/registered
-              this.handleUnregisteredUser(user);
-            }
-          } else {
-            console.warn('⚠️ Access check returned invalid JSON - allowing access as fallback');
-            this.handleRegisteredUser(user, { hasAccess: true, source: 'fallback-invalid-json' });
-          }
-        } else {
-          console.warn('⚠️ Access check failed:', response.status, '- allowing access as fallback');
-          this.handleRegisteredUser(user, { hasAccess: true, source: 'fallback-http-error' });
-        }
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          console.warn('⚠️ Access verification timeout - allowing access as fallback');
-        } else {
-          console.warn('⚠️ Access verification error:', error.message, '- allowing access as fallback');
-        }
-        // Fallback - allow access but log the issue
-        this.handleRegisteredUser(user, { hasAccess: true, source: 'fallback-error' });
-      }
-    }
-
-    // ✅ HANDLE REGISTERED USER WITH ACCESS
-    handleRegisteredUser(user, accessData) {
-      console.log('✅ User has access - enabling full functionality');
+      // ✅ Extract nickname/displayName for proper user identification
+      let displayName = 'User';
+      let nickname = 'User';
       
-      // ✅ Prioritize specific user data over generic "Authenticated User"
-      let displayName = 'Registered User';
       if (user.nickname && user.nickname !== 'Authenticated User') {
         displayName = user.nickname;
-      } else if (user.loginEmail) {
-        displayName = user.loginEmail.split('@')[0]; // Use email prefix as name
+        nickname = user.nickname;
       } else if (user.displayName && user.displayName !== 'Authenticated User') {
         displayName = user.displayName;
+        nickname = user.displayName;
+      } else if (user.loginEmail) {
+        displayName = user.loginEmail.split('@')[0];
+        nickname = user.loginEmail.split('@')[0];
       }
       
       const userData = {
-        userId: user.id,
+        userId: user.id,  // ✅ Real Wix member ID for UserMemory
         userName: displayName,
+        nickname: nickname,  // ✅ Important for embed.jsx display
         userEmail: user.loginEmail || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        profilePicture: user.picture || user.profilePicture || '',
         wixId: user.id,
-        source: 'wix-registered-user',
-        hasAccess: true,
-        accessLevel: accessData.accessLevel || 'standard',
-        registrationDate: accessData.registrationDate,
+        source: 'wix-members-fulldata',
+        isGuest: false,
         theme: this.currentTheme || 'light'
       };
       
-      // Send to embed
+      // Send to embed for UserMemory integration
       if (this.iframe && this.isReady) {
         this.postMessage('USER_AUTH', userData);
-        this.postMessage('ACCESS_GRANTED', accessData);
       }
       
-      console.log('📤 Sent registered user data to embed:', userData);
+      console.log('📤 Sent Wix member data to embed for UserMemory:', {
+        userId: userData.userId,
+        nickname: userData.nickname,
+        userName: userData.userName,
+        source: userData.source
+      });
     }
 
-    // ✅ HANDLE UNREGISTERED USER
-    handleUnregisteredUser(user = null) {
-      console.log('❌ User does not have access - showing registration prompt');
+    // ✅ HANDLE GUEST USER (NO WIX LOGIN)
+    handleGuestUser() {
+      console.log('👤 No Wix login detected - using guest mode');
       
+      const guestId = 'guest-' + Date.now();
       const userData = {
-        userId: user ? user.id : 'guest-' + Date.now(),
-        userName: user ? `User ID: ${user.id}` : 'User ID: guest-' + Date.now(),  // ✅ Show actual user ID
-        userEmail: user ? user.loginEmail || '' : '',
-        source: 'wix-unregistered-user',
-        hasAccess: false,
-        needsRegistration: true,
+        userId: guestId,
+        userName: 'Guest User',
+        nickname: 'Guest User',
+        userEmail: '',
+        source: 'guest-user',
+        isGuest: true,
         theme: this.currentTheme || 'light'
       };
       
       // Send to embed
       if (this.iframe && this.isReady) {
         this.postMessage('USER_AUTH', userData);
-        this.postMessage('ACCESS_DENIED', { 
-          message: 'Registration required',
-          registrationUrl: '/_functions/registerForProgram'  // ✅ Correct Wix endpoint structure
-        });
       }
       
-      console.log('📤 Sent unregistered user data to embed:', userData);
+      console.log('📤 Sent guest user data to embed:', userData);
     }
     
-    // ✅ ENHANCED AUTHENTICATION COMMUNICATION
-    setupAuthenticationBridge() {
-      console.log('🔐 Setting up enhanced authentication bridge...');
+    // ✅ SIMPLE USER DATA BRIDGE FOR USERMEMORY INTEGRATION
+    setupUserDataBridge() {
+      console.log('🔗 Setting up user data bridge for UserMemory...');
       
-      // Listen for authentication requests from embedded app
-      const handleEmbedAuthRequest = (event) => {
+      // Listen for user data requests from embedded app
+      const handleEmbedUserRequest = (event) => {
         if (event.origin !== this.BASE_URL) return;
         
         // ✅ Add null check to prevent errors
@@ -942,35 +897,27 @@
           return;
         }
         
-        if (event.data.type === 'REQUEST_AUTH_STATUS') {
-          console.log('📨 Embed app requesting auth status');
+        if (event.data.type === 'REQUEST_USER_DATA') {
+          console.log('📨 Embed app requesting user data for UserMemory');
           
-          // Send current authentication data
-          const authData = {
-            type: 'AUTH_STATUS_RESPONSE',
-            authenticated: userData.userId && !userData.userId.startsWith('guest'),
-            user: userData,
-            timestamp: Date.now()
-          };
-          
-          this.iframe.contentWindow.postMessage(authData, this.BASE_URL);
-          console.log('📤 Sent auth status to embed:', authData);
+          // Get fresh user data from Wix
+          this.getUserDataFromWix();
         }
         
-        if (event.data.type === 'AUTH_ERROR') {
-          console.error('🚨 Authentication error from embed:', event.data.error);
+        if (event.data.type === 'USER_DATA_ERROR') {
+          console.error('🚨 User data error from embed:', event.data.error);
           
-          // Try to refresh authentication
-          this.refreshAuthentication();
+          // Try to refresh user data
+          this.refreshUserData();
         }
       };
       
-      window.addEventListener('message', handleEmbedAuthRequest);
-    };
+      window.addEventListener('message', handleEmbedUserRequest);
+    }
     
-    // ✅ REFRESH AUTHENTICATION FUNCTION
-    refreshAuthentication() {
-      console.log('🔄 Refreshing authentication...');
+    // ✅ REFRESH USER DATA FUNCTION
+    refreshUserData() {
+      console.log('🔄 Refreshing user data from Wix...');
       
       if (window.parent !== window) {
         window.parent.postMessage({
@@ -980,8 +927,8 @@
       }
       
       // Re-run user detection
-      detectWixUser();
-    };
+      this.getUserDataFromWix();
+    }
     
     // ✅ ENHANCED ERROR MONITORING
     setupErrorMonitoring() {
