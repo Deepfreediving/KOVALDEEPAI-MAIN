@@ -134,7 +134,7 @@ async function askWithContext(
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-4',
         temperature: 0.7,
         max_tokens: embedMode ? 600 : 800,
         messages: [

@@ -73,7 +73,7 @@ async function handleOpenAI(action: string, data: any, res: NextApiResponse) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: data?.model || 'gpt-4o-mini',
+            model: data?.model || 'gpt-4',
             messages: data?.messages || [{ role: 'user', content: data?.message || 'Hello' }],
             max_tokens: data?.maxTokens || 150,
             temperature: 0.7

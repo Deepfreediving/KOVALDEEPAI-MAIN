@@ -20,6 +20,15 @@ const TEST_CONFIG = {
   }
 };
 
+// 🔥 HELPER FUNCTION FOR CONSISTENT RESPONSES
+function createResponse(status, data) {
+  return {
+    status,
+    body: data,
+    headers: TEST_CONFIG.CORS_HEADERS
+  };
+}
+
 // 🔥 ENHANCED GET TEST - Quick System Status
 export async function get_test(request) {
   const startTime = Date.now();
@@ -70,27 +79,19 @@ export async function get_test(request) {
       efficient: duration < 1000
     };
     
-    return {
-      status: 200,
-      body: {
-        success: true,
-        ...testResult,
-        message: 'Wix backend test successful'
-      },
-      headers: TEST_CONFIG.CORS_HEADERS
-    };
+    return createResponse(200, {
+      success: true,
+      ...testResult,
+      message: 'Wix backend test successful'
+    });
     
   } catch (error) {
-    return {
-      status: 500,
-      body: {
-        success: false,
-        status: 'error',
-        error: error.message,
-        timestamp: new Date().toISOString()
-      },
-      headers: TEST_CONFIG.CORS_HEADERS
-    };
+    return createResponse(500, {
+      success: false,
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
@@ -127,39 +128,27 @@ export async function post_test(request) {
       efficient: duration < 500
     };
     
-    return {
-      status: 200,
-      body: {
-        ...testResult,
-        message: 'POST test successful'
-      },
-      headers: TEST_CONFIG.CORS_HEADERS
-    };
+    return createResponse(200, {
+      ...testResult,
+      message: 'POST test successful'
+    });
     
   } catch (error) {
-    return {
-      status: 500,
-      body: {
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      },
-      headers: TEST_CONFIG.CORS_HEADERS
-    };
+    return createResponse(500, {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
 // 🔥 OPTIONS - CORS Support
 export function options_test(request) {
-  return {
-    status: 200,
-    body: {
-      message: 'CORS preflight successful',
-      supportedMethods: ['GET', 'POST', 'OPTIONS'],
-      testCapabilities: ['basic-connectivity', 'ai-integration', 'payload-validation']
-    },
-    headers: TEST_CONFIG.CORS_HEADERS
-  };
+  return createResponse(200, {
+    message: 'CORS preflight successful',
+    supportedMethods: ['GET', 'POST', 'OPTIONS'],
+    testCapabilities: ['basic-connectivity', 'ai-integration', 'payload-validation']
+  });
 }
 
 // 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
