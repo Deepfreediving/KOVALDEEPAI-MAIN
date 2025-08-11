@@ -698,6 +698,7 @@ export default function Index() {
                 loadingDiveLogs={loadingDiveLogs}
                 editLogIndex={editLogIndex}
                 setEditLogIndex={setEditLogIndex}
+                setMessages={setMessages} // ✅ Pass setMessages for analysis integration
               />
             </div>
           </div>

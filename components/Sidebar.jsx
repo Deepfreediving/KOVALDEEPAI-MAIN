@@ -97,15 +97,86 @@ export default function Sidebar({
           if (setMessages) {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: `✅ Dive log saved to your training database! ID: ${repeaterResult.wixId?.substring(0, 8)}... Click on any log for instant AI analysis.`
+              content: `✅ Dive log saved to your training database! ID: ${repeaterResult.wixId?.substring(0, 8)}... Starting automatic analysis...`
             }]);
           }
+          
+          // ✅ AUTOMATIC ANALYSIS: Analyze the dive log immediately after saving
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Starting automatic analysis for new dive log...');
+              
+              // Create dive log object for analysis
+              const savedDiveLog = {
+                id: localResult.id || `dive_${Date.now()}`,
+                ...formData,
+                timestamp: new Date().toISOString(),
+                source: 'auto-analysis'
+              };
+              
+              await handleDiveLogAnalysis(savedDiveLog);
+            } catch (autoAnalysisError) {
+              console.warn('⚠️ Automatic analysis failed:', autoAnalysisError);
+              if (setMessages) {
+                setMessages(prev => [...prev, {
+                  role: 'assistant',
+                  content: `⚠️ Automatic analysis failed, but you can manually analyze this dive by clicking on it in the sidebar.`
+                }]);
+              }
+            }
+          }, 2000); // Wait 2 seconds to let the save process complete
         } else {
           console.warn('⚠️ Wix repeater save failed, but local save succeeded');
+          
+          // ✅ AUTOMATIC ANALYSIS: Even if Wix fails, still analyze the locally saved dive log
+          if (setMessages) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `✅ Dive log saved locally! Starting automatic analysis...`
+            }]);
+          }
+          
+          setTimeout(async () => {
+            try {
+              const savedDiveLog = {
+                id: localResult.id || `dive_${Date.now()}`,
+                ...formData,
+                timestamp: new Date().toISOString(),
+                source: 'auto-analysis-local'
+              };
+              
+              await handleDiveLogAnalysis(savedDiveLog);
+            } catch (autoAnalysisError) {
+              console.warn('⚠️ Automatic analysis failed:', autoAnalysisError);
+            }
+          }, 2000);
         }
       } catch (repeaterError) {
         console.warn('⚠️ Wix repeater error:', repeaterError);
         // Don't fail the whole operation if Wix fails
+        
+        // ✅ AUTOMATIC ANALYSIS: Even if Wix fails, still analyze if we have local save
+        if (localResult.success && setMessages) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `✅ Dive log saved locally! Starting automatic analysis...`
+          }]);
+          
+          setTimeout(async () => {
+            try {
+              const savedDiveLog = {
+                id: localResult.id || `dive_${Date.now()}`,
+                ...formData,
+                timestamp: new Date().toISOString(),
+                source: 'auto-analysis-fallback'
+              };
+              
+              await handleDiveLogAnalysis(savedDiveLog);
+            } catch (autoAnalysisError) {
+              console.warn('⚠️ Automatic analysis failed:', autoAnalysisError);
+            }
+          }, 2000);
+        }
       }
 
       // ✅ Refresh dive logs display

@@ -10,7 +10,8 @@ export default function DiveJournalSidebarCard({
   diveLogs, 
   loadingDiveLogs, 
   editLogIndex, 
-  setEditLogIndex 
+  setEditLogIndex,
+  setMessages // ✅ Add setMessages prop for analysis integration
 }) {
   const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'add'
   const [refreshKey, setRefreshKey] = useState(0);
@@ -85,6 +86,7 @@ export default function DiveJournalSidebarCard({
               userId={userId} 
               darkMode={darkMode}
               isEmbedded={true}
+              setMessages={setMessages} // ✅ Pass setMessages for analysis integration
             />
           </div>
         ) : (

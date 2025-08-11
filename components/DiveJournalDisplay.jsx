@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, isEmbedded = false }) {
+export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, isEmbedded = false, setMessages }) {
   const [logs, setLogs] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState('date');
@@ -24,6 +24,7 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
     imageFile: null,
     imagePreview: null
   });
+  const [analyzingLogId, setAnalyzingLogId] = useState(null); // Track which log is being analyzed
 
   useEffect(() => {
     try {
@@ -96,6 +97,83 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
       imagePreview: null
     });
     setShowForm(false);
+  };
+
+  // ✅ Add analyze functionality for individual dive logs
+  const handleAnalyzeDiveLog = async (log) => {
+    if (!log || !userId) return;
+    
+    try {
+      setAnalyzingLogId(log.id);
+      console.log('🔍 Analyzing dive log:', log.id);
+      
+      // ✅ Show analyzing message in chat immediately
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `🔄 Analyzing your ${log.discipline || 'freediving'} dive to ${log.reachedDepth || log.targetDepth}m at ${log.location || 'location'}...`
+        }]);
+      }
+      
+      const response = await fetch('/api/analyze/single-dive-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          diveLogData: log
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.analysis) {
+          // Update the log with analysis
+          const updatedLogs = logs.map(l => 
+            l.id === log.id 
+              ? { ...l, analysis: result.analysis, analyzed: true }
+              : l
+          );
+          setLogs(updatedLogs);
+          
+          // Save to localStorage
+          localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
+          
+          // ✅ Post analysis to chat
+          if (setMessages) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `📊 **Dive Analysis Complete** \n\n${result.analysis}`
+            }]);
+          }
+          
+          console.log('✅ Dive log analyzed successfully');
+        } else {
+          console.error('❌ Analysis failed:', result.error);
+          
+          // ✅ Post error to chat
+          if (setMessages) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `❌ Analysis failed: ${result.error || 'Unknown error'}. Please try again.`
+            }]);
+          }
+        }
+      } else {
+        throw new Error(`Analysis request failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Analysis error:', error);
+      
+      // ✅ Post error to chat
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `❌ Failed to analyze dive log: ${error.message}. Please try again.`
+        }]);
+      }
+    } finally {
+      setAnalyzingLogId(null);
+    }
   };
 
   // If not open and not embedded, don't render
@@ -264,8 +342,11 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
                       <button className={`${darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-500"}`}>
                         Delete
                       </button>
-                      <button className={`${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-500"}`}>
-                        Analyze
+                      <button 
+                        onClick={() => handleAnalyzeDiveLog(log)} 
+                        className={`${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-500"}`}
+                      >
+                        {analyzingLogId === log.id ? 'Analyzing...' : 'Analyze'}
                       </button>
                     </div>
                   </div>
@@ -656,8 +737,11 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
                     <button className="text-red-400 hover:text-red-300 text-xs">
                       🗑️ Delete
                     </button>
-                    <button className="text-gray-400 hover:text-gray-300 text-xs">
-                      📊 Analyze
+                    <button 
+                      onClick={() => handleAnalyzeDiveLog(log)} 
+                      className={`text-gray-400 hover:text-gray-300 text-xs ${analyzingLogId === log.id ? 'animate-pulse' : ''}`}
+                    >
+                      {analyzingLogId === log.id ? 'Analyzing...' : '📊 Analyze'}
                     </button>
                   </div>
                 </div>
