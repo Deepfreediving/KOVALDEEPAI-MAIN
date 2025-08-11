@@ -249,10 +249,9 @@ Provide specific coaching feedback for this dive including:
 4. Safety considerations
     `;
 
-    // ✅ Call OpenAI chat API for analysis
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000';
+    // ✅ Call OpenAI chat API for analysis  
+    // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+    const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
     const chatResponse = await fetch(`${baseUrl}/api/openai/chat`, {
       method: 'POST',

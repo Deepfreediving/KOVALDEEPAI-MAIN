@@ -67,7 +67,9 @@ export default async function handler(
     // Test 2: Check OAuth status
     let oauthAvailable = false;
     try {
-      const oauthResponse = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/wix/oauth/status`);
+      // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
+      const oauthResponse = await fetch(`${baseUrl}/api/wix/oauth/status`);
       if (oauthResponse.ok) {
         const oauthData = await oauthResponse.json();
         oauthAvailable = oauthData.authenticated;
@@ -81,7 +83,9 @@ export default async function handler(
     let userMemoryAvailable = false;
     try {
       // Test with a dummy userId to see if the system responds
-      const memoryResponse = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/auth/get-user-memory?userId=test-connection`);
+      // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
+      const memoryResponse = await fetch(`${baseUrl}/api/auth/get-user-memory?userId=test-connection`);
       userMemoryAvailable = memoryResponse.status !== 500; // Any response except 500 means it's working
       console.log(`📊 UserMemory access: ${userMemoryAvailable ? 'available' : 'unavailable'}`);
     } catch (error) {

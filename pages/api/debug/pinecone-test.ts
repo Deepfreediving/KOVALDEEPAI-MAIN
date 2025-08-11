@@ -7,10 +7,8 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
   
   try {
-    // ✅ FIX: Use BASE_URL from env or current domain
-    const baseUrl = process.env.BASE_URL || 
-      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-      'https://kovaldeepai-main.vercel.app';
+    // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+    const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
     console.log(`🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`);
     console.log(`🔍 Query: "${query}"`);
@@ -67,9 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       debug: {
         queryProvided: !!query,
         queryTrimmed: query?.trim(),
-        baseUrl: process.env.BASE_URL || 
-          process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-          'https://kovaldeepai-main.vercel.app'
+        baseUrl: process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app'
       }
     });
   } catch (error: any) {
