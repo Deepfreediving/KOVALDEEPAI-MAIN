@@ -29,10 +29,8 @@ function getDepthRange(depth: number): string {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ FIX: Use BASE_URL from env or current domain
-    const baseUrl = process.env.BASE_URL || 
-      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-      'https://kovaldeepai-main.vercel.app';
+    // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+    const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
     console.log(`🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`);
 
@@ -65,10 +63,8 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string): Promise<string[]> {
   if (!userId || userId.startsWith('guest')) return [];
   try {
-    // ✅ FIX: Use BASE_URL from env or current domain
-    const baseUrl = process.env.BASE_URL || 
-      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-      'https://kovaldeepai-main.vercel.app';
+    // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+    const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
     
     console.log(`🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
     
@@ -391,10 +387,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ✅ Load actual dive logs for detailed analysis
     let localDiveLogs = [];
     try {
-      // ✅ FIX: Use BASE_URL from env or current domain
-      const baseUrl = process.env.BASE_URL || 
-        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-        'https://kovaldeepai-main.vercel.app';
+      // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
       
       console.log(`🗃️ Loading detailed dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
       

@@ -159,9 +159,8 @@ export default async function handler(
     if (allLogs.length === 0) {
       console.log(`🌐 No local logs found, checking Wix UserMemory backup...`);
       try {
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'http://localhost:3000';
+        // ✅ FIX: Always use production URL for internal API calls to avoid auth issues  
+        const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
           
         const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&type=dive-log&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`, {
           headers: { 'Accept': 'application/json' }

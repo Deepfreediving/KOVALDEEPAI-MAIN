@@ -62,9 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Call OpenAI for systematic analysis
     try {
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : 'http://localhost:3000';
+      // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
       console.log('🤖 Sending pattern analysis request to OpenAI...');
 

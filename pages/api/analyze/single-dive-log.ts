@@ -29,10 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ✅ If only ID provided, try to fetch from local storage first, then Wix
     if (diveLogId && !diveLog) {
       try {
-        // ✅ FIX: Use BASE_URL from env or fallback
-        const baseUrl = process.env.BASE_URL || 
-          process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-          'https://kovaldeepai-main.vercel.app';
+        // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+        const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
         
         console.log(`🗃️ Fetching dive log via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
         
@@ -106,10 +104,8 @@ Please provide specific, actionable coaching feedback based on this dive data.
 
     // ✅ Call OpenAI for detailed analysis
     try {
-      // ✅ FIX: Use BASE_URL from env or fallback
-      const baseUrl = process.env.BASE_URL || 
-        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-        'https://kovaldeepai-main.vercel.app';
+      // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
       console.log(`🤖 Sending dive log to OpenAI via: ${baseUrl}/api/openai/chat`);
 
