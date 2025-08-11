@@ -11,6 +11,8 @@ export default function ChatInput({
   setFiles,
   loading,
   darkMode,
+  isAuthenticating = false,
+  authTimeoutReached = false,
 }) {
   const [error, setError] = useState("");
 
@@ -88,16 +90,29 @@ export default function ChatInput({
       <button
         type="submit"
         className={`mt-1 px-5 py-3 rounded-md font-semibold transition-all ${
-          loading
+          loading || isAuthenticating
             ? "opacity-50 cursor-not-allowed"
             : darkMode
             ? "bg-blue-500 hover:bg-blue-600 text-white"
             : "bg-blue-600 hover:bg-blue-700 text-white"
         }`}
-        disabled={loading || (!input.trim() && files.length === 0)}
+        disabled={loading || isAuthenticating || (!input.trim() && files.length === 0)}
       >
-        {loading ? "Thinking..." : "Send"}
+        {loading ? "Thinking..." : isAuthenticating ? "Authenticating..." : "Send"}
       </button>
+      
+      {/* Authentication Status Message */}
+      {isAuthenticating && (
+        <p className={`text-xs text-center ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+          ⏳ Verifying your authentication, please wait...
+        </p>
+      )}
+      
+      {authTimeoutReached && (
+        <p className={`text-xs text-center ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+          ⚠️ Using limited access mode. Some features may not work properly.
+        </p>
+      )}
     </form>
   );
 }

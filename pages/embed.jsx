@@ -58,6 +58,10 @@ export default function Embed() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
+  
+  // ✅ NEW: Authentication state to prevent early interactions
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
 
   const bottomRef = useRef(null);
 
@@ -72,7 +76,12 @@ export default function Embed() {
   };
 
   const getDisplayName = useCallback(() => {
-    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
+    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId, 'isAuthenticating:', isAuthenticating);
+    
+    // ✅ Show loading state while authenticating
+    if (isAuthenticating) {
+      return "Loading...";
+    }
     
     // ✅ PRIORITY: Use member ID format for consistent, fast recognition
     if (userId && !userId.startsWith('guest')) {
@@ -80,16 +89,21 @@ export default function Embed() {
       return `User-${userId}`;
     }
     
-    // Fallback for guest users
-    if (userId?.startsWith('guest')) {
-      console.log('🔄 Using guest fallback');
+    // Fallback for guest users (only after timeout)
+    if (userId?.startsWith('guest') && authTimeoutReached) {
+      console.log('🔄 Using guest fallback after timeout');
       return "Guest User";
+    }
+    
+    // Still waiting for authentication
+    if (userId?.startsWith('guest') && !authTimeoutReached) {
+      return "Loading...";
     }
     
     // Final fallback
     console.log('🔄 Using final fallback: User');
     return "User";
-  }, [profile, userId]);
+  }, [profile, userId, isAuthenticating, authTimeoutReached]);
 
   const getProfilePhoto = useCallback(() => {
     // Return profile photo URL if available
@@ -107,6 +121,31 @@ export default function Embed() {
     if (typeof window !== 'undefined') {
       setSessionsList(safeParse("kovalSessionsList", []));
       setThreadId(localStorage.getItem("kovalThreadId") || null);
+      
+      // ✅ Check if we have a valid stored userId first
+      const storedUserId = localStorage.getItem("kovalUser");
+      if (storedUserId && !storedUserId.startsWith('guest-')) {
+        console.log('✅ Embed: Found valid stored userId:', storedUserId);
+        setUserId(storedUserId);
+        setIsAuthenticating(false); // We have a valid user, stop waiting
+        
+        // Try to load stored profile too
+        const storedProfile = safeParse("kovalProfile", {});
+        if (storedProfile && storedProfile.source) {
+          setProfile(storedProfile);
+        }
+      } else {
+        console.log('⏳ Embed: No valid stored userId, waiting for authentication...');
+        // Start authentication timeout (8 seconds for embed - longer since it depends on parent)
+        const timeout = setTimeout(() => {
+          console.warn('⚠️ Embed: Authentication timeout reached, allowing limited access');
+          setAuthTimeoutReached(true);
+          setIsAuthenticating(false);
+          setUserId(`guest-${Date.now()}`); // Fallback after timeout
+        }, 8000);
+        
+        return () => clearTimeout(timeout);
+      }
     }
   }, []);
 
@@ -180,6 +219,11 @@ export default function Embed() {
             localStorage.setItem("kovalUser", newUserId);
             console.log('✅ UserId set from initialized message:', newUserId);
             
+            // ✅ AUTHENTICATION COMPLETE - Enable interactions
+            setIsAuthenticating(false);
+            setAuthTimeoutReached(false);
+            console.log('🎉 Authentication complete via initialized message! Chat and AI features now enabled.');
+            
             // Extract profile data from the initialized message
             if (event.data.data.user.profile) {
               const profile = event.data.data.user.profile;
@@ -212,20 +256,20 @@ export default function Embed() {
           console.log('🔍 Current profile before update:', profile);
           console.log('🔍 Current userId before update:', userId);
           
-          if (event.data.data?.userId) {
-            console.log('✅ Setting userId to:', event.data.data.userId);
+          if (event.data.data?.userId && !event.data.data.userId.startsWith('guest-')) {
+            console.log('✅ Setting authenticated userId:', event.data.data.userId);
             const newUserId = String(event.data.data.userId);
-            
-            // Validate userId is real - no fallback to guest users
-            if (!newUserId || newUserId === 'undefined' || newUserId === 'null' || newUserId.startsWith('guest-')) {
-              console.warn('⚠️ Invalid or guest userId received, waiting for real user authentication');
-              console.warn('⚠️ Received userId:', newUserId);
-              return; // Don't set invalid user data
-            }
             
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
             console.log('✅ UserId set successfully:', newUserId);
+            
+            // ✅ AUTHENTICATION COMPLETE - Enable interactions
+            setIsAuthenticating(false);
+            setAuthTimeoutReached(false);
+            console.log('🎉 Authentication complete via USER_AUTH! Chat and AI features now enabled.');
+          } else {
+            console.warn('⚠️ Received invalid or guest userId via USER_AUTH, continuing to wait for authentication');
           }
           
           // Update profile with rich Wix Collections/Members data
@@ -394,10 +438,27 @@ export default function Embed() {
     return () => { isMounted = false; };
   }, []);
 
-  // ✅ ENHANCED CHAT SUBMISSION with Bridge API Integration
+  // ✅ ENHANCED CHAT SUBMISSION with Bridge API Integration and Authentication Gating
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
+
+    // ✅ PREVENT CHAT UNTIL AUTHENTICATED (unless timeout reached)
+    if (isAuthenticating) {
+      console.log('⏳ Embed: Still authenticating, chat disabled');
+      return;
+    }
+
+    // ✅ WARN IF USING GUEST ID
+    if (userId.startsWith('guest-') && !authTimeoutReached) {
+      console.warn('⚠️ Embed: Attempting to chat with guest ID, this should not happen');
+      const errorMessage = {
+        role: "assistant", 
+        content: "⏳ Please wait while we verify your authentication. You'll be able to chat in just a moment."
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
 
     const userMessage = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -405,7 +466,7 @@ export default function Embed() {
     setLoading(true);
 
     try {
-      console.log("🚀 Sending message to enhanced chat bridge API...");
+      console.log("🚀 Sending message to enhanced chat bridge API with userId:", userId);
       console.log("📊 Chat context:", {
         userId,
         profileSource: profile?.source,
@@ -486,7 +547,7 @@ export default function Embed() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, userId, profile, diveLogs, messages]);
+  }, [input, loading, userId, profile, diveLogs, messages, isAuthenticating, authTimeoutReached]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -964,6 +1025,8 @@ export default function Embed() {
               setFiles={setFiles}
               loading={loading}
               darkMode={darkMode}
+              isAuthenticating={isAuthenticating}
+              authTimeoutReached={authTimeoutReached}
             />
           </div>
         </div>

@@ -53,6 +53,10 @@ export default function Index() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
+  
+  // ✅ NEW: Authentication state to prevent early interactions
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
 
   const bottomRef = useRef(null);
 
@@ -67,32 +71,60 @@ export default function Index() {
   };
 
   const getDisplayName = useCallback(() => {
-    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
+    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId, 'isAuthenticating:', isAuthenticating);
+    
+    // ✅ Show loading state while authenticating
+    if (isAuthenticating) {
+      return "Loading...";
+    }
     
     // ✅ PRIORITY: Use member ID format for consistent, fast recognition
-    if (userId && !userId.startsWith('guest')) {
+    if (userId && !userId.startsWith('guest-')) {
       console.log(`✅ Using member ID format: User-${userId}`);
       return `User-${userId}`;
     }
     
-    // Fallback for guest users
-    if (userId?.startsWith('guest')) {
-      console.log('🔄 Using guest fallback');
+    // Fallback for guest users (only after timeout)
+    if (userId?.startsWith('guest-') && authTimeoutReached) {
+      console.log('🔄 Using guest fallback after timeout');
       return "Guest User";
+    }
+    
+    // Still waiting for authentication
+    if (userId?.startsWith('guest-') && !authTimeoutReached) {
+      return "Loading...";
     }
     
     // Final fallback
     console.log('🔄 Using final fallback: User');
     return "User";
-  }, [profile, userId]);
+  }, [profile, userId, isAuthenticating, authTimeoutReached]);
 
-  // ✅ INITIALIZATION
+  // ✅ INITIALIZATION - Enhanced with authentication gating
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setSessionsList(safeParse("kovalSessionsList", []));
-      setUserId(localStorage.getItem("kovalUser") || `guest-${Date.now()}`);
       setThreadId(localStorage.getItem("kovalThreadId") || null);
-      setProfile(safeParse("kovalProfile", { nickname: "Guest User" }));
+      setProfile(safeParse("kovalProfile", { nickname: "Loading..." }));
+      
+      // ✅ Check if we have a valid stored userId first
+      const storedUserId = localStorage.getItem("kovalUser");
+      if (storedUserId && !storedUserId.startsWith('guest-')) {
+        console.log('✅ Found valid stored userId:', storedUserId);
+        setUserId(storedUserId);
+        setIsAuthenticating(false); // We have a valid user, stop waiting
+      } else {
+        console.log('⏳ No valid stored userId, waiting for authentication...');
+        // Start authentication timeout (5 seconds)
+        const timeout = setTimeout(() => {
+          console.warn('⚠️ Authentication timeout reached, allowing limited access');
+          setAuthTimeoutReached(true);
+          setIsAuthenticating(false);
+          setUserId(`guest-${Date.now()}`); // Fallback after timeout
+        }, 5000);
+        
+        return () => clearTimeout(timeout);
+      }
     }
   }, []);
 
@@ -122,9 +154,13 @@ export default function Index() {
       }
       
       // Set user data from URL parameters
-      if (urlUserId) {
+      if (urlUserId && !urlUserId.startsWith('guest-')) {
+        console.log('✅ Valid userId from URL:', urlUserId);
         setUserId(String(urlUserId));
         localStorage.setItem("kovalUser", String(urlUserId));
+        setIsAuthenticating(false); // We have a valid user from URL
+      } else if (urlUserId) {
+        console.log('⚠️ Guest userId in URL, continuing to wait for authentication');
       }
       
       if (userName) {
@@ -180,10 +216,27 @@ export default function Index() {
     return () => { isMounted = false; };
   }, []);
 
-  // ✅ WORKING CHAT SUBMISSION (From working version)
+  // ✅ WORKING CHAT SUBMISSION - Enhanced with authentication gating
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
+
+    // ✅ PREVENT CHAT UNTIL AUTHENTICATED (unless timeout reached)
+    if (isAuthenticating) {
+      console.log('⏳ Still authenticating, chat disabled');
+      return;
+    }
+
+    // ✅ WARN IF USING GUEST ID
+    if (userId.startsWith('guest-') && !authTimeoutReached) {
+      console.warn('⚠️ Attempting to chat with guest ID, this should not happen');
+      const errorMessage = {
+        role: "assistant", 
+        content: "⏳ Please wait while we verify your authentication. You'll be able to chat in just a moment."
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
 
     const userMessage = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -191,7 +244,7 @@ export default function Index() {
     setLoading(true);
 
     try {
-      console.log("🚀 Sending message to chat API...");
+      console.log("🚀 Sending message to chat API with userId:", userId);
 
       const response = await fetch(API_ROUTES.CHAT, {
         method: "POST",
@@ -227,7 +280,7 @@ export default function Index() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, userId, profile]);
+  }, [input, loading, userId, profile, isAuthenticating, authTimeoutReached]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -435,11 +488,19 @@ export default function Index() {
         case 'USER_AUTH':
           console.log('👤 Index: User auth received from parent:', event.data.data);
           
-          if (event.data.data?.userId) {
-            console.log('✅ Index: Setting userId to:', event.data.data.userId);
+          if (event.data.data?.userId && !event.data.data.userId.startsWith('guest-')) {
+            console.log('✅ Index: Setting authenticated userId:', event.data.data.userId);
             const newUserId = String(event.data.data.userId);
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
+            
+            // ✅ AUTHENTICATION COMPLETE - Enable interactions
+            setIsAuthenticating(false);
+            setAuthTimeoutReached(false); // Reset timeout flag
+            
+            console.log('🎉 Authentication complete! Chat and AI features now enabled.');
+          } else {
+            console.warn('⚠️ Received invalid or guest userId, continuing to wait for authentication');
           }
           
           // Update profile with rich data
@@ -462,6 +523,15 @@ export default function Index() {
             console.log('✅ Index: Setting rich profile to:', richProfile);
             setProfile(richProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
+          } else if (!event.data.data?.userId?.startsWith('guest-')) {
+            // Set a basic profile if we have a valid userId but no profile data
+            const basicProfile = {
+              nickname: `User-${event.data.data.userId}`,
+              displayName: `User-${event.data.data.userId}`,
+              source: 'wix-parent-auth-basic'
+            };
+            setProfile(basicProfile);
+            localStorage.setItem("kovalProfile", JSON.stringify(basicProfile));
           }
           break;
           
@@ -558,6 +628,8 @@ export default function Index() {
             setFiles={setFiles}
             loading={loading}
             darkMode={darkMode}
+            isAuthenticating={isAuthenticating}
+            authTimeoutReached={authTimeoutReached}
           />
         </div>
 
@@ -566,13 +638,16 @@ export default function Index() {
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => setIsDiveJournalOpen(true)}
+              disabled={isAuthenticating}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                darkMode
+                isAuthenticating
+                  ? "opacity-50 cursor-not-allowed bg-gray-400"
+                  : darkMode
                   ? "bg-blue-600 hover:bg-blue-500 text-white"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
             >
-              📝 Add Dive Log
+              📝 {isAuthenticating ? "Loading..." : "Add Dive Log"}
             </button>
             
             <div className="flex items-center gap-3 text-sm">
