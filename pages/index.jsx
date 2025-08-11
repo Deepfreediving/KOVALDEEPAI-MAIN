@@ -69,43 +69,21 @@ export default function Index() {
   const getDisplayName = useCallback(() => {
     console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
     
-    // Try rich profile data first
-    if (profile?.displayName && profile.displayName !== 'Guest User') {
-      console.log('✅ Using profile.displayName:', profile.displayName);
-      return profile.displayName;
-    }
-    if (profile?.nickname && profile.nickname !== 'Guest User') {
-      console.log('✅ Using profile.nickname:', profile.nickname);
-      return profile.nickname;
-    }
-    if (profile?.firstName && profile?.lastName) {
-      const fullName = `${profile.firstName} ${profile.lastName}`;
-      console.log('✅ Using firstName + lastName:', fullName);
-      return fullName;
-    }
-    if (profile?.firstName) {
-      console.log('✅ Using profile.firstName:', profile.firstName);
-      return profile.firstName;
-    }
-    if (profile?.loginEmail) {
-      console.log('✅ Using profile.loginEmail:', profile.loginEmail);
-      return profile.loginEmail;
-    }
-    if (profile?.contactDetails?.firstName) {
-      console.log('✅ Using contactDetails.firstName:', profile.contactDetails.firstName);
-      return profile.contactDetails.firstName;
+    // ✅ PRIORITY: Use member ID format for consistent, fast recognition
+    if (userId && !userId.startsWith('guest')) {
+      console.log(`✅ Using member ID format: User-${userId}`);
+      return `👤 User-${userId}`;
     }
     
-    // Show "Loading..." for non-guest users while waiting for profile data
-    if (userId && !userId.startsWith("guest") && !profile?.source) {
-      console.log('⏳ Waiting for user profile data...');
-      return "Loading...";
+    // Fallback for guest users
+    if (userId?.startsWith('guest')) {
+      console.log('🔄 Using guest fallback');
+      return "👤 Guest User";
     }
     
-    // Fallback to guest user only if userId starts with "guest"
-    const fallback = userId?.startsWith("guest") ? "Guest User" : "User";
-    console.log('🔄 Using fallback:', fallback);
-    return fallback;
+    // Final fallback
+    console.log('🔄 Using final fallback: User');
+    return "👤 User";
   }, [profile, userId]);
 
   // ✅ INITIALIZATION
@@ -563,6 +541,7 @@ export default function Index() {
               darkMode={darkMode}
               loading={loading}
               bottomRef={bottomRef}
+              userId={userId}
             />
           </div>
         </div>

@@ -289,9 +289,9 @@
               userData = {
                 ...userData,
                 userId: currentUser.id,  // ✅ Use the actual Wix member ID (no prefix)
-                userName: currentUser.displayName || currentUser.nickname || currentUser.loginEmail?.split('@')[0] || 'Wix User',
+                userName: `User-${currentUser.id}`,  // ✅ Use member ID format
                 userEmail: currentUser.loginEmail || '',
-                nickname: currentUser.nickname || currentUser.displayName,
+                nickname: `User-${currentUser.id}`,  // ✅ Use member ID format
                 profilePhoto: currentUser.picture || '',
                 wixId: currentUser.id,
                 isGuest: false,
@@ -819,20 +819,9 @@
     handleMemberData(user) {
       console.log('✅ Processing Wix member data for UserMemory');
       
-      // ✅ Extract nickname/displayName for proper user identification
-      let displayName = 'User';
-      let nickname = 'User';
-      
-      if (user.nickname && user.nickname !== 'Authenticated User') {
-        displayName = user.nickname;
-        nickname = user.nickname;
-      } else if (user.displayName && user.displayName !== 'Authenticated User') {
-        displayName = user.displayName;
-        nickname = user.displayName;
-      } else if (user.loginEmail) {
-        displayName = user.loginEmail.split('@')[0];
-        nickname = user.loginEmail.split('@')[0];
-      }
+      // ✅ Use member ID format for consistent, fast recognition
+      const displayName = `User-${user.id}`;
+      const nickname = `User-${user.id}`;
       
       const userData = {
         userId: user.id,  // ✅ Real Wix member ID for UserMemory
