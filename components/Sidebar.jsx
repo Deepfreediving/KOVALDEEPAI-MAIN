@@ -114,13 +114,16 @@ export default function Sidebar({
                 source: 'auto-analysis'
               };
               
+              console.log('📝 Dive log for analysis:', savedDiveLog);
+              console.log('📝 setMessages function available:', typeof setMessages === 'function');
+              
               await handleDiveLogAnalysis(savedDiveLog);
             } catch (autoAnalysisError) {
-              console.warn('⚠️ Automatic analysis failed:', autoAnalysisError);
+              console.error('❌ Automatic analysis failed:', autoAnalysisError);
               if (setMessages) {
                 setMessages(prev => [...prev, {
                   role: 'assistant',
-                  content: `⚠️ Automatic analysis failed, but you can manually analyze this dive by clicking on it in the sidebar.`
+                  content: `⚠️ Automatic analysis failed: ${autoAnalysisError.message}. You can manually analyze this dive by clicking on it in the sidebar.`
                 }]);
               }
             }
@@ -138,6 +141,9 @@ export default function Sidebar({
           
           setTimeout(async () => {
             try {
+              console.log('🔄 Starting automatic analysis (Wix failed, local success)...');
+              console.log('📝 setMessages function available:', typeof setMessages === 'function');
+              
               const savedDiveLog = {
                 id: localResult.id || `dive_${Date.now()}`,
                 ...formData,
@@ -145,9 +151,16 @@ export default function Sidebar({
                 source: 'auto-analysis-local'
               };
               
+              console.log('📝 Dive log for analysis (local):', savedDiveLog);
               await handleDiveLogAnalysis(savedDiveLog);
             } catch (autoAnalysisError) {
-              console.warn('⚠️ Automatic analysis failed:', autoAnalysisError);
+              console.error('❌ Automatic analysis failed (local path):', autoAnalysisError);
+              if (setMessages) {
+                setMessages(prev => [...prev, {
+                  role: 'assistant',
+                  content: `⚠️ Automatic analysis failed: ${autoAnalysisError.message}. You can manually analyze this dive by clicking on it in the sidebar.`
+                }]);
+              }
             }
           }, 2000);
         }
@@ -164,6 +177,9 @@ export default function Sidebar({
           
           setTimeout(async () => {
             try {
+              console.log('🔄 Starting automatic analysis (fallback path)...');
+              console.log('📝 setMessages function available:', typeof setMessages === 'function');
+              
               const savedDiveLog = {
                 id: localResult.id || `dive_${Date.now()}`,
                 ...formData,
@@ -171,9 +187,16 @@ export default function Sidebar({
                 source: 'auto-analysis-fallback'
               };
               
+              console.log('📝 Dive log for analysis (fallback):', savedDiveLog);
               await handleDiveLogAnalysis(savedDiveLog);
             } catch (autoAnalysisError) {
-              console.warn('⚠️ Automatic analysis failed:', autoAnalysisError);
+              console.error('❌ Automatic analysis failed (fallback path):', autoAnalysisError);
+              if (setMessages) {
+                setMessages(prev => [...prev, {
+                  role: 'assistant',
+                  content: `⚠️ Automatic analysis failed: ${autoAnalysisError.message}. You can manually analyze this dive by clicking on it in the sidebar.`
+                }]);
+              }
             }
           }, 2000);
         }
@@ -232,17 +255,19 @@ export default function Sidebar({
   // ✅ Handle click-to-analyze for individual dive logs
   const handleDiveLogAnalysis = async (diveLog) => {
     try {
-      setLoading(true);
+      console.log('🔍 Starting dive log analysis...', diveLog);
+      console.log('� setMessages function available:', typeof setMessages === 'function');
       
-      console.log('🔍 Analyzing individual dive log:', diveLog);
+      setLoading(true);
       
       if (setMessages) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `🔄 Analyzing your ${diveLog.discipline} dive to ${diveLog.reachedDepth}m at ${diveLog.location}...`
+          content: `🔄 Analyzing your ${diveLog.discipline || 'freediving'} dive to ${diveLog.reachedDepth || diveLog.targetDepth}m at ${diveLog.location || 'location'}...`
         }]);
       }
 
+      console.log('🌐 Calling analyze API...');
       const response = await fetch('/api/analyze/single-dive-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -253,18 +278,29 @@ export default function Sidebar({
         })
       });
 
+      console.log('📊 Analyze API response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Analysis failed: ${response.status}`);
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
       console.log('✅ Dive log analysis completed:', result);
 
       if (setMessages && result.analysis) {
+        console.log('💬 Posting analysis result to chat...');
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `🎯 **Analysis of your ${diveLog.discipline} dive:**\n\n${result.analysis}`
+          content: `🎯 **Analysis of your ${diveLog.discipline || 'freediving'} dive:**\n\n${result.analysis}`
         }]);
+      } else {
+        console.warn('⚠️ No analysis content received or setMessages not available');
+        if (setMessages) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `⚠️ Analysis completed but no content received. Please try again.`
+          }]);
+        }
       }
 
     } catch (error) {

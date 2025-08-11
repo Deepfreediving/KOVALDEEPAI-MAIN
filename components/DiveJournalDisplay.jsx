@@ -101,11 +101,16 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
 
   // ✅ Add analyze functionality for individual dive logs
   const handleAnalyzeDiveLog = async (log) => {
-    if (!log || !userId) return;
+    if (!log || !userId) {
+      console.warn('⚠️ Missing log or userId for analysis');
+      return;
+    }
     
     try {
+      console.log('🔍 Starting dive log analysis in DiveJournalDisplay:', log);
+      console.log('� setMessages function available:', typeof setMessages === 'function');
+      
       setAnalyzingLogId(log.id);
-      console.log('🔍 Analyzing dive log:', log.id);
       
       // ✅ Show analyzing message in chat immediately
       if (setMessages) {
@@ -115,6 +120,7 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
         }]);
       }
       
+      console.log('🌐 Calling analyze API from DiveJournalDisplay...');
       const response = await fetch('/api/analyze/single-dive-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,8 +130,12 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
         })
       });
 
+      console.log('📊 Analyze API response status:', response.status);
+
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Analysis result:', result);
+        
         if (result.success && result.analysis) {
           // Update the log with analysis
           const updatedLogs = logs.map(l => 
@@ -140,6 +150,7 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
           
           // ✅ Post analysis to chat
           if (setMessages) {
+            console.log('💬 Posting analysis result to chat...');
             setMessages(prev => [...prev, {
               role: 'assistant',
               content: `📊 **Dive Analysis Complete** \n\n${result.analysis}`
@@ -159,7 +170,7 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
           }
         }
       } else {
-        throw new Error(`Analysis request failed: ${response.status}`);
+        throw new Error(`Analysis request failed: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error('❌ Analysis error:', error);
