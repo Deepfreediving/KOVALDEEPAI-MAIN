@@ -308,42 +308,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { message, userId = 'guest', profile = {}, embedMode = false, diveLogs = [] } = req.body;
     
-    // ✅ Extract nickname from Members/FullData profile IMMEDIATELY  
-    const getUserNickname = (profile: any): string => {
-      // First try standard Wix profile fields
-      if (profile?.nickname && profile.nickname !== 'nickname' && profile.nickname !== 'Authenticated User') {
-        return profile.nickname;
-      }
-      if (profile?.displayName && profile.displayName !== 'displayName' && profile.displayName !== 'Authenticated User') {
-        return profile.displayName;
-      }
-      if (profile?.userName && profile.userName !== 'userName') {
-        return profile.userName;
+    // ✅ Extract consistent user display name using member ID for fast recognition
+    const getUserNickname = (profile: any, userId: string): string => {
+      // ✅ PRIORITY: Use member ID format for consistent, fast recognition
+      if (userId && !userId.startsWith('guest')) {
+        return `User-${userId}`;
       }
       
-      // Try name combinations
-      if (profile?.firstName && profile?.lastName) {
-        return `${profile.firstName} ${profile.lastName}`;
-      }
-      if (profile?.firstName) {
-        return profile.firstName;
-      }
-      
-      // Try email extraction
-      if (profile?.loginEmail && !profile.loginEmail.includes('unknown')) {
-        return profile.loginEmail.split('@')[0];
-      }
-      
-      // Check for Wix currentUser fallback data
-      if (profile?.source?.includes('currentUser') || profile?.source?.includes('fallback')) {
-        return profile?.displayName || profile?.nickname || 'User';
+      // Fallback for guest users
+      if (userId?.startsWith('guest')) {
+        return 'Guest User';
       }
       
       // Final fallback
-      return userId && userId.startsWith('guest') ? 'Guest User' : 'User';
+      return 'User';
     };
 
-    const nickname = getUserNickname(profile);
+    const nickname = getUserNickname(profile, userId);
     
     // ✅ Enhanced validation
     if (!message || typeof message !== 'string' || !message.trim()) {
