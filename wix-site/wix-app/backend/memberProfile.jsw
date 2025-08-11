@@ -1,6 +1,6 @@
-// 🔥 WIX APP BACKEND: MEMBERPROFILE.JSW - MASTER EDITION
+// 🔥 WIX APP BACKEND: MEMBERPROFILE.JSW - OPTIMIZED FOR @deepfreediving/kovaldeepai-app
 // Optimized for OpenAI & Pinecone integration with Wix best practices
-// Version: 4.0.0 - Single Perfect Version for Freediving
+// Version: 4.x - Dynamic versioning for production releases
 // Date: August 9, 2025
 
 import { ok, notFound, serverError, badRequest } from 'wix-http-functions';
@@ -8,8 +8,10 @@ import wixData from 'wix-data';
 import { currentMember } from 'wix-members';
 import { fetch } from 'wix-fetch';
 
-// 🎯 MASTER CONFIGURATION - Single Perfect Version
+// 🎯 MASTER CONFIGURATION - App Integration Ready
 const MEMBER_CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
   API_VERSIONS: {
     MASTER: 'master'          // Single perfect version for freediving
   },
@@ -54,7 +56,8 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version',
+  'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
 };
 
 // 🔥 PERFORMANCE METRICS

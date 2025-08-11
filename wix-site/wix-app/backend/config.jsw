@@ -1,12 +1,13 @@
-// WIX APP CONFIG: CONFIG.JSW - MASTER EDITION
+// WIX APP CONFIG: CONFIG.JSW - OPTIMIZED FOR @deepfreediving/kovaldeepai-app
 // Centralized configuration for Wix App backend functions
-// Version: 4.0.0 - Production Ready
+// Version: 4.x - Dynamic versioning for production releases
 
 // 🎯 MASTER APPLICATION CONFIGURATION
 export const WIX_APP_CONFIG = {
   APP_INFO: {
     name: 'KovalDeepAI',
-    version: '4.0.0',
+    version: '4.x',
+    appId: '@deepfreediving/kovaldeepai-app',
     environment: 'production'
   },
   
@@ -50,7 +51,8 @@ export const WIX_APP_CONFIG = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Version',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
   }
 };
 

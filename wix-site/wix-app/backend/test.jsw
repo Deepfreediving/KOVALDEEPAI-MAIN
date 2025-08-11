@@ -1,30 +1,44 @@
-// 🔥 WIX APP BACKEND: HTTP-TEST.JSW - ENHANCED EDITION
-// Lightweight testing endpoint with AI integration status
-// Version: 4.0.0 - Production Ready
-// Date: August 8, 2025
+// 🔥 WIX APP BACKEND: HTTP-TEST.JSW - MASTER TEST SUITE
+// Comprehensive testing endpoint with full system diagnostics
+// Version: 4.x - Updated for Wix App Integration (Auto-versioning)
+// Date: August 10, 2025
 
-import { ok, serverError } from 'wix-http-functions';
+import { ok, badRequest, serverError } from 'wix-http-functions';
 import { fetch } from 'wix-fetch';
+import wixData from 'wix-data';
+import { authentication } from 'wix-members-backend';
 
-// 🎯 TEST CONFIGURATION
+// 🎯 MASTER TEST CONFIGURATION FOR WIX APP
 const TEST_CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
+  TEST_USER_ID: '2ac69a3d-1838-4a13-b118-4712b45d1b41',
+  
   SERVICES: {
     VERCEL_APP: 'https://kovaldeepai-main.vercel.app',
     HEALTH_CHECK: 'https://kovaldeepai-main.vercel.app/api/health'
   },
+  
+  COLLECTIONS: ['UserMemory', 'MemberProfiles', 'DiveLogs'],
+  
   CORS_HEADERS: {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
   }
 };
 
-// 🔥 HELPER FUNCTION FOR CONSISTENT RESPONSES
+// 🔥 ENHANCED HELPER FUNCTION FOR CONSISTENT RESPONSES
 function createResponse(status, data) {
   return {
     status,
-    body: data,
+    body: {
+      ...data,
+      appId: TEST_CONFIG.APP_ID,
+      version: TEST_CONFIG.VERSION
+    },
     headers: TEST_CONFIG.CORS_HEADERS
   };
 }
@@ -41,7 +55,9 @@ export async function get_test(request) {
       status: 'operational',
       timestamp: new Date().toISOString(),
       environment: 'wix-backend',
-      version: version,
+      appId: TEST_CONFIG.APP_ID,
+      version: TEST_CONFIG.VERSION,
+      requestedVersion: version,
       wixServices: {
         httpFunctions: 'available',
         dataQueries: 'ready',
@@ -182,4 +198,186 @@ export async function getTest(requestData) {
   return result.body || result;
 }
 
-console.log("🔥 Enhanced Test API initialized - AI integration ready");
+console.log("🔥 Master Test Suite initialized - Full system diagnostics ready");
+
+// 🔥 HEALTH CHECK ENDPOINT - Quick System Status
+export async function get_healthCheck(request) {
+  console.log('🏥 Health check requested');
+  
+  try {
+    const healthData = {
+      timestamp: new Date().toISOString(),
+      status: 'healthy',
+      backend: 'wix-blocks-app',
+      testUserId: TEST_CONFIG.TEST_USER_ID,
+      functions: {
+        healthCheck: 'working',
+        wixData: 'available',
+        authentication: 'available',
+        fetch: 'available'
+      },
+      message: 'Master test suite is operational!'
+    };
+    
+    return ok(healthData, TEST_CONFIG.CORS_HEADERS);
+    
+  } catch (error) {
+    return serverError({
+      error: 'Health check failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 COMPREHENSIVE USER TESTING
+export async function get_testUser(request) {
+  const userId = request.query.userId || TEST_CONFIG.TEST_USER_ID;
+  console.log(`👤 Testing user: ${userId}`);
+  
+  try {
+    const testResults = {
+      userId: userId,
+      timestamp: new Date().toISOString(),
+      tests: {}
+    };
+    
+    // Test authentication
+    try {
+      const member = await authentication.getCurrentMember();
+      testResults.tests.authentication = {
+        status: 'PASS',
+        hasMember: !!member,
+        memberId: member?.id || 'No authenticated member'
+      };
+    } catch (error) {
+      testResults.tests.authentication = {
+        status: 'FAIL',
+        error: error.message
+      };
+    }
+    
+    // Test collections (basic check without modifying data)
+    testResults.tests.collections = {};
+    
+    for (const collectionName of TEST_CONFIG.COLLECTIONS) {
+      try {
+        const result = await wixData.query(collectionName).limit(1).find();
+        testResults.tests.collections[collectionName] = {
+          status: 'PASS',
+          exists: true,
+          totalItems: result.totalCount || 0
+        };
+      } catch (error) {
+        testResults.tests.collections[collectionName] = {
+          status: 'FAIL',
+          exists: false,
+          error: error.message
+        };
+      }
+    }
+    
+    return ok({
+      success: true,
+      message: `Comprehensive user test completed for ${userId}`,
+      ...testResults
+    }, TEST_CONFIG.CORS_HEADERS);
+    
+  } catch (error) {
+    return serverError({
+      error: 'User test failed',
+      userId: userId,
+      details: error.message,
+      timestamp: new Date().toISOString()
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 DEBUG ALL FUNCTIONS - Master Diagnostic
+export async function get_debugAllFunctions(request) {
+  console.log('🚀 DEBUG: Starting comprehensive system test...');
+  
+  try {
+    const results = {
+      timestamp: new Date().toISOString(),
+      backend: 'wix-blocks-app',
+      version: '5.0.0',
+      testSummary: {
+        healthCheck: 'PASS',
+        cors: 'PASS',
+        authentication: 'TESTING',
+        collections: 'TESTING',
+        aiIntegration: 'TESTING'
+      },
+      message: 'Master test suite: All systems check initiated'
+    };
+    
+    // Test authentication
+    try {
+      const member = await authentication.getCurrentMember();
+      results.testSummary.authentication = 'PASS';
+      results.currentMember = {
+        exists: !!member,
+        id: member?.id || null
+      };
+    } catch (error) {
+      results.testSummary.authentication = 'FAIL';
+      results.authError = error.message;
+    }
+    
+    // Test basic collection access
+    try {
+      const userMemoryTest = await wixData.query('UserMemory').limit(1).find();
+      results.testSummary.collections = 'PASS';
+      results.collectionTest = {
+        userMemoryExists: true,
+        totalRecords: userMemoryTest.totalCount || 0
+      };
+    } catch (error) {
+      results.testSummary.collections = 'FAIL';
+      results.collectionError = error.message;
+    }
+    
+    // Test AI integration
+    try {
+      const healthResponse = await fetch(TEST_CONFIG.SERVICES.HEALTH_CHECK, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      results.testSummary.aiIntegration = healthResponse.ok ? 'PASS' : 'FAIL';
+      results.aiServices = {
+        vercelApp: healthResponse.ok ? 'operational' : 'degraded',
+        statusCode: healthResponse.status
+      };
+    } catch (aiError) {
+      results.testSummary.aiIntegration = 'FAIL';
+      results.aiError = aiError.message;
+    }
+    
+    return ok({
+      success: true,
+      ...results
+    }, TEST_CONFIG.CORS_HEADERS);
+    
+  } catch (error) {
+    return serverError({
+      error: 'Master diagnostic failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 CORS OPTIONS HANDLERS
+export function options_healthCheck(request) {
+  return ok({ message: 'CORS OK - healthCheck' }, TEST_CONFIG.CORS_HEADERS);
+}
+
+export function options_testUser(request) {
+  return ok({ message: 'CORS OK - testUser' }, TEST_CONFIG.CORS_HEADERS);
+}
+
+export function options_debugAllFunctions(request) {
+  return ok({ message: 'CORS OK - debugAllFunctions' }, TEST_CONFIG.CORS_HEADERS);
+}

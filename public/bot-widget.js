@@ -1041,7 +1041,7 @@
   };
 
   const loadTime = new Date().toLocaleTimeString();
-  console.log('🚀 Koval AI Widget v3.3-OPENAI-ENHANCED loaded safely - Cache: ' + Date.now());
+  console.log('🚀 Koval AI Widget v4.0-OPENAI-ENHANCED loaded safely - Cache: ' + Date.now());
   console.log('🎯 Widget loaded at: ' + loadTime);
   console.log('🔄 ENHANCED ERROR HANDLING AND OPENAI RELIABILITY APPLIED!');
   console.log('✅ Message types supported: EMBED_READY, CHAT_MESSAGE, SAVE_DIVE_LOG, USER_AUTH, THEME_CHANGE');

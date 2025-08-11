@@ -1,7 +1,7 @@
-// 🔥 WIX-APP-FRONTEND.JS - MASTER EDITION
+// 🔥 WIX-APP-FRONTEND.JS - OPTIMIZED FOR @deepfreediving/kovaldeepai-app
 // Single perfect version for freediving community
-// Version: 4.1.0 - Master Consolidated Edition with Wix IDE Compatibility
-// Date: August 9, 2025
+// Version: 4.x - Dynamic versioning for 4.0 release compatibility
+// Date: August 10, 2025
 
 import wixUsers from 'wix-users';
 import { fetch } from 'wix-fetch';
@@ -440,6 +440,8 @@ async function makeRequest(url, options = {}, endpoint = 'unknown') {
       method: options.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app',
+        'X-App-Version': '4.x',
         ...(isExternalAPI ? {} : { 'X-API-Version': currentMode }),
         ...options.headers
       },

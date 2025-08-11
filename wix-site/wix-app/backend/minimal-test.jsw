@@ -1,0 +1,47 @@
+// 🔥 MINIMAL TEST FOR WIX BACKEND - NO IMPORTS
+// Testing basic HTTP function structure
+
+export function get_minimalTest(request) {
+  return {
+    status: 200,
+    body: {
+      message: "Minimal test successful",
+      timestamp: new Date().toISOString(),
+      appId: "@deepfreediving/kovaldeepai-app",
+      version: "4.x"
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
+  };
+}
+
+export function post_minimalTest(request) {
+  return {
+    status: 200,
+    body: {
+      message: "Minimal POST test successful",
+      timestamp: new Date().toISOString(),
+      requestBody: request.body,
+      appId: "@deepfreediving/kovaldeepai-app"
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
+  };
+}
+
+export function options_minimalTest(request) {
+  return {
+    status: 200,
+    body: { message: "CORS OK" },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  };
+}

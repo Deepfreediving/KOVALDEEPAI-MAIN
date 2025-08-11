@@ -1,6 +1,6 @@
-// WIX APP BACKEND: CHAT.JSW - MASTER EDITION
+// WIX APP BACKEND: CHAT.JSW - OPTIMIZED FOR @deepfreediving/kovaldeepai-app
 // Chat API endpoint for Wix App environment
-// Version: 4.0.0 - Production Ready
+// Version: 4.x - Dynamic versioning for production releases
 
 import { ok, badRequest, serverError } from 'wix-http-functions';
 import { fetch } from 'wix-fetch';
@@ -8,6 +8,8 @@ import { authentication } from 'wix-members-backend';
 
 // 🎯 MASTER CHAT CONFIGURATION
 const CHAT_CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
   API_ENDPOINTS: {
     AI_BACKEND: 'https://kovaldeepai-main.vercel.app/api/openai/chat',
     FALLBACK_BACKEND: 'https://kovaldeepai-main.vercel.app/api/chat'
@@ -27,7 +29,8 @@ const CHAT_CONFIG = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
   }
 };
 

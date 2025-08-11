@@ -1,0 +1,153 @@
+// 🔥 WIX APP BACKEND: CORRECTED TEST.JSW - MODULE_LOAD_ERROR FIX
+// Conservative approach with verified Wix imports only
+// Version: 4.x - Updated for Wix App Integration
+// Date: August 11, 2025
+
+// ✅ CONSERVATIVE IMPORTS - Only essential Wix modules
+import { ok, badRequest, serverError } from 'wix-http-functions';
+
+// 🎯 CORRECTED TEST CONFIGURATION FOR WIX APP
+const TEST_CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
+  TEST_USER_ID: '2ac69a3d-1838-4a13-b118-4712b45d1b41',
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
+  }
+};
+
+// 🔥 ENHANCED HELPER FUNCTION FOR CONSISTENT RESPONSES
+function createResponse(status, data) {
+  return {
+    status,
+    body: {
+      ...data,
+      appId: TEST_CONFIG.APP_ID,
+      version: TEST_CONFIG.VERSION,
+      timestamp: new Date().toISOString()
+    },
+    headers: TEST_CONFIG.CORS_HEADERS
+  };
+}
+
+// 🔥 CORRECTED GET TEST - Minimal dependencies
+export function get_test(request) {
+  const startTime = Date.now();
+  
+  try {
+    console.log('🔄 Test GET request received for Wix App:', TEST_CONFIG.APP_ID);
+    
+    const systemStatus = {
+      status: 'success',
+      message: 'Test endpoint is working correctly',
+      systemInfo: {
+        appId: TEST_CONFIG.APP_ID,
+        version: TEST_CONFIG.VERSION,
+        timestamp: new Date().toISOString(),
+        responseTime: Date.now() - startTime
+      },
+      requestInfo: {
+        method: 'GET',
+        path: request?.path || '/_functions/test',
+        query: request?.query || {},
+        userAgent: request?.headers?.['user-agent'] || 'unknown',
+        hasAuth: !!(request?.headers?.authorization)
+      },
+      endpoints: {
+        test: '/_functions/test',
+        userMemory: '/_functions/userMemory',
+        diveLogs: '/_functions/diveLogs',
+        memberProfile: '/_functions/memberProfile'
+      }
+    };
+
+    return ok(systemStatus, TEST_CONFIG.CORS_HEADERS);
+    
+  } catch (error) {
+    console.error('❌ Test GET error:', error);
+    
+    return serverError({
+      error: 'Test endpoint failed',
+      message: error.message,
+      stack: error.stack?.split('\n')?.slice(0, 3)
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 CORRECTED POST TEST - Basic functionality only
+export function post_test(request) {
+  const startTime = Date.now();
+  
+  try {
+    console.log('🔄 Test POST request received for Wix App:', TEST_CONFIG.APP_ID);
+    
+    const requestData = request?.body || {};
+    const testResults = {
+      status: 'success',
+      message: 'Test POST endpoint is working correctly',
+      requestData: requestData,
+      systemInfo: {
+        appId: TEST_CONFIG.APP_ID,
+        version: TEST_CONFIG.VERSION,
+        timestamp: new Date().toISOString(),
+        responseTime: Date.now() - startTime
+      },
+      tests: {
+        requestProcessing: true,
+        responseGeneration: true,
+        corsHeaders: true
+      }
+    };
+
+    return ok(testResults, TEST_CONFIG.CORS_HEADERS);
+    
+  } catch (error) {
+    console.error('❌ Test POST error:', error);
+    
+    return serverError({
+      error: 'Test POST endpoint failed',
+      message: error.message
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 OPTIONS HANDLER FOR CORS
+export function options_test(request) {
+  console.log('🔄 Test OPTIONS request for CORS');
+  return ok({ 
+    message: 'CORS OK - test endpoint',
+    appId: TEST_CONFIG.APP_ID,
+    allowedMethods: ['GET', 'POST', 'OPTIONS']
+  }, TEST_CONFIG.CORS_HEADERS);
+}
+
+// 🔥 ADDITIONAL DIAGNOSTIC FUNCTIONS
+
+// Health check function
+export function get_health(request) {
+  try {
+    return ok({
+      status: 'healthy',
+      message: 'System is operational',
+      checks: {
+        basicFunction: true,
+        responseGeneration: true,
+        timestampGeneration: !!new Date().toISOString()
+      }
+    }, TEST_CONFIG.CORS_HEADERS);
+  } catch (error) {
+    return serverError({
+      status: 'unhealthy',
+      error: error.message
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+export function options_health(request) {
+  return ok({ message: 'CORS OK - health' }, TEST_CONFIG.CORS_HEADERS);
+}

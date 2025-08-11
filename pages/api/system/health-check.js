@@ -97,7 +97,7 @@ export default async function handler(req, res) {
           },
           body: JSON.stringify({
             action: 'healthCheck',
-            version: 'master-v1'
+            version: 'v4.0'
           })
         });
         

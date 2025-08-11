@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Wix Backend Debug Console</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #F57C00;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+        
+        .results {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Wix Backend Debug Console</h1>
+            <p>Test your Wix app backend functions</p>
+        </div>
+
+        <div class="input-group">
+            <label for="baseUrl">Your Wix App Backend URL:</label>
+            <input type="text" id="baseUrl" placeholder="https://www.deepfreediving.com/_functions/apps/@deepfreediving/kovaldeepai-app" value="https://www.deepfreediving.com/_functions/apps/@deepfreediving/kovaldeepai-app">
+            <small style="color: #666; font-size: 12px;">
+                📋 Your Wix App: @deepfreediving/kovaldeepai-app<br>
+                ⚠️ Wix Apps use /apps/{APP_ID}/ in the URL path<br>
+                ✅ Try both @deepfreediving/kovaldeepai-app and deepfreediving.kovaldeepai-app formats
+            </small>
+        </div>
+
+        <div class="input-group">
+            <label for="testUserId">Test User ID (optional):</label>
+            <input type="text" id="testUserId" placeholder="2ac69a3d-1838-4a13-b118-4712b45d1b41" value="2ac69a3d-1838-4a13-b118-4712b45d1b41">
+            <small style="color: #666; font-size: 12px;">
+                Use any valid user ID for testing
+            </small>
+        </div>
+
+        <div class="button-grid">
+            <button class="btn btn-primary" onclick="runHealthCheck()">🏥 Health Check</button>
+            <button class="btn btn-secondary" onclick="runAllTests()">🔧 Run All Tests</button>
+            <button class="btn btn-warning" onclick="testUser()">👤 Test User</button>
+            <button class="btn" style="background: #9C27B0; color: white;" onclick="verifySetup()">🔍 Verify Setup</button>
+            <button class="btn btn-danger" onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="results" class="results">🚀 KOVAL AI WIX APP BACKEND v4.x READY:
+
+✅ BREAKTHROUGH: Found the missing key!
+✅ Your Wix App: @deepfreediving/kovaldeepai-app
+✅ Backend URL: https://www.deepfreediving.com/_functions
+✅ Version: 4.x - Enhanced for Wix App Integration (Auto-versioning)
+✅ Proper headers configured with X-Wix-App-ID
+
+🔧 AVAILABLE TESTS:
+1. 🏥 Health Check - Test basic backend connectivity
+2. 👤 Test User Memory - Check user data operations  
+3. 🔧 Run All Tests - Comprehensive system check
+4. 🔍 Verify Setup - Check configuration
+
+💡 NEXT STEPS:
+1. Make sure your backend functions v4.x are deployed in Wix
+2. Click "Health Check" to test connectivity
+3. Try saving a test dive log
+4. Check your Next.js app /test page
+
+🎯 SUCCESS = No more 404 errors, real data flowing between systems!
+
+Ready to test your Wix app backend connection v3.x!</div>
+    </div>
+
+    <script>
+        async function makeRequest(endpoint, options = {}) {
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            if (!baseUrl) {
+                showStatus('❌ Please enter your Wix app base URL first!', 'error');
+                logResult('Setup Error', {
+                    error: 'Missing base URL',
+                    required_format: 'https://your-site-name.wixsite.com/_functions',
+                    setup_required: 'Deploy test backend first!'
+                });
+                return null;
+            }
+            
+            // Validate URL format - Updated for custom domain  
+            if (!baseUrl.includes('_functions')) {
+                showStatus('❌ URL must include /_functions endpoint', 'error');
+                logResult('URL Format Error', {
+                    provided: baseUrl,
+                    expected_formats: [
+                        'https://www.deepfreediving.com/_functions',
+                        'https://your-site.wixsite.com/_functions'
+                    ],
+                    note: 'Must end with /_functions (no trailing slash)'
+                });
+                return null;
+            }
+            
+            if (!baseUrl.includes('deepfreediving.com') && !baseUrl.includes('wixsite.com')) {
+                showStatus('❌ Invalid domain. Should be deepfreediving.com or wixsite.com', 'error');
+                logResult('Domain Error', {
+                    provided: baseUrl,
+                    accepted_domains: ['deepfreediving.com', 'wixsite.com'],
+                    note: 'Custom domain (deepfreediving.com) or standard wixsite.com format accepted'
+                });
+                return null;
+            }
+            
+            const url = `${baseUrl}/${endpoint}`;
+            
+            try {
+                showStatus(`🔄 Testing: ${endpoint}...`, 'info');
+                
+                const response = await fetch(url, {
+                    method: options.method || 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const text = await response.text();
+                    data = { 
+                        error: 'Invalid JSON response', 
+                        response_text: text.substring(0, 500),
+                        status: response.status 
+                    };
+                }
+                
+                if (response.ok) {
+                    showStatus(`✅ ${endpoint} successful!`, 'success');
+                    return data;
+                } else {
+                    showStatus(`❌ ${endpoint} failed: HTTP ${response.status}`, 'error');
+                    
+                    if (response.status === 404) {
+                        logResult('Backend Not Found (404)', {
+                            error: 'Backend function not deployed',
+                            endpoint: endpoint,
+                            url: url,
+                            solution: 'Deploy wix-blocks-test-health-check.jsw to your Wix Blocks app backend',
+                            verify: 'Check that test backend file is published in Wix'
+                        });
+                    }
+                    
+                    return { error: `HTTP ${response.status}`, details: data, url: url };
+                }
+                
+            } catch (error) {
+                showStatus(`❌ Network error: ${error.message}`, 'error');
+                
+                if (error.message.includes('CORS')) {
+                    logResult('CORS Error', {
+                        error: 'Cross-origin request blocked',
+                        solution: 'Check Wix app CORS settings',
+                        url: url
+                    });
+                } else if (error.message.includes('fetch')) {
+                    logResult('Network Error', {
+                        error: 'Cannot reach backend',
+                        possible_causes: [
+                            'Backend not deployed',
+                            'Wrong URL format',
+                            'App not published',
+                            'Network connectivity'
+                        ],
+                        url: url
+                    });
+                }
+                
+                return { error: 'Network error', details: error.message };
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                if (statusDiv.textContent === message) {
+                    statusDiv.textContent = '';
+                    statusDiv.className = '';
+                }
+            }, 5000);
+        }
+        
+        function logResult(title, data) {
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const result = `\n=== ${title} - ${timestamp} ===\n${JSON.stringify(data, null, 2)}\n`;
+            resultsDiv.textContent += result;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        async function runHealthCheck() {
+            const result = await makeRequest('test');
+            if (result) {
+                logResult('Health Check', result);
+            }
+        }
+        
+        async function testUser() {
+            const userId = document.getElementById('testUserId').value.trim();
+            const queryParam = userId ? `?userId=${userId}` : '';
+            const result = await makeRequest(`userMemory${queryParam}`);
+            if (result) {
+                logResult('Test User Memory', result);
+            }
+        }
+        
+        async function runAllTests() {
+            showStatus('Running comprehensive tests...', 'info');
+            
+            const result = await makeRequest('test?version=comprehensive&includeAI=true');
+            if (result) {
+                logResult('Comprehensive System Test', result);
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').textContent = 'Results cleared. Ready for new tests...\n';
+            document.getElementById('status').textContent = '';
+            document.getElementById('status').className = '';
+        }
+        
+        function verifySetup() {
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            let setupStatus = {
+                url_provided: !!baseUrl,
+                url_format_valid: false,
+                setup_checklist: {
+                    backend_deployed: 'UNKNOWN',
+                    app_published: 'UNKNOWN', 
+                    url_correct: 'UNKNOWN'
+                }
+            };
+            
+            if (baseUrl) {
+                // Updated validation for custom domain
+                const hasValidDomain = baseUrl.includes('deepfreediving.com') || baseUrl.includes('wixsite.com');
+                const hasFunctions = baseUrl.includes('_functions');
+                setupStatus.url_format_valid = hasValidDomain && hasFunctions;
+                setupStatus.setup_checklist.url_correct = setupStatus.url_format_valid ? 'PASS' : 'FAIL';
+            }
+            
+            logResult('Setup Verification', {
+                ...setupStatus,
+                next_steps: setupStatus.url_format_valid ? 
+                    ['Click "🏥 Health Check" to test backend deployment'] : 
+                    [
+                        'Fix URL format:',
+                        '• https://www.deepfreediving.com/_functions (your custom domain)',
+                        '• https://your-site.wixsite.com/_functions (standard format)',
+                        'Deploy backend functions to your Wix app'
+                    ],
+                reminder: 'Use your updated backend functions v3.x!'
+            });
+            
+            if (setupStatus.url_format_valid) {
+                showStatus('✅ URL format looks good! Try Health Check next.', 'success');
+            } else {
+                showStatus('❌ Please fix URL format and deploy backend first.', 'error');
+            }
+        }
+        
+        // Auto-populate base URL if possible
+        window.addEventListener('load', () => {
+            const urlInput = document.getElementById('baseUrl');
+            if (!urlInput.value && window.location.hostname !== 'localhost') {
+                // Could auto-detect if running from known domain
+                console.log('Debug console ready');
+            }
+        });
+    </script>
+</body>
+</html>
