@@ -1,0 +1,186 @@
+// 🔥 WIX APP BACKEND: CONNECTION-CORE.JSW - CORRECTED VERSION
+// Based on GPT-5 suggestions but with working imports
+// Version: 4.0 - Fixed MODULE_LOAD_ERROR issues
+
+import { ok, badRequest, serverError } from 'wix-http-functions';
+import wixData from 'wix-data';
+// ❌ REMOVED: import { fetch } from 'wix-fetch'; // This causes MODULE_LOAD_ERROR
+
+// ✅ CORRECTED CONFIG - Using verified working collection IDs
+export const CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.0',
+  
+  COLLECTIONS: {
+    // ✅ Use the exact collection ID from your Wix console
+    USER_MEMORY: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1',
+    REGISTRATIONS: 'KovalAIRegistrations',
+    MEMBERS: 'Members/FullData'
+  },
+  
+  SERVICES: {
+    OPENAI: {
+      CHAT: 'https://kovaldeepai-main.vercel.app/api/openai/chat',
+      EMBEDDING: 'https://kovaldeepai-main.vercel.app/api/openai/embedding',
+      HEALTH: 'https://kovaldeepai-main.vercel.app/api/health'
+    },
+    PINECONE: {
+      QUERY: 'https://kovaldeepai-main.vercel.app/api/pinecone/pineconequery-gpt',
+      STATS: 'https://kovaldeepai-main.vercel.app/api/pinecone/stats'
+    },
+    VERCEL_APP: 'https://kovaldeepai-main.vercel.app'
+  },
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
+  }
+};
+
+// ✅ TEST WIX COLLECTIONS (No problematic imports)
+export async function testWixConnectionCore() {
+  console.log('🔍 Testing Wix collections...');
+  const results = {};
+  
+  for (const [key, collectionName] of Object.entries(CONFIG.COLLECTIONS)) {
+    try {
+      const queryResult = await wixData.query(collectionName)
+        .limit(1)
+        .find();
+      
+      results[key] = {
+        status: 'connected',
+        collection: collectionName,
+        itemCount: queryResult.totalCount || 0,
+        accessible: true
+      };
+      
+      console.log(`✅ Collection ${key} (${collectionName}): ${queryResult.totalCount || 0} items`);
+      
+    } catch (error) {
+      results[key] = {
+        status: 'error',
+        collection: collectionName,
+        error: error.message,
+        accessible: false
+      };
+      
+      console.log(`❌ Collection ${key} (${collectionName}): ${error.message}`);
+    }
+  }
+  
+  return {
+    status: 'operational',
+    collections: results,
+    timestamp: new Date().toISOString(),
+    appId: CONFIG.APP_ID,
+    version: CONFIG.VERSION
+  };
+}
+
+// ✅ TEST EXTERNAL SERVICES (Using global fetch - available in Wix)
+export async function testExternalServices() {
+  console.log('🔍 Testing external services...');
+  
+  const services = {};
+  
+  // Test health endpoint (should work)
+  try {
+    const healthResponse = await fetch(CONFIG.SERVICES.OPENAI.HEALTH, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    services.health = {
+      status: healthResponse.ok ? 'operational' : 'degraded',
+      statusCode: healthResponse.status,
+      url: CONFIG.SERVICES.OPENAI.HEALTH
+    };
+    
+    console.log(`✅ Health check: ${healthResponse.status}`);
+    
+  } catch (error) {
+    services.health = {
+      status: 'error',
+      error: error.message,
+      url: CONFIG.SERVICES.OPENAI.HEALTH
+    };
+    
+    console.log(`❌ Health check failed: ${error.message}`);
+  }
+  
+  // Test Pinecone endpoint
+  try {
+    const pineconeResponse = await fetch(CONFIG.SERVICES.PINECONE.QUERY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: 'test query',
+        topK: 1
+      })
+    });
+    
+    services.pinecone = {
+      status: pineconeResponse.ok ? 'operational' : 'degraded',
+      statusCode: pineconeResponse.status,
+      url: CONFIG.SERVICES.PINECONE.QUERY
+    };
+    
+    console.log(`✅ Pinecone test: ${pineconeResponse.status}`);
+    
+  } catch (error) {
+    services.pinecone = {
+      status: 'error',
+      error: error.message,
+      url: CONFIG.SERVICES.PINECONE.QUERY
+    };
+    
+    console.log(`❌ Pinecone test failed: ${error.message}`);
+  }
+  
+  return {
+    status: 'operational',
+    services: services,
+    timestamp: new Date().toISOString(),
+    appId: CONFIG.APP_ID
+  };
+}
+
+// ✅ COMPREHENSIVE TEST SUITE
+export async function runFullDiagnostics({ includeExternal = true } = {}) {
+  console.log('🚀 Running full diagnostics suite...');
+  
+  const results = {
+    appId: CONFIG.APP_ID,
+    version: CONFIG.VERSION,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Always test Wix connections
+  results.wix = await testWixConnectionCore();
+  
+  // Optionally test external services
+  if (includeExternal) {
+    results.external = await testExternalServices();
+  }
+  
+  // Calculate overall status
+  const wixOk = Object.values(results.wix.collections).every(c => c.status === 'connected');
+  const externalOk = !includeExternal || Object.values(results.external.services).every(s => s.status === 'operational');
+  
+  results.overallStatus = wixOk && externalOk ? 'healthy' : 'degraded';
+  results.summary = {
+    wixCollections: Object.keys(results.wix.collections).length,
+    wixConnected: Object.values(results.wix.collections).filter(c => c.status === 'connected').length,
+    externalServices: includeExternal ? Object.keys(results.external.services).length : 0,
+    externalOperational: includeExternal ? Object.values(results.external.services).filter(s => s.status === 'operational').length : 0
+  };
+  
+  console.log(`✅ Diagnostics complete: ${results.overallStatus}`);
+  return results;
+}
+
+console.log("🔥 Connection Core initialized - No problematic imports");
