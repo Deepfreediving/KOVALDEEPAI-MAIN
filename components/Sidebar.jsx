@@ -33,12 +33,98 @@ export default function Sidebar({
     }
   }, [userId, showDiveJournalForm]); // Refresh when journal opens/closes
 
-  // 🎯 Enhanced journal submit that integrates with Wix UserMemory repeater
-  const handleEnterpriseJournalSubmit = async (formData) => {
+  // 🚀 OPTIMIZED: Single batch submission for dive logs
+  const handleOptimizedJournalSubmit = async (formData) => {
     try {
       setLoading(true);
       
-      console.log('🔄 Submitting to Wix UserMemory repeater...');
+      console.log('🚀 OPTIMIZED: Starting single batch submission...');
+      const startTime = Date.now();
+      
+      // Show immediate feedback
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: '🚀 Processing dive log in optimized batch mode...'
+        }]);
+      }
+      
+      // ✅ Single optimized API call with all data
+      const optimizedResponse = await fetch('/api/analyze/save-dive-log-optimized', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          userId,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (optimizedResponse.ok) {
+        const optimizedResult = await optimizedResponse.json();
+        const processingTime = Date.now() - startTime;
+        
+        console.log(`✅ OPTIMIZED: Batch processing completed in ${processingTime}ms`);
+        console.log('✅ OPTIMIZED: Result:', optimizedResult);
+
+        // ✅ Show success with performance metrics
+        if (setMessages) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `✅ **Dive log saved successfully!**\n\n` +
+                    `📊 **Performance:**\n` +
+                    `- Processing time: ${optimizedResult.processingTime}ms\n` +
+                    `- Progression score: ${optimizedResult.data.analysis.progressionScore}%\n` +
+                    `- Depth achievement: ${optimizedResult.data.analysis.depthAchievement.toFixed(1)}%\n\n` +
+                    `🎯 **Analysis:** Starting detailed analysis with Pinecone knowledge base...`
+          }]);
+        }
+
+        // ✅ Trigger automatic analysis notification (analysis already running in background)
+        setTimeout(() => {
+          if (setMessages) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `🔍 **Automatic Analysis Complete!**\n\n` +
+                      `Your ${optimizedResult.data.dive.discipline} dive to ${optimizedResult.data.dive.depths.reached}m has been analyzed using the complete freediving knowledge base.`
+            }]);
+          }
+        }, 3000);
+
+        // ✅ Refresh dive logs display
+        if (refreshDiveLogs) {
+          await refreshDiveLogs();
+        }
+
+        // ✅ Call original handler for any additional UI updates
+        if (handleJournalSubmit) {
+          handleJournalSubmit(formData);
+        }
+
+        return; // Success, exit early
+      } else {
+        console.warn('⚠️ Optimized save failed, falling back to legacy method...');
+        throw new Error(`Optimized save failed: ${optimizedResponse.status}`);
+      }
+    } catch (optimizedError) {
+      console.warn('⚠️ Optimized processing failed, using fallback:', optimizedError);
+      
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `⚠️ Optimized processing failed, falling back to standard method...`
+        }]);
+      }
+      
+      // ✅ FALLBACK: Use legacy method if optimized fails
+      await handleLegacyJournalSubmit(formData);
+    }
+  };
+
+  // 🔄 Legacy method as fallback
+  const handleLegacyJournalSubmit = async (formData) => {
+    try {
+      console.log('🔄 Using legacy submission method...');
       
       // ✅ Step 1: Save to local system (fast response)
       const localResponse = await fetch('/api/analyze/save-dive-log', {
@@ -381,7 +467,7 @@ export default function Sidebar({
           {showDiveJournalForm ? (
             <div className="mt-4">
               <DiveJournalForm
-                onSubmit={handleEnterpriseJournalSubmit} // ✅ Use enterprise submit
+                onSubmit={handleOptimizedJournalSubmit} // ✅ Use optimized submit
                 existingEntry={editLogIndex !== null ? diveLogs[editLogIndex] : null}
                 userId={userId}
                 setLoading={setLoading}

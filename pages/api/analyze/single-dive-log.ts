@@ -66,31 +66,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // ✅ Create comprehensive analysis prompt
+    // ✅ Handle both legacy and optimized data structures
+    let analysisData = diveLog;
+    
+    // ✅ If optimized structure, extract dive data
+    if (diveLog.dive && diveLog.analysis) {
+      console.log('📊 Detected optimized data structure');
+      analysisData = {
+        id: diveLog.id,
+        userId: diveLog.userId,
+        timestamp: diveLog.timestamp,
+        date: diveLog.dive.date,
+        disciplineType: diveLog.dive.disciplineType,
+        discipline: diveLog.dive.discipline,
+        location: diveLog.dive.location,
+        targetDepth: diveLog.dive.depths.target,
+        reachedDepth: diveLog.dive.depths.reached,
+        mouthfillDepth: diveLog.dive.depths.mouthfill,
+        issueDepth: diveLog.dive.depths.issue,
+        exit: diveLog.dive.performance.exit,
+        durationOrDistance: diveLog.dive.performance.duration,
+        totalDiveTime: diveLog.dive.performance.totalTime,
+        attemptType: diveLog.dive.performance.attemptType,
+        surfaceProtocol: diveLog.dive.performance.surfaceProtocol,
+        squeeze: diveLog.dive.issues.squeeze,
+        issueComment: diveLog.dive.issues.issueComment,
+        notes: diveLog.dive.notes,
+        // Include pre-calculated analysis
+        progressionScore: diveLog.analysis.progressionScore,
+        riskFactors: diveLog.analysis.riskFactors,
+        technicalNotes: diveLog.analysis.technicalNotes,
+        depthAchievement: diveLog.analysis.depthAchievement
+      };
+    }
+
+    // ✅ Create comprehensive analysis prompt with enhanced data
     const analysisPrompt = `
 🏊‍♂️ INDIVIDUAL DIVE LOG ANALYSIS REQUEST
 
 Please analyze this specific dive log and provide detailed coaching feedback:
 
 📊 DIVE DETAILS:
-- Date: ${diveLog.date}
-- Discipline: ${diveLog.discipline} (${diveLog.disciplineType})
-- Location: ${diveLog.location}
-- Target Depth: ${diveLog.targetDepth}m
-- Reached Depth: ${diveLog.reachedDepth}m
-- Depth Achievement: ${((diveLog.reachedDepth / diveLog.targetDepth) * 100).toFixed(1)}%
-- Mouthfill Depth: ${diveLog.mouthfillDepth || 0}m
-- Exit Quality: ${diveLog.exit}
-- Surface Protocol: ${diveLog.surfaceProtocol || 'Not specified'}
-- Total Time: ${diveLog.totalDiveTime || 'Not recorded'}
-- Attempt Type: ${diveLog.attemptType}
+- Date: ${analysisData.date}
+- Discipline: ${analysisData.discipline} (${analysisData.disciplineType})
+- Location: ${analysisData.location}
+- Target Depth: ${analysisData.targetDepth}m
+- Reached Depth: ${analysisData.reachedDepth}m
+- Depth Achievement: ${analysisData.depthAchievement?.toFixed(1) || ((analysisData.reachedDepth / analysisData.targetDepth) * 100).toFixed(1)}%
+- Mouthfill Depth: ${analysisData.mouthfillDepth || 0}m
+- Exit Quality: ${analysisData.exit}
+- Surface Protocol: ${analysisData.surfaceProtocol || 'Not specified'}
+- Total Time: ${analysisData.totalDiveTime || 'Not recorded'}
+- Attempt Type: ${analysisData.attemptType}
+
+${analysisData.progressionScore ? `📈 PROGRESSION SCORE: ${analysisData.progressionScore}%` : ''}
+${analysisData.riskFactors?.length ? `⚠️ RISK FACTORS: ${analysisData.riskFactors.join(', ')}` : ''}
+${analysisData.technicalNotes ? `🔧 TECHNICAL NOTES: ${analysisData.technicalNotes}` : ''}
 
 ⚠️ ISSUES & CHALLENGES:
-- Issue Depth: ${diveLog.issueDepth ? `${diveLog.issueDepth}m` : 'None reported'}
-- Issue Details: ${diveLog.issueComment || 'None'}
-- Squeeze Reported: ${diveLog.squeeze ? 'Yes' : 'No'}
+- Issue Depth: ${analysisData.issueDepth ? `${analysisData.issueDepth}m` : 'None reported'}
+- Issue Details: ${analysisData.issueComment || 'None'}
+- Squeeze Reported: ${analysisData.squeeze ? 'Yes' : 'No'}
 
-📝 NOTES: ${diveLog.notes || 'No additional notes'}
+📝 NOTES: ${analysisData.notes || 'No additional notes'}
 
 🎯 COACHING ANALYSIS NEEDED:
 1. **Performance Assessment**: How did this dive go overall?
