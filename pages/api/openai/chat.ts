@@ -52,7 +52,10 @@ async function queryPinecone(query: string): Promise<string[]> {
     }
 
     const result = await response.json();
-    return result.matches?.map((m: any) => m.metadata?.text).filter(Boolean) || [];
+    console.log(`✅ Pinecone returned ${result.chunks?.length || 0} knowledge chunks`);
+    
+    // ✅ FIX: The endpoint returns `chunks`, not `matches`
+    return result.chunks || [];
   } catch (error: any) {
     console.error('❌ Pinecone error:', error.message);
     return [];
