@@ -216,9 +216,17 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
         setAiFeedback("✅ Dive log saved to local & cloud! Auto-analysis completed.");
       }
 
-      // ✅ Trigger callback for UI refresh
+      // ✅ CRITICAL: Call onSubmit to notify parent (Sidebar) about the save
+      console.log('🔄 Calling onSubmit callback to refresh sidebar...', typeof onSubmit);
       if (onSubmit) {
-        onSubmit(saveLogResult.data || diveLogData);
+        try {
+          await onSubmit(saveLogResult.data || diveLogData);
+          console.log('✅ onSubmit callback completed successfully');
+        } catch (callbackError) {
+          console.warn('⚠️ onSubmit callback failed:', callbackError);
+        }
+      } else {
+        console.warn('⚠️ No onSubmit callback provided to DiveJournalForm');
       }
 
       // ✅ Clear draft from localStorage and reset form
