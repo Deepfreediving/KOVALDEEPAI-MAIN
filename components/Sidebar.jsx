@@ -37,6 +37,7 @@ export default function Sidebar({
 
   // 🚀 OPTIMIZED: Single batch submission for dive logs
   const handleOptimizedJournalSubmit = async (formData) => {
+    console.log('🚀 SIDEBAR: handleOptimizedJournalSubmit called with:', formData);
     try {
       setLoading(true);
       
@@ -94,8 +95,12 @@ export default function Sidebar({
         }, 3000);
 
         // ✅ Refresh dive logs display
+        console.log('🔄 SIDEBAR: Calling refreshDiveLogs to update sidebar...');
         if (refreshDiveLogs) {
           await refreshDiveLogs();
+          console.log('✅ SIDEBAR: refreshDiveLogs completed');
+        } else {
+          console.warn('⚠️ SIDEBAR: No refreshDiveLogs function available');
         }
 
         // ✅ Call original handler for any additional UI updates

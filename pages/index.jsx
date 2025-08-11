@@ -115,13 +115,15 @@ export default function Index() {
         setIsAuthenticating(false); // We have a valid user, stop waiting
       } else {
         console.log('⏳ No valid stored userId, waiting for authentication...');
-        // Start authentication timeout (10 seconds)
+        // Start authentication timeout (15 seconds for better Wix loading)
         const timeout = setTimeout(() => {
           console.warn('⚠️ Authentication timeout reached, allowing limited access');
+          console.warn('⚠️ This usually means Wix authentication failed or is slow');
+          console.warn('⚠️ User will be assigned a guest ID for this session');
           setAuthTimeoutReached(true);
           setIsAuthenticating(false);
           setUserId(`guest-${Date.now()}`); // Fallback after timeout
-        }, 10000);
+        }, 15000);
         
         return () => clearTimeout(timeout);
       }
@@ -296,20 +298,27 @@ export default function Index() {
 
   // ✅ LOAD DIVE LOGS (Enhanced from both versions)
   const loadDiveLogs = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('⚠️ loadDiveLogs: No userId provided');
+      return;
+    }
     
+    console.log(`🔄 Loading dive logs for userId: ${userId}`);
     setLoadingDiveLogs(true);
     try {
       // Load from localStorage first
       const key = storageKey(userId);
       const localLogs = safeParse(key, []);
+      console.log(`📱 Local storage logs found: ${localLogs.length}`);
       setDiveLogs(localLogs);
 
       // Then try to load from API
+      console.log(`🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
       const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
       if (response.ok) {
         const data = await response.json();
         const remoteLogs = data.logs || [];
+        console.log(`🌐 Remote logs found: ${remoteLogs.length}`);
         
         // Merge local and remote logs (remove duplicates)
         const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
@@ -321,12 +330,15 @@ export default function Index() {
           new Date(b.date) - new Date(a.date)
         );
         
+        console.log(`✅ Combined total logs: ${combined.length}`);
         setDiveLogs(combined);
         if (typeof window !== 'undefined') {
           localStorage.setItem(storageKey(userId), JSON.stringify(combined));
         }
         
         console.log(`✅ Loaded ${combined.length} dive logs`);
+      } else {
+        console.warn(`⚠️ API request failed: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error("❌ Failed to load dive logs:", error);
