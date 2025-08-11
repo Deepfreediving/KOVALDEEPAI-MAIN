@@ -3,10 +3,10 @@ export default function ChatMessages({ messages, BOT_NAME, darkMode, loading, bo
   // ✅ Generate consistent user display name from member ID
   const getUserDisplayName = () => {
     if (!userId || userId.startsWith('guest')) {
-      return "👤 Guest User";
+      return "Guest User";
     }
-    // Use member ID format for consistent, fast recognition
-    return `👤 User-${userId}`;
+    // Use member ID format for consistent, fast recognition (no emoji - handled elsewhere)
+    return `User-${userId}`;
   };
 
   return (

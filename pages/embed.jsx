@@ -77,18 +77,18 @@ export default function Embed() {
     // ✅ PRIORITY: Use member ID format for consistent, fast recognition
     if (userId && !userId.startsWith('guest')) {
       console.log(`✅ Using member ID format: User-${userId}`);
-      return `👤 User-${userId}`;
+      return `User-${userId}`;
     }
     
     // Fallback for guest users
     if (userId?.startsWith('guest')) {
       console.log('🔄 Using guest fallback');
-      return "👤 Guest User";
+      return "Guest User";
     }
     
     // Final fallback
     console.log('🔄 Using final fallback: User');
-    return "👤 User";
+    return "User";
   }, [profile, userId]);
 
   const getProfilePhoto = useCallback(() => {
@@ -920,7 +920,7 @@ export default function Embed() {
                 />
               )}
               <span>
-                👤 {getDisplayName()}{isEmbedded ? ' • Widget' : ''}
+                👤 {getDisplayName()}{isEmbedded ? '' : ''}
                 {getDisplayName() === "Loading..." && (
                   <span className="ml-2 animate-pulse">⏳</span>
                 )}
