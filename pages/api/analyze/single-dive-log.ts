@@ -29,10 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ✅ If only ID provided, try to fetch from local storage first, then Wix
     if (diveLogId && !diveLog) {
       try {
-        // First try to get from local dive logs
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'http://localhost:3001';
+        // ✅ FIX: Use BASE_URL from env or fallback
+        const baseUrl = process.env.BASE_URL || 
+          process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+          'https://kovaldeepai-main.vercel.app';
+        
+        console.log(`🗃️ Fetching dive log via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
         
         const localResponse = await fetch(`${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`);
         if (localResponse.ok) {
@@ -104,11 +106,12 @@ Please provide specific, actionable coaching feedback based on this dive data.
 
     // ✅ Call OpenAI for detailed analysis
     try {
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : 'http://localhost:3000';
+      // ✅ FIX: Use BASE_URL from env or fallback
+      const baseUrl = process.env.BASE_URL || 
+        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+        'https://kovaldeepai-main.vercel.app';
 
-      console.log('🤖 Sending dive log to OpenAI for analysis...');
+      console.log(`🤖 Sending dive log to OpenAI via: ${baseUrl}/api/openai/chat`);
 
       const chatResponse = await fetch(`${baseUrl}/api/openai/chat`, {
         method: 'POST',
