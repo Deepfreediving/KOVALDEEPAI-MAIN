@@ -1704,6 +1704,11 @@ async function sendUserDataToWidget() {
         
         const userData = await loadComprehensiveUserData();
         
+        // ✅ CRITICAL DEBUG: Log exactly what we're sending
+        console.log('🔍 SENDING TO WIDGET - User ID:', userData.userId);
+        console.log('🔍 SENDING TO WIDGET - Is Guest:', userData.isGuest);
+        console.log('🔍 SENDING TO WIDGET - Full Data:', userData);
+        
         // Find widget element
         const widgetSelectors = ['#kovalWidget', '#koval-ai', '#KovalAIFrame', '#kovalAIFrame'];
         let widget = null;
@@ -1711,7 +1716,10 @@ async function sendUserDataToWidget() {
         for (const selector of widgetSelectors) {
             try {
                 widget = $w(selector);
-                if (widget) break;
+                if (widget) {
+                    console.log('✅ Found widget element:', selector);
+                    break;
+                }
             } catch (e) {
                 // Continue searching
             }
@@ -1719,6 +1727,7 @@ async function sendUserDataToWidget() {
         
         if (widget) {
             // Send via Wix messaging API
+            console.log('📤 Sending via Wix messaging API...');
             widget.postMessage({
                 type: 'USER_DATA_RESPONSE',
                 userData: userData,
@@ -1727,16 +1736,20 @@ async function sendUserDataToWidget() {
             
             // Also send via postMessage for iframe
             if (widget.src) {
+                console.log('📤 Sending via iframe postMessage...');
                 widget.postMessage({
                     type: 'USER_AUTH',
                     data: userData,
                     timestamp: Date.now()
                 });
             }
+        } else {
+            console.warn('⚠️ Widget element not found - trying global broadcast');
         }
         
         // Global broadcast as fallback
         if (typeof window !== 'undefined') {
+            console.log('📤 Sending via global broadcast...');
             window.postMessage({
                 type: 'KOVAL_USER_AUTH',
                 userId: userData.userId,
@@ -1749,6 +1762,9 @@ async function sendUserDataToWidget() {
         // Store globally for widget access
         if (typeof window !== 'undefined') {
             window.KOVAL_USER_DATA = userData;
+            window.wixUserId = userData.userId; // ✅ CRITICAL: Store for bot-widget access
+            window.wixUserName = userData.profile.displayName || userData.profile.nickname;
+            console.log('✅ Stored user data globally - wixUserId:', userData.userId);
         }
         
         console.log('✅ User data sent to widget');

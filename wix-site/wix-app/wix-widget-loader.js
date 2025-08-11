@@ -10,12 +10,13 @@
     return;
   }
   
+  // ✅ PURE WIX APP APPROACH: Using only iframe, no external widget conflicts
+  console.log('� Loading Koval AI Wix App Widget v4...');
+  
   window.KovalAIWidgetLoaded = true;
-  console.log('🚀 Loading Koval AI Widget v4...');
 
-  // ✅ CONFIGURATION
+  // ✅ CONFIGURATION - Pure Wix App approach
   const CONFIG = {
-    WIDGET_URL: 'https://kovaldeepai-main.vercel.app/public/bot-widget.js',
     API_BASE: 'https://kovaldeepai-main.vercel.app',
     EMBED_URL: 'https://kovaldeepai-main.vercel.app/embed',
     DEBUG: true
@@ -158,7 +159,7 @@
           console.log('✅ Backend connection successful:', testData);
           
           if (testData.services && testData.services.users && testData.services.users.userLoggedIn) {
-            userData.userId = 'wix-' + testData.services.users.userId;
+            userData.userId = testData.services.users.userId;  // ✅ Use raw user ID consistently
             userData.source = 'wix-backend-detected';
             userData.isGuest = false;
             console.log('✅ User detected via backend:', userData);
@@ -184,6 +185,15 @@
     }
 
     console.log('🔄 Final user data:', userData);
+    
+    // ✅ CRITICAL: Store user data globally for bot-widget access
+    if (typeof window !== 'undefined') {
+      window.wixUserId = userData.userId;
+      window.wixUserName = userData.userName;
+      window.KOVAL_USER_DATA = userData;
+      console.log('✅ Stored user data globally - wixUserId:', userData.userId);
+    }
+    
     return userData;
   }
 
@@ -237,119 +247,119 @@
         return;
       }
 
-      // Load the widget script
-      const script = document.createElement('script');
-      script.src = CONFIG.WIDGET_URL;
-      script.async = true;
+      // Create iframe-based widget (no need to load bot-widget.js separately)
+      const iframe = document.createElement('iframe');
+      iframe.src = `${CONFIG.EMBED_URL}?userId=${encodeURIComponent(userData.userId)}&userName=${encodeURIComponent(userData.userName)}`;
+      iframe.style.cssText = `
+        width: 100%; 
+        height: 100%; 
+        min-height: 600px; 
+        border: none;
+        border-radius: 8px;
+        background: #f8f9fa;
+      `;
+      iframe.allowFullscreen = true;
+      iframe.allow = "microphone; camera; autoplay";
       
-      script.onload = () => {
-        console.log('✅ Widget script loaded successfully');
-        
-        // Create iframe-based widget instead of custom element
-        const iframe = document.createElement('iframe');
-        iframe.src = `${CONFIG.EMBED_URL}?userId=${encodeURIComponent(userData.userId)}&userName=${encodeURIComponent(userData.userName)}`;
-        iframe.style.cssText = `
-          width: 100%; 
-          height: 100%; 
-          min-height: 600px; 
-          border: none;
-          border-radius: 8px;
-          background: #f8f9fa;
-        `;
-        iframe.allowFullscreen = true;
-        iframe.allow = "microphone; camera; autoplay";
-        
-        // Add to container
-        container.appendChild(iframe);
-        
-        console.log('🎉 Koval AI Widget (iframe) initialized successfully!');
-        
-        // Set up message listener for iframe communication
-        window.addEventListener('message', (event) => {
-          try {
-            // ✅ Multiple layers of null checking
-            if (!event) {
-              console.warn('⚠️ Null event received');
-              return;
-            }
-            
-            if (!event.origin) {
-              console.warn('⚠️ Event missing origin');
-              return;
-            }
-            
-            if (event.origin !== CONFIG.API_BASE) {
-              return;
-            }
-            
-            if (!event.data) {
-              console.warn('⚠️ Event missing data');
-              return;
-            }
-            
-            if (typeof event.data !== 'object') {
-              console.warn('⚠️ Event data is not an object:', typeof event.data);
-              return;
-            }
-            
-            if (!event.data || !event.data.hasOwnProperty('type') || !event.data.type) {
-              console.warn('⚠️ Event data missing type property');
-              return;
-            }
-            
-            console.log('📨 Message from widget:', event.data);
-            
-            // Handle widget messages - with additional null check
-            const messageType = event.data?.type;
-            if (messageType === 'WIDGET_READY') {
-              // Send user data when widget is ready
-              if (iframe && iframe.contentWindow) {
+      // Add to container
+      container.appendChild(iframe);
+      
+      console.log('🎉 Koval AI Widget (iframe-only) initialized successfully!');
+      
+      // Set up message listener for iframe communication
+      window.addEventListener('message', (event) => {
+        try {
+          // ✅ Multiple layers of null checking
+          if (!event) {
+            console.warn('⚠️ Null event received');
+            return;
+          }
+          
+          if (!event.origin) {
+            console.warn('⚠️ Event missing origin');
+            return;
+          }
+          
+          if (event.origin !== CONFIG.API_BASE) {
+            return;
+          }
+          
+          if (!event.data) {
+            console.warn('⚠️ Event missing data');
+            return;
+          }
+          
+          if (typeof event.data !== 'object') {
+            console.warn('⚠️ Event data is not an object:', typeof event.data);
+            return;
+          }
+          
+          if (!event.data || !event.data.hasOwnProperty('type') || !event.data.type) {
+            console.warn('⚠️ Event data missing type property');
+            return;
+          }
+          
+          console.log('📨 Message from widget:', event.data);
+          
+          // Handle widget messages - with additional null check
+          const messageType = event.data?.type;
+          if (messageType === 'WIDGET_READY') {
+            // Send user data when widget is ready
+            try {
+              if (iframe && iframe.contentWindow && !iframe.contentWindow.closed) {
                 iframe.contentWindow.postMessage({
                   type: 'USER_AUTH',
                   data: userData
                 }, CONFIG.API_BASE);
                 console.log('📤 Sent user data to widget');
+              } else {
+                console.warn('⚠️ Iframe not available for USER_AUTH message');
               }
+            } catch (authError) {
+              console.error('❌ Failed to send USER_AUTH:', authError);
             }
-          } catch (error) {
-            console.error('❌ Error in message listener:', error);
           }
-        });
-        
-        // Send initial data after a short delay
-        setTimeout(() => {
-          iframe.contentWindow.postMessage({
-            type: 'INIT_USER_DATA',
-            data: {
-              ...userData,
-              diveLogs: []  // Widget loader doesn't have access to dive logs, let the iframe fetch them
-            }
-          }, CONFIG.API_BASE);
-          console.log('📤 Sent initial user data to widget');
-        }, 2000);
-      };
+        } catch (error) {
+          console.error('❌ Error in message listener:', error);
+        }
+      });
       
-      script.onerror = () => {
-        console.error('❌ Failed to load widget script');
-        container.innerHTML = `
-          <div style="padding: 20px; text-align: center; color: #e74c3c; 
-                      font-family: system-ui, sans-serif; border: 1px solid #e74c3c; 
-                      border-radius: 8px; background: #fdf2f2;">
-            <h3>🚫 Widget Loading Error</h3>
-            <p>Unable to load Koval AI chat widget.</p>
-            <button onclick="location.reload()" 
-                    style="padding: 8px 16px; background: #3498db; color: white; 
-                           border: none; border-radius: 4px; cursor: pointer;">
-              🔄 Retry
-            </button>
-          </div>
-        `;
-      };
-      
-      document.head.appendChild(script);
+      // Send initial data after iframe loads with better error handling
+      setTimeout(() => {
+        try {
+          if (iframe && iframe.contentWindow && !iframe.contentWindow.closed) {
+            iframe.contentWindow.postMessage({
+              type: 'INIT_USER_DATA',
+              data: {
+                ...userData,
+                diveLogs: []  // Widget loader doesn't have access to dive logs, let the iframe fetch them
+              }
+            }, CONFIG.API_BASE);
+            console.log('📤 Sent initial user data to widget');
+          } else {
+            console.warn('⚠️ Iframe not ready for message');
+          }
+        } catch (messageError) {
+          console.error('❌ Failed to send initial data:', messageError);
+        }
+      }, 2000);
       
     } catch (error) {
       console.error('❌ Widget initialization failed:', error);
+      container.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #e74c3c; 
+                    font-family: system-ui, sans-serif; border: 1px solid #e74c3c; 
+                    border-radius: 8px; background: #fdf2f2;">
+          <h3>🚫 Widget Loading Error</h3>
+          <p>Unable to load Koval AI chat widget.</p>
+          <button onclick="location.reload()" 
+                  style="padding: 8px 16px; background: #3498db; color: white; 
+                         border: none; border-radius: 4px; cursor: pointer;">
+            🔄 Retry
+          </button>
+        </div>
+      `;
+    }
     }
   }
 
