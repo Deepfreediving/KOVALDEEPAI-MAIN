@@ -115,13 +115,13 @@ export default function Index() {
         setIsAuthenticating(false); // We have a valid user, stop waiting
       } else {
         console.log('⏳ No valid stored userId, waiting for authentication...');
-        // Start authentication timeout (5 seconds)
+        // Start authentication timeout (10 seconds)
         const timeout = setTimeout(() => {
           console.warn('⚠️ Authentication timeout reached, allowing limited access');
           setAuthTimeoutReached(true);
           setIsAuthenticating(false);
           setUserId(`guest-${Date.now()}`); // Fallback after timeout
-        }, 5000);
+        }, 10000);
         
         return () => clearTimeout(timeout);
       }

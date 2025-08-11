@@ -136,13 +136,13 @@ export default function Embed() {
         }
       } else {
         console.log('⏳ Embed: No valid stored userId, waiting for authentication...');
-        // Start authentication timeout (8 seconds for embed - longer since it depends on parent)
+        // Start authentication timeout (15 seconds for embed - much longer since it depends on parent)
         const timeout = setTimeout(() => {
           console.warn('⚠️ Embed: Authentication timeout reached, allowing limited access');
           setAuthTimeoutReached(true);
           setIsAuthenticating(false);
           setUserId(`guest-${Date.now()}`); // Fallback after timeout
-        }, 8000);
+        }, 15000);
         
         return () => clearTimeout(timeout);
       }
@@ -348,7 +348,7 @@ export default function Embed() {
     return () => window.removeEventListener('message', handleParentMessages);
   }, []);
 
-  // ✅ CHECK FOR GLOBAL USER DATA (Alternative method)
+  // ✅ CHECK FOR GLOBAL USER DATA (Alternative method) - Enhanced with Authentication State
   useEffect(() => {
     const checkGlobalUserData = () => {
       try {
@@ -359,6 +359,11 @@ export default function Embed() {
           
           setUserId(globalUserData.userId);
           localStorage.setItem("kovalUser", globalUserData.userId);
+          
+          // ✅ AUTHENTICATION COMPLETE - Enable interactions  
+          setIsAuthenticating(false);
+          setAuthTimeoutReached(false);
+          console.log('🎉 Authentication complete via global data! Chat and AI features now enabled.');
           
           if (globalUserData.profile) {
             const globalProfile = {
@@ -378,20 +383,35 @@ export default function Embed() {
             setDiveLogs(globalUserData.userDiveLogs);
             localStorage.setItem("koval_ai_logs", JSON.stringify(globalUserData.userDiveLogs));
           }
+          
+          return true; // Authentication found
         } else if (globalUserData && globalUserData.userId && globalUserData.userId.startsWith('guest-')) {
           console.log('⚠️ Found guest user data in global - waiting for real user authentication');
         }
       } catch (error) {
         console.warn('⚠️ Could not access global user data:', error);
       }
+      return false; // No authentication found
     };
     
-    // Check immediately and then periodically
-    checkGlobalUserData();
-    const interval = setInterval(checkGlobalUserData, 2000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    // Check immediately and then periodically until authentication is found
+    if (isAuthenticating) {
+      const found = checkGlobalUserData();
+      if (!found) {
+        const interval = setInterval(() => {
+          const found = checkGlobalUserData();
+          if (found) {
+            clearInterval(interval);
+          }
+        }, 1000); // Check every second
+        
+        // Clean up interval after 20 seconds
+        setTimeout(() => clearInterval(interval), 20000);
+        
+        return () => clearInterval(interval);
+      }
+    }
+  }, [isAuthenticating]);
 
   // ✅ THEME SYNC
   useEffect(() => {

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import DiveJournalForm from "./DiveJournalForm";
+import AIAnalyzeButton from "./AIAnalyzeButton";
+import { formatDiveLogForDisplay, formatDiveLogForAnalysis } from "../utils/diveLogFormatter";
 
 export default function Sidebar({
   sessionName,
@@ -99,6 +101,14 @@ export default function Sidebar({
         // ✅ Call original handler for any additional UI updates
         if (handleJournalSubmit) {
           handleJournalSubmit(formData);
+        }
+
+        // ✅ AUTO-CLOSE FORM: Close the dive journal form after successful save
+        if (toggleDiveJournal) {
+          setTimeout(() => {
+            toggleDiveJournal(); // Close the form
+            console.log('✅ Dive journal form closed automatically after successful save');
+          }, 1000); // Small delay to show success message
         }
 
         return; // Success, exit early
@@ -293,6 +303,16 @@ export default function Sidebar({
         await refreshDiveLogs();
       }
 
+      // ✅ AUTO-CLOSE FORM: Close the dive journal form after successful save (legacy path)
+      if (typeof onDiveJournalToggle === 'function') {
+        try {
+          onDiveJournalToggle(false);
+          console.log('✅ Dive journal form closed automatically after successful save (legacy path)');
+        } catch (closeError) {
+          console.warn('⚠️ Could not auto-close dive journal form (legacy path):', closeError);
+        }
+      }
+
       // ✅ Call original handler for any additional UI updates
       if (handleJournalSubmit) {
         handleJournalSubmit(formData);
@@ -480,76 +500,83 @@ export default function Sidebar({
               <h3 className="font-semibold mb-2">📒 Dive Logs ({diveLogs.length})</h3>
               {diveLogs.length > 0 ? (
                 <ul className="space-y-2 max-h-64 overflow-y-auto">
-                  {diveLogs.slice(0, 10).map((log, i) => (
-                    <li
-                      key={log.id || i}
-                      className={`border p-2 rounded text-sm cursor-pointer transition-colors ${
-                        darkMode ? "bg-gray-800 text-white border-gray-600 hover:bg-gray-700" : "bg-white text-black border-gray-200 hover:bg-blue-50"
-                      }`}
-                      onClick={() => handleDiveLogAnalysis(log)}
-                      title="Click for instant AI analysis"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <strong className="text-xs">{new Date(log.date || log.timestamp).toLocaleDateString()}</strong>
-                        <div className="flex items-center space-x-1">
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                  {diveLogs.slice(0, 10).map((log, i) => {
+                    const formattedLog = formatDiveLogForDisplay(log);
+                    return (
+                      <li
+                        key={log.id || i}
+                        className={`border p-3 rounded text-sm transition-colors ${
+                          darkMode ? "bg-gray-800 text-white border-gray-600" : "bg-white text-black border-gray-200"
+                        }`}
+                      >
+                        {/* ✅ Structured dive log display */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div className="text-xs font-medium text-gray-500">
+                              {new Date(log.date || log.timestamp).toLocaleDateString()}
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className={`text-xs px-2 py-1 rounded font-medium ${
+                                darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {log.reachedDepth || log.targetDepth}m
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* ✅ Formatted dive log content */}
+                          <div className={`text-xs whitespace-pre-line ${
+                            darkMode ? 'text-gray-300' : 'text-gray-600'
                           }`}>
-                            {log.reachedDepth || log.targetDepth}m
-                          </span>
-                          {/* ✅ Analysis status indicator */}
-                          {log.analysisStatus === 'completed' && (
-                            <span className="text-xs text-green-500" title="Already analyzed">🎯</span>
-                          )}
+                            {formattedLog}
+                          </div>
+                          
+                          {/* ✅ Action buttons */}
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                            <AIAnalyzeButton
+                              diveLog={log}
+                              userId={userId}
+                              onAnalysisComplete={(analysis) => {
+                                if (setMessages) {
+                                  setMessages(prev => [...prev, {
+                                    role: 'assistant',
+                                    content: `🎯 **Analysis of your ${log.discipline || 'freediving'} dive:**\n\n${analysis}`
+                                  }]);
+                                }
+                              }}
+                              darkMode={darkMode}
+                              size="sm"
+                            />
+                            
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleEdit?.(i)}
+                                className={`text-xs px-2 py-1 rounded transition-colors ${
+                                  darkMode 
+                                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                }`}
+                                title="Edit dive log"
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete?.(i)}
+                                className={`text-xs px-2 py-1 rounded transition-colors ${
+                                  darkMode 
+                                    ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' 
+                                    : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+                                }`}
+                                title="Delete dive log"
+                              >
+                                �️ Delete
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="text-xs text-gray-500 mb-2">
-                        {log.discipline || log.disciplineType} • {log.location || 'Unknown location'}
-                      </div>
-                      
-                      {/* ✅ Progress indicators */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-xs">
-                          {log.progressionScore && (
-                            <span className={`px-1 py-0.5 rounded ${
-                              log.progressionScore >= 80 ? 'bg-green-100 text-green-700' :
-                              log.progressionScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>
-                              {log.progressionScore}%
-                            </span>
-                          )}
-                          {log.riskFactors && log.riskFactors.length > 0 && (
-                            <span className="ml-1 text-orange-500" title="Risk factors identified">⚠️</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-blue-500 hover:text-blue-700">
-                          🔍 Click to analyze
-                        </div>
-                      </div>
-                      
-                      {/* ✅ Show sync status */}
-                      {log.syncedToWix && (
-                        <div className="text-xs text-green-500 mb-1">✅ Synced to cloud</div>
-                      )}
-                      
-                      <div className="flex justify-end space-x-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleEdit(i)}
-                          className="text-blue-500 text-xs hover:underline"
-                        >
-                          🖊️ Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(i)}
-                          className="text-red-500 text-xs hover:underline"
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <div className="text-center py-4">
