@@ -1,0 +1,81 @@
+// 🔥 WIX APP BACKEND: SIMPLIFIED TEST WITH MINIMAL IMPORTS
+// Testing with only essential imports to isolate MODULE_LOAD_ERROR
+// Version: 4.x - Updated for Wix App Integration
+
+import { ok, badRequest, serverError } from 'wix-http-functions';
+
+// 🎯 BASIC TEST CONFIGURATION
+const TEST_CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
+  }
+};
+
+// 🔥 BASIC GET TEST - Only using wix-http-functions
+export function get_basicTest(request) {
+  try {
+    const responseData = {
+      status: 'success',
+      message: 'Basic test with minimal imports successful',
+      timestamp: new Date().toISOString(),
+      appId: TEST_CONFIG.APP_ID,
+      version: TEST_CONFIG.VERSION,
+      requestInfo: {
+        method: 'GET',
+        path: request.path,
+        query: request.query,
+        headers: Object.keys(request.headers || {})
+      }
+    };
+
+    return ok(responseData, TEST_CONFIG.CORS_HEADERS);
+  } catch (error) {
+    return serverError({
+      error: 'Basic test failed',
+      message: error.message,
+      appId: TEST_CONFIG.APP_ID
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 BASIC POST TEST
+export function post_basicTest(request) {
+  try {
+    const responseData = {
+      status: 'success',
+      message: 'Basic POST test successful',
+      timestamp: new Date().toISOString(),
+      appId: TEST_CONFIG.APP_ID,
+      version: TEST_CONFIG.VERSION,
+      requestBody: request.body,
+      requestInfo: {
+        method: 'POST',
+        path: request.path,
+        contentType: request.headers['content-type']
+      }
+    };
+
+    return ok(responseData, TEST_CONFIG.CORS_HEADERS);
+  } catch (error) {
+    return serverError({
+      error: 'Basic POST test failed',
+      message: error.message,
+      appId: TEST_CONFIG.APP_ID
+    }, TEST_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 OPTIONS HANDLER
+export function options_basicTest(request) {
+  return ok({ 
+    message: 'CORS OK - basicTest',
+    appId: TEST_CONFIG.APP_ID
+  }, TEST_CONFIG.CORS_HEADERS);
+}

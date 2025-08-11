@@ -62,7 +62,7 @@ export default async function handler(req, res) {
           embedMode,
           diveLogs: diveLogs.slice(0, 5), // Last 5 dive logs
           conversationHistory: conversationHistory || [],
-          version: 'master-v1'
+          version: 'v4.0'
         })
       });
 

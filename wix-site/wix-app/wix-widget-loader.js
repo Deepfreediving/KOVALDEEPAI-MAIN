@@ -1,5 +1,6 @@
-// ===== 🎯 wix-widget-loader-v4.js - ROBUST VERSION =====
+// ===== 🎯 wix-widget-loader-v4.js - OPTIMIZED FOR @deepfreediving/kovaldeepai-app =====
 // This file loads the Koval AI widget with enhanced user detection and communication
+// Version: 4.x - Dynamic versioning for 4.0 release compatibility
 
 (function() {
   'use strict';
@@ -60,7 +61,12 @@
             try {
               const profileResponse = await fetch('/_functions/memberProfile', {
                 method: 'GET',
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app',
+                  'X-App-Version': '4.x'
+                }
               });
               
               if (profileResponse.ok) {
@@ -139,7 +145,12 @@
         console.log('🔗 Testing backend connection...');
         const testResponse = await fetch('/_functions/wixConnection', {
           method: 'GET',
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app',
+            'X-App-Version': '4.x'
+          }
         });
         
         if (testResponse.ok) {
@@ -182,7 +193,12 @@
       try {
         const response = await fetch('/_functions/wixConnection', {
           method: 'GET',
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app',
+            'X-App-Version': '4.x'
+          }
         });
         
         const status = response.ok ? '✅ Connected' : '❌ Failed';
@@ -349,7 +365,7 @@
     getWixUserData,
     initializeWidget,
     config: CONFIG,
-    version: '4.0.0'
+    version: '4.x'
   };
 
   console.log('✅ Koval AI Widget Loader v4 ready');

@@ -1,0 +1,210 @@
+// 🔥 WIX APP BACKEND: CORRECTED USERMEMORY.JSW - MODULE_LOAD_ERROR FIX
+// Updated with proper Wix App backend import syntax
+// Version: 4.0 - Updated for Wix App Integration
+// Date: August 11, 2025
+
+// ✅ PROPER WIX APP IMPORTS - Using correct @username/package-name-backend syntax
+import { ok, badRequest, serverError } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { authentication } from 'wix-members-backend';
+
+// For internal backend communication, if needed:
+// import { functionName } from '@deepfreediving/kovaldeepai-app-backend';
+
+// 🎯 CORRECTED CONFIGURATION FOR WIX APP
+const MEMORY_CONFIG = {
+  COLLECTION_NAME: 'UserMemory',
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.0',
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
+  }
+};
+
+// 🔥 CORRECTED GET: RETRIEVE USER MEMORY
+export function get_userMemory(request) {
+  console.log('🔄 UserMemory GET request received for Wix App:', MEMORY_CONFIG.APP_ID);
+  
+  try {
+    const userId = request?.query?.userId;
+    const includeDetails = request?.query?.includeDetails === 'true';
+    
+    if (!userId) {
+      return badRequest({
+        error: 'userId parameter is required',
+        appId: MEMORY_CONFIG.APP_ID,
+        version: MEMORY_CONFIG.VERSION,
+        example: '/_functions/userMemory?userId=12345'
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    console.log(`📋 Looking up memory for user: ${userId}`);
+
+    // If wixData is not available, return mock data for testing
+    if (!wixData) {
+      return ok({
+        status: 'success',
+        message: 'UserMemory endpoint is working (mock data)',
+        userId: userId,
+        mockData: true,
+        data: {
+          memories: [
+            {
+              _id: 'mock_memory_1',
+              userId: userId,
+              content: 'Mock memory entry for testing',
+              timestamp: new Date().toISOString(),
+              type: 'test'
+            }
+          ],
+          total: 1,
+          includeDetails: includeDetails
+        },
+        appId: MEMORY_CONFIG.APP_ID,
+        version: MEMORY_CONFIG.VERSION
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    // Real wixData query if available
+    return wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+      .eq('userId', userId)
+      .limit(50)
+      .find()
+      .then(results => {
+        console.log(`✅ Found ${results.items.length} memory entries for user ${userId}`);
+        
+        const responseData = {
+          status: 'success',
+          userId: userId,
+          data: {
+            memories: results.items,
+            total: results.totalCount,
+            includeDetails: includeDetails
+          },
+          appId: MEMORY_CONFIG.APP_ID,
+          version: MEMORY_CONFIG.VERSION
+        };
+
+        return ok(responseData, MEMORY_CONFIG.CORS_HEADERS);
+      })
+      .catch(error => {
+        console.error('❌ Database query error:', error);
+        
+        return serverError({
+          error: 'Database query failed',
+          message: error.message,
+          userId: userId,
+          appId: MEMORY_CONFIG.APP_ID
+        }, MEMORY_CONFIG.CORS_HEADERS);
+      });
+    
+  } catch (error) {
+    console.error('❌ UserMemory GET error:', error);
+    
+    return serverError({
+      error: 'UserMemory GET failed',
+      message: error.message,
+      appId: MEMORY_CONFIG.APP_ID
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 CORRECTED POST: CREATE OR UPDATE USER MEMORY
+export function post_userMemory(request) {
+  console.log('🔄 UserMemory POST request received for Wix App:', MEMORY_CONFIG.APP_ID);
+  
+  try {
+    const requestData = request?.body || {};
+    const { userId, content, type, metadata } = requestData;
+    
+    if (!userId || !content) {
+      return badRequest({
+        error: 'userId and content are required',
+        required: ['userId', 'content'],
+        optional: ['type', 'metadata'],
+        appId: MEMORY_CONFIG.APP_ID,
+        version: MEMORY_CONFIG.VERSION
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    console.log(`📝 Creating memory entry for user: ${userId}`);
+
+    // If wixData is not available, return mock response
+    if (!wixData) {
+      const mockMemory = {
+        _id: 'mock_memory_' + Date.now(),
+        userId: userId,
+        content: content,
+        type: type || 'general',
+        metadata: metadata || {},
+        _createdDate: new Date().toISOString(),
+        _updatedDate: new Date().toISOString()
+      };
+
+      return ok({
+        status: 'success',
+        message: 'Memory created successfully (mock)',
+        mockData: true,
+        data: mockMemory,
+        appId: MEMORY_CONFIG.APP_ID,
+        version: MEMORY_CONFIG.VERSION
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    // Real wixData insert if available
+    const memoryToInsert = {
+      userId: userId,
+      content: content,
+      type: type || 'general',
+      metadata: metadata || {},
+      timestamp: new Date().toISOString()
+    };
+
+    return wixData.insert(MEMORY_CONFIG.COLLECTION_NAME, memoryToInsert)
+      .then(result => {
+        console.log(`✅ Memory created with ID: ${result._id}`);
+        
+        return ok({
+          status: 'success',
+          message: 'Memory created successfully',
+          data: result,
+          appId: MEMORY_CONFIG.APP_ID,
+          version: MEMORY_CONFIG.VERSION
+        }, MEMORY_CONFIG.CORS_HEADERS);
+      })
+      .catch(error => {
+        console.error('❌ Database insert error:', error);
+        
+        return serverError({
+          error: 'Failed to create memory',
+          message: error.message,
+          userId: userId,
+          appId: MEMORY_CONFIG.APP_ID
+        }, MEMORY_CONFIG.CORS_HEADERS);
+      });
+    
+  } catch (error) {
+    console.error('❌ UserMemory POST error:', error);
+    
+    return serverError({
+      error: 'UserMemory POST failed',
+      message: error.message,
+      appId: MEMORY_CONFIG.APP_ID
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 OPTIONS HANDLER FOR CORS
+export function options_userMemory(request) {
+  console.log('🔄 UserMemory OPTIONS request for CORS');
+  return ok({ 
+    message: 'CORS OK - userMemory endpoint',
+    appId: MEMORY_CONFIG.APP_ID,
+    allowedMethods: ['GET', 'POST', 'OPTIONS']
+  }, MEMORY_CONFIG.CORS_HEADERS);
+}

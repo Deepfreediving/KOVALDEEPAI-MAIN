@@ -1,8 +1,8 @@
 // pages/api/analyze/save-dive-log.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
 import handleCors from '@/utils/handleCors';
 import { saveLogEntry } from '@/utils/diveLogHelpers'; // KEEP this import!
+import WIX_APP_CONFIG from '@/lib/wixAppConfig';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -139,20 +139,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return notes.join(' | ');
         }
 
-        // ✅ Save to UserMemory collection (your 50GB permanent storage)
-        const wixResponse = await axios.post(
-          'https://www.deepfreediving.com/_functions/userMemory',
-          userMemoryData,
-          {
-            headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            timeout: 15000 // 15 second timeout for Wix backend
-          }
-        );
+        // ✅ Save to UserMemory collection via your Wix App backend using new config
+        const wixResponse = await WIX_APP_CONFIG.userMemory.save(userId, userMemoryData);
 
-        if (wixResponse.status === 200 && wixResponse.data?.success) {
+        if (wixResponse?.success) {
           console.log('✅ Wix backend sync completed successfully');
           
           // Mark as synced in local file with Wix ID
@@ -160,18 +150,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ...localLogData, 
             syncedToWix: true, 
             wixSyncedAt: new Date().toISOString(),
-            wixId: wixResponse.data.data?.[0]?._id
+            wixId: wixResponse._id
           };
           await saveLogEntry(userId, updatedLogData);
         } else {
-          console.warn('⚠️ Wix backend sync failed but local saved:', wixResponse.data);
+          console.warn('⚠️ Wix backend sync failed but local saved:', wixResponse);
         }
       } catch (wixError: any) {
         // ✅ Enhanced error handling for Wix sync
-        const errorMessage = wixError.response?.data?.error || wixError.message || 'Unknown error';
-        const errorStatus = wixError.response?.status || 'Unknown';
+        const errorMessage = wixError.message || 'Unknown error';
         
-        console.error(`❌ Wix backend sync error (but local saved): ${errorStatus} - ${errorMessage}`);
+        console.error(`❌ Wix backend sync error (but local saved): ${errorMessage}`);
         
         // ✅ Don't fail the entire request - local save succeeded
         // Mark the log as needing sync retry

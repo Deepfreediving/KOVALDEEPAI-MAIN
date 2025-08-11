@@ -1,6 +1,6 @@
 // WIX APP BACKEND: DIVELOGS.JSW - MASTER EDITION
 // Dive Logs API endpoint for Wix App environment
-// Version: 4.0.0 - Production Ready
+// Version: 4.x - Updated for Wix App Integration (Auto-versioning for 4.0 release)
 
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
@@ -9,6 +9,8 @@ import { fetch } from 'wix-fetch';
 
 // 🎯 MASTER DIVE LOGS CONFIGURATION
 const DIVELOGS_CONFIG = {
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
   COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
   
   VALIDATION: {
@@ -27,7 +29,8 @@ const DIVELOGS_CONFIG = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
   }
 };
 

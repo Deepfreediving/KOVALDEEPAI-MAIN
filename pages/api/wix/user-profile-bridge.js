@@ -40,7 +40,7 @@ export default async function handler(req, res) {
           userId,
           includeStats,
           includePreferences,
-          version: 'master-v1'
+          version: 'v4.0'
         })
       });
 

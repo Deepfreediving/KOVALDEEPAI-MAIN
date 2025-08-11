@@ -1,236 +1,59 @@
-// WIX APP BACKEND: HTTP-USERMEMORY.JSW - MASTER EDITION  
-// User memory management endpoint for Wix App environment
-// Version: 4.0.0 - Production Ready
+// 🔥 WIX APP BACKEND: HTTP-USERMEMORY.JSW - OPTIMIZED FOR @deepfreediving/kovaldeepai-app
+// Deploy this to Wix App Backend: backend/http-functions/userMemory.js
+// Version: 4.x - Updated for Wix App Integration (Auto-versioning for 4.0 release)
 
 import { ok, badRequest, serverError } from 'wix-http-functions';
-import { userMemory } from 'wix-users-backend';
+import wixData from 'wix-data';
 import { authentication } from 'wix-members-backend';
 
-// 🎯 MASTER USER MEMORY CONFIGURATION
+// 🎯 ENHANCED CONFIGURATION FOR WIX APP
 const MEMORY_CONFIG = {
-  DATASET_NAME: '@deepfreediving/kovaldeepai-app/Import1', // ✅ Changed to DATASET_NAME for UserMemory API
-  
-  VALIDATION: {
-    MAX_MEMORY_SIZE: 50000, // Increased for dive log storage
-    MIN_MEMORY_SIZE: 1,
-    REQUIRED_FIELDS: ['userId']
-  },
-  
-  DIVE_LOG_FIELDS: [
-    'date', 'discipline', 'location', 'targetDepth', 'reachedDepth', 
-    'mouthfillDepth', 'issueDepth', 'notes', 'totalDiveTime', 'disciplineType'
-  ],
+  COLLECTION_NAME: 'UserMemory', // Your Wix app collection
+  APP_ID: '@deepfreediving/kovaldeepai-app',
+  VERSION: '4.x',
   
   CORS_HEADERS: {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
+    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
   }
 };
 
-// 🔥 POST: SAVE DIVE LOG TO USER MEMORY COLLECTION
-export async function post_userMemory(request) {
-  const startTime = Date.now();
-  
-  try {
-    // Parse request body (improved error handling)
-    let requestData;
-    try {
-      const requestBody = await request.body.text();
-      console.log('📥 Received user memory request body:', requestBody ? 'Present' : 'Empty');
-      
-      if (!requestBody || requestBody.trim() === '') {
-        return badRequest({
-          error: 'Empty request body',
-          headers: MEMORY_CONFIG.CORS_HEADERS
-        });
-      }
-      
-      requestData = JSON.parse(requestBody);
-      console.log('✅ User memory request data parsed successfully');
-    } catch (error) {
-      console.error('❌ JSON parsing error:', error.message);
-      return badRequest({
-        error: 'Invalid JSON in request body',
-        details: error.message,
-        headers: MEMORY_CONFIG.CORS_HEADERS
-      });
-    }
-
-    // Extract data
-    const { userId, diveLogData, memoryContent, sessionName, metadata } = requestData;
-    
-    if (!userId || typeof userId !== 'string') {
-      return badRequest({
-        error: 'userId is required and must be a string',
-        headers: MEMORY_CONFIG.CORS_HEADERS
-      });
-    }
-
-    // Get current member for authentication context
-    let member = null;
-    try {
-      member = await authentication.getCurrentMember();
-    } catch (error) {
-      console.log('No authenticated member available');
-    }
-
-    // Check if user already has a memory record using UserMemory API
-    let userMemoryRecord = null;
-    try {
-      userMemoryRecord = await userMemory.get(userId, {
-        dataset: MEMORY_CONFIG.DATASET_NAME
-      });
-      
-      console.log(`📋 ${userMemoryRecord ? 'Found existing' : 'No existing'} memory record for user ${userId}`);
-    } catch (error) {
-      console.warn('⚠️ Error checking existing memory record:', error.message);
-    }
-
-    // Prepare dive log entry for storage
-    if (diveLogData) {
-      const diveLogEntry = {
-        id: `dive_${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        ...diveLogData,
-        source: 'wix-app-dive-journal'
-      };
-
-      if (userMemoryRecord) {
-        // Update existing record - add dive log to array
-        const existingDiveLogs = userMemoryRecord.diveLogs || [];
-        const updatedDiveLogs = [diveLogEntry, ...existingDiveLogs];
-        
-        const updateData = {
-          ...userMemoryRecord,
-          diveLogs: updatedDiveLogs,
-          diveLogsCount: updatedDiveLogs.length,
-          lastDiveLogDate: diveLogEntry.date,
-          _updatedDate: new Date()
-        };
-        
-        // Add new memory content if provided
-        if (memoryContent) {
-          const existingMemories = userMemoryRecord.memories || [];
-          updateData.memories = [{
-            id: `memory_${Date.now()}`,
-            content: memoryContent,
-            timestamp: new Date().toISOString(),
-            sessionName: sessionName || 'Dive Log Entry',
-            metadata: metadata || {}
-          }, ...existingMemories];
-          updateData.memoriesCount = updateData.memories.length;
-        }
-
-        const result = await userMemory.set(userId, updateData, {
-          dataset: MEMORY_CONFIG.DATASET_NAME
-        });
-        console.log(`✅ Updated user memory record with new dive log. Total dive logs: ${updatedDiveLogs.length}`);
-        
-        const duration = Date.now() - startTime;
-        return ok({
-          success: true,
-          operation: 'update',
-          data: result,
-          diveLogsCount: updatedDiveLogs.length,
-          memoriesCount: updateData.memories?.length || userMemoryRecord.memoriesCount || 0,
-          metadata: {
-            processingTime: duration,
-            source: 'wix-app-backend',
-            timestamp: new Date().toISOString()
-          }
-        }, MEMORY_CONFIG.CORS_HEADERS);
-        
-      } else {
-        // Create new record
-        const newRecord = {
-          userId: userId,
-          diveLogs: [diveLogEntry],
-          diveLogsCount: 1,
-          memories: memoryContent ? [{
-            id: `memory_${Date.now()}`,
-            content: memoryContent,
-            timestamp: new Date().toISOString(),
-            sessionName: sessionName || 'Dive Log Entry',
-            metadata: metadata || {}
-          }] : [],
-          memoriesCount: memoryContent ? 1 : 0,
-          lastDiveLogDate: diveLogEntry.date,
-          createdBy: 'wix-app-dive-journal',
-          _createdDate: new Date(),
-          _updatedDate: new Date()
-        };
-        
-        const result = await userMemory.set(userId, newRecord, {
-          dataset: MEMORY_CONFIG.DATASET_NAME
-        });
-        console.log(`✅ Created new user memory record with first dive log`);
-        
-        const duration = Date.now() - startTime;
-        return ok({
-          success: true,
-          operation: 'create',
-          data: result,
-          diveLogsCount: 1,
-          memoriesCount: newRecord.memoriesCount,
-          metadata: {
-            processingTime: duration,
-            source: 'wix-app-backend',
-            timestamp: new Date().toISOString()
-          }
-        }, MEMORY_CONFIG.CORS_HEADERS);
-      }
-    } else {
-      return badRequest({
-        error: 'diveLogData is required for saving dive logs',
-        headers: MEMORY_CONFIG.CORS_HEADERS
-      });
-    }
-
-  } catch (error) {
-    console.error('❌ User memory save error:', error);
-    
-    return serverError({
-      error: 'Failed to save to UserMemory dataset',
-      details: error.message,
-      operation: 'save-dive-log',
-      timestamp: new Date().toISOString()
-    }, MEMORY_CONFIG.CORS_HEADERS);
-  }
-}
-
-// 🔥 GET: RETRIEVE USER MEMORY AND DIVE LOGS FROM COLLECTION
+// 🔥 ENHANCED GET: RETRIEVE USER MEMORY AND DIVE LOGS
 export async function get_userMemory(request) {
-  const startTime = Date.now();
+  console.log('🔄 UserMemory GET request received for Wix App:', MEMORY_CONFIG.APP_ID);
   
   try {
+    // Enhanced request validation
     const userId = request.query.userId;
     const includeDetails = request.query.includeDetails === 'true';
+    const appId = request.headers['X-Wix-App-ID'] || request.headers['x-wix-app-id'];
+    
+    console.log(`📋 App ID from request: ${appId}`);
+    console.log(`📋 Expected App ID: ${MEMORY_CONFIG.APP_ID}`);
     
     if (!userId) {
       return badRequest({
         error: 'userId parameter is required',
-        headers: MEMORY_CONFIG.CORS_HEADERS
-      });
+        appId: MEMORY_CONFIG.APP_ID,
+        version: MEMORY_CONFIG.VERSION
+      }, MEMORY_CONFIG.CORS_HEADERS);
     }
 
-    // Get current member for authentication context
-    let member = null;
-    try {
-      member = await authentication.getCurrentMember();
-    } catch (error) {
-      console.log('No authenticated member available');
-    }
+    console.log(`📋 Looking up memory for user: ${userId}`);
 
-    // Query the UserMemory dataset directly using UserMemory API
+    // Enhanced query with error handling
     try {
-      const userMemoryRecord = await userMemory.get(userId, {
-        dataset: MEMORY_CONFIG.DATASET_NAME
-      });
+      const results = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+        .eq('userId', userId)
+        .limit(1)
+        .find();
       
-      if (userMemoryRecord) {
-        console.log(`📋 Found user memory record with ${userMemoryRecord.diveLogsCount || 0} dive logs`);
+      if (results.items && results.items.length > 0) {
+        const userMemoryRecord = results.items[0];
+        console.log(`✅ Found user memory record with ${userMemoryRecord.diveLogsCount || 0} dive logs`);
         
         const responseData = {
           success: true,
@@ -238,31 +61,23 @@ export async function get_userMemory(request) {
           diveLogsCount: userMemoryRecord.diveLogsCount || 0,
           memoriesCount: userMemoryRecord.memoriesCount || 0,
           lastDiveLogDate: userMemoryRecord.lastDiveLogDate || null,
-          _id: userMemoryRecord._id
+          _id: userMemoryRecord._id,
+          appId: MEMORY_CONFIG.APP_ID,
+          version: MEMORY_CONFIG.VERSION,
+          timestamp: new Date().toISOString()
         };
 
-        // Include detailed dive logs and memories if requested
         if (includeDetails) {
           responseData.diveLogs = userMemoryRecord.diveLogs || [];
           responseData.memories = userMemoryRecord.memories || [];
+          responseData.metadata = userMemoryRecord.metadata || {};
         }
 
-        const duration = Date.now() - startTime;
-        return ok({
-          ...responseData,
-          metadata: {
-            processingTime: duration,
-            source: 'wix-usermemory-api',
-            operation: 'get-user-memory',
-            timestamp: new Date().toISOString()
-          }
-        }, MEMORY_CONFIG.CORS_HEADERS);
+        return ok(responseData, MEMORY_CONFIG.CORS_HEADERS);
         
       } else {
-        // No record found - return empty structure
-        console.log(`📋 No memory record found for user ${userId}`);
+        console.log(`📋 No memory record found for user ${userId} - returning empty state`);
         
-        const duration = Date.now() - startTime;
         return ok({
           success: true,
           userId: userId,
@@ -272,21 +87,15 @@ export async function get_userMemory(request) {
           memories: [],
           lastDiveLogDate: null,
           _id: null,
-          metadata: {
-            processingTime: duration,
-            source: 'wix-usermemory-api',
-            operation: 'get-user-memory',
-            timestamp: new Date().toISOString(),
-            message: 'No records found for this user'
-          }
+          appId: MEMORY_CONFIG.APP_ID,
+          version: MEMORY_CONFIG.VERSION,
+          message: 'No records found for this user - ready for first entry'
         }, MEMORY_CONFIG.CORS_HEADERS);
       }
       
-    } catch (userMemoryError) {
-      console.error('❌ Error querying UserMemory dataset:', userMemoryError);
+    } catch (wixDataError) {
+      console.error('❌ WixData query error:', wixDataError);
       
-      // Return a fallback response if UserMemory query fails
-      const duration = Date.now() - startTime;
       return ok({
         success: false,
         userId: userId,
@@ -294,45 +103,191 @@ export async function get_userMemory(request) {
         memoriesCount: 0,
         diveLogs: [],
         memories: [],
-        error: 'UserMemory query failed',
-        metadata: {
-          processingTime: duration,
-          source: 'wix-usermemory-fallback',
-          operation: 'get-user-memory',
-          timestamp: new Date().toISOString(),
-          errorDetails: userMemoryError.message
-        }
+        error: 'WixData query failed - collection may need setup',
+        errorDetails: wixDataError.message,
+        appId: MEMORY_CONFIG.APP_ID,
+        troubleshooting: 'Check if UserMemory collection exists and has proper permissions'
       }, MEMORY_CONFIG.CORS_HEADERS);
     }
 
   } catch (error) {
-    console.error('❌ User memory retrieval error:', error);
+    console.error('❌ GET userMemory error:', error);
     
     return serverError({
-      error: 'Failed to retrieve from UserMemory dataset',
+      error: 'Failed to retrieve user memory',
       details: error.message,
-      operation: 'get-user-memory',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
     }, MEMORY_CONFIG.CORS_HEADERS);
   }
 }
 
-// 🔥 OPTIONS HANDLER (CORS)
+// 🔥 ENHANCED POST: SAVE DIVE LOG TO USER MEMORY
+export async function post_userMemory(request) {
+  console.log('🔄 UserMemory POST request received for Wix App:', MEMORY_CONFIG.APP_ID);
+  
+  try {
+    // Enhanced request parsing and validation
+    let requestData;
+    try {
+      const requestBody = await request.body.text();
+      requestData = JSON.parse(requestBody);
+      console.log('📋 Parsed request data:', JSON.stringify(requestData, null, 2));
+    } catch (error) {
+      return badRequest({
+        error: 'Invalid JSON in request body',
+        details: error.message,
+        appId: MEMORY_CONFIG.APP_ID
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    const { userId, diveLogData } = requestData;
+    
+    if (!userId || !diveLogData) {
+      return badRequest({
+        error: 'userId and diveLogData are required',
+        received: { userId: !!userId, diveLogData: !!diveLogData },
+        appId: MEMORY_CONFIG.APP_ID
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    console.log(`📋 Saving dive log for user: ${userId}`);
+
+    // Enhanced dive log entry with metadata
+    const diveLogEntry = {
+      id: `dive_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      ...diveLogData,
+      source: 'koval-ai-wix-app',
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
+    };
+
+    // Get existing record or create new one using enhanced wixData query
+    let userMemoryRecord = null;
+    try {
+      const results = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+        .eq('userId', userId)
+        .limit(1)
+        .find();
+      
+      if (results.items && results.items.length > 0) {
+        userMemoryRecord = results.items[0];
+        console.log(`📋 Found existing record for user ${userId} with ${userMemoryRecord.diveLogsCount || 0} dive logs`);
+      }
+    } catch (error) {
+      console.log('📋 No existing record found, will create new one');
+    }
+
+    if (userMemoryRecord) {
+      // Update existing record with enhanced data
+      const existingDiveLogs = userMemoryRecord.diveLogs || [];
+      const updatedDiveLogs = [diveLogEntry, ...existingDiveLogs];
+      
+      const updateData = {
+        ...userMemoryRecord,
+        diveLogs: updatedDiveLogs,
+        diveLogsCount: updatedDiveLogs.length,
+        lastDiveLogDate: diveLogEntry.date,
+        lastUpdated: new Date().toISOString(),
+        appVersion: MEMORY_CONFIG.VERSION,
+        _updatedDate: new Date()
+      };
+
+      const result = await wixData.update(MEMORY_CONFIG.COLLECTION_NAME, updateData);
+      
+      console.log(`✅ Updated user memory with dive log. Total: ${updatedDiveLogs.length}`);
+      
+      return ok({
+        success: true,
+        operation: 'update',
+        diveLogsCount: updatedDiveLogs.length,
+        diveLogId: diveLogEntry.id,
+        _id: result._id,
+        appId: MEMORY_CONFIG.APP_ID,
+        timestamp: new Date().toISOString()
+      }, MEMORY_CONFIG.CORS_HEADERS);
+      
+    } else {
+      // Create new record with enhanced structure
+      const newRecord = {
+        userId: userId,
+        diveLogs: [diveLogEntry],
+        diveLogsCount: 1,
+        memories: [],
+        memoriesCount: 0,
+        lastDiveLogDate: diveLogEntry.date,
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        appVersion: MEMORY_CONFIG.VERSION,
+        metadata: {
+          source: 'koval-ai-wix-app',
+          appId: MEMORY_CONFIG.APP_ID,
+          firstEntry: diveLogEntry.timestamp
+        },
+        _createdDate: new Date(),
+        _updatedDate: new Date()
+      };
+      
+      const result = await wixData.save(MEMORY_CONFIG.COLLECTION_NAME, newRecord);
+      
+      console.log(`✅ Created new user memory record with first dive log`);
+      
+      return ok({
+        success: true,
+        operation: 'create',
+        diveLogsCount: 1,
+        diveLogId: diveLogEntry.id,
+        _id: result._id,
+        appId: MEMORY_CONFIG.APP_ID,
+        message: 'First dive log entry created successfully',
+        timestamp: new Date().toISOString()
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+  } catch (error) {
+    console.error('❌ POST userMemory error:', error);
+    
+    return serverError({
+      error: 'Failed to save dive log',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 ENHANCED OPTIONS: CORS PREFLIGHT WITH APP VALIDATION
 export function options_userMemory(request) {
+  console.log('🔄 CORS preflight request for Wix App:', MEMORY_CONFIG.APP_ID);
+  
   return ok({
-    message: 'CORS preflight OK'
+    message: 'CORS preflight OK',
+    appId: MEMORY_CONFIG.APP_ID,
+    version: MEMORY_CONFIG.VERSION,
+    allowedMethods: ['GET', 'POST', 'OPTIONS'],
+    timestamp: new Date().toISOString()
   }, MEMORY_CONFIG.CORS_HEADERS);
 }
 
-// 🔥 WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
+// 🔥 ENHANCED WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
 // These functions are called directly by the frontend using backend.saveUserMemory() etc.
+// Updated for Wix App integration with proper validation and error handling
+
 export async function saveUserMemory(requestData) {
-  console.log('🔄 SaveUserMemory wrapper called with:', JSON.stringify(requestData, null, 2));
+  console.log('🔄 SaveUserMemory wrapper called for app:', MEMORY_CONFIG.APP_ID);
+  console.log('📋 Request data:', JSON.stringify(requestData, null, 2));
   
   try {
-    // Validate input data
+    // Enhanced input validation
     if (!requestData || typeof requestData !== 'object') {
       throw new Error('Invalid request data - must be an object');
+    }
+    
+    if (!requestData.userId || !requestData.diveLogData) {
+      throw new Error('Missing required fields: userId and diveLogData');
     }
     
     // Create a mock request object that matches the HTTP function signature
@@ -341,7 +296,10 @@ export async function saveUserMemory(requestData) {
         text: () => Promise.resolve(JSON.stringify(requestData)),
         json: () => Promise.resolve(requestData)
       },
-      headers: {},
+      headers: {
+        'X-Wix-App-ID': MEMORY_CONFIG.APP_ID,
+        'Content-Type': 'application/json'
+      },
       query: {},
       method: 'POST'
     };
@@ -359,17 +317,19 @@ export async function saveUserMemory(requestData) {
       error: 'SaveUserMemory wrapper failed',
       details: error.message,
       timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
       success: false
     };
   }
 }
 
-// Wrapper for GET operations
+// Enhanced wrapper for GET operations
 export async function getUserMemory(requestData) {
-  console.log('🔄 GetUserMemory wrapper called with:', JSON.stringify(requestData, null, 2));
+  console.log('🔄 GetUserMemory wrapper called for app:', MEMORY_CONFIG.APP_ID);
+  console.log('📋 Request data:', JSON.stringify(requestData, null, 2));
   
   try {
-    // Validate input data
+    // Enhanced input validation
     if (requestData && typeof requestData !== 'object') {
       throw new Error('Invalid request data - must be an object or null');
     }
@@ -379,7 +339,10 @@ export async function getUserMemory(requestData) {
         text: () => Promise.resolve('{}'),
         json: () => Promise.resolve({}) 
       },
-      headers: {},
+      headers: {
+        'X-Wix-App-ID': MEMORY_CONFIG.APP_ID,
+        'Content-Type': 'application/json'
+      },
       query: requestData || {},
       method: 'GET'
     };
@@ -396,7 +359,45 @@ export async function getUserMemory(requestData) {
       error: 'GetUserMemory wrapper failed',
       details: error.message,
       timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
       success: false
+    };
+  }
+}
+
+// 🔥 NEW: App Status Check Function
+export async function getAppStatus() {
+  console.log('🔄 App status check for:', MEMORY_CONFIG.APP_ID);
+  
+  try {
+    // Test collection access
+    const testQuery = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+      .limit(1)
+      .find();
+    
+    return {
+      success: true,
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION,
+      collection: MEMORY_CONFIG.COLLECTION_NAME,
+      collectionAccessible: true,
+      totalRecords: testQuery.totalCount || 0,
+      timestamp: new Date().toISOString(),
+      status: 'operational'
+    };
+    
+  } catch (error) {
+    console.error('❌ App status check failed:', error);
+    
+    return {
+      success: false,
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION,
+      collection: MEMORY_CONFIG.COLLECTION_NAME,
+      collectionAccessible: false,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      status: 'error'
     };
   }
 }

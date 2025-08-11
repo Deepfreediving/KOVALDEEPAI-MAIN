@@ -1,5 +1,6 @@
 // pages/api/test/wix-backend.ts
 import { NextApiRequest, NextApiResponse } from 'next';
+import WIX_APP_CONFIG from '@/lib/wixAppConfig';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const results = {
@@ -7,28 +8,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     tests: [] as any[]
   };
 
-  // Test 1: Try to connect to Wix backend directly
+  // Test 1: Try to connect to your Wix App backend using new config
   try {
-    console.log('🔍 Testing direct connection to Wix backend...');
+    console.log('🔍 Testing connection to @deepfreediving/kovaldeepai-app backend...');
     
-    const wixResponse = await fetch('https://www.deepfreediving.com/_functions/wixConnection', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
+    const wixResponse = await WIX_APP_CONFIG.test.health();
 
     results.tests.push({
-      name: 'Wix Backend Connection',
-      status: wixResponse.ok ? 'SUCCESS' : 'FAILED',
-      statusCode: wixResponse.status,
-      response: wixResponse.ok ? await wixResponse.json() : await wixResponse.text()
+      name: 'Wix App Backend Connection (@deepfreediving/kovaldeepai-app)',
+      status: wixResponse ? 'SUCCESS' : 'FAILED',
+      response: wixResponse
     });
 
   } catch (error: any) {
     results.tests.push({
-      name: 'Wix Backend Connection',
+      name: 'Wix App Backend Connection (@deepfreediving/kovaldeepai-app)',
       status: 'ERROR',
       error: error.message
     });
