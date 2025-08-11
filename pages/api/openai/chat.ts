@@ -308,6 +308,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { message, userId = 'guest', profile = {}, embedMode = false, diveLogs = [] } = req.body;
     
+    // ✅ Enhanced logging for authentication debugging
+    const isGuestUser = !userId || userId.startsWith('guest');
+    const authStatus = isGuestUser ? '🚫 GUEST/UNAUTHENTICATED' : '✅ AUTHENTICATED';
+    
+    console.log(`🚀 Chat request: ${authStatus} | userId=${userId} | embedMode=${embedMode}`);
+    
+    if (isGuestUser) {
+      console.warn('⚠️ WARNING: Chat request with guest/missing userId - authentication may have failed!');
+      console.warn('⚠️ This indicates the frontend authentication gating may not be working properly.');
+    }
+    
     // ✅ Extract consistent user display name using member ID for fast recognition
     const getUserNickname = (profile: any, userId: string): string => {
       // ✅ PRIORITY: Use member ID format for consistent, fast recognition
