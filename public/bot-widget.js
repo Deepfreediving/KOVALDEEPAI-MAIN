@@ -37,6 +37,13 @@
       this.messageQueue = [];
       // Use localhost for development if available, otherwise production
       this.BASE_URL = window.location.hostname === 'localhost' ? LOCALHOST_ORIGIN : ALLOWED_ORIGIN;
+      
+      // ✅ Setup user data bridge for Members/FullData integration
+      this.setupUserDataBridge();
+      
+      // ✅ Setup error monitoring
+      this.setupErrorMonitoring();
+      
       this.createWidget();
     }
 
@@ -521,6 +528,10 @@
       setInterval(performSystemHealthCheck, 300000); // Every 5 minutes
       setInterval(testOpenAIConnection, 180000); // Every 3 minutes
 
+      // ✅ PROACTIVE AUTHENTICATION: Try to get user data before creating iframe
+      console.log('🔐 Attempting proactive authentication...');
+      this.getUserDataFromWix();
+
       // ✅ CREATE IFRAME WITH THEME AND CACHE BUSTING
       this.iframe = document.createElement('iframe');
       const cacheParam = Date.now(); // Force fresh load
@@ -791,6 +802,15 @@
 
     // 🔍 DETECT WIX MEMBER DATA FOR PAID PLATFORM
     detectWixMemberData() {
+      console.log('🔍 Starting Wix member data detection...');
+      console.log('🔍 Available APIs:', {
+        wixUsers: !!window.wixUsers,
+        wixUsersCurrentUser: !!(window.wixUsers && window.wixUsers.currentUser),
+        dollarW: typeof $w !== 'undefined',
+        parentWindow: window.parent !== window,
+        parentWixUserId: window.parent?.wixUserId
+      });
+      
       try {
         // Method 1: Check wixUsers API for member data
         if (typeof window !== 'undefined' && window.wixUsers && window.wixUsers.currentUser) {
@@ -905,8 +925,18 @@
         }
         
         console.warn('⚠️ Bridge failed, using basic Wix data');
+        console.log('🔍 Bridge response details:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: `${this.BASE_URL}/api/wix/user-profile-bridge`
+        });
       } catch (bridgeError) {
         console.warn('⚠️ Bridge error, using basic Wix data:', bridgeError.message);
+        console.log('🔍 Bridge error details:', {
+          error: bridgeError,
+          userId: user.id,
+          bridgeUrl: `${this.BASE_URL}/api/wix/user-profile-bridge`
+        });
       }
       
       // ✅ Fallback to basic Wix data if bridge fails
