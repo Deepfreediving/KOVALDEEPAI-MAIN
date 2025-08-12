@@ -17,7 +17,7 @@ const MEMBER_CONFIG = {
   },
   
   COLLECTIONS: {
-    USER_MEMORY: "@deepfreediving/kovaldeepai-app/Import1",
+    USER_MEMORY: "UserMemory", // ✅ FIXED: Use simple collection name
     REGISTRATIONS: "KovalAIRegistrations", 
     MEMBERS: "Members/FullData"
   },

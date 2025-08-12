@@ -11,7 +11,7 @@ import { fetch } from 'wix-fetch';
 const DIVELOGS_CONFIG = {
   APP_ID: '@deepfreediving/kovaldeepai-app',
   VERSION: '4.x',
-  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
+  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/DiveLogs', // ✅ App collection for dive logs
   
   VALIDATION: {
     REQUIRED_FIELDS: ['userId', 'diveDate'],
