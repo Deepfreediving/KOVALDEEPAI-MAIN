@@ -5,7 +5,7 @@
 
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
-import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils.jsw';
+import { WixUtilsMaster, MASTER_CONFIG } from '../wix-utils.jsw';
 
 // 🎯 MASTER CONFIGURATION
 const PROFILE_CONFIG = {
@@ -17,7 +17,7 @@ const PROFILE_CONFIG = {
   
   COLLECTIONS: {
     MEMBERS: 'Members/FullData',
-    USER_DATA: '@deepfreediving/kovaldeepai-app/Import1'
+    USER_DATA: 'DiveLogs'
   },
   
   FIELD_MAPPING: {
