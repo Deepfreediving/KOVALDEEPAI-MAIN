@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import SavedDiveLogsViewer from "@/components/SavedDiveLogsViewer";
 import UserIdDebugger from "@/components/UserIdDebugger";
-import DiveJournalForm from "@/components/DiveJournalForm";
 
 interface DiveLog {
   date: string;
@@ -25,9 +24,6 @@ export default function Journal({ userId, onSave }: JournalProps) {
     localId: ""
   });
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [editingLog, setEditingLog] = useState<any>(null);
-  const [showDiveForm, setShowDiveForm] = useState(false);
 
   // 🔄 NEW: Enterprise dive logs state
   const [diveLogs, setDiveLogs] = useState([]);
@@ -79,7 +75,7 @@ export default function Journal({ userId, onSave }: JournalProps) {
     try {
       console.log('🌐 Loading from Wix backend...');
       
-      const wixResponse = await fetch(`/api/wix/dive-logs-bridge?userId=${userId}`, {
+      const wixResponse = await fetch(`https://www.deepfreediving.com/_functions/diveLogs?userId=${userId}`, {
         method: 'GET',
         headers: { 
           'Content-Type': 'application/json',
@@ -89,51 +85,97 @@ export default function Journal({ userId, onSave }: JournalProps) {
       
       if (wixResponse.ok) {
         const wixData = await wixResponse.json();
-        if (wixData.diveLogs) {
-          setDiveLogs(wixData.diveLogs);
+        if (wixData.success && wixData.data) {
+          const transformedLogs = wixData.data.map((log: any) => ({
+            id: log.uniqueKey || log._id,
+            date: log.date,
+            discipline: log.discipline,
+            disciplineType: log.disciplineType,
+            location: log.location,
+            targetDepth: log.targetDepth,
+            reachedDepth: log.reachedDepth,
+            notes: log.notes,
+            timestamp: log.timestamp,
+            syncedToWix: true,
+            wixId: log._id
+          }));
+          
+          setDiveLogs(transformedLogs);
           setSyncStatus('synced');
-          console.log(`✅ Loaded ${wixData.diveLogs.length} logs from Wix DiveLogs`);
+          console.log(`✅ Loaded ${transformedLogs.length} logs from Wix`);
         }
       }
     } catch (error) {
-      console.error('❌ Failed to load from Wix:', error);
-      setSyncStatus('error');
+      console.error('❌ Wix load failed:', error);
+      throw error;
     }
   };
 
-  const syncWithWix = async (logs: any[]) => {
-    console.log('🔄 Background sync with Wix...');
-    // Implementation would sync local logs to Wix
+  // 🔄 Background sync with Wix
+  const syncWithWix = async (localLogs: DiveLog[]) => {
+    try {
+      const syncResponse = await fetch('/api/analyze/sync-dive-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, localLogs })
+      });
+      
+      if (syncResponse.ok) {
+        const syncData = await syncResponse.json();
+        if (syncData.logs) {
+          setDiveLogs(syncData.logs);
+          console.log(`✅ Background sync: ${syncData.totalCount} total, ${syncData.uploadedCount} uploaded`);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Background sync failed:', error);
+    }
   };
 
+  // 🔄 Load when userId changes
   useEffect(() => {
-    refreshDiveLogs();
+    if (userId) {
+      refreshDiveLogs();
+    }
   }, [userId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setEntry(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
+  // ✅ Enhanced handlers
+  const handleJournalSubmit = async (formData: DiveLog) => {
+    console.log('📝 Dive journal submitted:', formData);
+    setTimeout(() => refreshDiveLogs(), 2000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId) return;
+  const handleDelete = async (index: number) => {
+    const logToDelete = diveLogs[index];
+    if (!logToDelete) return;
 
     try {
-      setLoading(true);
+      setLoadingDiveLogs(true);
+      const updatedLogs = diveLogs.filter((_, i) => i !== index);
+      setDiveLogs(updatedLogs);
+      setTimeout(() => refreshDiveLogs(), 1000);
+    } catch (error) {
+      console.error('❌ Delete failed:', error);
+      refreshDiveLogs();
+    } finally {
+      setLoadingDiveLogs(false);
+    }
+  };
 
-      const newEntry = {
-        ...entry,
-        localId: Date.now().toString(),
-        savedAt: new Date().toISOString()
-      };
+  // ✅ Handles input change
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setEntry({ ...entry, [e.target.name]: e.target.value });
+  };
 
-      // ✅ Save to localStorage first
-      const saved = JSON.parse(localStorage.getItem('savedDiveLogs') || '[]');
-      saved.push(newEntry);
-      localStorage.setItem('savedDiveLogs', JSON.stringify(saved));
+  // ✅ Handles form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
 
       // ✅ Save to API
       const res = await fetch("/api/analyze/save-dive-log", {
@@ -149,9 +191,6 @@ export default function Journal({ userId, onSave }: JournalProps) {
 
       // ✅ Reset form
       setEntry({ date: "", location: "", depth: "", notes: "", localId: "" });
-      
-      // Refresh dive logs
-      await refreshDiveLogs();
     } catch (err) {
       console.error("❌ Error saving dive log:", err);
     } finally {
@@ -159,172 +198,60 @@ export default function Journal({ userId, onSave }: JournalProps) {
     }
   };
 
-  const handleEditLog = (index: number, log: any) => {
-    setEditingLog(log);
-    setShowDiveForm(true);
-  };
-
-  const handleDeleteLog = async (index: number, log: any) => {
-    try {
-      setLoadingDiveLogs(true);
-      // Remove from state immediately for better UX
-      const updatedLogs = diveLogs.filter((_, i) => i !== index);
-      setDiveLogs(updatedLogs);
-      
-      // Refresh from API to get accurate state
-      setTimeout(() => refreshDiveLogs(), 1000);
-    } catch (error) {
-      console.error('Error handling delete:', error);
-      // Refresh logs if there's an error
-      refreshDiveLogs();
-    }
-  };
-
-  const handleDiveFormSubmit = async (formData: any) => {
-    try {
-      setLoading(true);
-      
-      // Save the dive log
-      const response = await fetch('/api/analyze/save-dive-log-optimized', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          userId,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `✅ Dive log saved successfully! Processing time: ${result.processingTime}ms`
-        }]);
-        
-        // Refresh dive logs and close form
-        await refreshDiveLogs();
-        setShowDiveForm(false);
-        setEditingLog(null);
-      } else {
-        throw new Error('Failed to save dive log');
-      }
-    } catch (error) {
-      console.error('Error saving dive log:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `❌ Failed to save dive log: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <>
-      <UserIdDebugger urlUserId={userId} />
-      
-      {/* Dive Form Toggle */}
-      <div className="mb-4">
+      <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded shadow-md">
+        <input
+          type="date"
+          name="date"
+          value={entry.date}
+          onChange={handleChange}
+          className="block mb-2"
+          required
+        />
+        <input
+          type="text"
+          name="location"
+          placeholder="Location"
+          value={entry.location}
+          onChange={handleChange}
+          className="block mb-2"
+          required
+        />
+        <input
+          type="text"
+          name="depth"
+          placeholder="Depth (meters)"
+          value={entry.depth}
+          onChange={handleChange}
+          className="block mb-2"
+          required
+        />
+        <textarea
+          name="notes"
+          placeholder="Notes"
+          value={entry.notes}
+          onChange={handleChange}
+          className="block mb-2"
+          rows={3}
+        ></textarea>
+
         <button
-          onClick={() => setShowDiveForm(!showDiveForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          type="submit"
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
         >
-          {showDiveForm ? "Hide Dive Form" : "Add New Dive Log"}
+          {loading ? "Saving..." : "Save Dive Log"}
         </button>
-      </div>
+      </form>
 
-      {/* Enhanced Dive Form */}
-      {showDiveForm && (
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-          <h3 className="text-lg font-semibold mb-3">
-            {editingLog ? "Edit Dive Log" : "Add New Dive Log"}
-          </h3>
-          <DiveJournalForm
-            onSubmit={handleDiveFormSubmit}
-            userId={userId}
-            darkMode={false}
-          />
-        </div>
-      )}
-
-      {/* Messages Display */}
-      {messages.length > 0 && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-          {messages.slice(-3).map((msg, i) => (
-            <div key={i} className="text-sm text-blue-800 mb-1">
-              {msg.content}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Legacy Simple Form (keeping for backward compatibility) */}
-      <details className="mb-6">
-        <summary className="cursor-pointer text-gray-600 text-sm">
-          Show Simple Form (Legacy)
-        </summary>
-        <form onSubmit={handleSubmit} className="mt-2 p-4 border rounded bg-gray-50">
-          <h2 className="text-xl font-semibold mb-4">Simple Dive Journal</h2>
-          <input
-            type="date"
-            name="date"
-            value={entry.date}
-            onChange={handleChange}
-            className="block mb-2 p-2 border rounded w-full"
-            required
-          />
-          <input
-            type="text"
-            name="location"
-            placeholder="Location"
-            value={entry.location}
-            onChange={handleChange}
-            className="block mb-2 p-2 border rounded w-full"
-            required
-          />
-          <input
-            type="text"
-            name="depth"
-            placeholder="Depth (meters)"
-            value={entry.depth}
-            onChange={handleChange}
-            className="block mb-2 p-2 border rounded w-full"
-            required
-          />
-          <textarea
-            name="notes"
-            placeholder="Notes"
-            value={entry.notes}
-            onChange={handleChange}
-            className="block mb-2 p-2 border rounded w-full"
-            rows={3}
-          ></textarea>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "Saving..." : "Save Dive Log"}
-          </button>
-        </form>
-      </details>
-
-      {/* 📚 Enhanced Dive Logs Viewer */}
+      {/* 📚 Dive Logs Viewer */}
       <div className="mt-4">
         <h2 className="text-xl font-semibold mb-2">Saved Dive Logs</h2>
         {loadingDiveLogs ? (
           <p>Loading dive logs...</p>
         ) : (
-          <SavedDiveLogsViewer 
-            darkMode={false}
-            userId={userId}
-            setMessages={setMessages}
-            setLoading={setLoading}
-            onEditLog={handleEditLog}
-            onDeleteLog={handleDeleteLog}
-          />
+          <SavedDiveLogsViewer darkMode={false} />
         )}
       </div>
     </>

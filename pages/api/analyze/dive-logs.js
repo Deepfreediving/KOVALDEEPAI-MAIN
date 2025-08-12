@@ -1,5 +1,17 @@
 // ===== 📄 pages/api/analyze/dive-logs.js =====
 // ENHANCED API endpoint to retrieve dive logs from multiple sources
+// 
+// PRIORITY ORDER:
+// 1. DiveLogs Collection (via bridge) - highest priority, most up-to-date
+// 2. User-specific file logs - high priority, user-specific data
+// 3. General/example file logs - lower priority, fallback data
+// 
+// This endpoint serves as a comprehensive fallback that can load logs from:
+// - Wix DiveLogs collection (primary)
+// - User-specific JSON files (backup)
+// - General example files (demonstration data)
+//
+// Version: 4.0 - Updated for DiveLogs collection integration
 
 import fs from 'fs';
 import path from 'path';
@@ -107,34 +119,58 @@ export default async function handler(req, res) {
             }
         }
         
-        // ✅ PRIORITY 3: Load from memory/database if available
-        try {
-            // Import the memory manager (this might not exist in all setups)
-            const { getUserDiveLogs } = await import('@/lib/userMemoryManager');
-            
-            if (userId && getUserDiveLogs) {
-                console.log('📊 Loading dive logs from memory system...');
-                const memoryLogs = await getUserDiveLogs(userId);
+        // ✅ PRIORITY 3: Load from DiveLogs collection via bridge (if available)
+        if (userId) {
+            try {
+                console.log('📊 Trying to load dive logs from DiveLogs collection...');
                 
-                if (memoryLogs && memoryLogs.length > 0) {
-                    memoryLogs.forEach(log => {
-                        log.source = 'memory-system';
-                        log.priority = 'highest'; // Memory logs are most recent/relevant
-                        allDiveLogs.push(log);
-                    });
-                    console.log(`✅ Loaded ${memoryLogs.length} logs from memory system`);
+                // Try internal bridge API call (this works in serverless and local)
+                const baseUrl = process.env.VERCEL_URL 
+                    ? `https://${process.env.VERCEL_URL}`
+                    : process.env.NODE_ENV === 'production'
+                        ? 'https://koval-deep-ai.vercel.app'
+                        : 'http://localhost:3000';
+                        
+                const bridgeUrl = `${baseUrl}/api/wix/dive-logs-bridge`;
+                
+                const bridgeResponse = await fetch(bridgeUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        limit: 100,
+                        includeAnalysis: true
+                    })
+                });
+                
+                if (bridgeResponse.ok) {
+                    const bridgeData = await bridgeResponse.json();
+                    if (bridgeData.success && bridgeData.diveLogs?.length > 0) {
+                        bridgeData.diveLogs.forEach(log => {
+                            log.source = 'divelogs-collection';
+                            log.priority = 'highest'; // DiveLogs collection has highest priority
+                            allDiveLogs.push(log);
+                        });
+                        console.log(`✅ Loaded ${bridgeData.diveLogs.length} logs from DiveLogs collection`);
+                    }
                 }
+            } catch (bridgeError) {
+                console.log('ℹ️ DiveLogs collection not available, using file fallback:', bridgeError.message);
             }
-        } catch (memoryError) {
-            console.log('ℹ️ Memory system not available or no logs found:', memoryError.message);
         }
         
         // Sort by priority and date (highest priority + newest first)
         allDiveLogs.sort((a, b) => {
             // First sort by priority
-            const priorityOrder = { 'highest': 4, 'high': 3, 'medium': 2, 'low': 1 };
-            const priorityA = priorityOrder[a.priority] || 1;
-            const priorityB = priorityOrder[b.priority] || 1;
+            const priorityOrder = { 
+                'divelogs-collection': 5,  // DiveLogs collection has highest priority
+                'highest': 4, 
+                'high': 3, 
+                'medium': 2, 
+                'low': 1 
+            };
+            const priorityA = priorityOrder[a.source] || priorityOrder[a.priority] || 1;
+            const priorityB = priorityOrder[b.source] || priorityOrder[b.priority] || 1;
             
             if (priorityA !== priorityB) {
                 return priorityB - priorityA; // Higher priority first
