@@ -96,10 +96,17 @@ export default function ChatBox({
         setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
         setInput("");
 
-        const res = await fetch("/api/openai/chat", {
+        // ✅ Use enhanced Wix bridge API for better integration
+        const res = await fetch("/api/wix/chat-bridge", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: trimmedInput, profile, eqState, userId: effectiveUserId }),
+          body: JSON.stringify({ 
+            userMessage: trimmedInput, 
+            profile, 
+            eqState, 
+            userId: effectiveUserId,
+            embedMode: false // This is for direct usage, not embedded
+          }),
         });
 
         const textResponse = await res.text();
@@ -110,31 +117,74 @@ export default function ChatBox({
           data = { error: textResponse || "Unexpected server error." };
         }
 
-        if (!res.ok) throw new Error(data?.error || `Chat API error (${res.status})`);
+        if (!res.ok) {
+          console.warn(`⚠️ Chat bridge failed (${res.status}), trying fallback...`);
+          
+          // Fallback to direct OpenAI chat API
+          const fallbackRes = await fetch("/api/openai/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: trimmedInput, profile, eqState, userId: effectiveUserId }),
+          });
+          
+          if (!fallbackRes.ok) {
+            throw new Error(`Both chat APIs failed: Bridge ${res.status}, Fallback ${fallbackRes.status}`);
+          }
+          
+          const fallbackData = await fallbackRes.json();
+          console.log("✅ Fallback chat response received:", fallbackData);
+          
+          if (fallbackData.assistantMessage) {
+            setMessages((prev) => [...prev, fallbackData.assistantMessage]);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: fallbackData.answer || fallbackData.aiResponse || "I received your message!" },
+            ]);
+          }
+          return;
+        }
 
-        if (data.type === "eq-followup") {
+        const bridgeData = await res.json();
+        console.log("✅ Chat bridge response received:", bridgeData);
+
+        // Handle bridge API response format
+        if (bridgeData.aiResponse || bridgeData.assistantMessage?.content) {
+          const assistantMessage = {
+            role: "assistant",
+            content: bridgeData.aiResponse || bridgeData.assistantMessage?.content || "I received your message!",
+          };
+          
+          // Add metadata if available
+          if (bridgeData.metadata) {
+            assistantMessage.metadata = bridgeData.metadata;
+            console.log(`📊 Chat metadata: ${bridgeData.metadata.processingTime}ms, source: ${bridgeData.source}`);
+          }
+          
+          setMessages((prev) => [...prev, assistantMessage]);
+        } else if (bridgeData.type === "eq-followup") {
           setEqState?.((prev) => ({
             ...prev,
-            answers: { ...prev.answers, [data.key]: trimmedInput },
+            answers: { ...prev.answers, [bridgeData.key]: trimmedInput },
           }));
-          setMessages((prev) => [...prev, { role: "assistant", content: `🔍 ${data.question}` }]);
-        } else if (data.type === "eq-diagnosis") {
+          setMessages((prev) => [...prev, { role: "assistant", content: `🔍 ${bridgeData.question}` }]);
+        } else if (bridgeData.type === "eq-diagnosis") {
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
-              content: `🧠 Diagnosis: ${data.label}\n\nRecommended Drills:\n${data.drills.join(
+              content: `🧠 Diagnosis: ${bridgeData.label}\n\nRecommended Drills:\n${bridgeData.drills.join(
                 "\n"
               )}`,
             },
           ]);
           setEqState?.({});
-        } else if (data.assistantMessage) {
-          setMessages((prev) => [...prev, data.assistantMessage]);
+        } else if (bridgeData.assistantMessage) {
+          setMessages((prev) => [...prev, bridgeData.assistantMessage]);
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: "⚠️ Unrecognized response format." },
+            { role: "assistant", content: bridgeData.answer || "⚠️ Unrecognized response format." },
           ]);
         }
       }

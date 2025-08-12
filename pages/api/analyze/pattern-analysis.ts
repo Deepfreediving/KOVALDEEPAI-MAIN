@@ -20,20 +20,78 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`🔬 Starting systematic pattern analysis for ${userId} (${analysisType}, ${timeRange})`);
 
-    // ✅ Fetch all dive logs from UserMemory repeater - specific dataset
+    // ✅ Fetch dive logs from new DiveLogs collection structure
     let diveLogs = [];
     try {
-      const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&limit=100&patternAnalysisNeeded=true&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`);
+      // Use canonical base URL for internal API calls
+      const BASE_URL = process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'https://kovaldeepai-main.vercel.app';
+
+      console.log(`📡 Fetching dive logs from DiveLogs collection for userId: ${userId}`);
+      
+      const response = await fetch(`${BASE_URL}/api/wix/dive-logs-bridge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          limit: 100,
+          includeAnalysis: true
+        })
+      });
       
       if (response.ok) {
-        const { data } = await response.json();
-        diveLogs = data?.filter((item: any) => 
-          item.discipline && item.reachedDepth !== undefined
+        const data = await response.json();
+        diveLogs = data.diveLogs?.filter((log: any) => 
+          log.discipline && log.reachedDepth !== undefined
         ) || [];
+        console.log(`✅ Fetched ${diveLogs.length} dive logs from DiveLogs collection`);
+      } else {
+        console.warn(`⚠️ Dive logs bridge failed (${response.status}), trying fallback...`);
+        
+        // Fallback to query DiveLogs collection directly
+        const fallbackResponse = await fetch(`${BASE_URL}/api/wix/query-wix-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collectionId: 'DiveLogs',
+            filter: { 
+              userId: { $eq: userId },
+              dataType: { $eq: 'dive_log' }
+            },
+            sort: [{ fieldName: '_createdDate', order: 'desc' }],
+            limit: 100
+          })
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          diveLogs = fallbackData.items?.map((item: any) => {
+            try {
+              const parsedLogEntry = JSON.parse(item.logEntry || '{}');
+              return {
+                ...parsedLogEntry.dive,
+                _id: item._id,
+                userId: item.userId,
+                diveLogId: item.diveLogId,
+                date: item.diveDate,
+                time: item.diveTime,
+                photo: item.diveLogWatch,
+                analysis: parsedLogEntry.analysis,
+                metadata: parsedLogEntry.metadata
+              };
+            } catch (parseError) {
+              console.warn('⚠️ Could not parse dive log:', item._id);
+              return null;
+            }
+          }).filter(Boolean) || [];
+          
+          console.log(`📋 Fallback: Fetched ${diveLogs.length} dive logs from DiveLogs collection`);
+        }
       }
     } catch (error) {
       console.error('❌ Failed to fetch dive logs:', error);
-      return res.status(500).json({ error: 'Failed to fetch dive logs from Wix' });
+      return res.status(500).json({ error: 'Failed to fetch dive logs from DiveLogs collection' });
     }
 
     if (diveLogs.length === 0) {
@@ -95,28 +153,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ✅ Extract key insights and patterns
       const insights = extractPatternInsights(filteredLogs);
 
-      // ✅ Save pattern analysis results to UserMemory - specific dataset
+      // ✅ Save pattern analysis results to DiveLogs collection
       try {
-        await fetch('https://www.deepfreediving.com/_functions/userMemory', {
+        const analysisRecord = {
+          userId: userId,
+          diveLogId: `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          logEntry: JSON.stringify({
+            analysis: {
+              type: 'pattern-analysis',
+              analysisType,
+              timeRange,
+              logsAnalyzed: filteredLogs.length,
+              patternAnalysis,
+              insights,
+              version: '4.0'
+            },
+            metadata: {
+              type: 'pattern_analysis',
+              source: 'pattern-analysis-api',
+              timestamp: new Date().toISOString(),
+              analyzedAt: new Date().toISOString()
+            }
+          }),
+          diveDate: new Date(),
+          diveTime: new Date().toLocaleTimeString(),
+          diveLogWatch: null,
+          dataType: 'pattern_analysis'
+        };
+
+        const saveResponse = await fetch(`${BASE_URL}/api/wix/query-wix-data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId,
-            dataset: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1',
-            title: `Pattern Analysis - ${timeRange}`,
-            patternAnalysis,
-            analysisType,
-            timeRange,
-            logsAnalyzed: filteredLogs.length,
-            insights: JSON.stringify(insights),
-            metadata: JSON.stringify({
-              type: 'pattern-analysis',
-              version: '2.0',
-              analyzedAt: new Date().toISOString()
-            })
+            action: 'insert',
+            collectionId: 'DiveLogs',
+            record: analysisRecord
           })
         });
-        console.log('✅ Pattern analysis saved to UserMemory');
+        
+        if (saveResponse.ok) {
+          console.log('✅ Pattern analysis saved to DiveLogs collection');
+        } else {
+          console.warn('⚠️ Failed to save pattern analysis to DiveLogs collection');
+        }
       } catch (saveError) {
         console.warn('⚠️ Failed to save pattern analysis:', saveError);
       }

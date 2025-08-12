@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { prepareDiveLogForAI } from '@/utils/diveLogFormatter';
 
 export default function AIAnalyzeButton({ 
   diveLog, 
@@ -22,35 +21,97 @@ export default function AIAnalyzeButton({
     setError('');
 
     try {
-      console.log('🤖 Starting AI analysis for dive log:', diveLog);
+      console.log('🤖 Sending compressed dive log to OpenAI for analysis:', diveLog);
       
-      // Prepare the dive log for AI analysis
-      const analysisPrompt = prepareDiveLogForAI(diveLog);
+      // ✅ Create a focused coaching analysis prompt with the structured dive data
+      const analysisPrompt = `
+🏊‍♂️ DIVE LOG COACHING ANALYSIS REQUEST
+
+Please provide detailed coaching feedback for this specific dive:
+
+📊 DIVE DATA:
+• Date: ${diveLog.date || 'Not specified'}
+• Discipline: ${diveLog.discipline || 'Freediving'}
+• Location: ${diveLog.location || 'Not specified'}
+• Target Depth: ${diveLog.targetDepth || '?'}m
+• Reached Depth: ${diveLog.reachedDepth || '?'}m
+• Depth Achievement: ${diveLog.targetDepth && diveLog.reachedDepth ? ((diveLog.reachedDepth / diveLog.targetDepth) * 100).toFixed(1) : '?'}%
+${diveLog.mouthfillDepth ? `• Mouthfill Depth: ${diveLog.mouthfillDepth}m` : ''}
+${diveLog.exit ? `• Exit Quality: ${diveLog.exit}` : ''}
+${diveLog.durationOrDistance ? `• Duration: ${diveLog.durationOrDistance}` : ''}
+${diveLog.totalDiveTime ? `• Total Time: ${diveLog.totalDiveTime}` : ''}
+${diveLog.attemptType ? `• Attempt Type: ${diveLog.attemptType}` : ''}
+${diveLog.surfaceProtocol ? `• Surface Protocol: ${diveLog.surfaceProtocol}` : ''}
+
+⚠️ ISSUES & CHALLENGES:
+${diveLog.issueDepth ? `• Issue at: ${diveLog.issueDepth}m` : '• No issues reported'}
+${diveLog.issueComment ? `• Issue details: ${diveLog.issueComment}` : ''}
+${diveLog.squeeze ? '• Squeeze reported: Yes' : '• Squeeze reported: No'}
+
+📝 NOTES: ${diveLog.notes || 'No additional notes'}
+
+🎯 COACHING ANALYSIS NEEDED:
+1. Performance assessment (how did this dive go?)
+2. Technical analysis (what went well/needs improvement?)
+3. Safety evaluation (any concerns or good practices?)
+4. Next steps (specific recommendations for next session)
+5. Progression advice (how this fits into overall development)
+
+Please provide specific, actionable coaching feedback using Daniel Koval's freediving methodology.
+      `;
       
-      // Send to chat API for analysis
-      const response = await fetch('/api/openai/chat', {
+      // ✅ Option 1: Use dedicated dive analysis endpoint (cleaner)
+      const response = await fetch('/api/analyze/dive-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: analysisPrompt,
+          diveLog,
           userId,
-          profile: {},
-          embedMode: false,
-          diveLogs: [diveLog] // Include this specific dive log
+          profile: { nickname: 'Member', source: 'dive-analysis' }
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`);
+        // ✅ Option 2: Fallback to direct OpenAI API
+        console.warn(`⚠️ Dive analysis endpoint failed (${response.status}), using direct OpenAI...`);
+        
+        const fallbackResponse = await fetch('/api/openai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: analysisPrompt,
+            userId,
+            profile: { nickname: 'Member', source: 'dive-analysis' },
+            embedMode: false,
+            diveLogs: [diveLog]
+          })
+        });
+
+        if (!fallbackResponse.ok) {
+          throw new Error(`Analysis failed: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
+        }
+
+        const fallbackData = await fallbackResponse.json();
+        const analysisResult = fallbackData.assistantMessage?.content || fallbackData.answer || fallbackData.content || 'Analysis completed but no feedback received.';
+        
+        setAnalysis(analysisResult);
+        setAnalyzed(true);
+        
+        console.log('✅ AI dive analysis completed via fallback');
+        
+        if (onAnalysisComplete) {
+          onAnalysisComplete(analysisResult, diveLog);
+        }
+        return;
       }
 
       const data = await response.json();
-      const analysisResult = data.assistantMessage?.content || data.answer || 'Analysis completed but no feedback received.';
+      const analysisResult = data.analysis || 'Analysis completed but no feedback received.';
       
       setAnalysis(analysisResult);
       setAnalyzed(true);
       
-      console.log('✅ AI analysis completed successfully');
+      console.log('✅ AI dive analysis completed successfully');
       
       // Notify parent component
       if (onAnalysisComplete) {

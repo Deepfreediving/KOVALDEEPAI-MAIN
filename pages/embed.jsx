@@ -718,37 +718,65 @@ export default function Embed() {
       const diveLogWithUser = { ...diveData, userId };
       console.log('📝 Dive log with user data:', diveLogWithUser);
       
-      // ✅ STEP 1: Save to Wix userMemory collection for long-term storage and AI retrieval
+      // ✅ STEP 1: Save to Wix DiveLogs collection with proper field mapping
       try {
-        console.log('📤 Attempting to save to Wix userMemory...');
-        const wixMemoryResponse = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
+        console.log('📤 Attempting to save to Wix DiveLogs collection...');
+        
+        // Generate a unique dive log ID
+        const diveLogId = `dive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Format data to match your Wix collection fields exactly
+        const wixDiveLogRecord = {
+          userId: userId, // Maps to "User ID" field
+          diveLogId: diveLogId, // Maps to "Dive Log ID" field  
+          logEntry: JSON.stringify({
+            // Store all dive data as JSON in the "Log Entry" field
+            dive: diveLogWithUser,
+            analysis: {
+              discipline: diveLogWithUser.discipline || 'Unknown',
+              reachedDepth: diveLogWithUser.reachedDepth || 0,
+              targetDepth: diveLogWithUser.targetDepth || 0,
+              location: diveLogWithUser.location || 'Unknown',
+              notes: diveLogWithUser.notes || ''
+            },
+            metadata: {
+              type: 'dive_log',
+              source: 'dive-journal-widget',
+              timestamp: new Date().toISOString(),
+              version: '4.0'
+            }
+          }),
+          diveDate: new Date(diveLogWithUser.date || new Date()), // Maps to "Dive Date" field
+          diveTime: diveLogWithUser.totalDiveTime || new Date().toLocaleTimeString(), // Maps to "Dive Time" field
+          diveLogWatch: diveLogWithUser.imageFile || null, // Maps to "Dive Log Watch" field
+          dataType: 'dive_log' // Additional field for filtering
+        };
+        
+        console.log('📝 Formatted dive log record for Wix collection:', wixDiveLogRecord);
+        
+        const wixResponse = await fetch("https://www.deepfreediving.com/_functions/userMemory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
-            diveLogData: diveLogWithUser,
-            memoryContent: `Dive Log: ${diveLogWithUser.discipline || 'Unknown'} dive to ${diveLogWithUser.reachedDepth || 0}m at ${diveLogWithUser.location || 'Unknown location'}`,
-            sessionName: `Dive Journal - ${diveLogWithUser.date}`,
-            metadata: {
-              type: 'dive-log',
-              source: 'dive-journal-widget',
-              timestamp: new Date().toISOString()
-            }
+            action: 'saveDiveLog',
+            collection: 'DiveLogs',
+            record: wixDiveLogRecord,
+            userId: userId
           }),
         });
         
-        console.log('📥 Wix userMemory response status:', wixMemoryResponse.status);
+        console.log('📥 Wix DiveLogs collection response status:', wixResponse.status);
         
-        if (wixMemoryResponse.ok) {
-          const wixData = await wixMemoryResponse.json();
-          console.log("✅ Dive log saved to Wix userMemory collection successfully");
-          console.log(`📊 Updated counts - Dive logs: ${wixData.diveLogsCount}, Memories: ${wixData.memoriesCount}`);
+        if (wixResponse.ok) {
+          const wixData = await wixResponse.json();
+          console.log("✅ Dive log saved to Wix DiveLogs collection successfully");
+          console.log(`📊 Record ID: ${wixData._id || wixData.recordId}`);
           
           // Update local state with accurate counts from Wix
           setProfile(prev => ({
             ...prev,
-            diveLogsCount: wixData.diveLogsCount,
-            memoriesCount: wixData.memoriesCount,
+            diveLogsCount: wixData.diveLogsCount || (prev.diveLogsCount || 0) + 1,
+            memoriesCount: wixData.memoriesCount || prev.memoriesCount,
             lastDiveLogSaved: new Date().toISOString()
           }));
           
@@ -758,20 +786,20 @@ export default function Embed() {
               type: 'USER_DATA_UPDATE',
               userData: {
                 userId,
-                diveLogsCount: wixData.diveLogsCount,
-                memoriesCount: wixData.memoriesCount,
+                diveLogsCount: wixData.diveLogsCount || (diveLogs.length + 1),
+                memoriesCount: wixData.memoriesCount || 0,
                 lastUpdated: new Date().toISOString()
               }
             }, '*');
             console.log(`📤 Sent updated counts to widget - Dive logs: ${wixData.diveLogsCount}`);
           }
         } else {
-          const errorText = await wixMemoryResponse.text();
-          console.warn("⚠️ Wix userMemory save failed:", wixMemoryResponse.status, errorText);
-          throw new Error(`Wix userMemory save failed: ${wixMemoryResponse.status}`);
+          const errorText = await wixResponse.text();
+          console.warn("⚠️ Wix DiveLogs collection save failed:", wixResponse.status, errorText);
+          throw new Error(`Wix DiveLogs save failed: ${wixResponse.status}`);
         }
       } catch (wixError) {
-        console.warn("⚠️ Wix userMemory unavailable, trying Next.js API:", wixError.message);
+        console.warn("⚠️ Wix DiveLogs collection unavailable, trying Next.js API:", wixError.message);
         
         try {
           console.log('📤 Attempting to save to Next.js API fallback...');
@@ -816,7 +844,11 @@ export default function Embed() {
       setDiveLogs(updatedLogs);
       console.log('📋 Updated diveLogs state with', updatedLogs.length, 'logs');
       
-      // ✅ STEP 3: Update the profile data immediately for correct count display
+      // ✅ STEP 3: Refresh dive logs from API to sync with server
+      console.log('🔄 Refreshing dive logs from API after save...');
+      await loadDiveLogs();
+      
+      // ✅ STEP 4: Update the profile data immediately for correct count display
       setProfile(prev => ({
         ...prev,
         diveLogsCount: updatedLogs.length,
@@ -840,7 +872,7 @@ export default function Embed() {
       // Refresh the list regardless of save method
       console.log('🔄 Refreshing dive logs list...');
       await loadDiveLogs();
-      setIsDiveJournalOpen(false);
+      setIsDiveJournalOpen(false); // ✅ Close the dive journal
       setEditLogIndex(null);
       
       // Add confirmation message
@@ -941,25 +973,35 @@ export default function Embed() {
     userId,
     profile,
     setProfile,
-    diveLogs,
+    diveLogs, // ✅ Pass actual diveLogs state
     setDiveLogs,
     darkMode,
     setDarkMode,
-    startNewSession,
-    handleSaveSession,
-    handleSelectSession,
+    // ✅ Sidebar-specific props
+    showDiveJournalForm: isDiveJournalOpen,
     toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
+    handleSelectSession,
+    handleDeleteSession: () => {}, // Add if needed
+    handleSaveSession,
+    startNewSession,
     handleJournalSubmit,
+    editLogIndex,
+    handleEdit: () => {}, // Add if needed  
     handleDelete,
-    refreshDiveLogs: loadDiveLogs,
+    refreshDiveLogs: loadDiveLogs, // ✅ Pass loadDiveLogs function
     loadingDiveLogs,
     syncStatus: "✅ Ready",
     editingSessionName,
-    setEditingSessionName
+    setEditingSessionName,
+    // ✅ Additional props for connection status
+    connectionStatus,
+    loadingConnections,
+    setLoading
   }), [
     sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
-    startNewSession, handleSaveSession, handleSelectSession, handleJournalSubmit,
-    handleDelete, loadDiveLogs, loadingDiveLogs, editingSessionName
+    isDiveJournalOpen, startNewSession, handleSaveSession, handleSelectSession, 
+    handleJournalSubmit, handleDelete, loadDiveLogs, loadingDiveLogs, 
+    editingSessionName, connectionStatus, loadingConnections
   ]);
 
   return (
