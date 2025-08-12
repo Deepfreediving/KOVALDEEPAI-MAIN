@@ -243,6 +243,9 @@
             source: userData.source
           });
           
+          // ✅ UPDATE IFRAME URL WITH AUTHENTICATED USER DATA
+          this.updateIframeWithUserData(wixUserData.userId, wixUserData.userId);
+          
           // If iframe is ready, send updated user data
           if (this.iframe && this.isReady) {
             this.postMessage('USER_AUTH', userData);
@@ -908,6 +911,9 @@
             
             console.log('✅ Sending rich Members/FullData to embed:', userData);
             
+            // ✅ UPDATE IFRAME URL WITH AUTHENTICATED USER DATA
+            this.updateIframeWithUserData(user.id, userData.userName);
+            
             // Send to embed for UserMemory integration
             if (this.iframe && this.isReady) {
               this.postMessage('USER_AUTH', userData);
@@ -956,6 +962,9 @@
         isGuest: false,
         theme: this.currentTheme || 'light'
       };
+      
+      // ✅ UPDATE IFRAME URL WITH AUTHENTICATED USER DATA (Fallback case)
+      this.updateIframeWithUserData(user.id, userData.userName);
       
       // Send to embed for UserMemory integration
       if (this.iframe && this.isReady) {
@@ -1024,6 +1033,36 @@
       };
       
       window.addEventListener('message', handleEmbedUserRequest);
+    }
+    
+    // ✅ HELPER FUNCTION TO UPDATE IFRAME URL WITH AUTHENTICATED USER DATA
+    updateIframeWithUserData(userId, userName = null) {
+      if (!this.iframe || !userId) return;
+      
+      console.log('🔄 Updating iframe URL with user data:', { userId, userName });
+      
+      try {
+        const currentUrl = new URL(this.iframe.src);
+        const currentUserId = currentUrl.searchParams.get('userId');
+        
+        // Only update if the userId actually changed from null or is different
+        if (currentUserId === 'null' || currentUserId !== userId) {
+          currentUrl.searchParams.set('userId', userId);
+          if (userName) {
+            currentUrl.searchParams.set('userName', userName);
+          }
+          currentUrl.searchParams.set('authenticated', 'true');
+          currentUrl.searchParams.set('v', Date.now().toString()); // Force refresh
+          
+          this.iframe.src = currentUrl.toString();
+          console.log('✅ Iframe URL updated successfully for user:', userId);
+          console.log('🔗 New iframe URL:', currentUrl.toString());
+        } else {
+          console.log('ℹ️ Iframe URL already has correct userId, no update needed');
+        }
+      } catch (error) {
+        console.error('❌ Failed to update iframe URL:', error);
+      }
     }
     
     // ✅ REFRESH USER DATA FUNCTION
