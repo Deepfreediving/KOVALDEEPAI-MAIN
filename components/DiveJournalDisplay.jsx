@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, isEmbedded = false, setMessages }) {
+export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, isEmbedded = false, setMessages, refreshKey }) {
   const [logs, setLogs] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState('date');
@@ -27,16 +27,22 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
   const [analyzingLogId, setAnalyzingLogId] = useState(null); // Track which log is being analyzed
 
   useEffect(() => {
+    console.log('🔄 DiveJournalDisplay: Refreshing logs from localStorage...', { userId, refreshKey });
     try {
       const stored = localStorage.getItem(`diveLogs-${userId}`);
       if (stored) {
-        setLogs(JSON.parse(stored));
+        const parsedLogs = JSON.parse(stored);
+        setLogs(parsedLogs);
+        console.log(`✅ DiveJournalDisplay: Loaded ${parsedLogs.length} logs from localStorage`);
+      } else {
+        setLogs([]);
+        console.log('📂 DiveJournalDisplay: No logs found in localStorage');
       }
     } catch (error) {
-      console.error("❌ Failed to parse stored dive logs:", error);
+      console.error("❌ DiveJournalDisplay: Failed to parse stored dive logs:", error);
       setLogs([]);
     }
-  }, [userId]);
+  }, [userId, refreshKey]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

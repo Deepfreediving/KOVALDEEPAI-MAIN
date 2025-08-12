@@ -18,22 +18,21 @@ export default function DiveJournalSidebarCard({
 
   const handleFormSubmit = async (data) => {
     try {
-      // Save logs to localStorage as backup
-      const existingLogs = JSON.parse(localStorage.getItem(`diveLogs-${userId}`)) || [];
-      existingLogs.push(data);
-      localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(existingLogs));
+      console.log('🚀 DiveJournalSidebarCard: Submitting dive log...', data);
       
-      // Call the onSubmit callback from parent (embed page)
+      // Call the onSubmit callback from parent (embed page) FIRST
       if (onSubmit) {
         await onSubmit(data);
+        console.log('✅ DiveJournalSidebarCard: Parent onSubmit completed');
       }
       
+      // Force refresh the logs display by updating key
       setRefreshKey(prev => prev + 1);
       setActiveTab('logs'); // Switch to logs after saving
       
-      console.log('✅ Dive log submitted successfully');
+      console.log('✅ DiveJournalSidebarCard: Dive log submitted successfully, refreshing display');
     } catch (error) {
-      console.error('❌ Error submitting dive log:', error);
+      console.error('❌ DiveJournalSidebarCard: Error submitting dive log:', error);
     }
   };
 
@@ -83,6 +82,7 @@ export default function DiveJournalSidebarCard({
           <div className="h-full">
             <DiveJournalDisplay 
               key={refreshKey} 
+              refreshKey={refreshKey}
               userId={userId} 
               darkMode={darkMode}
               isEmbedded={true}

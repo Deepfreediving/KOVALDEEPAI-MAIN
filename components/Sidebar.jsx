@@ -28,6 +28,13 @@ export default function Sidebar({
   refreshDiveLogs    // Function to refresh dive logs from API
 }) {
   
+  // 🔧 DEBUG: Log dive logs prop
+  console.log('🔧 SIDEBAR: Received diveLogs prop:', { 
+    length: diveLogs.length, 
+    logs: diveLogs.slice(0, 2), // Show first 2 logs
+    userId 
+  });
+  
   // 🔄 Load dive logs when component mounts or userId changes
   useEffect(() => {
     if (userId && refreshDiveLogs) {

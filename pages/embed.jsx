@@ -650,7 +650,12 @@ export default function Embed() {
     });
     
     if (!userId || userId.startsWith('guest-')) {
-      console.log('⚠️ No valid userId available for dive logs loading');
+      console.log('⚠️ Guest or no userId - loading from localStorage only');
+      const key = storageKey(userId || 'guest');
+      const localLogs = safeParse(key, []);
+      setDiveLogs(localLogs);
+      console.log(`📱 Loaded ${localLogs.length} local dive logs for guest user`);
+      setLoadingDiveLogs(false);
       return;
     }
     
@@ -1021,41 +1026,49 @@ export default function Embed() {
   }, [userId, loadDiveLogs]);
 
   // ✅ MEMOIZED PROPS FOR PERFORMANCE
-  const sidebarProps = useMemo(() => ({
-    BOT_NAME,
-    sessionName,
-    setSessionName,
-    sessionsList,
-    messages,
-    setMessages,
-    userId,
-    profile,
-    setProfile,
-    diveLogs, // ✅ Pass actual diveLogs state
-    setDiveLogs,
-    darkMode,
-    setDarkMode,
-    // ✅ Sidebar-specific props
-    showDiveJournalForm: isDiveJournalOpen,
-    toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
-    handleSelectSession,
-    handleDeleteSession: () => {}, // Add if needed
-    handleSaveSession,
-    startNewSession,
-    handleJournalSubmit,
-    editLogIndex,
-    handleEdit: () => {}, // Add if needed  
-    handleDelete,
-    refreshDiveLogs: loadDiveLogs, // ✅ Pass loadDiveLogs function
-    loadingDiveLogs,
-    syncStatus: "✅ Ready",
-    editingSessionName,
-    setEditingSessionName,
-    // ✅ Additional props for connection status
-    connectionStatus,
-    loadingConnections,
-    setLoading
-  }), [
+  const sidebarProps = useMemo(() => {
+    console.log('🔧 EMBED: Creating sidebarProps with diveLogs:', { 
+      length: diveLogs.length, 
+      logs: diveLogs.slice(0, 2), // Show first 2 logs
+      userId 
+    });
+    
+    return {
+      BOT_NAME,
+      sessionName,
+      setSessionName,
+      sessionsList,
+      messages,
+      setMessages,
+      userId,
+      profile,
+      setProfile,
+      diveLogs, // ✅ Pass actual diveLogs state
+      setDiveLogs,
+      darkMode,
+      setDarkMode,
+      // ✅ Sidebar-specific props
+      showDiveJournalForm: isDiveJournalOpen,
+      toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
+      handleSelectSession,
+      handleDeleteSession: () => {}, // Add if needed
+      handleSaveSession,
+      startNewSession,
+      handleJournalSubmit,
+      editLogIndex,
+      handleEdit: () => {}, // Add if needed  
+      handleDelete,
+      refreshDiveLogs: loadDiveLogs, // ✅ Pass loadDiveLogs function
+      loadingDiveLogs,
+      syncStatus: "✅ Ready",
+      editingSessionName,
+      setEditingSessionName,
+      // ✅ Additional props for connection status
+      connectionStatus,
+      loadingConnections,
+      setLoading
+    };
+  }, [
     sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
     isDiveJournalOpen, startNewSession, handleSaveSession, handleSelectSession, 
     handleJournalSubmit, handleDelete, loadDiveLogs, loadingDiveLogs, 
