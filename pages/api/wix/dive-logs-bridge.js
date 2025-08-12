@@ -91,14 +91,24 @@ export default async function handler(req, res) {
       console.warn('⚠️ Wix legacy dive logs also failed:', wixLegacyError.message);
     }
 
-    // ✅ OPTION 3: Try Wix data query API (for userMemory collection)
+    // ✅ OPTION 3: Query DiveLogs collection directly with correct field mapping
     try {
-      const queryResponse = await fetch(`${req.headers.origin}/api/wix/query-wix-data`, {
+      // Use canonical base URL instead of req.headers.origin
+      const BASE_URL = process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'https://kovaldeepai-main.vercel.app';
+
+      const queryResponse = await fetch(`${BASE_URL}/api/wix/query-wix-data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          collectionId: 'userMemory',
-          filter: { userId: { $eq: userId } },
+          collectionId: 'DiveLogs',
+          filter: { 
+            // Query using the exact field names from your collection
+            userId: { $eq: userId }, // "User ID" field
+            dataType: { $eq: 'dive_log' } // Additional filter if you have this field
+          },
+          sort: [{ fieldName: '_createdDate', order: 'desc' }],
           limit: Math.min(limit, 100)
         })
       });
@@ -107,30 +117,66 @@ export default async function handler(req, res) {
         const queryData = await queryResponse.json();
         const processingTime = Date.now() - startTime;
         
-        // Extract dive logs from userMemory items
+        // Extract dive logs from DiveLogs collection with proper field mapping
         const diveLogs = [];
         if (queryData.items) {
           queryData.items.forEach(item => {
-            if (item.data?.diveLogs && Array.isArray(item.data.diveLogs)) {
-              diveLogs.push(...item.data.diveLogs);
+            try {
+              // Parse the compressed logEntry structure
+              const parsedLogEntry = JSON.parse(item.logEntry || '{}');
+              
+              const diveLog = {
+                _id: item._id,
+                userId: item.userId, // "User ID" field from collection
+                diveLogId: item.diveLogId, // "Dive Log ID" field from collection
+                date: item.diveDate, // "Dive Date" field from collection
+                time: item.diveTime, // "Dive Time" field from collection
+                photo: item.diveLogWatch, // "Dive Log Watch" field from collection
+                dataType: item.dataType,
+                _createdDate: item._createdDate,
+                // Extract dive data from parsed logEntry
+                ...parsedLogEntry.dive,
+                // Include analysis if requested and available
+                analysis: includeAnalysis ? parsedLogEntry.analysis : undefined,
+                metadata: parsedLogEntry.metadata,
+                source: 'divelogs-collection'
+              };
+              
+              diveLogs.push(diveLog);
+            } catch (parseError) {
+              console.warn('⚠️ Could not parse dive log entry:', item._id, parseError);
+              // Include basic structure even if parsing fails
+              diveLogs.push({
+                _id: item._id,
+                userId: item.userId, // "User ID" field
+                diveLogId: item.diveLogId, // "Dive Log ID" field
+                date: item.diveDate, // "Dive Date" field
+                time: item.diveTime, // "Dive Time" field
+                photo: item.diveLogWatch, // "Dive Log Watch" field
+                dataType: item.dataType,
+                _createdDate: item._createdDate,
+                error: 'Could not parse dive log data',
+                source: 'divelogs-collection-error'
+              });
             }
           });
         }
         
-        console.log(`✅ Wix query API dive logs loaded: ${diveLogs.length} logs in ${processingTime}ms`);
+        console.log(`✅ DiveLogs collection loaded: ${diveLogs.length} logs in ${processingTime}ms`);
         
         return res.status(200).json({
           diveLogs: diveLogs.slice(0, limit),
           success: true,
-          source: 'wix-query-api',
+          source: 'divelogs-collection',
           metadata: {
             count: diveLogs.length,
-            processingTime
+            processingTime,
+            hasAnalysis: includeAnalysis
           }
         });
       }
     } catch (queryError) {
-      console.warn('⚠️ Wix query API failed:', queryError.message);
+      console.warn('⚠️ DiveLogs collection query failed:', queryError.message);
     }
 
     // ✅ OPTION 4: Try local Next.js dive logs API

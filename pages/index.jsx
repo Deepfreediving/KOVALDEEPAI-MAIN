@@ -8,12 +8,17 @@ import apiClient from "../utils/apiClient";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
-  CHAT: "/api/chat-embed",
-  GET_DIVE_LOGS: "/api/analyze/get-dive-logs",
+  // ✅ Use enhanced bridge APIs for better Wix integration
+  CHAT: "/api/wix/chat-bridge",
+  CHAT_FALLBACK: "/api/openai/chat",
+  GET_DIVE_LOGS: "/api/wix/dive-logs-bridge",
+  GET_DIVE_LOGS_FALLBACK: "/api/analyze/get-dive-logs",
+  GET_USER_PROFILE: "/api/wix/user-profile-bridge",
   SAVE_DIVE_LOG: "/api/analyze/save-dive-log",
   DELETE_DIVE_LOG: "/api/analyze/delete-dive-log",
   READ_MEMORY: "/api/analyze/read-memory",
   QUERY_WIX: "/api/wix/query-wix-data",
+  HEALTH_CHECK: "/api/system/health-check",
 };
 
 export default function Index() {
@@ -246,29 +251,73 @@ export default function Index() {
     setLoading(true);
 
     try {
-      console.log("🚀 Sending message to chat API with userId:", userId);
+      console.log("🚀 Sending message to enhanced chat bridge API with userId:", userId);
+      console.log("📊 Chat context:", {
+        userId,
+        profileSource: profile?.source,
+        diveLogsCount: diveLogs?.length || 0,
+        embedMode: false
+      });
 
+      // ✅ Use enhanced chat bridge with dive logs context
       const response = await fetch(API_ROUTES.CHAT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          userMessage: input,
           userId,
           profile,
+          embedMode: false,
+          diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
+          conversationHistory: messages.slice(-6), // Last 3 conversation pairs
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        console.warn(`⚠️ Chat bridge failed (${response.status}), trying fallback...`);
+        
+        // ✅ Fallback to direct chat API
+        const fallbackResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: input,
+            userId,
+            profile,
+            embedMode: false,
+            diveLogs: diveLogs.slice(0, 5),
+          }),
+        });
+
+        if (!fallbackResponse.ok) {
+          throw new Error(`Both chat APIs failed: Bridge ${response.status}, Fallback ${fallbackResponse.status}`);
+        }
+
+        const fallbackData = await fallbackResponse.json();
+        console.log("✅ Fallback chat response received:", fallbackData);
+
+        const assistantMessage = fallbackData.assistantMessage || {
+          role: "assistant",
+          content: fallbackData.answer || fallbackData.aiResponse || "I received your message!",
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        return;
       }
 
       const data = await response.json();
-      console.log("✅ Chat response received:", data);
+      console.log("✅ Enhanced chat bridge response received:", data);
 
-      const assistantMessage = data.assistantMessage || {
+      const assistantMessage = {
         role: "assistant",
-        content: data.answer || "I received your message!",
+        content: data.aiResponse || data.assistantMessage?.content || data.answer || "I received your message!",
       };
+
+      // Add metadata if available
+      if (data.metadata) {
+        assistantMessage.metadata = data.metadata;
+        console.log(`📊 Chat metadata: ${data.metadata.processingTime}ms, source: ${data.source}`);
+      }
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {

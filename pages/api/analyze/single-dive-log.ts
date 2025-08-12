@@ -41,16 +41,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`📁 Found dive log in local storage: ${!!diveLog}`);
         }
 
-        // If not found locally, try Wix UserMemory
+        // If not found locally, try Wix DiveLogs collection
         if (!diveLog) {
-          const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?itemId=${diveLogId}`, {
+          const response = await fetch(`${baseUrl}/api/wix/dive-logs-bridge?userId=${userId}`, {
             headers: { 'Accept': 'application/json' }
           });
 
           if (response.ok) {
-            const { data } = await response.json();
-            diveLog = data[0];
-            console.log(`🌐 Found dive log in Wix UserMemory: ${!!diveLog}`);
+            const { diveLogs } = await response.json();
+            diveLog = diveLogs?.find((log: any) => log.diveLogId === diveLogId);
+            console.log(`🌐 Found dive log in DiveLogs collection: ${!!diveLog}`);
           }
         }
       } catch (error) {
@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!diveLog) {
       return res.status(404).json({ 
         error: 'Dive log not found', 
-        details: 'Could not find dive log in local storage or Wix UserMemory',
+        details: 'Could not find dive log in local storage or DiveLogs collection',
         searchedId: diveLogId
       });
     }
@@ -172,23 +172,32 @@ Please provide specific, actionable coaching feedback based on this dive data.
 
       console.log('✅ AI analysis completed successfully');
 
-      // ✅ Update the dive log in Wix with analysis (if we have the ID)
+      // ✅ Update the dive log in DiveLogs collection with analysis
       if (diveLogId) {
         try {
-          await fetch('https://www.deepfreediving.com/_functions/userMemory', {
-            method: 'PUT',
+          const updateResponse = await fetch(`${baseUrl}/api/wix/query-wix-data`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              itemId: diveLogId,
-              analysis: aiAnalysis,
-              analysisStatus: 'completed',
-              analyzedAt: new Date().toISOString(),
-              analysisVersion: '2.0'
+              action: 'update',
+              collection: 'DiveLogs',
+              filter: { diveLogId: diveLogId },
+              data: {
+                analysis: aiAnalysis,
+                analysisStatus: 'completed',
+                analyzedAt: new Date().toISOString(),
+                analysisVersion: '2.0'
+              }
             })
           });
-          console.log('✅ Updated dive log with analysis in Wix');
+          
+          if (updateResponse.ok) {
+            console.log('✅ Updated dive log with analysis in DiveLogs collection');
+          } else {
+            console.warn('⚠️ Failed to update dive log in DiveLogs collection');
+          }
         } catch (updateError) {
-          console.warn('⚠️ Failed to update dive log in Wix:', updateError);
+          console.warn('⚠️ Failed to update dive log in DiveLogs:', updateError);
           // Don't fail the whole request if update fails
         }
       }

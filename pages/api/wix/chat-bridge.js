@@ -26,14 +26,45 @@ export default async function handler(req, res) {
 
     console.log(`🌉 Chat bridge request: userId=${userId}, embedMode=${embedMode}`);
 
+    // Use canonical base URL instead of req.headers.origin
+    const BASE_URL = process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'https://kovaldeepai-main.vercel.app';
+    
+    console.log(`🔗 Using base URL: ${BASE_URL}`);
+
+    // Get user profile for enhanced context
+    let userProfile = profile || {};
+    if (userId && !userId.startsWith('guest')) {
+      try {
+        const profileResponse = await fetch(`${BASE_URL}/api/wix/user-profile-bridge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId,
+            includeStats: true,
+            includePreferences: true
+          })
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          userProfile = { ...userProfile, ...profileData.profile };
+          console.log(`👤 Loaded user profile: ${userProfile.displayName || userProfile.nickname || 'User'} (${userProfile.isGuest ? 'Guest' : 'Authenticated'})`);
+        }
+      } catch (profileError) {
+        console.warn('⚠️ Could not load user profile:', profileError.message);
+      }
+    }
+
     // Get dive logs for enhanced context
     let diveLogs = [];
     if (userId && !userId.startsWith('guest')) {
       try {
-        const diveLogsResponse = await fetch(`${req.headers.origin}/api/wix/dive-logs-bridge`, {
+        const diveLogsResponse = await fetch(`${BASE_URL}/api/wix/dive-logs-bridge`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId })
+          body: JSON.stringify({ userId, includeAnalysis: true })
         });
         
         if (diveLogsResponse.ok) {
@@ -58,7 +89,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           message: userMessage,
           userId,
-          profile,
+          profile: userProfile, // Use enhanced profile data
           embedMode,
           diveLogs: diveLogs.slice(0, 5), // Last 5 dive logs
           conversationHistory: conversationHistory || [],
@@ -98,7 +129,7 @@ export default async function handler(req, res) {
           userMessage,
           conversationHistory: conversationHistory || [],
           userId,
-          profile,
+          profile: userProfile, // Use enhanced profile data
           embedMode
         })
       });
@@ -127,7 +158,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         message: userMessage,
         userId,
-        profile,
+        profile: userProfile, // Use enhanced profile data
         embedMode: true,
         diveLogs // Pass dive logs for context
       })
