@@ -1,0 +1,23 @@
+{
+  "id": "dive_wix-test-user_1754960782492",
+  "timestamp": "2025-08-12T01:06:22.492Z",
+  "userId": "wix-test-user",
+  "date": "2024-08-09",
+  "disciplineType": "Constant Weight No Fins",
+  "discipline": "CNF",
+  "location": "Test Pool",
+  "targetDepth": 30,
+  "reachedDepth": 25,
+  "mouthfillDepth": 0,
+  "issueDepth": 0,
+  "squeeze": false,
+  "exit": "",
+  "durationOrDistance": "",
+  "attemptType": "",
+  "notes": "Testing Wix UserMemory backend",
+  "totalDiveTime": "",
+  "issueComment": "",
+  "surfaceProtocol": "",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}

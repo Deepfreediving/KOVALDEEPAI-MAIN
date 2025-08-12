@@ -27,9 +27,8 @@ export const WIX_APP_CONFIG = {
   },
   
   COLLECTIONS: {
-    diveLogs: '@deepfreediving/kovaldeepai-app/Import1',
-    userMemory: 'UserMemory',
-    userProfiles: 'UserProfiles'
+    diveLogs: 'DiveLogs',  // ✅ Page collection for all data
+    userProfiles: 'Members/FullData'
   },
   
   VALIDATION: {

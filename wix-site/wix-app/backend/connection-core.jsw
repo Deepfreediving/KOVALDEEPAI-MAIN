@@ -13,7 +13,7 @@ export const CONFIG = {
   
   COLLECTIONS: {
     // ✅ Use the exact collection ID from your Wix console
-    USER_MEMORY: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1',
+    USER_MEMORY: 'DiveLogs',  // ✅ Page collection approach
     REGISTRATIONS: 'KovalAIRegistrations',
     MEMBERS: 'Members/FullData'
   },

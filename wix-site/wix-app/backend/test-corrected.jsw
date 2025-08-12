@@ -1,0 +1,58 @@
+// 🔥 WIX APP BACKEND: SIMPLE TEST FUNCTION - CORRECTED
+// Basic connectivity test for Wix App backend
+
+import { ok } from 'wix-http-functions';
+
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
+
+// ✅ CORS preflight handler
+export function options_test(request) {
+  console.log('🔄 CORS preflight for test function');
+  return ok({ message: 'CORS OK' }, CORS_HEADERS);
+}
+
+// ✅ Simple GET test to verify backend is working
+export async function get_test(request) {
+  console.log('🧪 Test function called - backend is working!');
+  
+  return ok({
+    success: true,
+    message: 'Wix backend is working!',
+    timestamp: new Date().toISOString(),
+    app: '@deepfreediving/kovaldeepai-app',
+    version: '4.x',
+    endpoint: 'test'
+  }, CORS_HEADERS);
+}
+
+// ✅ Simple POST test
+export async function post_test(request) {
+  console.log('🧪 Test POST function called');
+  
+  try {
+    const body = await request.body.text();
+    const data = body ? JSON.parse(body) : {};
+    
+    return ok({
+      success: true,
+      message: 'POST test successful',
+      receivedData: data,
+      timestamp: new Date().toISOString(),
+      app: '@deepfreediving/kovaldeepai-app'
+    }, CORS_HEADERS);
+    
+  } catch (error) {
+    return ok({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, CORS_HEADERS);
+  }
+}
+
+console.log('🧪 Wix App Test Function initialized');

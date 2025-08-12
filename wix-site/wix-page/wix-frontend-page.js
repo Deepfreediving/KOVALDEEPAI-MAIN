@@ -1541,7 +1541,7 @@ async function loadComprehensiveUserData() {
             // Get user profile from collections (with graceful fallback)
             let userProfile = null;
             try {
-                const profileQuery = await wixData.query('memberProfiles')
+                const profileQuery = await wixData.query('Members/FullData')
                     .eq('userId', currentUser.id)
                     .find();
                 userProfile = profileQuery.items[0] || null;
@@ -1554,20 +1554,65 @@ async function loadComprehensiveUserData() {
                 // Continue without profile data
             }
             
-            // Get user dive logs and memories (with graceful fallback)
-            let userMemory = null;
+            // Get user dive logs and memories from DiveLogs collection (compressed structure)
+            let userDiveLogs = [];
+            let userMemories = [];
             try {
-                const memoryQuery = await wixData.query('userMemory')
+                const memoryQuery = await wixData.query('DiveLogs')
                     .eq('userId', currentUser.id)
+                    .descending('_createdDate')
+                    .limit(50) // Get recent entries
                     .find();
-                userMemory = memoryQuery.items[0] || null;
+                
+                // ✅ Parse compressed logEntry data for each record
+                for (const item of memoryQuery.items) {
+                    try {
+                        const parsedLogEntry = JSON.parse(item.logEntry || '{}');
+                        
+                        if (item.dataType === 'dive_log') {
+                            // Extract dive log data from compressed structure
+                            userDiveLogs.push({
+                                _id: item._id,
+                                userId: item.userId,
+                                diveLogId: item.diveLogId,
+                                date: item.diveDate,
+                                time: item.diveTime,
+                                photo: item.diveLogWatch,
+                                dataType: item.dataType,
+                                // Parsed dive data for easy access
+                                ...parsedLogEntry.dive,
+                                // Analysis data for AI
+                                analysis: parsedLogEntry.analysis,
+                                metadata: parsedLogEntry.metadata,
+                                _createdDate: item._createdDate
+                            });
+                        } else if (item.dataType === 'chat_memory' || item.dataType === 'user_summary') {
+                            // Extract memory data from compressed structure
+                            userMemories.push({
+                                _id: item._id,
+                                userId: item.userId,
+                                diveLogId: item.diveLogId,
+                                dataType: item.dataType,
+                                content: parsedLogEntry.content,
+                                sessionName: parsedLogEntry.sessionName,
+                                timestamp: parsedLogEntry.timestamp,
+                                _createdDate: item._createdDate
+                            });
+                        }
+                    } catch (parseError) {
+                        console.warn('⚠️ Could not parse compressed logEntry for record:', item._id, parseError);
+                    }
+                }
+                
+                console.log(`✅ Loaded ${userDiveLogs.length} dive logs and ${userMemories.length} memories from DiveLogs collection`);
+                
             } catch (error) {
                 if (error.message?.includes('collection') || error.message?.includes('not found')) {
-                    console.log('ℹ️ userMemory collection not found, using empty data');
+                    console.log('ℹ️ DiveLogs collection not found, using empty data');
                 } else {
-                    console.warn('⚠️ Could not load user memory:', error.message);
+                    console.warn('⚠️ Could not load user data from DiveLogs:', error.message);
                 }
-                // Continue without memory data
+                // Continue with empty arrays
             }
             
             // Build comprehensive user data
@@ -1586,8 +1631,8 @@ async function loadComprehensiveUserData() {
                     location: userProfile?.location || '',
                     loggedIn: true
                 },
-                userDiveLogs: userMemory?.diveLogs || [],
-                userMemories: userMemory?.memories || [],
+                userDiveLogs: userDiveLogs,
+                userMemories: userMemories,
                 isGuest: false
             };
             
@@ -1776,7 +1821,7 @@ async function sendUserDataToWidget() {
 
 async function handleDiveLogSave(diveLogData) {
     try {
-        console.log('💾 Saving dive log to Wix:', diveLogData);
+        console.log('💾 Saving dive log via Wix App backend:', diveLogData);
         
         const currentUser = wixUsers.currentUser;
         if (!currentUser || !currentUser.loggedIn) {
@@ -1784,49 +1829,59 @@ async function handleDiveLogSave(diveLogData) {
             return;
         }
         
-        // Get or create user memory record (with collection existence check)
-        let userMemory;
+        // ✅ NEW: Use Wix App backend userMemory.jsw for compressed structure saving
         try {
-            userMemory = await wixData.query('userMemory')
-                .eq('userId', currentUser.id)
-                .find();
-        } catch (error) {
-            if (error.message?.includes('collection') || error.message?.includes('not found')) {
-                console.log('ℹ️ userMemory collection not found, skipping Wix storage');
-                return; // Gracefully exit if collection doesn't exist
-            } else {
-                throw error; // Re-throw other errors
-            }
-        }
-        
-        try {
-            if (userMemory.items.length === 0) {
-                // Create new user memory record
-                await wixData.insert('userMemory', {
+            const response = await fetch('/_functions/userMemory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     userId: currentUser.id,
-                    diveLogs: [diveLogData],
-                    memories: [],
-                    createdAt: new Date()
-                });
-            } else {
-                // Update existing record
-                const existing = userMemory.items[0];
-                const updatedDiveLogs = [diveLogData, ...(existing.diveLogs || [])];
+                    diveLogData: diveLogData,
+                    type: 'dive_log'
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Dive log saved via backend with compressed structure:', result._id);
+                console.log('📊 Analysis data included:', !!result.compressedStructure?.hasAnalysis);
+                console.log('📸 Photo included:', !!result.hasPhoto);
                 
-                await wixData.update('userMemory', {
-                    _id: existing._id,
-                    diveLogs: updatedDiveLogs,
-                    updatedAt: new Date()
-                });
+                // Refresh user data to show the new dive log
+                await loadAndSendUserData();
+                
+            } else {
+                const errorData = await response.json();
+                console.error('❌ Backend save failed:', errorData);
             }
             
-            console.log('✅ Dive log saved to Wix successfully');
-        } catch (insertUpdateError) {
-            console.warn('⚠️ Could not save to userMemory collection:', insertUpdateError.message);
+        } catch (fetchError) {
+            console.error('❌ Error calling userMemory backend:', fetchError);
+            console.log('⚠️ Falling back to direct collection insert...');
+            
+            // ✅ FALLBACK: Direct insert to DiveLogs collection (basic structure)
+            await wixData.insert('DiveLogs', {
+                userId: currentUser.id,
+                diveLogId: `dive_${Date.now()}`,
+                logEntry: JSON.stringify({
+                    // Basic dive data if backend fails
+                    dive: diveLogData,
+                    metadata: { source: 'frontend-fallback', version: '1.0' }
+                }),
+                diveDate: diveLogData.date ? new Date(diveLogData.date) : new Date(),
+                diveTime: diveLogData.time || new Date().toLocaleTimeString(),
+                diveLogWatch: diveLogData.watchPhoto || null,
+                dataType: 'dive_log',
+                _createdDate: new Date()
+            });
+            
+            console.log('✅ Fallback save completed');
         }
         
     } catch (error) {
-        console.error('❌ Error saving dive log to Wix:', error);
+        console.error('❌ Error saving dive log:', error);
     }
 }
 
@@ -1857,7 +1912,7 @@ async function saveDiveLog(diveLogData) {
         
         // Try to save to wixData collection
         try {
-            const result = await wixData.insert('userMemory', diveLogRecord);
+            const result = await wixData.insert('DiveLogs', diveLogRecord);
             console.log('✅ Dive log saved to collection:', result._id);
             return { success: true, data: result };
         } catch (dbError) {
@@ -1914,7 +1969,7 @@ async function saveUserMemory(memoryData) {
         
         // Try to save to wixData collection
         try {
-            const result = await wixData.insert('userMemory', memoryRecord);
+            const result = await wixData.insert('DiveLogs', memoryRecord);
             console.log('✅ Memory saved to collection:', result._id);
             return { success: true, data: result };
         } catch (dbError) {

@@ -8,7 +8,7 @@ import { authentication } from 'wix-members-backend';
 
 // 🎯 ENHANCED CONFIGURATION FOR WIX APP
 const MEMORY_CONFIG = {
-  COLLECTION_NAME: 'UserMemory', // Your Wix app collection
+  COLLECTION_NAME: 'DiveLogs', // ✅ Page collection (not app collection)
   APP_ID: '@deepfreediving/kovaldeepai-app',
   VERSION: '4.x',
   
@@ -21,18 +21,16 @@ const MEMORY_CONFIG = {
   }
 };
 
-// 🔥 ENHANCED GET: RETRIEVE USER MEMORY AND DIVE LOGS
+// 🔥 ENHANCED GET: RETRIEVE COMPRESSED DIVE LOGS FROM DIVELOGS COLLECTION
 export async function get_userMemory(request) {
-  console.log('🔄 UserMemory GET request received for Wix App:', MEMORY_CONFIG.APP_ID);
+  console.log('🔄 UserMemory GET request - querying DiveLogs collection for compressed data');
   
   try {
     // Enhanced request validation
     const userId = request.query.userId;
+    const dataType = request.query.type || 'all'; // 'dive_log', 'chat_memory', 'all'
     const includeDetails = request.query.includeDetails === 'true';
-    const appId = request.headers['X-Wix-App-ID'] || request.headers['x-wix-app-id'];
-    
-    console.log(`📋 App ID from request: ${appId}`);
-    console.log(`📋 Expected App ID: ${MEMORY_CONFIG.APP_ID}`);
+    const limit = parseInt(request.query.limit) || 50;
     
     if (!userId) {
       return badRequest({
@@ -42,73 +40,85 @@ export async function get_userMemory(request) {
       }, MEMORY_CONFIG.CORS_HEADERS);
     }
 
-    console.log(`📋 Looking up memory for user: ${userId}`);
+    console.log(`📋 Looking up ${dataType} data for user: ${userId}`);
 
-    // Enhanced query with error handling
-    try {
-      const results = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
-        .eq('userId', userId)
-        .limit(1)
-        .find();
-      
-      if (results.items && results.items.length > 0) {
-        const userMemoryRecord = results.items[0];
-        console.log(`✅ Found user memory record with ${userMemoryRecord.diveLogsCount || 0} dive logs`);
-        
-        const responseData = {
-          success: true,
-          userId: userId,
-          diveLogsCount: userMemoryRecord.diveLogsCount || 0,
-          memoriesCount: userMemoryRecord.memoriesCount || 0,
-          lastDiveLogDate: userMemoryRecord.lastDiveLogDate || null,
-          _id: userMemoryRecord._id,
-          appId: MEMORY_CONFIG.APP_ID,
-          version: MEMORY_CONFIG.VERSION,
-          timestamp: new Date().toISOString()
-        };
+    // ✅ OPTIMIZED QUERY: Get compressed dive logs from DiveLogs collection
+    let query = wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+      .eq('userId', userId);
 
-        if (includeDetails) {
-          responseData.diveLogs = userMemoryRecord.diveLogs || [];
-          responseData.memories = userMemoryRecord.memories || [];
-          responseData.metadata = userMemoryRecord.metadata || {};
-        }
-
-        return ok(responseData, MEMORY_CONFIG.CORS_HEADERS);
-        
-      } else {
-        console.log(`📋 No memory record found for user ${userId} - returning empty state`);
-        
-        return ok({
-          success: true,
-          userId: userId,
-          diveLogsCount: 0,
-          memoriesCount: 0,
-          diveLogs: [],
-          memories: [],
-          lastDiveLogDate: null,
-          _id: null,
-          appId: MEMORY_CONFIG.APP_ID,
-          version: MEMORY_CONFIG.VERSION,
-          message: 'No records found for this user - ready for first entry'
-        }, MEMORY_CONFIG.CORS_HEADERS);
-      }
-      
-    } catch (wixDataError) {
-      console.error('❌ WixData query error:', wixDataError);
-      
-      return ok({
-        success: false,
-        userId: userId,
-        diveLogsCount: 0,
-        memoriesCount: 0,
-        diveLogs: [],
-        memories: [],
-        error: 'WixData query failed - collection may need setup',
-        errorDetails: wixDataError.message,
-        appId: MEMORY_CONFIG.APP_ID,
-        troubleshooting: 'Check if UserMemory collection exists and has proper permissions'
-      }, MEMORY_CONFIG.CORS_HEADERS);
+    // Filter by data type if specified
+    if (dataType !== 'all') {
+      query = query.eq('dataType', dataType);
     }
+
+    const results = await query
+      .descending('diveDate')
+      .limit(limit)
+      .find();
+    
+    console.log(`✅ Found ${results.items.length} compressed records`);
+    
+    // ✅ PARSE COMPRESSED DATA: Extract logEntry for AI analysis
+    const processedItems = results.items.map(item => {
+      let parsedLogEntry = {};
+      try {
+        parsedLogEntry = JSON.parse(item.logEntry || '{}');
+      } catch (e) {
+        console.warn('Could not parse logEntry for item:', item._id);
+        parsedLogEntry = { error: 'Invalid logEntry format' };
+      }
+
+      return {
+        _id: item._id,
+        userId: item.userId,
+        diveLogId: item.diveLogId,
+        diveDate: item.diveDate,
+        diveTime: item.diveTime,
+        diveLogWatch: item.diveLogWatch,
+        dataType: item.dataType || 'dive_log',
+        // Include parsed logEntry for easy access
+        logEntry: parsedLogEntry,
+        // Keep original compressed format for storage
+        logEntryRaw: item.logEntry,
+        _createdDate: item._createdDate
+      };
+    });
+    
+    // Separate different types of data
+    const diveLogs = processedItems.filter(item => 
+      item.dataType === 'dive_log' || !item.dataType
+    );
+    const memories = processedItems.filter(item => 
+      item.dataType === 'chat_memory' || item.dataType === 'user_summary'
+    );
+
+    const responseData = {
+      success: true,
+      userId: userId,
+      diveLogsCount: diveLogs.length,
+      memoriesCount: memories.length,
+      totalRecords: processedItems.length,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
+    };
+
+    if (includeDetails) {
+      responseData.diveLogs = diveLogs;
+      responseData.memories = memories;
+      responseData.allRecords = processedItems;
+    } else {
+      // Return summary info only
+      responseData.lastDiveLogDate = diveLogs.length > 0 ? diveLogs[0].diveDate : null;
+      responseData.recentDives = diveLogs.slice(0, 5).map(dive => ({
+        diveLogId: dive.diveLogId,
+        diveDate: dive.diveDate,
+        discipline: dive.logEntry.discipline || 'Unknown',
+        depth: dive.logEntry.depth || 0
+      }));
+    }
+
+    return ok(responseData, MEMORY_CONFIG.CORS_HEADERS);
 
   } catch (error) {
     console.error('❌ GET userMemory error:', error);
@@ -123,9 +133,9 @@ export async function get_userMemory(request) {
   }
 }
 
-// 🔥 ENHANCED POST: SAVE DIVE LOG TO USER MEMORY
+// 🔥 ENHANCED POST: SAVE COMPRESSED DIVE LOG TO DIVELOGS COLLECTION
 export async function post_userMemory(request) {
-  console.log('🔄 UserMemory POST request received for Wix App:', MEMORY_CONFIG.APP_ID);
+  console.log('🔄 UserMemory POST request - saving compressed dive log to DiveLogs collection');
   
   try {
     // Enhanced request parsing and validation
@@ -142,109 +152,171 @@ export async function post_userMemory(request) {
       }, MEMORY_CONFIG.CORS_HEADERS);
     }
 
-    const { userId, diveLogData } = requestData;
+    const { userId, memoryContent, type = 'chat_memory', diveLogData, sessionName } = requestData;
     
-    if (!userId || !diveLogData) {
+    if (!userId) {
       return badRequest({
-        error: 'userId and diveLogData are required',
-        received: { userId: !!userId, diveLogData: !!diveLogData },
+        error: 'userId is required',
         appId: MEMORY_CONFIG.APP_ID
       }, MEMORY_CONFIG.CORS_HEADERS);
     }
 
-    console.log(`📋 Saving dive log for user: ${userId}`);
-
-    // Enhanced dive log entry with metadata
-    const diveLogEntry = {
-      id: `dive_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      ...diveLogData,
-      source: 'koval-ai-wix-app',
-      appId: MEMORY_CONFIG.APP_ID,
-      version: MEMORY_CONFIG.VERSION
-    };
-
-    // Get existing record or create new one using enhanced wixData query
-    let userMemoryRecord = null;
-    try {
-      const results = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
-        .eq('userId', userId)
-        .limit(1)
-        .find();
+    // ✅ COMPRESSED STRUCTURE: Create record using structured format for AI analysis
+    let diveLogRecord;
+    
+    if (diveLogData) {
+      // ✅ OPTIMIZED: Create full compressed dive log structure for AI analysis
+      const timestamp = new Date().toISOString();
+      const diveLogId = `dive_${userId}_${Date.now()}`;
       
-      if (results.items && results.items.length > 0) {
-        userMemoryRecord = results.items[0];
-        console.log(`📋 Found existing record for user ${userId} with ${userMemoryRecord.diveLogsCount || 0} dive logs`);
-      }
-    } catch (error) {
-      console.log('📋 No existing record found, will create new one');
-    }
-
-    if (userMemoryRecord) {
-      // Update existing record with enhanced data
-      const existingDiveLogs = userMemoryRecord.diveLogs || [];
-      const updatedDiveLogs = [diveLogEntry, ...existingDiveLogs];
+      // Parse numeric values
+      const targetDepth = parseFloat(diveLogData.targetDepth) || 0;
+      const reachedDepth = parseFloat(diveLogData.reachedDepth) || 0;
+      const mouthfillDepth = parseFloat(diveLogData.mouthfillDepth) || 0;
+      const issueDepth = parseFloat(diveLogData.issueDepth) || 0;
       
-      const updateData = {
-        ...userMemoryRecord,
-        diveLogs: updatedDiveLogs,
-        diveLogsCount: updatedDiveLogs.length,
-        lastDiveLogDate: diveLogEntry.date,
-        lastUpdated: new Date().toISOString(),
-        appVersion: MEMORY_CONFIG.VERSION,
-        _updatedDate: new Date()
-      };
-
-      const result = await wixData.update(MEMORY_CONFIG.COLLECTION_NAME, updateData);
+      // Calculate analysis fields
+      const depthAchievement = targetDepth > 0 ? (reachedDepth / targetDepth) * 100 : 0;
+      const progressionScore = Math.max(0, Math.min(100, 
+        depthAchievement + 
+        (diveLogData.exit === 'Good' ? 10 : 0) + 
+        (issueDepth > 0 ? -20 : 0)
+      ));
       
-      console.log(`✅ Updated user memory with dive log. Total: ${updatedDiveLogs.length}`);
+      // Identify risk factors
+      const riskFactors = [];
+      if (diveLogData.squeeze) riskFactors.push('squeeze-reported');
+      if (issueDepth > 0) riskFactors.push('depth-issue');
+      if (diveLogData.exit !== 'Good') riskFactors.push('difficult-exit');
+      if (reachedDepth > targetDepth * 1.1) riskFactors.push('depth-exceeded');
       
-      return ok({
-        success: true,
-        operation: 'update',
-        diveLogsCount: updatedDiveLogs.length,
-        diveLogId: diveLogEntry.id,
-        _id: result._id,
-        appId: MEMORY_CONFIG.APP_ID,
-        timestamp: new Date().toISOString()
-      }, MEMORY_CONFIG.CORS_HEADERS);
+      // Extract technical notes
+      const technicalNotes = [];
+      if (mouthfillDepth > 0) technicalNotes.push(`Mouthfill at ${mouthfillDepth}m`);
+      if (diveLogData.issueComment) technicalNotes.push(`Issue: ${diveLogData.issueComment}`);
+      if (diveLogData.surfaceProtocol) technicalNotes.push(`Surface: ${diveLogData.surfaceProtocol}`);
       
-    } else {
-      // Create new record with enhanced structure
-      const newRecord = {
+      // ✅ Create compressed logEntry with complete structure for AI analysis
+      const compressedLogEntry = {
+        // Core dive data
+        id: diveLogId,
         userId: userId,
-        diveLogs: [diveLogEntry],
-        diveLogsCount: 1,
-        memories: [],
-        memoriesCount: 0,
-        lastDiveLogDate: diveLogEntry.date,
-        createdAt: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
-        appVersion: MEMORY_CONFIG.VERSION,
-        metadata: {
-          source: 'koval-ai-wix-app',
-          appId: MEMORY_CONFIG.APP_ID,
-          firstEntry: diveLogEntry.timestamp
+        timestamp: timestamp,
+        
+        // Dive details
+        dive: {
+          date: diveLogData.date || '',
+          disciplineType: diveLogData.disciplineType || '',
+          discipline: diveLogData.discipline || 'Freedive',
+          location: diveLogData.location || 'Unknown',
+          depths: {
+            target: targetDepth,
+            reached: reachedDepth,
+            mouthfill: mouthfillDepth,
+            issue: issueDepth
+          },
+          performance: {
+            exit: diveLogData.exit || '',
+            duration: diveLogData.durationOrDistance || '',
+            totalTime: diveLogData.totalDiveTime || '',
+            attemptType: diveLogData.attemptType || '',
+            surfaceProtocol: diveLogData.surfaceProtocol || ''
+          },
+          issues: {
+            squeeze: Boolean(diveLogData.squeeze),
+            issueComment: diveLogData.issueComment || ''
+          },
+          notes: diveLogData.notes || ''
         },
+        
+        // AI analysis fields
+        analysis: {
+          progressionScore: progressionScore,
+          riskFactors: riskFactors,
+          technicalNotes: technicalNotes.join(' | '),
+          depthAchievement: depthAchievement
+        },
+        
+        // Additional metadata
+        metadata: {
+          source: 'koval-ai-widget',
+          version: '2.0',
+          type: 'dive_log'
+        }
+      };
+      
+      // Create DiveLogs collection record
+      diveLogRecord = {
+        userId: userId,
+        diveLogId: diveLogId,
+        logEntry: JSON.stringify(compressedLogEntry), // Complete compressed structure
+        diveDate: diveLogData.date ? new Date(diveLogData.date) : new Date(),
+        diveTime: diveLogData.time || new Date().toLocaleTimeString(),
+        diveLogWatch: diveLogData.photos || diveLogData.watchPhoto || diveLogData.diveLogWatch || null,
+        dataType: 'dive_log',
         _createdDate: new Date(),
         _updatedDate: new Date()
       };
       
-      const result = await wixData.save(MEMORY_CONFIG.COLLECTION_NAME, newRecord);
-      
-      console.log(`✅ Created new user memory record with first dive log`);
-      
-      return ok({
-        success: true,
-        operation: 'create',
-        diveLogsCount: 1,
-        diveLogId: diveLogEntry.id,
-        _id: result._id,
-        appId: MEMORY_CONFIG.APP_ID,
-        message: 'First dive log entry created successfully',
-        timestamp: new Date().toISOString()
+    } else if (memoryContent) {
+      // For chat/memory: use compressed logEntry for AI context
+      diveLogRecord = {
+        userId: userId,
+        diveLogId: `memory_${Date.now()}`,
+        logEntry: JSON.stringify({
+          // Compressed memory data for AI analysis
+          content: memoryContent,
+          type: type,
+          sessionName: sessionName || `Memory - ${new Date().toISOString()}`,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            source: 'chat-memory',
+            version: '2.0'
+          }
+        }),
+        diveDate: new Date(),
+        diveTime: new Date().toLocaleTimeString(),
+        diveLogWatch: null,
+        dataType: type || 'chat_memory',
+        _createdDate: new Date(),
+        _updatedDate: new Date()
+      };
+    } else {
+      return badRequest({
+        error: 'Either diveLogData or memoryContent is required',
+        appId: MEMORY_CONFIG.APP_ID
       }, MEMORY_CONFIG.CORS_HEADERS);
     }
+
+    // Save directly to DiveLogs collection
+    const result = await wixData.insert(MEMORY_CONFIG.COLLECTION_NAME, diveLogRecord);
+    console.log(`✅ Compressed structure saved to DiveLogs collection: ${result._id}`);
+    
+    // Parse the saved logEntry to show what was stored
+    let savedStructure = {};
+    try {
+      savedStructure = JSON.parse(diveLogRecord.logEntry);
+    } catch (e) {
+      console.warn('Could not parse saved logEntry for logging');
+    }
+
+    return ok({
+      success: true,
+      userId: userId,
+      _id: result._id,
+      diveLogId: diveLogRecord.diveLogId,
+      dataType: diveLogRecord.dataType,
+      hasPhoto: !!diveLogRecord.diveLogWatch,
+      compressedStructure: {
+        hasDiveData: !!savedStructure.dive,
+        hasAnalysis: !!savedStructure.analysis,
+        progressionScore: savedStructure.analysis?.progressionScore,
+        riskFactors: savedStructure.analysis?.riskFactors?.length || 0,
+        depthAchievement: savedStructure.analysis?.depthAchievement
+      },
+      logEntry: diveLogRecord.logEntry, // Return compressed data for verification
+      timestamp: new Date().toISOString()
+    }, MEMORY_CONFIG.CORS_HEADERS);
 
   } catch (error) {
     console.error('❌ POST userMemory error:', error);

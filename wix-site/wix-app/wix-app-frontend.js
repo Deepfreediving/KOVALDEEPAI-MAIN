@@ -575,7 +575,7 @@ async function saveUserMemory(userId, memoryContent, memoryType = 'general', div
     type: memoryType
   };
 
-  // ✅ Add dive log data if provided for storage in userMemory collection
+  // ✅ Add dive log data if provided for storage in DiveLogs collection with compressed structure
   if (diveLogData) {
     requestData.diveLogData = diveLogData;
     requestData.sessionName = `Dive Journal - ${diveLogData.date || 'Unknown Date'}`;
@@ -583,9 +583,10 @@ async function saveUserMemory(userId, memoryContent, memoryType = 'general', div
 
   // Master mode: Add metadata
   requestData.metadata = {
-    source: 'wix-app',
+    source: 'wix-app-frontend',
     mode: currentMode,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    version: '2.0'
   };
 
   return await makeRequest(
@@ -630,38 +631,48 @@ async function saveDiveLog(userId, diveData) {
     validation: true
   };
 
-  // ✅ ENHANCED: Save to userMemory collection for AI retrieval
+  // ✅ ENHANCED: Save using compressed structure for optimal AI analysis and DiveLogs collection
   try {
-    // Primary: Save to userMemory collection for long-term storage and AI access
-    const memoryResult = await saveUserMemory(
-      userId, 
-      `Dive Log: ${diveData.discipline || 'Unknown'} dive to ${diveData.reachedDepth || 0}m at ${diveData.location || 'Unknown location'}`,
-      'dive-log',
-      diveData
-    );
+    // Primary: Use new compressed structure save method (DiveLogs collection)
+    const compressedResult = await saveDiveLogCompressed(userId, diveData);
+    logDebug('✅ Dive log saved using compressed structure to DiveLogs collection');
+    return compressedResult;
     
-    logDebug('✅ Dive log saved to userMemory collection for AI retrieval');
+  } catch (compressedError) {
+    logDebug('⚠️ Compressed save failed, trying legacy userMemory method...', compressedError.message);
     
-    // Invalidate related caches
-    dataCache.invalidate(`diveLogs_${userId}`);
-    dataCache.invalidate(`profile_${userId}`);
-    
-    return memoryResult;
-    
-  } catch (memoryError) {
-    logDebug('⚠️ UserMemory save failed, trying legacy diveLogs endpoint...', memoryError.message);
-    
-    // Fallback: Use legacy diveLogs endpoint
-    const result = await makeRequest(
-      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
-      { body: JSON.stringify(requestData), method: 'POST' },
-      'dive-logs'
-    );
+    // Fallback 1: Use userMemory method (still saves to DiveLogs but with legacy format)
+    try {
+      const memoryResult = await saveUserMemory(
+        userId, 
+        `Dive Log: ${diveData.discipline || 'Unknown'} dive to ${diveData.reachedDepth || 0}m at ${diveData.location || 'Unknown location'}`,
+        'dive_log',
+        diveData
+      );
+      
+      logDebug('✅ Dive log saved via userMemory method to DiveLogs collection');
+      
+      // Invalidate related caches
+      dataCache.invalidate(`diveLogs_${userId}`);
+      dataCache.invalidate(`profile_${userId}`);
+      
+      return memoryResult;
+      
+    } catch (memoryError) {
+      logDebug('⚠️ UserMemory save failed, trying legacy diveLogs endpoint...', memoryError.message);
+      
+      // Fallback 2: Use legacy diveLogs endpoint (last resort)
+      const result = await makeRequest(
+        FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.diveLogs,
+        { body: JSON.stringify(requestData), method: 'POST' },
+        'dive-logs'
+      );
 
-    // Invalidate related caches
-    dataCache.invalidate(`diveLogs_${userId}`);
+      // Invalidate related caches
+      dataCache.invalidate(`diveLogs_${userId}`);
 
-    return result;
+      return result;
+    }
   }
 }
 
@@ -679,6 +690,318 @@ async function testConnection() {
   } catch (error) {
     ENDPOINT_STATUS.wix.testConnection = 'error';
     throw error;
+  }
+}
+
+// ✅ NEW: Get user data from DiveLogs collection with compressed structure parsing
+async function getUserDiveLogs(userId, limit = 50) {
+  const cacheKey = `diveLogs_${userId}`;
+  
+  // Check cache first
+  const cached = dataCache.get(cacheKey);
+  if (cached) {
+    logDebug('📊 Dive logs loaded from cache');
+    return cached;
+  }
+
+  try {
+    // ✅ Use userMemory backend GET endpoint to retrieve compressed data from DiveLogs collection
+    const response = await makeRequest(
+      `${FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory}?userId=${userId}&limit=${limit}&includeDetails=true&type=dive_log`,
+      { method: 'GET' },
+      'get-user-dive-logs'
+    );
+
+    if (response.success) {
+      // ✅ Parse the response structure from userMemory.jsw GET function
+      const userData = {
+        userId: response.userId,
+        diveLogs: response.diveLogs || [],
+        totalRecords: response.diveLogsCount || 0,
+        lastDiveLogDate: response.lastDiveLogDate || null,
+        recentDives: response.recentDives || []
+      };
+
+      // Cache the result
+      dataCache.set(cacheKey, userData, 300000); // Cache for 5 minutes
+      
+      logDebug(`✅ Retrieved ${userData.totalRecords} dive logs from DiveLogs collection`);
+      return userData;
+    } else {
+      logDebug('⚠️ No dive logs found or error in response');
+      return {
+        userId: userId,
+        diveLogs: [],
+        totalRecords: 0,
+        lastDiveLogDate: null,
+        recentDives: []
+      };
+    }
+
+  } catch (error) {
+    logError('❌ Error retrieving user dive logs:', error);
+    
+    // Return empty structure on error
+    return {
+      userId: userId,
+      diveLogs: [],
+      totalRecords: 0,
+      lastDiveLogDate: null,
+      recentDives: [],
+      error: error.message
+    };
+  }
+}
+
+// ✅ NEW: Get user memory data (chat/memories only) from DiveLogs collection
+async function getUserMemories(userId, limit = 20) {
+  const cacheKey = `memories_${userId}`;
+  
+  // Check cache first
+  const cached = dataCache.get(cacheKey);
+  if (cached) {
+    logDebug('💭 Memories loaded from cache');
+    return cached;
+  }
+
+  try {
+    // ✅ Use userMemory backend GET endpoint to retrieve compressed memory data from DiveLogs collection
+    const response = await makeRequest(
+      `${FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory}?userId=${userId}&type=chat_memory&limit=${limit}&includeDetails=true`,
+      { method: 'GET' },
+      'get-user-memories'
+    );
+
+    if (response.success) {
+      const memories = response.memories || [];
+      
+      // Cache the result
+      dataCache.set(cacheKey, memories, 300000); // Cache for 5 minutes
+      
+      logDebug(`✅ Retrieved ${memories.length} memories from DiveLogs collection`);
+      return memories;
+    } else {
+      logDebug('⚠️ No memories found');
+      return [];
+    }
+
+  } catch (error) {
+    logError('❌ Error retrieving user memories:', error);
+    return [];
+  }
+}
+
+// ✅ NEW: Save dive log with enhanced compressed structure to DiveLogs collection
+async function saveDiveLogCompressed(userId, diveData) {
+  const requestData = {
+    userId: userId,
+    diveLogData: diveData,
+    type: 'dive_log'
+  };
+
+  // Add metadata for tracking
+  requestData.metadata = {
+    source: 'wix-app-frontend',
+    mode: currentMode,
+    timestamp: new Date().toISOString(),
+    version: '2.0'
+  };
+
+  try {
+    // ✅ Use userMemory backend POST endpoint for compressed structure save to DiveLogs collection
+    const result = await makeRequest(
+      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory,
+      { body: JSON.stringify(requestData), method: 'POST' },
+      'save-dive-log-compressed'
+    );
+
+    if (result.success) {
+      logDebug('✅ Dive log saved with compressed structure to DiveLogs collection:', result._id);
+      logDebug('📊 Analysis data included:', !!result.compressedStructure?.hasAnalysis);
+      logDebug('📸 Photo included:', !!result.hasPhoto);
+      logDebug('🔍 LogEntry structure:', !!result.logEntry);
+      
+      // Invalidate cache to force refresh
+      dataCache.invalidate(`diveLogs_${userId}`);
+      
+      return result;
+    } else {
+      throw new Error(result.error || 'Save failed');
+    }
+
+  } catch (error) {
+    logError('❌ Error saving compressed dive log to DiveLogs collection:', error);
+    throw error;
+  }
+}
+
+// ✅ NEW: Parse compressed dive log structure for display
+function parseCompressedDiveLog(diveLogItem) {
+  try {
+    if (!diveLogItem) return null;
+    
+    // If logEntry is already parsed, use it
+    const logEntry = diveLogItem.logEntry || {};
+    
+    // Extract dive data for display
+    const parsed = {
+      id: diveLogItem._id,
+      diveLogId: diveLogItem.diveLogId,
+      userId: diveLogItem.userId,
+      date: diveLogItem.diveDate,
+      time: diveLogItem.diveTime,
+      photo: diveLogItem.diveLogWatch,
+      
+      // Dive details from compressed structure
+      discipline: logEntry.dive?.discipline || 'Unknown',
+      location: logEntry.dive?.location || 'Unknown',
+      targetDepth: logEntry.dive?.depths?.target || 0,
+      reachedDepth: logEntry.dive?.depths?.reached || 0,
+      mouthfillDepth: logEntry.dive?.depths?.mouthfill || 0,
+      issueDepth: logEntry.dive?.depths?.issue || null,
+      
+      // Performance data
+      exit: logEntry.dive?.performance?.exit || 'Unknown',
+      duration: logEntry.dive?.performance?.duration || '0:00',
+      totalTime: logEntry.dive?.performance?.totalTime || '0:00',
+      attemptType: logEntry.dive?.performance?.attemptType || 'Training',
+      surfaceProtocol: logEntry.dive?.performance?.surfaceProtocol || 'Standard',
+      
+      // Issues and notes
+      squeeze: logEntry.dive?.issues?.squeeze || false,
+      issueComment: logEntry.dive?.issues?.issueComment || '',
+      notes: logEntry.dive?.notes || '',
+      
+      // Analysis data for AI and display
+      progressionScore: logEntry.analysis?.progressionScore || 0,
+      riskFactors: logEntry.analysis?.riskFactors || [],
+      technicalNotes: logEntry.analysis?.technicalNotes || '',
+      depthAchievement: logEntry.analysis?.depthAchievement || 0,
+      
+      // Metadata
+      source: logEntry.metadata?.source || 'unknown',
+      version: logEntry.metadata?.version || '1.0',
+      type: logEntry.metadata?.type || 'dive_log'
+    };
+    
+    return parsed;
+    
+  } catch (error) {
+    logError('❌ Error parsing compressed dive log:', error);
+    return null;
+  }
+}
+
+// ✅ NEW: Save chat memory to DiveLogs collection with compressed structure
+async function saveChatMemory(userId, messageContent, sessionContext = {}) {
+  const requestData = {
+    userId: userId,
+    memoryContent: messageContent,
+    type: 'chat_memory',
+    sessionContext: sessionContext
+  };
+
+  // Add metadata for tracking
+  requestData.metadata = {
+    source: 'wix-app-frontend-chat',
+    mode: currentMode,
+    timestamp: new Date().toISOString(),
+    version: '2.0'
+  };
+
+  try {
+    // ✅ Use userMemory backend POST endpoint for chat memory save to DiveLogs collection
+    const result = await makeRequest(
+      FRONTEND_CONFIG.BACKEND_ENDPOINTS.wix.userMemory,
+      { body: JSON.stringify(requestData), method: 'POST' },
+      'save-chat-memory'
+    );
+
+    if (result.success) {
+      logDebug('✅ Chat memory saved to DiveLogs collection:', result._id);
+      
+      // Invalidate memory cache to force refresh
+      dataCache.invalidate(`memories_${userId}`);
+      
+      return result;
+    } else {
+      throw new Error(result.error || 'Chat memory save failed');
+    }
+
+  } catch (error) {
+    logError('❌ Error saving chat memory to DiveLogs collection:', error);
+    throw error;
+  }
+}
+
+// ✅ NEW: Get user's latest dive statistics from DiveLogs collection
+async function getUserDiveStats(userId) {
+  try {
+    const userData = await getUserDiveLogs(userId, 20); // Get recent dives
+    
+    if (!userData.diveLogs || userData.diveLogs.length === 0) {
+      return {
+        totalDives: 0,
+        averageDepth: 0,
+        maxDepth: 0,
+        averageProgressionScore: 0,
+        lastDiveDate: null,
+        favoriteLocation: 'No dives yet'
+      };
+    }
+    
+    const diveLogs = userData.diveLogs;
+    const depths = diveLogs.map(dive => {
+      const parsed = parseCompressedDiveLog(dive);
+      return parsed ? parsed.reachedDepth : 0;
+    }).filter(depth => depth > 0);
+    
+    const progressionScores = diveLogs.map(dive => {
+      const parsed = parseCompressedDiveLog(dive);
+      return parsed ? parsed.progressionScore : 0;
+    }).filter(score => score > 0);
+    
+    const locations = diveLogs.map(dive => {
+      const parsed = parseCompressedDiveLog(dive);
+      return parsed ? parsed.location : 'Unknown';
+    }).filter(loc => loc !== 'Unknown');
+    
+    // Calculate statistics
+    const totalDives = diveLogs.length;
+    const averageDepth = depths.length > 0 ? depths.reduce((a, b) => a + b, 0) / depths.length : 0;
+    const maxDepth = depths.length > 0 ? Math.max(...depths) : 0;
+    const averageProgressionScore = progressionScores.length > 0 ? 
+      progressionScores.reduce((a, b) => a + b, 0) / progressionScores.length : 0;
+    
+    // Find most common location
+    const locationCounts = {};
+    locations.forEach(loc => {
+      locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+    });
+    const favoriteLocation = Object.keys(locationCounts).length > 0 ? 
+      Object.keys(locationCounts).reduce((a, b) => locationCounts[a] > locationCounts[b] ? a : b) : 
+      'No location data';
+    
+    return {
+      totalDives,
+      averageDepth: Math.round(averageDepth * 10) / 10,
+      maxDepth,
+      averageProgressionScore: Math.round(averageProgressionScore * 10) / 10,
+      lastDiveDate: userData.lastDiveLogDate,
+      favoriteLocation
+    };
+    
+  } catch (error) {
+    logError('❌ Error calculating dive stats:', error);
+    return {
+      totalDives: 0,
+      averageDepth: 0,
+      maxDepth: 0,
+      averageProgressionScore: 0,
+      lastDiveDate: null,
+      favoriteLocation: 'Error loading stats',
+      error: error.message
+    };
   }
 }
 
@@ -736,12 +1059,12 @@ function hideTypingIndicator(widget) {
   }
 }
 
-// 🔥 MAIN APPLICATION INITIALIZATION - WIX APP SAFE
+// 🔥 MAIN APPLICATION INITIALIZATION - WIX APP SAFE WITH COMPRESSED STRUCTURE SUPPORT
 async function initializeKovalApp() {
   let aiWidget = null; // Declare at function scope
   
   try {
-    logDebug("✅ Koval-AI Wix app initializing...");
+    logDebug("✅ Koval-AI Wix app initializing with compressed DiveLogs structure support...");
     logDebug(`🔧 Current mode: ${currentMode}`);
 
     // Check if we're in a Wix environment
@@ -860,6 +1183,19 @@ async function initializeKovalApp() {
                   
                   hideTypingIndicator(aiWidget);
                   
+                  // ✅ ENHANCED: Save chat interaction to DiveLogs collection for memory
+                  if (response && response.aiResponse) {
+                    try {
+                      await saveChatMemory(currentUser.id, {
+                        userMessage: data.message,
+                        aiResponse: response.aiResponse,
+                        sessionId: data.sessionId
+                      });
+                    } catch (memoryError) {
+                      logDebug('Could not save chat memory:', memoryError);
+                    }
+                  }
+                  
                   if (aiWidget && aiWidget.postMessage) {
                     aiWidget.postMessage({
                       type: 'chatResponse',
@@ -891,11 +1227,8 @@ async function initializeKovalApp() {
             case 'saveMemory':
               if (currentUser && data && data.content) {
                 try {
-                  await saveUserMemory(
-                    currentUser.id,
-                    data.content,
-                    data.type || 'general'
-                  );
+                  // ✅ Use new compressed structure for memory saving
+                  await saveChatMemory(currentUser.id, data.content, data.context || {});
                   
                   if (aiWidget && aiWidget.postMessage) {
                     aiWidget.postMessage({
@@ -919,7 +1252,8 @@ async function initializeKovalApp() {
             case 'saveDiveLog':
               if (currentUser && data) {
                 try {
-                  await saveDiveLog(currentUser.id, data);
+                  // ✅ Use compressed structure for dive log saving
+                  await saveDiveLogCompressed(currentUser.id, data);
                   
                   if (aiWidget && aiWidget.postMessage) {
                     aiWidget.postMessage({
@@ -934,6 +1268,78 @@ async function initializeKovalApp() {
                     aiWidget.postMessage({
                       type: 'error',
                       data: { message: 'Failed to save dive log' }
+                    });
+                  }
+                }
+              }
+              break;
+              
+            case 'getDiveLogs':
+              if (currentUser) {
+                try {
+                  const userData = await getUserDiveLogs(currentUser.id, data?.limit || 50);
+                  
+                  if (aiWidget && aiWidget.postMessage) {
+                    aiWidget.postMessage({
+                      type: 'diveLogsData',
+                      data: userData
+                    });
+                  }
+                  
+                } catch (error) {
+                  logError('Get dive logs error:', error);
+                  if (aiWidget && aiWidget.postMessage) {
+                    aiWidget.postMessage({
+                      type: 'error',
+                      data: { message: 'Failed to load dive logs' }
+                    });
+                  }
+                }
+              }
+              break;
+              
+            case 'getDiveStats':
+              if (currentUser) {
+                try {
+                  const stats = await getUserDiveStats(currentUser.id);
+                  
+                  if (aiWidget && aiWidget.postMessage) {
+                    aiWidget.postMessage({
+                      type: 'diveStatsData',
+                      data: stats
+                    });
+                  }
+                  
+                } catch (error) {
+                  logError('Get dive stats error:', error);
+                  if (aiWidget && aiWidget.postMessage) {
+                    aiWidget.postMessage({
+                      type: 'error',
+                      data: { message: 'Failed to load dive statistics' }
+                    });
+                  }
+                }
+              }
+              break;
+              
+            case 'getMemories':
+              if (currentUser) {
+                try {
+                  const memories = await getUserMemories(currentUser.id, data?.limit || 20);
+                  
+                  if (aiWidget && aiWidget.postMessage) {
+                    aiWidget.postMessage({
+                      type: 'memoriesData',
+                      data: memories
+                    });
+                  }
+                  
+                } catch (error) {
+                  logError('Get memories error:', error);
+                  if (aiWidget && aiWidget.postMessage) {
+                    aiWidget.postMessage({
+                      type: 'error',
+                      data: { message: 'Failed to load memories' }
                     });
                   }
                 }
@@ -987,7 +1393,13 @@ async function initializeKovalApp() {
               id: currentUser.id,
               profile: userProfile
             } : null,
-            endpoints: ENDPOINT_STATUS
+            endpoints: ENDPOINT_STATUS,
+            features: {
+              compressedStructure: true,
+              diveLogsCollection: true,
+              photoSupport: true,
+              aiAnalysis: true
+            }
           }
         });
       } catch (error) {
@@ -995,7 +1407,7 @@ async function initializeKovalApp() {
       }
     }
 
-    logDebug("🚀 Koval-AI app fully initialized");
+    logDebug("🚀 Koval-AI app fully initialized with compressed DiveLogs structure support");
     
   } catch (error) {
     console.error("❌ Critical error during app initialization:", error);
@@ -1050,6 +1462,12 @@ if (typeof module !== 'undefined' && module.exports) {
     saveUserMemory,
     getUserProfile,
     saveDiveLog,
+    saveDiveLogCompressed,
+    getUserDiveLogs,
+    getUserMemories,
+    getUserDiveStats,
+    saveChatMemory,
+    parseCompressedDiveLog,
     testConnection,
     performanceTracker,
     dataCache,
@@ -1058,6 +1476,8 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log("🔥 Wix App Frontend Master initialized - Single perfect version with Wix IDE Compatibility");
-console.log("🚀 AI Priority: Next.js/OpenAI API is PRIMARY, Wix backend is FALLBACK");
+console.log("🔥 Wix App Frontend Master initialized - Single perfect version with compressed DiveLogs structure");
+console.log("✅ All data now stored in single DiveLogs page collection with compressed logEntry structure");
+console.log("🚀 AI Priority: Next.js/OpenAI API is PRIMARY, Wix backend saves to DiveLogs collection");
+console.log("📊 Features: Compressed structure, photo support, AI analysis, sidebar integration");
 console.log("✅ Your AI will work regardless of Wix backend status!");
