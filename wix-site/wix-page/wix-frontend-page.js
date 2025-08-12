@@ -306,10 +306,8 @@ const WIX_ERROR_CODES = {
     'WDE0202': 'Database overloaded - Reduce request frequency'
 };
 
-// ✅ WIX PAGE: CORRECTED API ENDPOINTS - NO MORE OPENAI ERRORS!
-const WIX_CONNECTION_API = "/_functions/wixConnection";
+// ✅ WIX PAGE: CORRECTED API ENDPOINTS - ONLY AVAILABLE FUNCTIONS
 const MEMBER_PROFILE_API = "/_functions/getUserProfile";
-const TEST_API = "/_functions/test";
 const WIX_CHAT_API = "/_functions/chat";
 const WIX_DIVE_LOGS_API = "https://kovaldeepai-main.vercel.app/api/analyze/dive-logs";
 const WIX_USER_MEMORY_API = "/_functions/userMemory";
@@ -837,10 +835,19 @@ $w.onReady(async function () {
 
         console.log("⚡ Quick AI setup complete!");
         
-        // ✅ ENHANCED: Initialize user authentication after widget setup
+        // ✅ ENHANCED: Initialize user authentication after widget setup (non-blocking)
         setTimeout(async () => {
-            console.log('🔄 Initializing user authentication flow...');
-            await initializeUserAuthAndEntitlement();
+            console.log('🔄 Checking user authentication status...');
+            try {
+                const member = await currentMember.getMember();
+                if (member && member.loggedIn) {
+                    console.log('✅ User already authenticated:', member._id);
+                } else {
+                    console.log('ℹ️ User not authenticated, continuing as guest');
+                }
+            } catch (error) {
+                console.log('ℹ️ Authentication check failed, continuing as guest:', error.message);
+            }
         }, 2000);
 
     } catch (error) {
@@ -1007,13 +1014,41 @@ async function handleEnhancedWidgetMessage(event) {
         
         switch (type) {
             case 'REQUEST_USER_DATA':
-                console.log('🔍 Widget requesting user data via enhanced handler');
-                await sendEnhancedUserDataToWidget();
+                console.log('🔍 Widget requesting user data');
+                await sendUserDataToWidget();
                 break;
                 
             case 'CHECK_USER_REGISTRATION':
-                console.log('🔐 Widget checking user registration via enhanced handler');
-                await checkAndSendUserAccess();
+                console.log('🔐 Widget checking user registration');
+                // Simple authentication check
+                try {
+                    const member = await currentMember.getMember();
+                    const isAuthenticated = member && member.loggedIn;
+                    
+                    // Send authentication status to widget
+                    const widgetSelectors = ['#koval-ai', '#KovalAiWidget', '#kovalAIWidget'];
+                    let widget = null;
+                    
+                    for (const selector of widgetSelectors) {
+                        try {
+                            widget = $w(selector);
+                            if (widget) break;
+                        } catch (e) {}
+                    }
+                    
+                    if (widget && widget.postMessage) {
+                        widget.postMessage({
+                            type: 'USER_ACCESS_STATUS',
+                            data: {
+                                isAuthenticated,
+                                hasAccess: true, // Simplified for now
+                                userId: member?._id || null
+                            }
+                        }, '*');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Authentication check failed:', error);
+                }
                 break;
                 
             case 'CHAT_MESSAGE':
@@ -1037,65 +1072,29 @@ async function handleEnhancedWidgetMessage(event) {
 }
 
 /**
- * ✅ Initialize User Authentication and Entitlement
+ * ✅ Initialize User Authentication and Entitlement (Non-blocking)
  */
 async function initializeUserAuthAndEntitlement() {
     try {
-        console.log('🔄 Initializing user authentication and entitlement...');
+        console.log('🔄 Checking user authentication status...');
         
-        // 1. Check if user is logged in
-        if (!wixUsers.currentUser || !wixUsers.currentUser.loggedIn) {
-            console.log('👤 User not logged in, prompting login...');
-            await wixUsers.promptLogin();
-        }
-        
+        // 1. Check if user is already logged in (don't force login)
         const member = await currentMember.getMember();
         if (!member || !member.loggedIn) {
-            console.warn('⚠️ User login failed or cancelled');
-            return;
+            console.log('ℹ️ User not logged in, allowing guest access');
+            return { success: false, guest: true };
         }
         
-        // 2. Check entitlement (Registration/Access) - SIMPLIFIED
-        console.log('✅ User has valid access - skipping access check for now');
-        /*
-        try {
-            const accessResponse = await fetch('/_functions/checkUserAccess', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: member._id,
-                    userEmail: member.loginEmail
-                })
-            });
-            const accessResult = await accessResponse.json();
-            
-            if (!accessResult || !accessResult.hasAccess) {
-                console.log('❌ User not entitled, redirecting to pricing...');
-                wixLocation.to('/plans-pricing');
-                return;
-            }
-            console.log('✅ User has valid access:', accessResult);
-        } catch (entitlementError) {
-            console.warn('⚠️ Access check failed:', entitlementError);
-            // Continue anyway - might be a backend issue
-        }
-        */
+        console.log('✅ User is logged in:', member._id);
         
-        // 3. Find and update widget with user data
-        await updateWidgetWithUserData(member);
+        // 2. Skip entitlement check for now (simplified)
+        console.log('✅ User has valid access - skipping detailed access check');
         
-        // 4. Send initial user data
-        setTimeout(async () => {
-            await sendEnhancedUserDataToWidget();
-        }, 1000);
-        
-        // 5. Check and send user access status
-        setTimeout(async () => {
-            await checkAndSendUserAccess();
-        }, 2000);
+        return { success: true, userId: member._id, guest: false };
         
     } catch (error) {
-        console.error('❌ Error initializing user auth/entitlement:', error);
+        console.warn('⚠️ Authentication check failed:', error.message);
+        return { success: false, guest: true, error: error.message };
     }
 }
 
@@ -1216,21 +1215,10 @@ async function checkAndSendUserAccess() {
             return;
         }
         
-        // Check access via backend - SIMPLIFIED (no checkUserAccess function available)
+        // Check access via backend - SIMPLIFIED (using logged in status)
         console.log('✅ User logged in, assuming valid access');
         const accessResult = { hasAccess: true, reason: 'logged_in_user' };
         
-        /*
-        const accessResponse = await fetch('/_functions/checkUserAccess', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: member._id,
-                userEmail: member.loginEmail
-            })
-        });
-        const accessResult = await accessResponse.json();
-        */
         console.log('🔍 Enhanced access check result:', accessResult);
         
         postEnhancedMessageToWidget('USER_REGISTRATION_RESPONSE', {
@@ -1541,18 +1529,43 @@ async function loadComprehensiveUserData() {
             // Get user profile from collections (with graceful fallback)
             let userProfile = null;
             try {
-                const profileQuery = await wixData.query('Members/FullData')
-                    .eq('userId', currentUser.id)
-                    .find();
-                userProfile = profileQuery.items[0] || null;
-            } catch (error) {
-                if (error.message?.includes('collection') || error.message?.includes('not found')) {
-                    console.log('ℹ️ memberProfiles collection not found, using basic profile data');
-                } else {
-                    console.warn('⚠️ Could not load member profile:', error.message);
+                // Try multiple profile collection names
+                const possibleCollections = ['Members/FullData', 'Members/PrivateMembersData', 'Members'];
+                
+                for (const collectionName of possibleCollections) {
+                    try {
+                        const profileQuery = await wixData.query(collectionName)
+                            .eq('userId', currentUser.id)
+                            .find();
+                        if (profileQuery.items && profileQuery.items.length > 0) {
+                            userProfile = profileQuery.items[0];
+                            console.log(`✅ Found user profile in ${collectionName}`);
+                            break;
+                        }
+                    } catch (collectionError) {
+                        console.log(`ℹ️ ${collectionName} not accessible, trying next...`);
+                        continue;
+                    }
                 }
-                // Continue without profile data
+            } catch (error) {
+                console.warn('⚠️ Could not load member profile:', error.message);
+                // Continue without profile data - this is OK
             }
+            
+            // ✅ Use currentUser data as primary source for profile
+            const profileData = {
+                id: currentUser.id,
+                displayName: currentUser.nickname || currentUser.displayName || 'User',
+                nickname: currentUser.nickname || 'User',
+                loginEmail: currentUser.loginEmail || '',
+                firstName: userProfile?.firstName || currentUser.firstName || '',
+                lastName: userProfile?.lastName || currentUser.lastName || '',
+                profilePhoto: currentUser.picture || userProfile?.profilePicture || '',
+                phone: userProfile?.phone || '',
+                bio: userProfile?.bio || '',
+                location: userProfile?.location || '',
+                loggedIn: true
+            };
             
             // Get user dive logs and memories from DiveLogs collection (compressed structure)
             let userDiveLogs = [];
@@ -1850,7 +1863,7 @@ async function handleDiveLogSave(diveLogData) {
                 console.log('📸 Photo included:', !!result.hasPhoto);
                 
                 // Refresh user data to show the new dive log
-                await loadAndSendUserData();
+                await sendUserDataToWidget();
                 
             } else {
                 const errorData = await response.json();

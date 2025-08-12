@@ -1,23 +1,23 @@
-// 🔥 WIX APP BACKEND: HTTP-USERMEMORY.JSW - OPTIMIZED FOR @deepfreediving/kovaldeepai-app
-// Deploy this to Wix App Backend: backend/http-functions/userMemory.js
-// Version: 4.x - Updated for Wix App Integration (Auto-versioning for 4.0 release)
+// 🔥 WIX PAGE BACKEND: HTTP-USERMEMORY.JSW - OPTIMIZED FOR WIX PAGE
+// Deploy this to Wix Page Backend: wix-page/backend/http-functions/http-userMemory.jsw
+// Version: 4.x - Updated for Wix Page Integration (Auto-versioning for 4.0 release)
 
 import { ok, badRequest, serverError } from 'wix-http-functions';
 import wixData from 'wix-data';
 import { authentication } from 'wix-members-backend';
 
-// 🎯 ENHANCED CONFIGURATION FOR WIX APP
+// 🎯 ENHANCED CONFIGURATION FOR WIX PAGE
 const MEMORY_CONFIG = {
   COLLECTION_NAME: 'DiveLogs', // ✅ Page collection (not app collection)
-  APP_ID: '@deepfreediving/kovaldeepai-app',
+  PAGE_ID: 'large-koval-deep-ai-page',
   VERSION: '4.x',
   
   CORS_HEADERS: {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-App-ID',
-    'X-Wix-App-ID': '@deepfreediving/kovaldeepai-app'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-Page-ID',
+    'X-Wix-Page-ID': 'large-koval-deep-ai-page'
   }
 };
 

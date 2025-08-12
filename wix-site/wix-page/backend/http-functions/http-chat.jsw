@@ -15,7 +15,7 @@ const CHAT_CONFIG = {
     FALLBACK_BACKEND: 'https://kovaldeepai-main.vercel.app/api/chat'
   },
   
-  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
+  COLLECTION_NAME: 'DiveLogs',
   
   VALIDATION: {
     MAX_MESSAGE_LENGTH: 5000,

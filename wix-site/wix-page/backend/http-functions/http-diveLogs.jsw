@@ -7,7 +7,7 @@ import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
 import wixUsersBackend from 'wix-users-backend';
 import { fetch } from 'wix-fetch';
-import { WixUtilsMaster, MASTER_CONFIG } from 'backend/wix-utils.jsw';
+import { WixUtilsMaster, MASTER_CONFIG } from '../wix-utils.jsw';
 
 // 🎯 MASTER CONFIGURATION
 const DIVELOGS_CONFIG = {
@@ -18,7 +18,7 @@ const DIVELOGS_CONFIG = {
     MASTER: 'master'          // Current standard level
   },
   
-  COLLECTION_NAME: '@deepfreediving/kovaldeepai-app/Import1',
+  COLLECTION_NAME: 'DiveLogs',
   SEMANTIC_SEARCH_API: 'https://kovaldeepai-main.vercel.app/api/pinecone',
   
   VALIDATION: {
