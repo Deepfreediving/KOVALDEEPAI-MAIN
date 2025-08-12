@@ -5,6 +5,7 @@ import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
 import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
 import apiClient from "../utils/apiClient";
+import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
@@ -247,6 +248,12 @@ export default function Embed() {
               return; // Don't set invalid user data
             }
             
+            // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+            const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
+            if (migrationSuccess) {
+              console.log('🔄 Successfully migrated temporary user data to authenticated user (initialized)');
+            }
+            
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
             console.log('✅ UserId set from initialized message:', newUserId);
@@ -291,6 +298,12 @@ export default function Embed() {
           if (event.data.data?.userId && !event.data.data.userId.startsWith('guest-')) {
             console.log('✅ Setting authenticated userId:', event.data.data.userId);
             const newUserId = String(event.data.data.userId);
+            
+            // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+            const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
+            if (migrationSuccess) {
+              console.log('🔄 Successfully migrated temporary user data to authenticated user');
+            }
             
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
@@ -347,6 +360,13 @@ export default function Embed() {
           
           if (event.data.userId && !event.data.userId.startsWith('guest-')) {
             console.log('✅ Setting direct userId:', event.data.userId);
+            
+            // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+            const migrationSuccess = upgradeTemporaryUserToAuthenticated(event.data.userId);
+            if (migrationSuccess) {
+              console.log('🔄 Successfully migrated temporary user data to authenticated user (direct)');
+            }
+            
             setUserId(event.data.userId);
             localStorage.setItem("kovalUser", event.data.userId);
             
@@ -388,6 +408,12 @@ export default function Embed() {
         const globalUserData = window.parent?.KOVAL_USER_DATA;
         if (globalUserData && globalUserData.userId && !globalUserData.userId.startsWith('guest-')) {
           console.log('🌍 Found global user data:', globalUserData);
+          
+          // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+          const migrationSuccess = upgradeTemporaryUserToAuthenticated(globalUserData.userId);
+          if (migrationSuccess) {
+            console.log('🔄 Successfully migrated temporary user data to authenticated user (global)');
+          }
           
           setUserId(globalUserData.userId);
           localStorage.setItem("kovalUser", globalUserData.userId);

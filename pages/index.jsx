@@ -5,6 +5,7 @@ import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
 import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
 import apiClient from "../utils/apiClient";
+import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
