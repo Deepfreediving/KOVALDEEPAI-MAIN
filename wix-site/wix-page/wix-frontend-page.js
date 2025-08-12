@@ -458,28 +458,30 @@ async function performOptimizedHealthCheck() {
  */
 async function checkSingleEndpointOptimized(name, url, type) {
     const startTime = Date.now();
-    
     try {
         console.log(`🔍 Testing ${type} endpoint: ${name}`);
-        
-        // ✅ RECORD REQUEST FOR RATE LIMITING
         if (type === 'wix') {
             RATE_LIMITER.recordRequest('read');
         }
-
-        // ✅ DETERMINE OPTIMAL METHOD AND TIMEOUT
         const method = (name === 'chat') ? "POST" : "GET";
-        const timeout = type === 'wix' ? 4000 : 7000; // Aggressive timeouts for Pages
-        
+        const timeout = type === 'wix' ? 4000 : 7000;
         let testBody = null;
         if (method === "POST") {
-            testBody = JSON.stringify({
-                message: "health check",  // ✅ Fixed: Use 'message' instead of 'userMessage'
+            // FIX: Wix chat function expects userMessage not message
+            const bodyPayload = (type === 'wix' && name === 'chat') ? {
+                userMessage: "health check",
                 userId: "test_user",
                 minimal: true,
                 profile: {},
                 embedMode: false
-            });
+            } : {
+                message: "health check",
+                userId: "test_user",
+                minimal: true,
+                profile: {},
+                embedMode: false
+            };
+            testBody = JSON.stringify(bodyPayload);
         }
 
         // ✅ USE ABORT CONTROLLER FOR PRECISE TIMEOUT
@@ -741,6 +743,22 @@ $w.onReady(async function () {
         console.error("❌ No AI widget found. Please check widget ID in Wix editor.");
         showFallbackMessage("AI widget not found. Please check the page configuration or contact support.");
         return;
+    }
+    // NEW: Immediately send guest placeholder so iframe can initialize while auth loads
+    try {
+        const guestInitial = getGuestUserData();
+        // Set stable temporary id (do not regenerate twice in same tick)
+        window.wixUserId = guestInitial.userId;
+        window.wixUserName = guestInitial.profile.displayName;
+        const guestEmbedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${guestInitial.userId}&userName=${encodeURIComponent(guestInitial.profile.displayName)}&embedded=true&guest=1&v=${Date.now()}`;
+        aiWidget.src = guestEmbedUrl;
+        // Primary message
+        try { aiWidget.contentWindow && aiWidget.contentWindow.postMessage({ type: 'USER_AUTH', data: guestInitial, provisional: true }, '*'); } catch(e) {}
+        // Alias for legacy listeners
+        try { window.postMessage({ type: 'KOVAL_USER_AUTH', userId: guestInitial.userId, profile: guestInitial.profile, provisional: true }, '*'); } catch(e) {}
+        console.log('📤 Sent provisional guest auth to widget');
+    } catch (e) {
+        console.warn('⚠️ Could not send provisional guest data:', e.message);
     }
 
     // ===== LOAD USER DATA WITH PROPER ERROR HANDLING =====
@@ -1761,12 +1779,14 @@ async function loadComprehensiveUserData() {
             
             return userData;
         } else {
-            console.error('❌ User not logged in - this should not happen in Wix app');
-            throw new Error('User authentication failed - please refresh the page');
+            // FIX: Return guest data instead of throwing to unblock widget
+            console.log('ℹ️ No authenticated user detected, returning guest data');
+            return getGuestUserData();
         }
     } catch (error) {
         console.error('❌ Error loading comprehensive user data:', error);
-        throw new Error(`Authentication error: ${error.message}`);
+        // FIX: Fallback guest instead of throwing to avoid blocking UI
+        return getGuestUserData();
     }
 }
 
@@ -1936,23 +1956,23 @@ async function sendUserDataToWidget() {
 async function handleDiveLogSave(diveLogData) {
     try {
         console.log('💾 Saving dive log via Wix App backend:', diveLogData);
-        
         const currentUser = wixUsers.currentUser;
         if (!currentUser || !currentUser.loggedIn) {
             console.warn('⚠️ Cannot save dive log - user not logged in');
             return;
         }
-        
-        // ✅ NEW: Use Wix App backend userMemory.jsw for compressed structure saving
+        // NORMALIZE fields for backend expectations
+        const normalized = { ...diveLogData };
+        if (normalized.depth && !normalized.reachedDepth) normalized.reachedDepth = normalized.depth;
+        if (normalized.diveDate && !normalized.date) normalized.date = normalized.diveDate;
+        if (normalized.date && !normalized.diveDate) normalized.diveDate = normalized.date;
         try {
             const response = await fetch('/_functions/userMemory', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser.id,
-                    diveLogData: diveLogData,
+                    diveLogData: normalized,
                     type: 'dive_log'
                 })
             });
@@ -2018,7 +2038,7 @@ async function saveDiveLog(diveLogData) {
             location: diveLogData.location || '',
             depth: diveLogData.depth || 0,
             time: diveLogData.time || 0,
-            notes: diveLogData.notes || '',
+                       notes: diveLogData.notes || '',
             type: 'dive-log',
             timestamp: new Date(),
             ...diveLogData

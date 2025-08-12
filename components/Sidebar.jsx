@@ -45,6 +45,9 @@ export default function Sidebar({
   // 🚀 OPTIMIZED: Single batch submission for dive logs
   const handleOptimizedJournalSubmit = async (formData) => {
     console.log('🚀 SIDEBAR: handleOptimizedJournalSubmit called with:', formData);
+    if(!userId || userId.startsWith('guest-')) {
+      console.error('❌ SIDEBAR: Cannot submit dive log – invalid userId:', userId);
+    }
     try {
       setLoading(true);
       

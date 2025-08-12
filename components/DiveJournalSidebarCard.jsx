@@ -19,17 +19,19 @@ export default function DiveJournalSidebarCard({
   const handleFormSubmit = async (data) => {
     try {
       console.log('🚀 DiveJournalSidebarCard: Submitting dive log...', data);
-      
+      if(!userId || userId.startsWith('guest-')) {
+        console.error('❌ DiveJournalSidebarCard: Invalid userId at submit time:', userId);
+      }
       // Call the onSubmit callback from parent (embed page) FIRST
       if (onSubmit) {
         await onSubmit(data);
         console.log('✅ DiveJournalSidebarCard: Parent onSubmit completed');
+      } else {
+        console.warn('⚠️ DiveJournalSidebarCard: onSubmit missing');
       }
-      
       // Force refresh the logs display by updating key
       setRefreshKey(prev => prev + 1);
       setActiveTab('logs'); // Switch to logs after saving
-      
       console.log('✅ DiveJournalSidebarCard: Dive log submitted successfully, refreshing display');
     } catch (error) {
       console.error('❌ DiveJournalSidebarCard: Error submitting dive log:', error);

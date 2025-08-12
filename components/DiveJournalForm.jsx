@@ -48,14 +48,30 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
   // ✅ IMPROVED USER ID MANAGEMENT
   const effectiveUserId = getOrCreateUserId(userId);
   
-  // Debug user ID situation and migrate guest data if needed
+  // 🔄 MIGRATE LEGACY LOCALSTORAGE KEYS (savedDiveLogs_ -> diveLogs_)
   useEffect(() => {
-    debugUserIdSituation();
-    const migrated = migrateGuestDataToPersistent();
-    if (migrated) {
-      console.log('🔄 Migrated guest data to persistent user ID:', migrated);
+    if (typeof window === 'undefined') return;
+    if (!effectiveUserId) return;
+    try {
+      const legacyKey = `savedDiveLogs_${effectiveUserId}`;
+      const canonicalKey = `diveLogs_${effectiveUserId}`;
+      const legacy = localStorage.getItem(legacyKey);
+      const existing = localStorage.getItem(canonicalKey);
+      if (legacy) {
+        let legacyArr = [];
+        let existingArr = [];
+        try { legacyArr = JSON.parse(legacy) || []; } catch {}
+        try { existingArr = existing ? JSON.parse(existing) : []; } catch {}
+        // Merge unique
+        const map = {}; const merged = [];
+        [...legacyArr, ...existingArr].forEach(l => { const k = l.id || l._id || l.localId || `${l.date||''}-${l.reachedDepth||''}-${l.timestamp||''}`; if(!map[k]) { map[k]=1; merged.push(l);} });
+        localStorage.setItem(canonicalKey, JSON.stringify(merged));
+        localStorage.removeItem(legacyKey);
+        console.log(`🔧 Migrated ${legacyArr.length} legacy dive logs to canonical key ${canonicalKey} (total ${merged.length})`);
+      }
+    } catch (e) {
+      console.warn('⚠️ DiveJournalForm migration failed:', e);
     }
-    console.log('🆔 Using effective user ID for dive logs:', effectiveUserId);
   }, [effectiveUserId]);
 
   // Check if we have a saved draft
@@ -166,7 +182,7 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
       setAiFeedback("✅ Dive log saved locally! Syncing to Wix...");
       
       // ✅ Save to local storage as backup with user-specific key
-      const storageKey = `savedDiveLogs_${effectiveUserId}`;
+      const storageKey = `diveLogs_${effectiveUserId}`; // canonical key
       const savedDiveLogs = JSON.parse(localStorage.getItem(storageKey) || '[]');
       savedDiveLogs.push({
         id: saveLogResult._id || saveLogResult.data?.id,
