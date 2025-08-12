@@ -247,14 +247,16 @@
       // Add message listener
       window.addEventListener('message', handleParentMessage);
 
-      // 🔒 ENHANCED USER DATA - Members-only platform
+      // 🔒 ENHANCED USER DATA - Members-only platform (NO GUEST USERS)
       let userData = {
         userId: null,  // No default user ID - must be authenticated
         userName: null,  // No default username
         source: 'wix-widget-members-only',
         theme: theme,  // ✅ Pass theme to embed
         parentUrl: window.location.href,
-        requiresAuth: true  // Flag that authentication is required
+        requiresAuth: true,  // Flag that authentication is required
+        isGuestAllowed: false,  // ✅ CRITICAL: No guest users on paid platform
+        memberOnlyPlatform: true  // ✅ Flag for embed to know this is members-only
       };
 
       // ✅ ENHANCED: Try multiple methods to get real user data from Wix
@@ -524,9 +526,11 @@
       const cacheParam = Date.now(); // Force fresh load
       const embedUrl = new URL(`${this.BASE_URL}/embed`); // Load embed (which now has full app functionality)
       embedUrl.searchParams.set('theme', theme);
-      embedUrl.searchParams.set('userId', userData.userId);
-      embedUrl.searchParams.set('userName', userData.userName);
+      embedUrl.searchParams.set('userId', userData.userId || 'null');
+      embedUrl.searchParams.set('userName', userData.userName || 'null');
       embedUrl.searchParams.set('embedded', 'true'); // Flag to indicate it's embedded
+      embedUrl.searchParams.set('membersOnly', 'true'); // ✅ CRITICAL: No guest users allowed
+      embedUrl.searchParams.set('requiresAuth', 'true'); // ✅ Authentication required
       embedUrl.searchParams.set('v', cacheParam.toString());
       
       this.iframe.src = embedUrl.toString();
@@ -843,11 +847,69 @@
       }
     }
 
-    // ✅ HANDLE AUTHENTICATED MEMBER DATA
-    handleMemberData(user) {
-      console.log('✅ Processing Wix member data for UserMemory');
+    // ✅ HANDLE AUTHENTICATED MEMBER DATA - Get full profile from bridge
+    async handleMemberData(user) {
+      console.log('✅ Processing Wix member data - Getting full profile from bridge...');
       
-      // ✅ Use member ID format for consistent, fast recognition
+      try {
+        // ✅ Call user-profile-bridge to get Members/FullData
+        const response = await fetch(`${this.BASE_URL}/api/wix/user-profile-bridge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            action: 'getFullProfile'
+          })
+        });
+        
+        if (response.ok) {
+          const bridgeData = await response.json();
+          console.log('✅ Got full profile from bridge:', bridgeData);
+          
+          if (bridgeData.success && bridgeData.profile) {
+            // ✅ Use rich profile data from Members/FullData
+            const userData = {
+              userId: user.id,  // ✅ Real Wix member ID
+              userName: bridgeData.profile.displayName || `User-${user.id}`,
+              nickname: bridgeData.profile.nickname || bridgeData.profile.displayName || `User-${user.id}`,
+              userEmail: bridgeData.profile.loginEmail || user.loginEmail || '',
+              firstName: bridgeData.profile.firstName || user.firstName || '',
+              lastName: bridgeData.profile.lastName || user.lastName || '',
+              profilePicture: bridgeData.profile.profilePicture || user.picture || user.profilePicture || '',
+              phone: bridgeData.profile.phone || '',
+              bio: bridgeData.profile.bio || '',
+              location: bridgeData.profile.location || '',
+              customFields: bridgeData.profile.customFields || {},
+              wixId: user.id,
+              source: 'wix-members-fulldata-bridge',
+              isGuest: false,
+              theme: this.currentTheme || 'light'
+            };
+            
+            console.log('✅ Sending rich Members/FullData to embed:', userData);
+            
+            // Send to embed for UserMemory integration
+            if (this.iframe && this.isReady) {
+              this.postMessage('USER_AUTH', userData);
+            }
+            
+            console.log('📤 Sent enriched member data from bridge:', {
+              userId: userData.userId,
+              nickname: userData.nickname,
+              userName: userData.userName,
+              source: userData.source,
+              hasFullProfile: true
+            });
+            return;
+          }
+        }
+        
+        console.warn('⚠️ Bridge failed, using basic Wix data');
+      } catch (bridgeError) {
+        console.warn('⚠️ Bridge error, using basic Wix data:', bridgeError.message);
+      }
+      
+      // ✅ Fallback to basic Wix data if bridge fails
       const displayName = `User-${user.id}`;
       const nickname = `User-${user.id}`;
       
@@ -860,7 +922,7 @@
         lastName: user.lastName || '',
         profilePicture: user.picture || user.profilePicture || '',
         wixId: user.id,
-        source: 'wix-members-fulldata',
+        source: 'wix-members-basic',
         isGuest: false,
         theme: this.currentTheme || 'light'
       };
@@ -870,7 +932,7 @@
         this.postMessage('USER_AUTH', userData);
       }
       
-      console.log('📤 Sent Wix member data to embed for UserMemory:', {
+      console.log('📤 Sent basic Wix member data to embed:', {
         userId: userData.userId,
         nickname: userData.nickname,
         userName: userData.userName,

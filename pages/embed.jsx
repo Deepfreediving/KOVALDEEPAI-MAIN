@@ -120,29 +120,36 @@ export default function Embed() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setSessionsList(safeParse("kovalSessionsList", []));
-      setThreadId(localStorage.getItem("kovalThreadId") || null);
-      
-      // ✅ Check if we have a valid stored userId first
-      const storedUserId = localStorage.getItem("kovalUser");
-      if (storedUserId && !storedUserId.startsWith('guest-')) {
-        console.log('✅ Embed: Found valid stored userId:', storedUserId);
-        setUserId(storedUserId);
-        setIsAuthenticating(false); // We have a valid user, stop waiting
-        
-        // Try to load stored profile too
-        const storedProfile = safeParse("kovalProfile", {});
-        if (storedProfile && storedProfile.source) {
-          setProfile(storedProfile);
-        }
-      } else {
-        console.log('⏳ Embed: No valid stored userId, waiting for authentication...');
-        // Start authentication timeout (15 seconds for embed - much longer since it depends on parent)
-        const timeout = setTimeout(() => {
-          console.warn('⚠️ Embed: Authentication timeout reached, allowing limited access');
-          setAuthTimeoutReached(true);
-          setIsAuthenticating(false);
-          setUserId(`guest-${Date.now()}`); // Fallback after timeout
-        }, 15000);
+      setThreadId(localStorage.getItem("kovalThreadId") || null);        // ✅ Check if we have a valid stored userId first
+        const storedUserId = localStorage.getItem("kovalUser");
+        if (storedUserId && !storedUserId.startsWith('guest-')) {
+          console.log('✅ Embed: Found valid stored userId:', storedUserId);
+          setUserId(storedUserId);
+          setIsAuthenticating(false); // We have a valid user, stop waiting
+          
+          // Try to load stored profile too
+          const storedProfile = safeParse("kovalProfile", {});
+          if (storedProfile && storedProfile.source) {
+            setProfile(storedProfile);
+          }
+        } else {
+          console.log('⏳ Embed: No valid stored userId, waiting for authentication...');
+          // Start authentication timeout (30 seconds for embed to allow bridge calls)
+          const timeout = setTimeout(() => {
+            console.warn('⚠️ Embed: Authentication timeout reached after 30 seconds');
+            setAuthTimeoutReached(true);
+            setIsAuthenticating(false);
+            
+            // ✅ CRITICAL: Check if this is a members-only platform
+            const isMembersOnly = window.membersOnlyPlatform || window.requiresAuthentication;
+            if (isMembersOnly) {
+              console.log('🔒 MEMBERS-ONLY: No guest access allowed, keeping userId null');
+              setUserId(null); // Keep null - no guest users on paid platform
+            } else {
+              console.log('🔄 Creating guest user for open platform');
+              setUserId(`guest-${Date.now()}`); // Fallback only for non-members platforms
+            }
+          }, 30000); // Increased to 30 seconds to allow bridge calls
         
         return () => clearTimeout(timeout);
       }
@@ -152,15 +159,40 @@ export default function Embed() {
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
   useEffect(() => {
     if (router.isReady) {
-      const { theme, userId: urlUserId, nickname, embedded } = router.query;
+      const { 
+        theme, 
+        userId: urlUserId, 
+        nickname, 
+        embedded, 
+        membersOnly, 
+        requiresAuth 
+      } = router.query;
 
-      console.log('🎯 Embed page - URL parameters:', { theme, userId: urlUserId, nickname, embedded });
+      console.log('🎯 Embed page - URL parameters:', { 
+        theme, 
+        userId: urlUserId, 
+        nickname, 
+        embedded, 
+        membersOnly, 
+        requiresAuth 
+      });
+
+      // ✅ CRITICAL: Check if this is a members-only platform
+      const isMembersOnly = membersOnly === 'true' || requiresAuth === 'true';
+      
+      if (isMembersOnly) {
+        console.log('🔒 MEMBERS-ONLY PLATFORM: No guest users allowed');
+        // Set a flag to prevent guest user creation
+        window.membersOnlyPlatform = true;
+        window.requiresAuthentication = true;
+      }
 
       // Notify parent that we're ready
       window.parent?.postMessage({ 
         type: 'EMBED_READY', 
         source: 'koval-ai-embed',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        membersOnly: isMembersOnly
       }, "*");
       
       // Apply theme from URL
