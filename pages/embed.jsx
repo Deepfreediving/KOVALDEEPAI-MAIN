@@ -67,13 +67,41 @@ export default function Embed() {
   const bottomRef = useRef(null);
 
   // ✅ HELPERS
-  const storageKey = (uid) => `diveLogs-${uid}`;
-  const safeParse = (key, fallback) => {
-    try {
-      return typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(key)) || fallback : fallback;
-    } catch {
-      return fallback;
+  const storageKey = (uid) => `diveLogs_${uid}`; // ✅ Canonical key (underscore)
+  const legacyKeysFor = (uid) => [
+    `diveLogs-${uid}`,          // hyphen legacy
+    `savedDiveLogs_${uid}`,     // savedDiveLogs legacy
+    `diveLogs_${uid}`           // canonical
+  ];
+  const mergeArraysUnique = (a = [], b = []) => {
+    const map = {}; const out = [];
+    [...a, ...b].forEach(l => { const k = l.id || l._id || l.localId || `${l.date||''}-${l.reachedDepth||''}-${l.timestamp||''}`; if(!map[k]) { map[k]=1; out.push(l);} });
+    return out;
+  };
+  const migrateLegacyDiveLogKeys = (uid) => {
+    if (typeof window === 'undefined' || !uid) return [];
+    const keys = legacyKeysFor(uid);
+    let collected = [];
+    keys.forEach(k => {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const arr = JSON.parse(raw);
+            if (Array.isArray(arr) && arr.length) {
+              collected = mergeArraysUnique(collected, arr);
+              if (k !== storageKey(uid)) {
+                console.log(`🔧 Migrating ${arr.length} logs from legacy key ${k}`);
+                localStorage.removeItem(k);
+              }
+            }
+        }
+      } catch {}
+    });
+    if (collected.length) {
+      localStorage.setItem(storageKey(uid), JSON.stringify(collected));
+      console.log(`✅ Migration complete -> ${collected.length} logs stored under ${storageKey(uid)}`);
     }
+    return collected;
   };
 
   const getDisplayName = useCallback(() => {
@@ -126,6 +154,8 @@ export default function Embed() {
         if (storedUserId && !storedUserId.startsWith('guest-')) {
           console.log('✅ Embed: Found valid stored userId:', storedUserId);
           setUserId(storedUserId);
+          // Run migration for existing user
+          migrateLegacyDiveLogKeys(storedUserId);
           setIsAuthenticating(false); // We have a valid user, stop waiting
           
           // Try to load stored profile too
@@ -222,13 +252,15 @@ export default function Embed() {
         'http://localhost:3000',
         'https://www.wix.com',
         'https://static.wixstatic.com',
-        'https://editor.wix.com'
+        'https://editor.wix.com',
+        'https://www.deepfreediving.com' // ✅ Added production domain
       ];
       
       if (event.origin && !allowedOrigins.some(origin => 
         event.origin.includes('wix') || 
         event.origin === 'https://kovaldeepai-main.vercel.app' ||
-        event.origin === 'http://localhost:3000'
+        event.origin === 'http://localhost:3000' ||
+        event.origin.endsWith('deepfreediving.com') // ✅ Allow custom domain / subdomains
       )) {
         console.log('🚫 Ignoring message from untrusted origin:', event.origin);
         return;
@@ -253,6 +285,8 @@ export default function Embed() {
             if (migrationSuccess) {
               console.log('🔄 Successfully migrated temporary user data to authenticated user (initialized)');
             }
+            // ✅ Consolidate any legacy keys for this authenticated user
+            migrateLegacyDiveLogKeys(newUserId);
             
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
@@ -304,6 +338,9 @@ export default function Embed() {
             if (migrationSuccess) {
               console.log('🔄 Successfully migrated temporary user data to authenticated user');
             }
+            
+            // ✅ Consolidate any legacy keys
+            migrateLegacyDiveLogKeys(newUserId);
             
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
@@ -366,28 +403,8 @@ export default function Embed() {
             if (migrationSuccess) {
               console.log('🔄 Successfully migrated temporary user data to authenticated user (direct)');
             }
-            
-            setUserId(event.data.userId);
-            localStorage.setItem("kovalUser", event.data.userId);
-            
-            if (event.data.profile) {
-              const directProfile = {
-                nickname: event.data.profile.displayName || event.data.profile.nickname || 'User',
-                displayName: event.data.profile.displayName || event.data.profile.nickname || 'User',
-                loginEmail: event.data.profile.loginEmail || '',
-                source: 'direct-auth',
-                ...event.data.profile
-              };
-              
-              setProfile(directProfile);
-              localStorage.setItem("kovalProfile", JSON.stringify(directProfile));
-              console.log('✅ Direct profile updated:', directProfile);
-            }
-            
-            if (event.data.diveLogs) {
-              setDiveLogs(event.data.diveLogs);
-              localStorage.setItem("koval_ai_logs", JSON.stringify(event.data.diveLogs));
-            }
+            // ✅ Consolidate any legacy keys
+            migrateLegacyDiveLogKeys(event.data.userId);
           } else {
             console.log('⚠️ Invalid userId in KOVAL_USER_AUTH - waiting for valid user data');
           }
@@ -414,6 +431,8 @@ export default function Embed() {
           if (migrationSuccess) {
             console.log('🔄 Successfully migrated temporary user data to authenticated user (global)');
           }
+          // ✅ Consolidate any legacy keys
+          migrateLegacyDiveLogKeys(globalUserData.userId);
           
           setUserId(globalUserData.userId);
           localStorage.setItem("kovalUser", globalUserData.userId);
@@ -649,24 +668,30 @@ export default function Embed() {
       userIdType: typeof userId
     });
     
+    // Always attempt migration before loading
+    if (userId) migrateLegacyDiveLogKeys(userId);
+    
     if (!userId || userId.startsWith('guest-')) {
       console.log('⚠️ Guest or no userId - loading from localStorage only');
-      const key = storageKey(userId || 'guest');
-      const localLogs = safeParse(key, []);
-      setDiveLogs(localLogs);
-      console.log(`📱 Loaded ${localLogs.length} local dive logs for guest user`);
+      const localLogs = safeParse(storageKey(userId || 'guest'), []);
+      // Also merge any legacy guest keys
+      const legacyGuestLogs = legacyKeysFor(userId || 'guest')
+        .filter(k => k !== storageKey(userId || 'guest'))
+        .map(k => safeParse(k, []))
+        .reduce((acc, arr) => mergeArraysUnique(acc, arr), []);
+      const combinedGuest = mergeArraysUnique(localLogs, legacyGuestLogs);
+      setDiveLogs(combinedGuest);
+      console.log(`📱 Loaded ${combinedGuest.length} local dive logs for guest user`);
       setLoadingDiveLogs(false);
       return;
     }
     
     setLoadingDiveLogs(true);
     try {
-      // Load from localStorage first for immediate display
-      const key = storageKey(userId);
-      console.log('📂 localStorage key:', key);
-      const localLogs = safeParse(key, []);
+      // Load from localStorage first for immediate display (after migration)
+      const localLogs = safeParse(storageKey(userId), []);
       setDiveLogs(localLogs);
-      console.log(`📱 Loaded ${localLogs.length} local dive logs`);
+      console.log(`📱 Loaded ${localLogs.length} local dive logs (post-migration)`);
 
       // ✅ Try enhanced dive logs bridge API
       try {

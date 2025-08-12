@@ -86,42 +86,85 @@ export function upgradeTemporaryUserToAuthenticated(authenticatedUserId: string)
   });
   
   try {
-    // Migrate dive logs
-    const tempDiveLogs = localStorage.getItem(`diveLogs_${tempUserId}`);
-    if (tempDiveLogs) {
-      const existingLogs = localStorage.getItem(`diveLogs_${authenticatedUserId}`);
-      if (existingLogs) {
-        // Merge with existing logs
-        const tempLogsArray = JSON.parse(tempDiveLogs);
-        const existingLogsArray = JSON.parse(existingLogs);
-        const mergedLogs = [...existingLogsArray, ...tempLogsArray];
-        localStorage.setItem(`diveLogs_${authenticatedUserId}`, JSON.stringify(mergedLogs));
-      } else {
-        // Move temp logs to authenticated user
-        localStorage.setItem(`diveLogs_${authenticatedUserId}`, tempDiveLogs);
+    // Helper to merge arrays uniquely by a key heuristic
+    const mergeLogs = (a: any[], b: any[]) => {
+      const map: Record<string,string> = {};
+      const out: any[] = [];
+      [...a, ...b].forEach(l => {
+        const key = l.id || l._id || l.localId || `${l.date || ''}-${l.reachedDepth || ''}-${l.timestamp || ''}`;
+        if (!map[key]) { map[key] = '1'; out.push(l); }
+      });
+      return out;
+    };
+
+    // Legacy key patterns
+    const legacyPatternsTemp = [
+      `diveLogs_${tempUserId}`,      // original underscore
+      `diveLogs-${tempUserId}`,      // hyphen variant
+      `savedDiveLogs_${tempUserId}`  // savedDiveLogs variant
+    ];
+    const legacyPatternsAuth = [
+      `diveLogs_${authenticatedUserId}`,
+      `diveLogs-${authenticatedUserId}`,
+      `savedDiveLogs_${authenticatedUserId}`
+    ];
+
+    // Collect temp logs from all patterns
+    let collectedTemp: any[] = [];
+    legacyPatternsTemp.forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        try {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length) {
+            console.log(`📦 Found ${arr.length} temp dive logs in key ${k}`);
+            collectedTemp = mergeLogs(collectedTemp, arr);
+          }
+        } catch {}
+        // Remove legacy key after processing
+        localStorage.removeItem(k);
       }
-      localStorage.removeItem(`diveLogs_${tempUserId}`);
-      console.log('✅ Migrated dive logs from temporary to authenticated user');
+    });
+
+    if (collectedTemp.length) {
+      // Get existing authenticated logs from any legacy pattern
+      let existingAuth: any[] = [];
+      legacyPatternsAuth.forEach(k => {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr) && arr.length) {
+              console.log(`📦 Found ${arr.length} existing auth dive logs in key ${k}`);
+              existingAuth = mergeLogs(existingAuth, arr);
+            }
+          } catch {}
+          // Clean up legacy key (we'll re-write canonical)
+          localStorage.removeItem(k);
+        }
+      });
+
+      const merged = mergeLogs(existingAuth, collectedTemp);
+      localStorage.setItem(`diveLogs_${authenticatedUserId}`, JSON.stringify(merged));
+      console.log(`✅ Migrated ${collectedTemp.length} dive logs (total after merge: ${merged.length}) to canonical key diveLogs_${authenticatedUserId}`);
     }
-    
-    // Migrate memories
+
+    // Migrate memories (keep original logic) ---------------------------------
     const tempMemories = localStorage.getItem(`memories_${tempUserId}`);
     if (tempMemories) {
       const existingMemories = localStorage.getItem(`memories_${authenticatedUserId}`);
       if (existingMemories) {
-        // Merge with existing memories
         const tempMemoriesArray = JSON.parse(tempMemories);
         const existingMemoriesArray = JSON.parse(existingMemories);
         const mergedMemories = [...existingMemoriesArray, ...tempMemoriesArray];
         localStorage.setItem(`memories_${authenticatedUserId}`, JSON.stringify(mergedMemories));
       } else {
-        // Move temp memories to authenticated user
         localStorage.setItem(`memories_${authenticatedUserId}`, tempMemories);
       }
       localStorage.removeItem(`memories_${tempUserId}`);
       console.log('✅ Migrated memories from temporary to authenticated user');
     }
-    
+
     // Update user ID storage
     localStorage.setItem('koval-ai-persistent-user-id', authenticatedUserId);
     sessionStorage.setItem('koval-ai-user-id', authenticatedUserId);
