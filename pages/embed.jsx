@@ -165,9 +165,9 @@ export default function Embed() {
           }
         } else {
           console.log('⏳ Embed: No valid stored userId, waiting for authentication...');
-          // Start authentication timeout (30 seconds for embed to allow bridge calls)
+          // Start authentication timeout (10 seconds for faster fallback)
           const timeout = setTimeout(() => {
-            console.warn('⚠️ Embed: Authentication timeout reached after 30 seconds');
+            console.warn('⚠️ Embed: Authentication timeout reached after 10 seconds');
             setAuthTimeoutReached(true);
             setIsAuthenticating(false);
             
@@ -178,9 +178,23 @@ export default function Embed() {
               setUserId(null); // Keep null - no guest users on paid platform
             } else {
               console.log('🔄 Creating guest user for open platform');
-              setUserId(`guest-${Date.now()}`); // Fallback only for non-members platforms
+              const guestId = `guest-${Date.now()}`;
+              setUserId(guestId); // Fallback only for non-members platforms
+              
+              // Set a basic guest profile
+              const guestProfile = {
+                nickname: 'Guest User',
+                displayName: 'Guest User',
+                loginEmail: '',
+                source: 'embed-fallback',
+                isGuest: true
+              };
+              setProfile(guestProfile);
+              localStorage.setItem("kovalUser", guestId);
+              localStorage.setItem("kovalProfile", JSON.stringify(guestProfile));
+              console.log('✅ Created fallback guest user:', guestId);
             }
-          }, 30000); // Increased to 30 seconds to allow bridge calls
+          }, 10000); // Reduced to 10 seconds for faster fallback
         
         return () => clearTimeout(timeout);
       }
@@ -219,12 +233,24 @@ export default function Embed() {
       }
 
       // Notify parent that we're ready
+      console.log('📡 Sending EMBED_READY message to parent...');
       window.parent?.postMessage({ 
         type: 'EMBED_READY', 
         source: 'koval-ai-embed',
         timestamp: Date.now(),
         membersOnly: isMembersOnly
       }, "*");
+      
+      // ✅ Also try direct window communication as fallback
+      if (window.parent !== window) {
+        console.log('📡 Also trying window.top communication...');
+        window.top?.postMessage({ 
+          type: 'EMBED_READY', 
+          source: 'koval-ai-embed',
+          timestamp: Date.now(),
+          membersOnly: isMembersOnly
+        }, "*");
+      }
       
       // Apply theme from URL
       if (theme === 'dark') {
@@ -244,25 +270,30 @@ export default function Embed() {
   // ✅ MESSAGE HANDLING FOR EMBEDDED MODE
   useEffect(() => {
     const handleParentMessages = (event) => {
-      console.log('📨 Embed received message:', event.data);
+      console.log('📨 Embed received message from origin:', event.origin, 'data:', event.data);
       
-      // Security check
+      // ✅ More permissive origin check for Wix sites
       const allowedOrigins = [
         'https://kovaldeepai-main.vercel.app',
         'http://localhost:3000',
         'https://www.wix.com',
         'https://static.wixstatic.com',
         'https://editor.wix.com',
-        'https://www.deepfreediving.com' // ✅ Added production domain
+        'https://www.deepfreediving.com',
+        'https://deepfreediving.com' // ✅ Added without www
       ];
       
-      if (event.origin && !allowedOrigins.some(origin => 
-        event.origin.includes('wix') || 
+      // ✅ More permissive origin check for Wix sites
+      const isAllowedOrigin = !event.origin || 
+        allowedOrigins.some(origin => event.origin === origin) ||
+        event.origin.includes('wix.com') ||
+        event.origin.includes('wixsite.com') ||
+        event.origin.includes('deepfreediving.com') ||
         event.origin === 'https://kovaldeepai-main.vercel.app' ||
-        event.origin === 'http://localhost:3000' ||
-        event.origin.endsWith('deepfreediving.com') // ✅ Allow custom domain / subdomains
-      )) {
-        console.log('🚫 Ignoring message from untrusted origin:', event.origin);
+        event.origin === 'http://localhost:3000';
+      
+      if (!isAllowedOrigin) {
+        console.log('🚫 Blocking message from origin:', event.origin);
         return;
       }
       

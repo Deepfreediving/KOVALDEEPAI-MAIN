@@ -744,22 +744,6 @@ $w.onReady(async function () {
         showFallbackMessage("AI widget not found. Please check the page configuration or contact support.");
         return;
     }
-    // NEW: Immediately send guest placeholder so iframe can initialize while auth loads
-    try {
-        const guestInitial = getGuestUserData();
-        // Set stable temporary id (do not regenerate twice in same tick)
-        window.wixUserId = guestInitial.userId;
-        window.wixUserName = guestInitial.profile.displayName;
-        const guestEmbedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${guestInitial.userId}&userName=${encodeURIComponent(guestInitial.profile.displayName)}&embedded=true&guest=1&v=${Date.now()}`;
-        aiWidget.src = guestEmbedUrl;
-        // Primary message
-        try { aiWidget.contentWindow && aiWidget.contentWindow.postMessage({ type: 'USER_AUTH', data: guestInitial, provisional: true }, '*'); } catch(e) {}
-        // Alias for legacy listeners
-        try { window.postMessage({ type: 'KOVAL_USER_AUTH', userId: guestInitial.userId, profile: guestInitial.profile, provisional: true }, '*'); } catch(e) {}
-        console.log('📤 Sent provisional guest auth to widget');
-    } catch (e) {
-        console.warn('⚠️ Could not send provisional guest data:', e.message);
-    }
 
     // ===== LOAD USER DATA WITH PROPER ERROR HANDLING =====
     let userData = null;
@@ -838,6 +822,17 @@ $w.onReady(async function () {
             const embedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${userData.userId}&userName=${encodeURIComponent(userData.profile?.displayName || 'User')}&embedded=true&v=${Date.now()}`;
             aiWidget.src = embedUrl;
             console.log("🔗 Widget src updated for user:", userData.userId);
+        } else {
+            // Fallback for guest users
+            const guestData = getGuestUserData();
+            const embedUrl = `https://kovaldeepai-main.vercel.app/embed?theme=light&userId=${guestData.userId}&userName=${encodeURIComponent(guestData.profile.displayName)}&embedded=true&v=${Date.now()}`;
+            aiWidget.src = embedUrl;
+            console.log("🔗 Widget src updated for guest user:", guestData.userId);
+            
+            // Set global variables for guest access
+            window.wixUserId = guestData.userId;
+            window.wixUserName = guestData.profile.displayName;
+            userData = guestData; // Use guest data for the rest of the setup
         }
 
         // Send user data via multiple methods with delays
@@ -1961,18 +1956,14 @@ async function handleDiveLogSave(diveLogData) {
             console.warn('⚠️ Cannot save dive log - user not logged in');
             return;
         }
-        // NORMALIZE fields for backend expectations
-        const normalized = { ...diveLogData };
-        if (normalized.depth && !normalized.reachedDepth) normalized.reachedDepth = normalized.depth;
-        if (normalized.diveDate && !normalized.date) normalized.date = normalized.diveDate;
-        if (normalized.date && !normalized.diveDate) normalized.diveDate = normalized.date;
+        
         try {
             const response = await fetch('/_functions/userMemory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser.id,
-                    diveLogData: normalized,
+                    diveLogData: diveLogData,
                     type: 'dive_log'
                 })
             });
