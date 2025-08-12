@@ -82,5 +82,26 @@
     "threadId": "thread_wUXAVAz92yM6AGwZVMBA0yeW",
     "coachingReport": "Your maximum depth was **30m**. Your average descent rate was **-8.33 m/s**, indicating a consistent pace. There were 1 slow segments, suggesting possible hangs or buoyancy pauses. Keep practicing equalization and streamlining for smoother dives.",
     "timestamp": "2025-08-10T09:41:26.681Z"
+  },
+  {
+    "date": "2024-08-09",
+    "disciplineType": "Constant Weight No Fins",
+    "discipline": "CNF",
+    "location": "Test Pool",
+    "targetDepth": 30,
+    "reachedDepth": 25,
+    "mouthfillDepth": 0,
+    "issueDepth": 0,
+    "issueComment": "",
+    "durationOrDistance": "",
+    "totalDiveTime": "",
+    "attemptType": "",
+    "exit": "",
+    "surfaceProtocol": "",
+    "squeeze": false,
+    "notes": "Testing Wix UserMemory backend",
+    "threadId": "thread_qLgCS53GWrv0Tv4eOnBsf3wd",
+    "coachingReport": "Your maximum depth was **30m**. Your average descent rate was **-8.33 m/s**, indicating a consistent pace. There were 1 slow segments, suggesting possible hangs or buoyancy pauses. Keep practicing equalization and streamlining for smoother dives.",
+    "timestamp": "2025-08-12T01:06:25.519Z"
   }
 ]

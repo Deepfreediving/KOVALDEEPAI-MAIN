@@ -5,7 +5,7 @@
  * ✅ Collection and Database Configuration
  */
 export const COLLECTIONS = {
-    USER_MEMORY: "@deepfreediving/kovaldeepai-app/Import1",
+    DIVE_LOGS: "DiveLogs",  // ✅ Page collection for dive logs, user memory, and chat data
     REGISTRATIONS: "KovalAIRegistrations", 
     MEMBERS: "Members/FullData"  // ✅ Updated to use FullData collection with complete member records
 };
@@ -84,12 +84,12 @@ export const DEFAULT_USER_PROFILE = {
 };
 
 /**
- * ✅ Memory Types
+ * ✅ Data Types for DiveLogs Collection
  */
-export const MEMORY_TYPES = {
+export const DATA_TYPES = {
     DIVE_LOG: 'dive_log',
-    CHAT_MESSAGE: 'chat_message',
-    USER_PROFILE: 'user_profile',
+    CHAT_MEMORY: 'chat_memory',
+    USER_SUMMARY: 'user_summary',
     COACHING_REPORT: 'coaching_report',
     SYSTEM_NOTE: 'system_note'
 };
