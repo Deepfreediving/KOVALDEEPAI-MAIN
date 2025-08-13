@@ -61,6 +61,7 @@ export default function Embed() {
   });
   const [sessionStatus, setSessionStatus] = useState("Ready");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
 
   const bottomRef = useRef(null);
 
@@ -1101,6 +1102,7 @@ export default function Embed() {
               setFiles={setFiles}
               loading={loading}
               isAuthenticating={isAuthenticating}
+              authTimeoutReached={authTimeoutReached}
               darkMode={darkMode}
             />
           </div>
