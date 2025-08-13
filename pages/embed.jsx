@@ -30,7 +30,7 @@ export default function Embed() {
   // Always assume we're in embedded mode for this page
   const [isEmbedded, setIsEmbedded] = useState(true);
 
-  // ✅ CORE STATE (Combined from both versions)
+  // ===== CORE STATE (Simplified - No Authentication Blocking) =====
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
   const [editingSessionName, setEditingSessionName] = useState(false);
@@ -59,14 +59,21 @@ export default function Embed() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
-  
-  // ✅ NEW: Authentication state to prevent early interactions
-  const [isAuthenticating, setIsAuthenticating] = useState(true);
-  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
 
   const bottomRef = useRef(null);
 
   // ✅ HELPERS
+  const safeParse = (key, defaultValue) => {
+    try {
+      if (typeof window === 'undefined') return defaultValue;
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+      console.warn(`⚠️ Failed to parse localStorage key "${key}":`, error);
+      return defaultValue;
+    }
+  };
+  
   const storageKey = (uid) => `diveLogs_${uid}`; // ✅ Canonical key (underscore)
   const legacyKeysFor = (uid) => [
     `diveLogs-${uid}`,          // hyphen legacy
@@ -105,34 +112,22 @@ export default function Embed() {
   };
 
   const getDisplayName = useCallback(() => {
-    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId, 'isAuthenticating:', isAuthenticating);
-    
-    // ✅ Show loading state while authenticating
-    if (isAuthenticating) {
-      return "Loading...";
-    }
+    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId);
     
     // ✅ PRIORITY: Use member ID format for consistent, fast recognition
-    if (userId && !userId.startsWith('guest')) {
+    if (userId && !userId.startsWith('guest') && !userId.startsWith('session')) {
       console.log(`✅ Using member ID format: User-${userId}`);
       return `User-${userId}`;
     }
     
-    // Fallback for guest users (only after timeout)
-    if (userId?.startsWith('guest') && authTimeoutReached) {
-      console.log('🔄 Using guest fallback after timeout');
-      return "Guest User";
+    // Use profile nickname if available
+    if (profile?.nickname) {
+      return profile.nickname;
     }
     
-    // Still waiting for authentication
-    if (userId?.startsWith('guest') && !authTimeoutReached) {
-      return "Loading...";
-    }
-    
-    // Final fallback
-    console.log('🔄 Using final fallback: User');
+    // Fallback
     return "User";
-  }, [profile, userId, isAuthenticating, authTimeoutReached]);
+  }, [profile, userId]);
 
   const getProfilePhoto = useCallback(() => {
     // Return profile photo URL if available
@@ -145,112 +140,47 @@ export default function Embed() {
     return null;
   }, [profile]);
 
-  // ✅ MINIMAL INITIALIZATION - Only load sessions, wait for auth from parent
+  // ===== SIMPLIFIED INITIALIZATION - ALWAYS WORKS =====
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setSessionsList(safeParse("kovalSessionsList", []));
-      setThreadId(localStorage.getItem("kovalThreadId") || null);        // ✅ Check if we have a valid stored userId first
-        const storedUserId = localStorage.getItem("kovalUser");
-        if (storedUserId && !storedUserId.startsWith('guest-')) {
-          console.log('✅ Embed: Found valid stored userId:', storedUserId);
-          setUserId(storedUserId);
-          // Run migration for existing user
-          migrateLegacyDiveLogKeys(storedUserId);
-          setIsAuthenticating(false); // We have a valid user, stop waiting
-          
-          // Try to load stored profile too
-          const storedProfile = safeParse("kovalProfile", {});
-          if (storedProfile && storedProfile.source) {
-            setProfile(storedProfile);
-          }
-        } else {
-          console.log('⏳ Embed: No valid stored userId, waiting for authentication...');
-          // Start authentication timeout (10 seconds for faster fallback)
-          const timeout = setTimeout(() => {
-            console.warn('⚠️ Embed: Authentication timeout reached after 10 seconds');
-            setAuthTimeoutReached(true);
-            setIsAuthenticating(false);
-            
-            // ✅ CRITICAL: Check if this is a members-only platform
-            const isMembersOnly = window.membersOnlyPlatform || window.requiresAuthentication;
-            if (isMembersOnly) {
-              console.log('🔒 MEMBERS-ONLY: No guest access allowed, keeping userId null');
-              setUserId(null); // Keep null - no guest users on paid platform
-            } else {
-              console.log('🔄 Creating guest user for open platform');
-              const guestId = `guest-${Date.now()}`;
-              setUserId(guestId); // Fallback only for non-members platforms
-              
-              // Set a basic guest profile
-              const guestProfile = {
-                nickname: 'Guest User',
-                displayName: 'Guest User',
-                loginEmail: '',
-                source: 'embed-fallback',
-                isGuest: true
-              };
-              setProfile(guestProfile);
-              localStorage.setItem("kovalUser", guestId);
-              localStorage.setItem("kovalProfile", JSON.stringify(guestProfile));
-              console.log('✅ Created fallback guest user:', guestId);
-            }
-          }, 10000); // Reduced to 10 seconds for faster fallback
+      setThreadId(localStorage.getItem("kovalThreadId") || null);
+      
+      // Check if we have a stored userId
+      const storedUserId = localStorage.getItem("kovalUser");
+      if (storedUserId && !storedUserId.startsWith('guest-') && !storedUserId.startsWith('session-')) {
+        console.log('✅ Embed: Found valid stored userId:', storedUserId);
+        setUserId(storedUserId);
+        migrateLegacyDiveLogKeys(storedUserId);
         
-        return () => clearTimeout(timeout);
+        const storedProfile = safeParse("kovalProfile", {});
+        if (storedProfile && storedProfile.source) {
+          setProfile(storedProfile);
+        }
+      } else {
+        console.log('ℹ️ Embed: No valid stored userId, will wait for parent data');
+        // Create a session user for now
+        const sessionId = `session-${Date.now()}`;
+        setUserId(sessionId);
+        console.log('✅ Created session user:', sessionId);
       }
     }
   }, []);
 
-  // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
+  // ===== URL PARAMETER HANDLING FOR EMBEDDED MODE =====
   useEffect(() => {
     if (router.isReady) {
-      const { 
-        theme, 
-        userId: urlUserId, 
-        nickname, 
-        embedded, 
-        membersOnly, 
-        requiresAuth 
-      } = router.query;
+      const { theme, userId: urlUserId, nickname, embedded } = router.query;
 
-      console.log('🎯 Embed page - URL parameters:', { 
-        theme, 
-        userId: urlUserId, 
-        nickname, 
-        embedded, 
-        membersOnly, 
-        requiresAuth 
-      });
-
-      // ✅ CRITICAL: Check if this is a members-only platform
-      const isMembersOnly = membersOnly === 'true' || requiresAuth === 'true';
-      
-      if (isMembersOnly) {
-        console.log('🔒 MEMBERS-ONLY PLATFORM: No guest users allowed');
-        // Set a flag to prevent guest user creation
-        window.membersOnlyPlatform = true;
-        window.requiresAuthentication = true;
-      }
+      console.log('🎯 Embed page - URL parameters:', { theme, userId: urlUserId, nickname, embedded });
 
       // Notify parent that we're ready
       console.log('📡 Sending EMBED_READY message to parent...');
       window.parent?.postMessage({ 
         type: 'EMBED_READY', 
         source: 'koval-ai-embed',
-        timestamp: Date.now(),
-        membersOnly: isMembersOnly
+        timestamp: Date.now()
       }, "*");
-      
-      // ✅ Also try direct window communication as fallback
-      if (window.parent !== window) {
-        console.log('📡 Also trying window.top communication...');
-        window.top?.postMessage({ 
-          type: 'EMBED_READY', 
-          source: 'koval-ai-embed',
-          timestamp: Date.now(),
-          membersOnly: isMembersOnly
-        }, "*");
-      }
       
       // Apply theme from URL
       if (theme === 'dark') {
@@ -259,11 +189,7 @@ export default function Embed() {
         setDarkMode(false);
       }
       
-      // ✅ REMOVED: No URL parameter fallback - always wait for proper USER_AUTH message
-      // This ensures we always get the correct nickname from Members/FullData instead of URL params
-      console.log('✅ Embed URL parameters processed, waiting for USER_AUTH message from parent...');
-
-      console.log('✅ Embed URL parameters processed:', { theme, userId: urlUserId, nickname });
+      console.log('✅ Embed URL parameters processed, ready for data from parent...');
     }
   }, [router.isReady, router.query]);
 
@@ -303,32 +229,19 @@ export default function Embed() {
           
           if (event.data.data?.user?.id) {
             const newUserId = String(event.data.data.user.id);
+            console.log('✅ Received user ID from widget initialization:', newUserId);
             
-            // Validate userId is real - no fallback to guest users
-            if (!newUserId || newUserId === 'undefined' || newUserId === 'null' || newUserId.startsWith('guest-')) {
-              console.warn('⚠️ Invalid or guest userId received, waiting for real user authentication');
-              console.warn('⚠️ Received userId:', newUserId);
-              return; // Don't set invalid user data
-            }
-            
-            // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+            // Upgrade and migrate data
             const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
             if (migrationSuccess) {
-              console.log('🔄 Successfully migrated temporary user data to authenticated user (initialized)');
+              console.log('🔄 Successfully migrated temporary user data');
             }
-            // ✅ Consolidate any legacy keys for this authenticated user
             migrateLegacyDiveLogKeys(newUserId);
             
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
-            console.log('✅ UserId set from initialized message:', newUserId);
             
-            // ✅ AUTHENTICATION COMPLETE - Enable interactions
-            setIsAuthenticating(false);
-            setAuthTimeoutReached(false);
-            console.log('🎉 Authentication complete via initialized message! Chat and AI features now enabled.');
-            
-            // Extract profile data from the initialized message
+            // Extract profile data
             if (event.data.data.user.profile) {
               const profile = event.data.data.user.profile;
               const initProfile = {
@@ -338,12 +251,10 @@ export default function Embed() {
                 firstName: profile.firstName || '',
                 lastName: profile.lastName || '',
                 profilePicture: profile.profilePhoto || '',
-                about: profile.about || '',
                 source: 'wix-initialized',
                 ...profile
               };
               
-              console.log('✅ Setting profile from initialized message:', initProfile);
               setProfile(initProfile);
               localStorage.setItem("kovalProfile", JSON.stringify(initProfile));
             }
@@ -356,64 +267,38 @@ export default function Embed() {
           break;
           
         case 'USER_AUTH':
-          console.log('👤 User auth received with rich profile data:', event.data.data);
-          console.log('🔍 Current profile before update:', profile);
-          console.log('🔍 Current userId before update:', userId);
+          console.log('👤 User auth received:', event.data.data);
           
-          if (event.data.data?.userId && !event.data.data.userId.startsWith('guest-')) {
-            console.log('✅ Setting authenticated userId:', event.data.data.userId);
+          if (event.data.data?.userId) {
             const newUserId = String(event.data.data.userId);
+            console.log('✅ Setting user ID from USER_AUTH:', newUserId);
             
-            // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+            // Upgrade and migrate data
             const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
             if (migrationSuccess) {
-              console.log('🔄 Successfully migrated temporary user data to authenticated user');
+              console.log('🔄 Successfully migrated temporary user data');
             }
-            
-            // ✅ Consolidate any legacy keys
             migrateLegacyDiveLogKeys(newUserId);
             
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
-            console.log('✅ UserId set successfully:', newUserId);
-            
-            // ✅ AUTHENTICATION COMPLETE - Enable interactions
-            setIsAuthenticating(false);
-            setAuthTimeoutReached(false);
-            console.log('🎉 Authentication complete via USER_AUTH! Chat and AI features now enabled.');
-          } else {
-            console.warn('⚠️ Received invalid or guest userId via USER_AUTH, continuing to wait for authentication');
           }
           
-          // Update profile with rich Wix Collections/Members data
+          // Update profile with data from parent
           if (event.data.data?.userName || event.data.data?.userEmail) {
             const richProfile = {
-              nickname: event.data.data.userName || 
-                       (event.data.data.firstName && event.data.data.lastName ? 
-                        `${event.data.data.firstName} ${event.data.data.lastName}` : '') ||
-                       event.data.data.userEmail || 'User',
-              displayName: event.data.data.userName || 
-                          (event.data.data.firstName && event.data.data.lastName ? 
-                           `${event.data.data.firstName} ${event.data.data.lastName}` : '') ||
-                          event.data.data.userEmail || 'User',
+              nickname: event.data.data.userName || event.data.data.userEmail || 'User',
+              displayName: event.data.data.userName || event.data.data.userEmail || 'User',
               loginEmail: event.data.data.userEmail || '',
               firstName: event.data.data.firstName || '',
               lastName: event.data.data.lastName || '',
               profilePicture: event.data.data.profilePicture || '',
-              phone: event.data.data.phone || '',
-              bio: event.data.data.bio || '',
-              location: event.data.data.location || '',
               source: event.data.data.source || 'wix-collections',
-              customFields: event.data.data.customFields || {},
-              isGuest: event.data.data.isGuest || false
+              isWixMember: event.data.data.isWixMember || false
             };
             
-            console.log('✅ Setting rich profile to:', richProfile);
             setProfile(richProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
-            console.log('✅ Rich profile updated with Members/FullData:', richProfile);
-          } else {
-            console.log('⚠️ No userName or userEmail in USER_AUTH data - waiting for valid user data');
           }
           
           if (event.data.data?.diveLogs) {
@@ -448,30 +333,24 @@ export default function Embed() {
     return () => window.removeEventListener('message', handleParentMessages);
   }, []);
 
-  // ✅ CHECK FOR GLOBAL USER DATA (Alternative method) - Enhanced with Authentication State
+  // ✅ CHECK FOR GLOBAL USER DATA (Alternative method) - Simplified
   useEffect(() => {
     const checkGlobalUserData = () => {
       try {
         // Check if parent window has global user data
         const globalUserData = window.parent?.KOVAL_USER_DATA;
-        if (globalUserData && globalUserData.userId && !globalUserData.userId.startsWith('guest-')) {
+        if (globalUserData && globalUserData.userId) {
           console.log('🌍 Found global user data:', globalUserData);
           
-          // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
+          // Upgrade and migrate data
           const migrationSuccess = upgradeTemporaryUserToAuthenticated(globalUserData.userId);
           if (migrationSuccess) {
-            console.log('🔄 Successfully migrated temporary user data to authenticated user (global)');
+            console.log('🔄 Successfully migrated temporary user data from global');
           }
-          // ✅ Consolidate any legacy keys
           migrateLegacyDiveLogKeys(globalUserData.userId);
           
           setUserId(globalUserData.userId);
           localStorage.setItem("kovalUser", globalUserData.userId);
-          
-          // ✅ AUTHENTICATION COMPLETE - Enable interactions  
-          setIsAuthenticating(false);
-          setAuthTimeoutReached(false);
-          console.log('🎉 Authentication complete via global data! Chat and AI features now enabled.');
           
           if (globalUserData.profile) {
             const globalProfile = {
@@ -484,7 +363,6 @@ export default function Embed() {
             
             setProfile(globalProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(globalProfile));
-            console.log('✅ Global profile updated:', globalProfile);
           }
           
           if (globalUserData.userDiveLogs) {
@@ -492,34 +370,30 @@ export default function Embed() {
             localStorage.setItem("koval_ai_logs", JSON.stringify(globalUserData.userDiveLogs));
           }
           
-          return true; // Authentication found
-        } else if (globalUserData && globalUserData.userId && globalUserData.userId.startsWith('guest-')) {
-          console.log('⚠️ Found guest user data in global - waiting for real user authentication');
+          return true; // User data found
         }
       } catch (error) {
-        console.warn('⚠️ Could not access global user data:', error);
+        console.log('ℹ️ Could not access global user data:', error.message);
       }
-      return false; // No authentication found
+      return false; // No user data found
     };
     
-    // Check immediately and then periodically until authentication is found
-    if (isAuthenticating) {
-      const found = checkGlobalUserData();
-      if (!found) {
-        const interval = setInterval(() => {
-          const found = checkGlobalUserData();
-          if (found) {
-            clearInterval(interval);
-          }
-        }, 1000); // Check every second
-        
-        // Clean up interval after 20 seconds
-        setTimeout(() => clearInterval(interval), 20000);
-        
-        return () => clearInterval(interval);
-      }
+    // Check immediately and then periodically
+    const found = checkGlobalUserData();
+    if (!found) {
+      const interval = setInterval(() => {
+        const found = checkGlobalUserData();
+        if (found) {
+          clearInterval(interval);
+        }
+      }, 1000);
+      
+      // Stop checking after 10 seconds
+      setTimeout(() => clearInterval(interval), 10000);
+      
+      return () => clearInterval(interval);
     }
-  }, [isAuthenticating]);
+  }, []);
 
   // ✅ THEME SYNC
   useEffect(() => {
@@ -566,27 +440,10 @@ export default function Embed() {
     return () => { isMounted = false; };
   }, []);
 
-  // ✅ ENHANCED CHAT SUBMISSION with Bridge API Integration and Authentication Gating
+  // ✅ SIMPLIFIED CHAT SUBMISSION - ALWAYS WORKS
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
-
-    // ✅ PREVENT CHAT UNTIL AUTHENTICATED (unless timeout reached)
-    if (isAuthenticating) {
-      console.log('⏳ Embed: Still authenticating, chat disabled');
-      return;
-    }
-
-    // ✅ WARN IF USING GUEST ID
-    if (userId.startsWith('guest-') && !authTimeoutReached) {
-      console.warn('⚠️ Embed: Attempting to chat with guest ID, this should not happen');
-      const errorMessage = {
-        role: "assistant", 
-        content: "⏳ Please wait while we verify your authentication. You'll be able to chat in just a moment."
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      return;
-    }
 
     const userMessage = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -594,16 +451,13 @@ export default function Embed() {
     setLoading(true);
 
     try {
-      console.log("🚀 Sending message to enhanced chat bridge API with userId:", userId);
+      console.log("🚀 Sending message to chat API with userId:", userId);
       console.log("📊 Chat context:", {
         userId,
         profileSource: profile?.source,
         diveLogsCount: diveLogs?.length || 0,
         embedMode: true
       });
-      console.log("📝 Dive logs being sent:", diveLogs?.slice(0, 2)); // Show first 2 logs
-
-      // ✅ Use enhanced chat bridge with dive logs context
       const response = await fetch(API_ROUTES.CHAT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -675,7 +529,7 @@ export default function Embed() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, userId, profile, diveLogs, messages, isAuthenticating, authTimeoutReached]);
+  }, [input, loading, userId, profile, diveLogs, messages]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -695,83 +549,43 @@ export default function Embed() {
     console.log('📊 Current userId:', userId);
     console.log('📊 UserId validation:', {
       hasUserId: !!userId,
-      isGuest: userId?.startsWith('guest-'),
       userIdType: typeof userId
     });
     
     // Always attempt migration before loading
     if (userId) migrateLegacyDiveLogKeys(userId);
     
-    if (!userId || userId.startsWith('guest-')) {
-      console.log('⚠️ Guest or no userId - loading from localStorage only');
-      const localLogs = safeParse(storageKey(userId || 'guest'), []);
-      // Also merge any legacy guest keys
-      const legacyGuestLogs = legacyKeysFor(userId || 'guest')
-        .filter(k => k !== storageKey(userId || 'guest'))
-        .map(k => safeParse(k, []))
-        .reduce((acc, arr) => mergeArraysUnique(acc, arr), []);
-      const combinedGuest = mergeArraysUnique(localLogs, legacyGuestLogs);
-      setDiveLogs(combinedGuest);
-      console.log(`📱 Loaded ${combinedGuest.length} local dive logs for guest user`);
-      setLoadingDiveLogs(false);
-      return;
-    }
-    
     setLoadingDiveLogs(true);
+    
     try {
       // Load from localStorage first for immediate display (after migration)
-      const localLogs = safeParse(storageKey(userId), []);
+      const localLogs = safeParse(storageKey(userId || 'session'), []);
       setDiveLogs(localLogs);
-      console.log(`📱 Loaded ${localLogs.length} local dive logs (post-migration)`);
+      console.log(`📱 Loaded ${localLogs.length} local dive logs`);
 
-      // ✅ Try enhanced dive logs bridge API
-      try {
-        console.log('📡 Attempting to fetch from bridge API...');
-        const response = await fetch(API_ROUTES.GET_DIVE_LOGS, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            limit: 50,
-            includeAnalysis: true
-          })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          const remoteLogs = data.diveLogs || [];
+      // Only try API if we have a real Wix user ID
+      if (userId && !userId.startsWith('session-') && !userId.startsWith('guest-')) {
+        // ✅ Try enhanced dive logs bridge API
+        try {
+          console.log('📡 Attempting to fetch from bridge API...');
+          const response = await fetch(API_ROUTES.GET_DIVE_LOGS, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              limit: 50,
+              includeAnalysis: true
+            })
+          });
           
-          console.log(`🌉 Bridge API loaded ${remoteLogs.length} dive logs from ${data.source}`);
-          
-          // Merge local and remote logs (remove duplicates)
-          const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
-            const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
-            return { ...map, [key]: log };
-          }, {});
-          
-          const combined = Object.values(merged).sort((a, b) => 
-            new Date(b.date) - new Date(a.date)
-          );
-          
-          setDiveLogs(combined);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(storageKey(userId), JSON.stringify(combined));
-          }
-          
-          console.log(`✅ Total dive logs after merge: ${combined.length}`);
-        } else {
-          console.warn(`⚠️ Bridge API failed (${response.status}), trying fallback...`);
-          
-          // ✅ Fallback to direct API
-          const fallbackResponse = await fetch(`${API_ROUTES.GET_DIVE_LOGS_FALLBACK}?userId=${userId}`);
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json();
-            const fallbackLogs = fallbackData.logs || [];
+          if (response.ok) {
+            const data = await response.json();
+            const remoteLogs = data.diveLogs || [];
             
-            console.log(`📱 Fallback API loaded ${fallbackLogs.length} dive logs`);
+            console.log(`🌉 Bridge API loaded ${remoteLogs.length} dive logs from ${data.source}`);
             
-            // Merge with local logs
-            const merged = [...localLogs, ...fallbackLogs].reduce((map, log) => {
+            // Merge local and remote logs (remove duplicates)
+            const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
               const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
               return { ...map, [key]: log };
             }, {});
@@ -784,10 +598,48 @@ export default function Embed() {
             if (typeof window !== 'undefined') {
               localStorage.setItem(storageKey(userId), JSON.stringify(combined));
             }
+            
+            console.log(`✅ Total dive logs after merge: ${combined.length}`);
+          } else {
+            console.warn(`⚠️ Bridge API failed (${response.status}), trying fallback...`);
+            
+            // ✅ Fallback to direct API
+            try {
+              const fallbackResponse = await fetch(`${API_ROUTES.GET_DIVE_LOGS_FALLBACK}?userId=${userId}`);
+              if (fallbackResponse.ok) {
+                const fallbackData = await fallbackResponse.json();
+                const fallbackLogs = fallbackData.logs || [];
+                
+                console.log(`📱 Fallback API loaded ${fallbackLogs.length} dive logs`);
+                
+                // Merge with local logs
+                const merged = [...localLogs, ...fallbackLogs].reduce((map, log) => {
+                  const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
+                  return { ...map, [key]: log };
+                }, {});
+                
+                const combined = Object.values(merged).sort((a, b) => 
+                  new Date(b.date) - new Date(a.date)
+                );
+                
+                setDiveLogs(combined);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+                }
+                
+                console.log(`✅ Total dive logs after fallback merge: ${combined.length}`);
+              } else {
+                console.warn(`⚠️ Fallback API also failed (${fallbackResponse.status}), continuing with local logs`);
+              }
+            } catch (fallbackError) {
+              console.log("ℹ️ Fallback API not available, using local logs only:", fallbackError.message);
+            }
           }
+        } catch (apiError) {
+          console.log("ℹ️ API not available, using local logs only:", apiError.message);
         }
-      } catch (apiError) {
-        console.log("ℹ️ APIs not available, using local logs only:", apiError.message);
+      } else {
+        console.log('ℹ️ Session user - using local storage only');
       }
     } catch (error) {
       console.error("❌ Failed to load dive logs:", error);
@@ -1214,8 +1066,6 @@ export default function Embed() {
               setFiles={setFiles}
               loading={loading}
               darkMode={darkMode}
-              isAuthenticating={isAuthenticating}
-              authTimeoutReached={authTimeoutReached}
             />
           </div>
         </div>
