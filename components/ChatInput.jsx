@@ -10,6 +10,7 @@ export default function ChatInput({
   files,
   setFiles,
   loading,
+  isAuthenticating,
   darkMode,
 }) {
   const [error, setError] = useState("");
