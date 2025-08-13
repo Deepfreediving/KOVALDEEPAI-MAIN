@@ -974,13 +974,14 @@ export default function Embed() {
       // ✅ Additional props for connection status
       connectionStatus,
       loadingConnections,
-      setLoading
+      setLoading,
+      sessionStatus // Add session status to sidebar props
     };
   }, [
     sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
     isDiveJournalOpen, startNewSession, handleSaveSession, handleSelectSession, 
     handleJournalSubmit, handleDelete, loadDiveLogs, loadingDiveLogs, 
-    editingSessionName, connectionStatus, loadingConnections
+    editingSessionName, connectionStatus, loadingConnections, sessionStatus
   ]);
 
   return (

@@ -151,54 +151,49 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
     setAiFeedback("");
 
     try {
-      console.log('🔄 Submitting dive log to enterprise system...');
+      console.log('🔄 Submitting dive log via callback pattern...');
       
-      // ✅ Prepare data for your save-dive-log.ts API
+      // ✅ Prepare data for parent component to handle
       const diveLogData = {
         ...form,
         userId: effectiveUserId,
         timestamp: new Date().toISOString()
       };
 
-      // � Show immediate feedback
-      setAiFeedback("💾 Saving dive log locally...");
-
-      // �🚀 STEP 1: Save dive log
-      const saveLogRes = await fetch('/api/analyze/save-dive-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(diveLogData),
-      });
-
-      if (!saveLogRes.ok) {
-        const errorData = await saveLogRes.json();
-        throw new Error(errorData.message || `Save failed: ${saveLogRes.status}`);
+      // ✅ Show immediate feedback based on session status
+      if (!sessionStatus.isOnline) {
+        setAiFeedback("� Offline mode - dive log will sync when connected...");
+      } else {
+        setAiFeedback("💾 Saving dive log...");
       }
 
-      const saveLogResult = await saveLogRes.json();
-      console.log('✅ Dive log saved:', saveLogResult);
-      
-      // ✅ Show success with local storage confirmation
-      setAiFeedback("✅ Dive log saved locally! Syncing to Wix...");
-      
-      // ✅ Save to local storage as backup with user-specific key
-      const storageKey = `diveLogs_${effectiveUserId}`; // canonical key
-      const savedDiveLogs = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      savedDiveLogs.push({
-        id: saveLogResult._id || saveLogResult.data?.id,
-        ...diveLogData,
-        savedAt: new Date().toISOString(),
-        syncedToWix: saveLogResult.syncedToWix || false
-      });
-      localStorage.setItem(storageKey, JSON.stringify(savedDiveLogs));
-      console.log('💾 Dive log backed up to local storage with key:', storageKey);
-      
-      const diveLogId = saveLogResult._id || saveLogResult.data?.id;
-
-      // 📸 STEP 2: Handle image upload with OCR + AI analysis
-      if (imageFile && diveLogId) {
+      // 🚀 STEP 1: Call parent onSubmit callback for dive log save
+      let saveResult = null;
+      if (onSubmit) {
         try {
-          console.log('🔄 Processing dive profile image...');
+          saveResult = await onSubmit(diveLogData);
+          console.log('✅ Parent onSubmit callback completed:', saveResult);
+          
+          if (saveResult?.buffered) {
+            setAiFeedback("📦 Dive log buffered for sync when online!");
+          } else {
+            setAiFeedback("✅ Dive log saved successfully!");
+          }
+        } catch (callbackError) {
+          console.warn('⚠️ Parent onSubmit callback failed:', callbackError);
+          setAiFeedback(`❌ Save failed: ${callbackError.message}`);
+          return; // Don't proceed with image if save failed
+        }
+      } else {
+        console.warn('⚠️ No onSubmit callback provided to DiveJournalForm');
+        setAiFeedback("⚠️ No save handler configured");
+        return;
+      }
+
+      // 📸 STEP 2: Handle image upload via callback if provided
+      if (imageFile && saveResult && onImageUpload) {
+        try {
+          console.log('🔄 Processing dive profile image via callback...');
           
           // ✅ Compress image
           const compressed = await imageCompression(imageFile, {
@@ -207,20 +202,18 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
             useWebWorker: true,
           });
 
-          // ✅ Upload for analysis
-          const formData = new FormData();
-          formData.append('image', compressed);
-          formData.append('diveLogId', diveLogId);
-          formData.append('userId', effectiveUserId);
+          // ✅ Call parent image upload callback
+          const imageUploadData = {
+            image: compressed,
+            diveLogId: saveResult._id || saveResult.data?.id || saveResult.id,
+            userId: effectiveUserId,
+            diveData: diveLogData
+          };
 
-          const uploadRes = await fetch('/api/openai/upload-dive-image', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            setAiFeedback(uploadData?.message || "✅ Dive log saved & image analyzed!");
+          const imageResult = await onImageUpload(imageUploadData);
+          
+          if (imageResult?.success) {
+            setAiFeedback(imageResult.message || "✅ Dive log saved & image analyzed!");
           } else {
             setAiFeedback("✅ Dive log saved! Image analysis failed.");
           }
@@ -228,21 +221,12 @@ export default function DiveJournalForm({ onSubmit, darkMode, userId }) {
           console.error("❌ Image processing error:", imageError);
           setAiFeedback("✅ Dive log saved! Image analysis failed: " + imageError.message);
         }
-      } else {
-        setAiFeedback("✅ Dive log saved to local & cloud! Auto-analysis completed.");
-      }
-
-      // ✅ CRITICAL: Call onSubmit to notify parent (Sidebar) about the save
-      console.log('🔄 Calling onSubmit callback to refresh sidebar...', typeof onSubmit);
-      if (onSubmit) {
-        try {
-          await onSubmit(saveLogResult.data || diveLogData);
-          console.log('✅ onSubmit callback completed successfully');
-        } catch (callbackError) {
-          console.warn('⚠️ onSubmit callback failed:', callbackError);
-        }
-      } else {
-        console.warn('⚠️ No onSubmit callback provided to DiveJournalForm');
+      } else if (!imageFile) {
+        // No image to process
+        const finalMessage = saveResult?.buffered 
+          ? "📦 Dive log buffered for sync when online!"
+          : "✅ Dive log saved successfully!";
+        setAiFeedback(finalMessage);
       }
 
       // ✅ Clear draft from localStorage and reset form
