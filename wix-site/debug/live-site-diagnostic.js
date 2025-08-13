@@ -23,6 +23,20 @@ function checkLiveWidgetStatus() {
                     console.log(`   📝 HTML length: ${html ? html.length : 0} characters`);
                     console.log(`   🖼️ Contains iframe: ${html ? html.includes('iframe') : false}`);
                     console.log(`   🔗 Contains Vercel URL: ${html ? html.includes('kovaldeepai-main.vercel.app') : false}`);
+                    
+                    // Show actual HTML content if it's small
+                    if (html && html.length < 1000) {
+                        console.log(`   📄 Full HTML content:`);
+                        console.log(`   ${html}`);
+                    } else if (html && html.length >= 1000) {
+                        console.log(`   📄 HTML preview (first 200 chars):`);
+                        console.log(`   ${html.substring(0, 200)}...`);
+                    }
+                    
+                    // Check widget visibility properties
+                    console.log(`   👁️ Widget hidden: ${element.hidden || false}`);
+                    console.log(`   🎨 Widget collapsed: ${element.collapsed || false}`);
+                    
                 } catch (e) {
                     console.log(`   ⚠️ Could not read widget HTML: ${e.message}`);
                 }
@@ -108,8 +122,61 @@ function checkLiveWidgetStatus() {
         }
     }
     
-    // 6. Summary
-    console.log('\n6. 📊 SUMMARY:');
+    // 6. Advanced DOM Analysis
+    console.log('\n6. 🔬 Advanced DOM Analysis:');
+    if (foundWidget) {
+        try {
+            // Try to get the actual DOM element
+            const widgetId = foundWidget.id.replace('#', '');
+            const domElement = document.getElementById(widgetId);
+            
+            if (domElement) {
+                console.log(`   ✅ Found DOM element: ${widgetId}`);
+                console.log(`   📐 Element size: ${domElement.offsetWidth}x${domElement.offsetHeight}`);
+                console.log(`   👁️ Element visible: ${domElement.offsetWidth > 0 && domElement.offsetHeight > 0}`);
+                console.log(`   🎨 Display style: ${window.getComputedStyle(domElement).display}`);
+                console.log(`   🔍 Visibility style: ${window.getComputedStyle(domElement).visibility}`);
+                console.log(`   📍 Position: ${window.getComputedStyle(domElement).position}`);
+                console.log(`   🏠 Parent element: ${domElement.parentElement ? domElement.parentElement.tagName : 'none'}`);
+                
+                // Check if element has any content
+                const innerHTML = domElement.innerHTML;
+                console.log(`   📝 Inner HTML length: ${innerHTML ? innerHTML.length : 0}`);
+                
+                if (innerHTML && innerHTML.length < 500) {
+                    console.log(`   📄 Inner HTML content:`);
+                    console.log(`   ${innerHTML}`);
+                }
+                
+            } else {
+                console.log(`   ❌ DOM element ${widgetId} not found in document`);
+                
+                // Try to find it by different methods
+                const allDivs = document.querySelectorAll('div');
+                let foundByContent = false;
+                
+                allDivs.forEach((div, index) => {
+                    if (div.innerHTML && div.innerHTML.includes('kovaldeepai-main.vercel.app')) {
+                        console.log(`   ✅ Found element with Koval content at index ${index}:`);
+                        console.log(`      🏷️ ID: ${div.id || 'no-id'}`);
+                        console.log(`      📐 Size: ${div.offsetWidth}x${div.offsetHeight}`);
+                        console.log(`      👁️ Visible: ${div.offsetWidth > 0 && div.offsetHeight > 0}`);
+                        foundByContent = true;
+                    }
+                });
+                
+                if (!foundByContent) {
+                    console.log(`   ❌ No elements found containing Koval content`);
+                }
+            }
+            
+        } catch (e) {
+            console.log(`   ⚠️ DOM analysis failed: ${e.message}`);
+        }
+    }
+    
+    // 7. Summary
+    console.log('\n7. 📊 SUMMARY:');
     console.log('=====================================');
     if (foundWidget) {
         console.log('   🎯 Widget Element: ✅ FOUND');
@@ -191,15 +258,71 @@ function forceCreateWidget() {
     }
 }
 
+// Quick visual check function
+function quickVisualCheck() {
+    console.log('👀 Quick Visual Check...');
+    console.log('========================');
+    
+    // Check all iframes on page
+    const allIframes = document.querySelectorAll('iframe');
+    console.log(`📊 Total iframes on page: ${allIframes.length}`);
+    
+    allIframes.forEach((iframe, index) => {
+        console.log(`\n🖼️ Iframe #${index + 1}:`);
+        console.log(`   🔗 Source: ${iframe.src}`);
+        console.log(`   📐 Size: ${iframe.offsetWidth}x${iframe.offsetHeight}`);
+        console.log(`   👁️ Visible: ${iframe.offsetWidth > 0 && iframe.offsetHeight > 0}`);
+        console.log(`   🎨 Display: ${window.getComputedStyle(iframe).display}`);
+        
+        if (iframe.src.includes('kovaldeepai-main.vercel.app')) {
+            console.log(`   🎯 This is the Koval AI iframe!`);
+            
+            // Try to highlight it visually
+            iframe.style.border = '3px solid red';
+            iframe.style.backgroundColor = 'yellow';
+            console.log(`   🔴 Added red border and yellow background for visibility`);
+            
+            // Remove highlighting after 5 seconds
+            setTimeout(() => {
+                iframe.style.border = '';
+                iframe.style.backgroundColor = '';
+                console.log(`   ✨ Removed highlighting`);
+            }, 5000);
+        }
+    });
+    
+    // Check for elements with koval-ai id
+    const kovalElement = document.getElementById('koval-ai');
+    if (kovalElement) {
+        console.log(`\n✅ Found koval-ai element:`);
+        console.log(`   📐 Size: ${kovalElement.offsetWidth}x${kovalElement.offsetHeight}`);
+        console.log(`   📍 Position: ${kovalElement.getBoundingClientRect().top}, ${kovalElement.getBoundingClientRect().left}`);
+        console.log(`   🎨 Background: ${window.getComputedStyle(kovalElement).background}`);
+        
+        // Highlight the widget area
+        kovalElement.style.border = '5px solid blue';
+        kovalElement.style.minHeight = '600px';
+        console.log(`   🔵 Added blue border to widget area`);
+        
+        setTimeout(() => {
+            kovalElement.style.border = '';
+        }, 5000);
+    } else {
+        console.log(`\n❌ No element with ID 'koval-ai' found`);
+    }
+}
+
 // Make functions globally available
 if (typeof window !== 'undefined') {
     window.checkLiveWidgetStatus = checkLiveWidgetStatus;
     window.forceCreateWidget = forceCreateWidget;
+    window.quickVisualCheck = quickVisualCheck;
 }
 
 console.log('🔍 Live site diagnostic loaded!');
 console.log('📋 Available commands:');
 console.log('   checkLiveWidgetStatus() - Full diagnostic');
+console.log('   quickVisualCheck() - Quick visual check with highlighting');
 console.log('   forceCreateWidget() - Force create widget if needed');
 console.log('');
-console.log('🚀 Run: checkLiveWidgetStatus()');
+console.log('🚀 Start with: quickVisualCheck()');
