@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": true,                        // ✅ allow JavaScript files
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "module": "commonjs",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"],
+      "@lib/*": ["lib/*"],
+      "@utils/*": ["utils/*"],
+      "@components/*": ["components/*"],
+      "@pages/*": ["pages/*"],
+      "@styles/*": ["styles/*"],
+      "@types/*": ["types/*"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "next-env.d.ts",
+    "types/**/*.d.ts",
+    ".next/types/**/*.ts",
+    "next.config.js",
+    "vercel.json"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "public/wix-widget-loader-v3.js",
+    "**/wix-widget-loader*.js",
+    "wix-site/**",
+    "Wix App/**",
+    "wix page/**",
+    "wix guides/**"
+  ]
+}

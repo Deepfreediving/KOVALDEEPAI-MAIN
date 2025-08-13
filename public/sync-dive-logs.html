@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sync Dive Logs to UserMemory</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 10px 0; border-radius: 6px; }
+        .success { border-color: #28a745; background: #d4edda; }
+        .error { border-color: #dc3545; background: #f8d7da; }
+        .loading { opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <h1>🤿 Sync Dive Logs to UserMemory Collection</h1>
+    <p>This tool will sync your dive logs to the Wix UserMemory collection so the AI can access them.</p>
+    
+    <div id="userInfo">
+        <p><strong>Current User ID:</strong> <span id="userId">Loading...</span></p>
+    </div>
+    
+    <button id="syncButton" onclick="syncDiveLogs()">🔄 Sync My Dive Logs</button>
+    
+    <div id="logs"></div>
+    
+    <script>
+        let currentUserId = null;
+        
+        // Get current user ID on page load
+        window.addEventListener('load', async () => {
+            await getCurrentUserId();
+        });
+        
+        async function getCurrentUserId() {
+            try {
+                // Try to get userId from localStorage first
+                const storedUserId = localStorage.getItem('kovalUser');
+                if (storedUserId && !storedUserId.startsWith('guest-')) {
+                    currentUserId = storedUserId;
+                    document.getElementById('userId').textContent = currentUserId;
+                    return;
+                }
+                
+                // If no stored userId, show warning
+                document.getElementById('userId').innerHTML = '<span style="color: red;">No authenticated user found - please log in first</span>';
+                document.getElementById('syncButton').disabled = true;
+                
+            } catch (error) {
+                console.error('Error getting user ID:', error);
+                addLog('❌ Error getting user ID: ' + error.message, 'error');
+            }
+        }
+        
+        async function syncDiveLogs() {
+            if (!currentUserId || currentUserId.startsWith('guest-')) {
+                addLog('❌ Please log in first to sync your dive logs', 'error');
+                return;
+            }
+            
+            const button = document.getElementById('syncButton');
+            button.disabled = true;
+            button.textContent = '🔄 Syncing...';
+            
+            addLog('🚀 Starting dive logs sync for user: ' + currentUserId, 'loading');
+            
+            try {
+                const response = await fetch('/api/analyze/sync-user-dive-logs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: currentUserId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog(`✅ ${result.message}`, 'success');
+                    if (result.updatedFiles > 0) {
+                        addLog(`📝 Updated ${result.updatedFiles} local files with user ID`, 'success');
+                    }
+                    if (result.errors && result.errors.length > 0) {
+                        addLog(`⚠️ Some errors occurred: ${result.errors.length} failed`, 'error');
+                        result.errors.forEach(error => {
+                            addLog(`❌ ${error.dive}: ${error.error}`, 'error');
+                        });
+                    }
+                    
+                    // Show next steps
+                    addLog('🎯 Next: Test the AI chat to see if it can now access your dive logs!', 'success');
+                    
+                } else {
+                    addLog('❌ Sync failed: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                addLog('❌ Sync failed: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🔄 Sync My Dive Logs';
+            }
+        }
+        
+        function addLog(message, type = '') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = 'log ' + type;
+            logDiv.innerHTML = '<strong>' + new Date().toLocaleTimeString() + '</strong> ' + message;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>

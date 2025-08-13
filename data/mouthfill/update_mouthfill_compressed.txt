@@ -1,0 +1,164 @@
+Mouthfill and Reverse Packing Logic for Koval Deep AI:
+Access Level: "Level 2+ and above only"
+Applies To:
+Reverse Packing
+Mouthfill
+Glottis / Soft Palate Control
+Flexibility Training
+🤿 Definitions:
+Reverse Packing:
+Description: >
+A technique to simulate deep pressure and tap into residual volume (RV)
+by pulling air from the lungs to the mouth using only the jaw, glottis,
+and "ooouuupp" sound. No respiratory muscles must be used.
+Notes:
+Never engage chest or diaphragm (prevents squeeze, air loss, tension)
+Can be repeated to increase mouth volume I depth NPD’s, mimic pressure in pool NPDs or dry land exercises.
+Used as the final prep before mouthfill on a deep dive
+Mouthfill:
+Description: >
+The final reverse pack during a dive, locking a fixed volume of air in the mouth
+to equalize beyond RV depth (usually 45–50m+). Only useful if diving beyond RV.
+Key Usage Rules:
+Always taken during sink phase, never while kicking or pulling
+Always after reverse pack limit is determined
+Volume must be ≥ ½ mouth or it's ineffective at RV depths
+🧪 Auto-Prompt Logic:
+Prompts:
+"What is your deepest comfortable reverse pack depth?"
+"How full is your mouthfill (¼, ½, ¾, full)?"
+"Do you want reverse pack/mouthfill advice tailored to your dive structure and style?"
+If Reverse Pack Depth Unknown:
+Instructions: >
+On your next training session, after full warm-up:
+Begin your CWT dive. Once you enter your sink phase, alternate:
+Equalize → Reverse Pack → Repeat, until:
+You can no longer reverse pack comfortably
+You feel chest tension, coughing, or scratchy throat
+You reach max comfortable depth
+Record this depth — it becomes your reverse pack limit.
+🎯 Mouthfill Depth Logic:
+Mouthfill Assignment Rules:
+If RP limit < 30m:
+Advice: "Improve thoracic flexibility and reverse packing technique first (pool NPD, NDS, dry RP drills)"
+If RP limit = 40m:
+Advice: "Take final reverse pack (mouthfill) at 30–35m. Recommend ½–¾ size fill."
+If RP limit = 50m:
+Advice: "Take mouthfill 5–10m shallower (40–45m), minimum ½ mouthfill. If unsuccessful or tense recommend large mouthfill ¾ - full size at 35m and improve mouthfill management"
+Minimum Depth: 22m
+Maximum Depth: 50m
+Mouthfill Range by Depth:
+Note: >
+These ranges are general guidelines. Actual mouthfill size should always be adjusted:
+based on the diver's flexibility, comfort, experience, and ability to control volume.
+Technique matters more than taking a larger fill. Proper glottis lock and relaxation
+are more important than absolute size.
+Never Take Mouthfill:
+While kicking or pulling
+Shallower than 22m
+Proper Sequence for Taking Mouthfill:
+Stop kicking at 2x neutral buoyancy
+Enter sink phase
+Relax, (good idea put a relaxation alarm on watch 3-4m before you start reverse packing or when you take your mouthfill- this will allow you time and train comfort by not having anxiety or stress about when you take your mouthfill?)
+Equalize
+Reverse pack or take mouthfill
+If User Not Diving Beyond RV:
+Response: "Mouthfill is only useful beyond residual volume. Refocus on Frenzel and RP comfort."
+🛠️ Technique Troubleshooting:
+Common Errors:
+Mouthfill issues and Fixes
+Rapid Mouthfill reduction with each equalization
+Fix- Tongue is pushing on soft palate with each EQ which opens the glottis- need to learn to separate glottis from soft palate control
+Fix-not locking glottis after taking mouthfill or last reverse packing- stop on the line after you take your last mouthfill and make sure to lock while doing a hang and pulling head back (like when you have a double chin) to improve the feeling of a locked glottis.
+Dry land Sources for Fixing this issue:
+Isolate Nose-to-Mouth Airflow (Soft Palate Awareness)
+Identify the Glottis Lock
+Glottis Control with Neutral Soft Palate
+Building Mouthfill exercise 
+Simulated Depth Training
+Progressive Mouthfill Compression 
+ Pool Sources for Fixing this issue 	
+NPD FOR THE POOL
+Depth Sources for Fixing this issue
+Mouthfill Management NPD
+Reverse pack- swallows- reverse packs to refill again and repeats swallow
+Fix- do not use respiratory muscles to help reverse pack
+Fix- holding too much tension increase relaxation 
+Fix- not enough experience with RP -practice reverse pack skill between 22-30m before trying a deep dive, and NPD’s
+Dry land Sources for Fixing this issue:
+Building Mouthfill exercise 
+Simulated Depth Training
+Pool Sources for Fixing this issue
+NPD FOR THE POOL
+  	                     	  Depth Sources for Fixing this issue
+Reverse Packing Progression NPD
+Storing air in cheeks (soft palate lock)
+Fix -hold air further back in your mouth by keeping lips sealed, open the jaw using the front of the tongue to push air backwards very lightly keeping pressure.
+Fix- confused on the difference between glottis lock and soft palate lock practice Glottis and soft palate control 
+Dry land sources for fixing this issue:
+Fixing Cheek fill
+Simulated Depth Training
+Advanced Simulation- after practicing- Simulated Depth Training
+Pool Sources for Fixing this issue 	
+NPD FOR THE POOL
+ Depth Sources for Fixing this issue
+Mouthfill Management NPD
+Losing volume due to open glottis or large swallow of mouthfill
+Fix- not locking glottis after final mouthfill
+Fix- trying too hard to hold the mouthfill- the mouthfill should be nearly effortless to hold if the glottis is locked
+Fix- too much tension in respiratory muscles, focus on slightly softening the diaphragm by lifting it up just a little in dives 10m shallower than PB to gain awareness
+Dry land sources for fixing this issue:
+Fixing Cheek fill
+Negative Diaphragm Stretches
+Pool Sources for Fixing this issue 	
+NPD FOR THE POOL
+                     		Depth Sources for Fixing this issue
+Reverse Packing Progression NPD
+Mouthfill Management NPD
+🔁 Bot Execution Flow:
+Base information of initial beginning question prompt :
+“before we continue can you keep your head in a neutral tucked position throughout your entire dive?”
+Assume most people’s RV to be 50-60m
+Recommendation Flow:
+If no reverse pack depth known → reverse pack prescribed test next training
+Mouthfill procedures:
+Based off  personal best, mouthfill depth, reverse pack depth, mouthfill size in the beginning questions. 
+Below are Solutions to issues relating to diving style technique and structure.
+If mouthfill is less than ½ full→ recommend taking it deeper if flexibility and comfort allows shallower. In Training practice to increase the size of volume for a fuller fill.
+If mouthfill is completely full but can’t dive over RV depths→ recommend taking mouthfill deeper by adding 5m-10m slowly on training dives to 10m shallower than PB. (e.g., if personal best PB is 60m- descend to 50m max while increasing mouthfill depth.) building flexibility and comfort over time Decrease mouthfill size ¾ full to increase comfort, mouthfill management. 
+Safety Rules:
+Never assign mouthfill depth deeper than reverse pack
+Never recommend below 22m or during core engagement
+Always specify: "Dry tools only unless directly supervised"
+✅ Daniel Koval Tip:
+"Your mouthfill is your final reverse pack before residual volume. Make sure it’s at least 5–10m shallower than your deepest successful reverse pack. This builds comfort for deep equalization and improves control during stretch receptor contractions."
+Mouthfill Range by Diver Level and Size:
+Note: >
+These ranges are starting points. Mouthfill size and depth should be customized based
+on the diver’s experience, thoracic flexibility, and ability to manage air effectively.
+Technique, glottis control, and soft palate relaxation are more important than volume alone.
+Range: Beginner to Intermediate Freedivers (New to Reverse Packing or FII Level 2):
+Small ½ size Mouthfill (22–30m):
+Primary EQ issues: >
+Freediver Depth Range- Most efficient balance of depth and volume for 30-50m+ dives
+Taken at shallower depths to simplify technique. Easier to manage for divers with limited flexibility or experience. 
+For new level 2 freedivers a large mouthfill is difficult to manage so a smaller one is easier, they do not have good glottis control or soft palate control, usually holding tension in the core or chest, commonly mix Valsalva with frenzel maneuver.
+Recommended new level 2 freedivers: " Improve technique and comfort with reverse packing, before recommending a larger mouthfill."
+Range: Intermediate level 2+ /level 3 Freedivers (New to Mouthfill ):
+Medium ¾ size Mouthfill (30m) or Small ½ size Mouthfill (30-35m):
+Primary EQ improvement or issues: >
+Freediver Depth Range Most efficient balance of depth and volume for 50-70m+ dives
+Ideal range for transitioning divers who are learning to reverse pack deeper to improve technique and flexibility
+comfortable at RV depths. Balances volume and manageability.
+Recommended for: "Divers improving technique, working on glottis control, mouthfill management, level 3 freediver starting FRC’s, slowly increasing mouthfill size, have separated the soft palate and glottis to move individually from eachother."
+Range: Advanced Freedivers (Pro or FII Level 3+ with strong RP comfort and mouthfill control):
+Medium ¾ size – Full Large Mouthfill (30–40m), Small ½ size to Medium ¾ size (40-50m)- depending on comfort and technique:
+Primary EQ improvement or issues: >
+Freediver Depth Range Most efficient balance of depth and volume for 80-100m+ dives. 
+If medium to large- freediver needs strong mouthfill management skill, stronger glottis conditioning, control of soft palate and glottis seperation.
+If small to medium size taken close to residual volume, this size is easier to hold during the dive and reduces risk of swallowing. Requires excellent reverse packing technique and flexibility.
+recommended_for: "Highly flexible, well-trained divers with consistent sink-phase relaxation."
+Important Safety Rule:
+Never take a mouthfill shallower than 22m
+Never take it while kicking or pulling (core engagement blocks proper air transfer)
+Always tailor fill size to technique, not ego: glottis lock, air control, and relaxation come first

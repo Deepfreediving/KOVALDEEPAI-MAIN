@@ -1,19 +1,16 @@
 {
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)wix-site/**' ':(exclude)Wix App/**' ':(exclude)wix page/**' ':(exclude)wix guides/**'",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/" }
-  ],
-  "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/next"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
     }
-  ],
-  "env": {
-    "PINECONE_API_KEY": "your-pinecone-api-key",
-    "PINECONE_ENV": "your-pinecone-region",
-    "OPENAI_API_KEY": "your-openai-api-key",
-    "OPENAI_MODEL": "your-openai-model",
-    "OPENAI_API_BASE": "your-openai-api-base"
-  }
+  ]
 }

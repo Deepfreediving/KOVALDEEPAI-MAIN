@@ -1,0 +1,612 @@
+// 🔥 WIX UTILITIES MASTER - ALL-IN-ONE SOLUTION
+// Consolidates: wix-data-utils + wix-expert-utils + wix-index-optimized-utils
+// Version: 4.0.0 - Master Consolidated Edition
+// Date: August 8, 2025
+
+import wixData from 'wix-data';
+
+// 🎯 MASTER CONFIGURATION - ALL UTILITY LEVELS
+const MASTER_CONFIG = {
+  UTILITY_LEVELS: {
+    BASIC: 'basic',           // Simple queries, basic error handling
+    EXPERT: 'expert',         // Advanced patterns, monitoring
+    OPTIMIZED: 'optimized'    // Index-aware, performance tracking
+  },
+  
+  QUERY_LIMITS: {
+    MAX_RESULTS: 100,         // Wix recommended maximum
+    DEFAULT_PAGE_SIZE: 25,    // Optimal page size for UI
+    SINGLE_ITEM: 1,          // For existence checks
+    RECENT_ITEMS: 50,        // For recent activity
+    BULK_BATCH_SIZE: 50      // For bulk operations
+  },
+  
+  PERFORMANCE: {
+    SLOW_QUERY_THRESHOLD: 1000,    // ms
+    ENABLE_LOGGING: true,
+    TRACK_INDEX_USAGE: true,
+    MAX_RETRIES: 3,
+    RETRY_DELAY: 1000,
+    CONSISTENT_READ_THRESHOLD: 500  // Use consistent read for fast queries
+  },
+  
+  TIMEOUTS: {
+    QUERY_TIMEOUT: 4000,      // 4s (under Wix 5s limit)
+    RETRY_DELAY: 1000,        // 1s base delay
+    MAX_RETRIES: 3
+  }
+};
+
+// 🔥 INDEX PATTERNS - Latest Wix Documentation
+const INDEX_PATTERNS = {
+  'UserMemory': {
+    primary: ['userId', '_createdDate'],
+    composite: ['userId', 'type', '_createdDate'],
+    search: ['userId', 'memoryContent']
+  },
+  'DiveLogs': {
+    primary: ['userId', 'diveDate'], 
+    composite: ['userId', 'type', 'diveDate'],
+    depth: ['userId', 'reachedDepth']
+  },
+  'Members/FullData': {
+    default: ['_id'],
+    email: ['loginEmail']
+  }
+};
+
+// 🔥 SUPPORTED OPERATORS for index optimization
+const INDEX_OPERATORS = ['eq', 'gt', 'gte', 'lt', 'lte', 'hasSome'];
+
+// 🔥 WIX ERROR CODES - Complete mapping
+const WIX_ERROR_CODES = {
+  'WDE0001': 'Invalid collection ID - Check collection name format',
+  'WDE0002': 'Item not found - Item may have been deleted',
+  'WDE0003': 'Permission denied - Check user permissions',
+  'WDE0004': 'Field validation failed - Check required fields',
+  'WDE0005': 'Required field missing - Add missing required data',
+  'WDE0009': 'Single-item payload too large (512 KB limit) - Reduce data size',
+  'WDE0014': 'Requests per minute quota exceeded - Implement rate limiting',
+  'WDE0028': 'Operation time limit exceeded (5-10s) - Optimize query or use pagination',
+  'WDE0109': 'Bulk operation payload too large (4 MB limit) - Use smaller batches',
+  'WDE0110': 'Too many items in bulk operation - Reduce batch size',
+  'WDE0200': 'Database connection error - Temporary issue, retry',
+  'WDE0201': 'Database timeout - Query too complex',
+  'WDE0202': 'Database overloaded - Reduce request frequency'
+};
+
+/**
+ * 🚀 MASTER INDEX-OPTIMIZED QUERY BUILDER
+ * Combines all features from previous versions with latest optimizations
+ */
+class WixUtilsMaster {
+  constructor(collectionName, utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT) {
+    this.collectionName = collectionName;
+    this.utilityLevel = utilityLevel;
+    this.query = wixData.query(collectionName);
+    this.indexUsage = [];
+    this.filters = [];
+    this.sorts = [];
+    this.performance = {
+      startTime: null,
+      expectedIndex: null,
+      indexScore: 0
+    };
+  }
+
+  /**
+   * 🎯 USER FILTER - Optimal index usage (all utility levels)
+   */
+  forUser(userId) {
+    if (!userId) {
+      throw new Error('userId is required for optimal index usage');
+    }
+    
+    this.query = this.query.eq('userId', userId);
+    this.filters.push({ field: 'userId', operator: 'eq', value: userId, order: 0 });
+    this.indexUsage.push('userId_eq');
+    this.performance.indexScore += 100; // High score for leading field
+    this._setExpectedIndex('primary');
+    return this;
+  }
+
+  /**
+   * 🎯 TYPE FILTER - Composite index optimization
+   */
+  ofType(type) {
+    if (!type) return this;
+    
+    // Verify userId was set first for optimal index usage
+    if (!this.filters.some(f => f.field === 'userId')) {
+      if (this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.EXPERT || 
+          this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.OPTIMIZED) {
+        console.warn('⚠️  Type filter should follow userId filter for optimal index usage');
+      }
+    }
+    
+    this.query = this.query.eq('type', type);
+    this.filters.push({ field: 'type', operator: 'eq', value: type, order: 1 });
+    this.indexUsage.push('type_eq');
+    this.performance.indexScore += 50;
+    this._setExpectedIndex('composite');
+    return this;
+  }
+
+  /**
+   * 🎯 DATE RANGE - Index-optimized filtering
+   */
+  dateRange(startDate, endDate = null) {
+    const dateField = this._getDateField();
+    
+    if (startDate) {
+      this.query = this.query.gte(dateField, startDate);
+      this.filters.push({ field: dateField, operator: 'gte', value: startDate, order: 2 });
+    }
+    
+    if (endDate) {
+      this.query = this.query.lte(dateField, endDate);
+      this.filters.push({ field: dateField, operator: 'lte', value: endDate, order: 2 });
+    }
+    
+    this.indexUsage.push('date_range');
+    this.performance.indexScore += 25;
+    return this;
+  }
+
+  /**
+   * 🎯 DEPTH RANGE - For dive logs
+   */
+  depthRange(minDepth, maxDepth = null) {
+    if (!this.filters.some(f => f.field === 'userId') && 
+        (this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.EXPERT || 
+         this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.OPTIMIZED)) {
+      console.warn('⚠️  Range queries should follow userId filter for optimal index usage');
+    }
+    
+    if (minDepth !== undefined) {
+      this.query = this.query.gte('reachedDepth', minDepth);
+      this.filters.push({ field: 'reachedDepth', operator: 'gte', value: minDepth, order: 3 });
+    }
+    
+    if (maxDepth !== undefined) {
+      this.query = this.query.lte('reachedDepth', maxDepth);
+      this.filters.push({ field: 'reachedDepth', operator: 'lte', value: maxDepth, order: 3 });
+    }
+    
+    this.indexUsage.push('depth_range');
+    this.performance.indexScore += 30;
+    this._setExpectedIndex('depth');
+    return this;
+  }
+
+  /**
+   * 🎯 TEXT SEARCH - Index-supported contains operator
+   */
+  searchContent(searchTerm, field = 'memoryContent') {
+    if (!searchTerm) return this;
+    
+    this.query = this.query.contains(field, searchTerm);
+    this.filters.push({ field, operator: 'contains', value: searchTerm, order: 4 });
+    this.indexUsage.push('content_search');
+    this.performance.indexScore += 20;
+    this._setExpectedIndex('search');
+    return this;
+  }
+
+  /**
+   * 🎯 SORTING - Index direction optimization
+   */
+  sortBy(field, direction = 'desc') {
+    const sortField = field || this._getDateField();
+    
+    // Verify optimal sort conditions for expert/optimized levels
+    if (this.utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+      const hasRangeFilters = this.filters.some(f => ['gt', 'gte', 'lt', 'lte'].includes(f.operator));
+      if (hasRangeFilters && !this.filters.some(f => f.field === 'userId' && f.operator === 'eq')) {
+        console.warn('⚠️  For optimal sort performance, use eq filters before range filters');
+      }
+    }
+    
+    if (direction === 'desc') {
+      this.query = this.query.descending(sortField);
+    } else {
+      this.query = this.query.ascending(sortField);
+    }
+    
+    this.sorts.push({ field: sortField, direction });
+    this.indexUsage.push(`${sortField}_sort_${direction}`);
+    
+    // Bonus score if sort direction matches index direction
+    if (this._sortMatchesIndex(sortField, direction)) {
+      this.performance.indexScore += 40;
+    } else {
+      this.performance.indexScore += 10;
+    }
+    
+    return this;
+  }
+
+  /**
+   * 🎯 PAGINATION - Performance-aware limits
+   */
+  paginate(limit = MASTER_CONFIG.QUERY_LIMITS.DEFAULT_PAGE_SIZE, skip = 0) {
+    const safeLimit = Math.min(Math.max(limit, 1), MASTER_CONFIG.QUERY_LIMITS.MAX_RESULTS);
+    const safeSkip = Math.max(skip, 0);
+    
+    this.query = this.query.limit(safeLimit);
+    
+    if (safeSkip > 0) {
+      this.query = this.query.skip(safeSkip);
+      
+      // Warn about performance issues with large skip values (expert/optimized only)
+      if (safeSkip > 5000 && this.utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+        console.warn(`⚠️  Large skip value (${safeSkip}) may impact performance. Consider cursor-based pagination.`);
+        this.performance.indexScore -= 20;
+      }
+    }
+    
+    return this;
+  }
+
+  /**
+   * 🚀 EXECUTE - Level-aware execution with monitoring
+   */
+  async execute(options = {}) {
+    this.performance.startTime = Date.now();
+    
+    try {
+      // Use consistent read based on utility level and performance score
+      const shouldUseConsistentRead = options.consistentRead || 
+        (this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.OPTIMIZED && 
+         this.performance.indexScore > 150);
+      
+      if (shouldUseConsistentRead) {
+        this.query = this.query.options({ consistentRead: true });
+      }
+      
+      const result = await this.query.find();
+      const duration = Date.now() - this.performance.startTime;
+      
+      // Performance analysis based on utility level
+      const analysis = this._analyzePerformance(result, duration, shouldUseConsistentRead);
+      
+      // Logging based on utility level
+      if ((this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.EXPERT || 
+           this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.OPTIMIZED) && 
+          MASTER_CONFIG.PERFORMANCE.ENABLE_LOGGING) {
+        this._logPerformance(analysis);
+      }
+      
+      return {
+        ...result,
+        _indexAnalysis: analysis,
+        _utilityLevel: this.utilityLevel
+      };
+      
+    } catch (error) {
+      const duration = Date.now() - this.performance.startTime;
+      
+      if (this.utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+        console.error(`❌ Query failed on ${this.collectionName} after ${duration}ms:`, {
+          error: error.message,
+          filters: this.filters,
+          indexUsage: this.indexUsage,
+          indexScore: this.performance.indexScore,
+          utilityLevel: this.utilityLevel
+        });
+      }
+      
+      throw new Error(`Query failed: ${error.message}`);
+    }
+  }
+
+  // 🔧 PRIVATE HELPER METHODS
+  _getDateField() {
+    if (this.collectionName.includes('DiveLogs')) return 'diveDate';
+    return '_createdDate';
+  }
+
+  _setExpectedIndex(indexType) {
+    const patterns = INDEX_PATTERNS[this.collectionName] || INDEX_PATTERNS['UserMemory'];
+    this.performance.expectedIndex = patterns[indexType] || patterns.primary;
+  }
+
+  _sortMatchesIndex(field, direction) {
+    // Default indexes: _id (asc), _createdDate (desc)
+    if (field === '_id' && direction === 'asc') return true;
+    if (field === '_createdDate' && direction === 'desc') return true;
+    if (field === 'diveDate' && direction === 'desc') return true; // Custom index
+    return false;
+  }
+
+  _analyzePerformance(result, duration, usedConsistentRead) {
+    const isSlow = duration > MASTER_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD;
+    const hasUserId = this.indexUsage.includes('userId_eq');
+    const isOptimized = hasUserId || this.collectionName === 'Members/FullData';
+    const indexScore = this.performance.indexScore;
+    
+    return {
+      duration,
+      isSlow,
+      isOptimized,
+      indexScore,
+      indexUsage: this.indexUsage,
+      expectedIndex: this.performance.expectedIndex,
+      resultCount: result.items.length,
+      totalCount: result.totalCount || result.items.length,
+      filters: this.filters,
+      sorts: this.sorts,
+      usedConsistentRead,
+      utilityLevel: this.utilityLevel,
+      recommendations: this._generateRecommendations(isSlow, isOptimized, indexScore),
+      fieldOrder: this._analyzeFieldOrder()
+    };
+  }
+
+  _generateRecommendations(isSlow, isOptimized, indexScore) {
+    if (this.utilityLevel === MASTER_CONFIG.UTILITY_LEVELS.BASIC) return [];
+    
+    const recommendations = [];
+    
+    if (isSlow) {
+      recommendations.push('Query exceeded threshold - consider index optimization');
+    }
+    
+    if (indexScore < 50) {
+      recommendations.push('Low index score - start queries with userId for better performance');
+    }
+    
+    if (!isOptimized && this.collectionName !== 'Members/FullData') {
+      recommendations.push('Use userId as first filter for optimal index usage');
+    }
+    
+    const rangeFilters = this.filters.filter(f => ['gt', 'gte', 'lt', 'lte'].includes(f.operator));
+    const eqFilters = this.filters.filter(f => f.operator === 'eq');
+    
+    if (rangeFilters.length > 0 && eqFilters.length === 0) {
+      recommendations.push('Use equality filters before range filters for better index usage');
+    }
+    
+    return recommendations;
+  }
+
+  _analyzeFieldOrder() {
+    return this.filters
+      .sort((a, b) => a.order - b.order)
+      .map(f => `${f.field}(${f.operator})`);
+  }
+
+  _logPerformance(analysis) {
+    const emoji = analysis.isSlow ? '🐌' : analysis.isOptimized ? '🚀' : '⚡';
+    const scoreEmoji = analysis.indexScore > 100 ? '🎯' : analysis.indexScore > 50 ? '📊' : '⚠️';
+    const levelEmoji = this.utilityLevel === 'optimized' ? '🔥' : this.utilityLevel === 'expert' ? '⭐' : '📍';
+    
+    console.log(`${emoji} Query Performance [${levelEmoji} ${this.utilityLevel.toUpperCase()}]: ${this.collectionName}`, {
+      duration: `${analysis.duration}ms`,
+      optimized: analysis.isOptimized,
+      indexScore: `${scoreEmoji} ${analysis.indexScore}`,
+      indexUsed: analysis.indexUsage.join(' → '),
+      results: analysis.resultCount,
+      consistentRead: analysis.usedConsistentRead
+    });
+    
+    if (analysis.recommendations.length > 0) {
+      console.warn('💡 Optimization recommendations:', analysis.recommendations);
+    }
+  }
+}
+
+/**
+ * 🔥 MASTER QUERY FUNCTIONS - All utility levels supported
+ */
+
+/**
+ * Get user memories with configurable optimization level
+ */
+async function getUserMemories(userId, options = {}) {
+  const {
+    type = null,
+    limit = MASTER_CONFIG.QUERY_LIMITS.DEFAULT_PAGE_SIZE,
+    skip = 0,
+    searchTerm = null,
+    consistentRead = false,
+    utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT
+  } = options;
+
+  let builder = new WixUtilsMaster('@deepfreediving/kovaldeepai-app/Import1', utilityLevel)
+    .forUser(userId);
+
+  if (type) {
+    builder = builder.ofType(type);
+  }
+
+  if (searchTerm) {
+    builder = builder.searchContent(searchTerm);
+  }
+
+  return builder
+    .sortBy('_createdDate', 'desc')
+    .paginate(limit, skip)
+    .execute({ consistentRead });
+}
+
+/**
+ * Get dive logs with configurable optimization level
+ */
+async function getDiveLogs(userId, options = {}) {
+  const {
+    minDepth = null,
+    maxDepth = null,
+    startDate = null,
+    endDate = null,
+    limit = MASTER_CONFIG.QUERY_LIMITS.DEFAULT_PAGE_SIZE,
+    skip = 0,
+    consistentRead = false,
+    utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT
+  } = options;
+
+  let builder = new WixUtilsMaster('@deepfreediving/kovaldeepai-app/Import1', utilityLevel)
+    .forUser(userId)
+    .ofType('dive-log');
+
+  if (minDepth !== null || maxDepth !== null) {
+    builder = builder.depthRange(minDepth, maxDepth);
+  }
+
+  if (startDate || endDate) {
+    builder = builder.dateRange(startDate, endDate);
+  }
+
+  return builder
+    .sortBy('diveDate', 'desc')
+    .paginate(limit, skip)
+    .execute({ consistentRead });
+}
+
+/**
+ * Get user profile with optimal index usage
+ */
+async function getUserProfile(userId, options = {}) {
+  const { 
+    consistentRead = false,
+    utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT 
+  } = options;
+
+  const startTime = Date.now();
+  
+  try {
+    const result = await wixData.query('Members/FullData')
+      .eq('_id', userId)
+      .limit(1)
+      .find();
+    
+    const duration = Date.now() - startTime;
+    
+    return {
+      ...result,
+      _indexAnalysis: {
+        duration,
+        isOptimized: true,
+        indexUsage: ['_id_eq'],
+        resultCount: result.items.length,
+        indexScore: 100,
+        utilityLevel
+      }
+    };
+  } catch (error) {
+    console.error('Failed to get user profile:', error);
+    throw error;
+  }
+}
+
+/**
+ * 🔥 MASTER BULK OPERATIONS with level-aware error handling
+ */
+async function bulkInsert(collectionName, items, options = {}) {
+  const { 
+    batchSize = MASTER_CONFIG.QUERY_LIMITS.BULK_BATCH_SIZE,
+    retryFailures = true,
+    maxRetries = MASTER_CONFIG.TIMEOUTS.MAX_RETRIES,
+    utilityLevel = MASTER_CONFIG.UTILITY_LEVELS.EXPERT
+  } = options;
+  
+  if (!Array.isArray(items) || items.length === 0) {
+    return { inserted: [], errors: [], stats: { totalItems: 0, successRate: 0 } };
+  }
+
+  const results = { inserted: [], errors: [] };
+  let totalAttempts = 0;
+  
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    totalAttempts++;
+    
+    try {
+      const batchResult = await wixData.bulkInsert(collectionName, batch);
+      
+      if (batchResult.inserted) {
+        results.inserted.push(...batchResult.inserted);
+      }
+      
+      if (batchResult.errors && batchResult.errors.length > 0) {
+        if (utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+          console.warn(`⚠️  Bulk insert errors (likely unique index violations):`, batchResult.errors.length);
+        }
+        results.errors.push(...batchResult.errors);
+        
+        if (retryFailures) {
+          for (const error of batchResult.errors) {
+            let retryCount = 0;
+            while (retryCount < maxRetries) {
+              try {
+                const retryResult = await wixData.insert(collectionName, error.item);
+                results.inserted.push(retryResult);
+                break;
+              } catch (retryError) {
+                retryCount++;
+                if (retryCount >= maxRetries && utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+                  console.warn(`Failed to retry insert after ${maxRetries} attempts:`, retryError.message);
+                }
+                await new Promise(resolve => setTimeout(resolve, MASTER_CONFIG.TIMEOUTS.RETRY_DELAY));
+              }
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      if (utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+        console.error(`Bulk insert batch failed:`, error);
+      }
+      results.errors.push({ error: error.message, batch });
+    }
+  }
+  
+  const stats = {
+    totalItems: items.length,
+    insertedCount: results.inserted.length,
+    errorCount: results.errors.length,
+    successRate: Math.round((results.inserted.length / items.length) * 100),
+    batchCount: Math.ceil(items.length / batchSize),
+    totalAttempts,
+    utilityLevel
+  };
+  
+  if (utilityLevel !== MASTER_CONFIG.UTILITY_LEVELS.BASIC) {
+    console.log(`📊 Bulk Insert Stats [${utilityLevel.toUpperCase()}]:`, stats);
+  }
+  
+  return { ...results, stats };
+}
+
+// 🔄 BACKWARD COMPATIBILITY LAYER
+const COMPATIBILITY_LAYER = {
+  // Legacy function names point to new master functions
+  getOptimizedUserMemories: (userId, options) => getUserMemories(userId, {...options, utilityLevel: 'optimized'}),
+  getOptimizedDiveLogs: (userId, options) => getDiveLogs(userId, {...options, utilityLevel: 'optimized'}),
+  getOptimizedUserProfile: (userId, options) => getUserProfile(userId, {...options, utilityLevel: 'optimized'}),
+  optimizedBulkInsert: (collection, items, options) => bulkInsert(collection, items, {...options, utilityLevel: 'optimized'}),
+  
+  // Expert versions
+  getExpertUserMemories: (userId, options) => getUserMemories(userId, {...options, utilityLevel: 'expert'}),
+  getExpertDiveLogs: (userId, options) => getDiveLogs(userId, {...options, utilityLevel: 'expert'}),
+  
+  // Basic versions
+  getBasicUserMemories: (userId, options) => getUserMemories(userId, {...options, utilityLevel: 'basic'}),
+  getBasicDiveLogs: (userId, options) => getDiveLogs(userId, {...options, utilityLevel: 'basic'})
+};
+
+// Export everything
+export {
+  WixUtilsMaster as default,
+  WixUtilsMaster,
+  MASTER_CONFIG,
+  INDEX_PATTERNS,
+  INDEX_OPERATORS,
+  WIX_ERROR_CODES,
+  getUserMemories,
+  getDiveLogs,
+  getUserProfile,
+  bulkInsert,
+  COMPATIBILITY_LAYER
+};

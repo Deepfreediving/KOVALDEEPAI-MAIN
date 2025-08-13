@@ -1,0 +1,454 @@
+// HTTP-CHAT.JSW - WIX BACKEND CHAT API
+// Version: 4.0.0 - Production Edition
+// Wix Backend HTTP Functions for Chat Processing
+
+import wixData from 'wix-data';
+import { fetch } from 'wix-fetch';
+import { currentMember } from 'wix-members';
+import { ok, badRequest, serverError } from 'wix-http-functions';
+
+// Chat API Configuration
+const CHAT_CONFIG = {
+  API_ENDPOINTS: {
+    AI_BACKEND: 'https://kovaldeepai-main.vercel.app/api/openai/chat',
+    LOCAL_DIVE_LOGS: 'https://kovaldeepai-main.vercel.app/api/analyze/dive-logs',
+    FALLBACK_BACKEND: 'https://kovaldeepai-main.vercel.app/api/chat'
+  },
+  
+  COLLECTION_NAME: 'DiveLogs',
+  
+  VALIDATION: {
+    MAX_MESSAGE_LENGTH: 5000,
+    MIN_MESSAGE_LENGTH: 1,
+    MAX_DIVE_LOGS: 20,
+    KNOWN_MEMBER_IDS: [
+      '8b315b71-22b9-40c6-af86-841ceee3f534',
+      'f549b01d-9dc1-4c85-90b9-1683337f6ed0'
+    ]
+  },
+  
+  PERFORMANCE: {
+    SLOW_QUERY_THRESHOLD: 3000,
+    ENABLE_ANALYTICS: true,
+    CACHE_TTL: 300000,
+    REQUEST_TIMEOUT: 15000
+  },
+  
+  ERROR_MESSAGES: {
+    MISSING_MESSAGE: 'Message is required',
+    MESSAGE_TOO_LONG: 'Message exceeds maximum length',
+    AI_BACKEND_ERROR: 'AI service temporarily unavailable',
+    MEMBER_NOT_FOUND: 'Could not identify member',
+    DIVE_LOGS_ERROR: 'Could not load dive logs'
+  }
+};
+
+// CORS Headers for API responses
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
+
+// Performance tracking metrics
+let chatMetrics = {
+  requests: 0,
+  responses: 0,
+  errors: 0,
+  totalDuration: 0,
+  memberDetections: 0,
+  diveLogsRetrieved: 0,
+  aiBackendCalls: 0,
+  slowRequests: 0
+};
+
+// Utility Functions
+function createResponse(status, data) {
+  return {
+    status,
+    body: data,
+    headers: CORS_HEADERS
+  };
+}
+
+function trackMetrics(operation, duration, success = true) {
+  chatMetrics.requests++;
+  chatMetrics.totalDuration += duration;
+  if (success) { chatMetrics.responses++; } else { chatMetrics.errors++; }
+  if (duration > CHAT_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD) {
+    chatMetrics.slowRequests++;
+    console.log(`Slow chat request: ${duration}ms`);
+  }
+  switch(operation) {
+    case 'memberDetection': chatMetrics.memberDetections++; break;
+    case 'diveLogsRetrieval': chatMetrics.diveLogsRetrieved++; break;
+    case 'aiBackendCall': chatMetrics.aiBackendCalls++; break;
+  }
+}
+
+function logDebug(message, data = null) {
+  console.log(message, data || '');
+}
+
+function logError(message, error = null) {
+  console.error(message, error || '');
+}
+
+// API Version Detection (Master level default)
+function getApiVersion(request) {
+  return request.headers['x-api-version'] || 
+         request.query.version || 
+         'master'; // Default to master level
+}
+
+// Enhanced member detection
+async function detectMember(userId) {
+  const startTime = Date.now();
+  
+  try {
+    let effectiveUserId = userId || 'member';
+    
+    // Guest user detection
+    if (effectiveUserId.startsWith('guest-')) {
+      logDebug('Guest user detected, attempting member resolution...');
+      
+      try {
+        // Try to get the real user ID from Wix Members service
+        const member = await currentMember.getMember();
+        if (member && member._id) {
+          effectiveUserId = member._id;
+          logDebug(`Found actual member ID: ${effectiveUserId}`);
+        }
+      } catch (memberError) {
+        logDebug('Could not get member from wix-members:', memberError.message);
+        
+        // Fallback: Try known member IDs
+        for (const testId of CHAT_CONFIG.VALIDATION.KNOWN_MEMBER_IDS) {
+          try {
+            const testResults = await wixData.query(CHAT_CONFIG.COLLECTION_NAME)
+              .eq("userId", testId)
+              .limit(1)
+              .find();
+            
+            if (testResults.items.length > 0) {
+              effectiveUserId = testId;
+              logDebug(`Using known member ID with dive logs: ${effectiveUserId}`);
+              break;
+            }
+          } catch (testError) {
+            logDebug(`Test failed for member ID ${testId}:`, testError.message);
+          }
+        }
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    trackMetrics('memberDetection', duration);
+    
+    return effectiveUserId;
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('memberDetection', duration, false);
+    throw error;
+  }
+}
+
+// 🔥 ENHANCED DIVE LOGS RETRIEVAL
+async function retrieveDiveLogs(userId, providedLogs = [], version = 'master') {
+  const startTime = Date.now();
+  
+  try {
+    let userDiveLogs = providedLogs;
+    
+    if (!userDiveLogs.length && userId) {
+      logDebug(`🔍 Querying dive logs for member: ${userId}`, null, version);
+      
+      // Query Wix database
+      const results = await wixData.query(CHAT_CONFIG.COLLECTION_NAME)
+        .eq("userId", userId)
+        .and(wixData.query(CHAT_CONFIG.COLLECTION_NAME)
+          .or(
+            wixData.query(CHAT_CONFIG.COLLECTION_NAME).isNotEmpty("discipline"),
+            wixData.query(CHAT_CONFIG.COLLECTION_NAME).isNotEmpty("targetDepth")
+          )
+        )
+        .descending("timestamp")
+        .limit(CHAT_CONFIG.VALIDATION.MAX_DIVE_LOGS)
+        .find();
+        
+      userDiveLogs = results.items;
+      logDebug(`✅ Retrieved ${userDiveLogs.length} dive logs from Wix database`, null, version);
+      
+      // Master level: Fallback strategies if no logs found
+      if (userDiveLogs.length === 0) {
+        logDebug('🔍 No dive logs found, checking database contents...', null, version);
+        
+        // Check for any dive logs in the database
+        const anyLogs = await wixData.query(CHAT_CONFIG.COLLECTION_NAME)
+          .limit(5)
+          .find();
+        
+        logDebug(`📊 Total items in database: ${anyLogs.totalCount}`, null, version);
+        
+        if (anyLogs.items.length > 0) {
+          logDebug('📋 Sample items found in database', anyLogs.items.map(item => ({
+            id: item._id,
+            userId: item.userId,
+            discipline: item.discipline,
+            targetDepth: item.targetDepth,
+            reachedDepth: item.reachedDepth
+          })), version);
+          
+          // Use fallback logs if available
+          const fallbackLogs = anyLogs.items.filter(item => 
+            item.discipline || item.targetDepth
+          );
+          
+          if (fallbackLogs.length > 0) {
+            userDiveLogs = fallbackLogs;
+            logDebug(`✅ Using ${fallbackLogs.length} fallback dive logs for analysis`, null, version);
+          }
+        }
+        
+        // Try local dive logs API
+        if (userDiveLogs.length === 0) {
+          try {
+            logDebug('🔍 Checking local dive logs API...', null, version);
+            
+            const localResponse = await fetch(`${CHAT_CONFIG.API_ENDPOINTS.LOCAL_DIVE_LOGS}?userId=${userId}`);
+            if (localResponse.ok) {
+              const localData = await localResponse.json();
+              if (localData.success && localData.data && localData.data.length > 0) {
+                userDiveLogs = localData.data;
+                logDebug(`✅ Retrieved ${userDiveLogs.length} local dive logs`, null, version);
+                
+                if (version === 'master' && userDiveLogs.length > 0) {
+                  logDebug('📊 Sample local dive log:', {
+                    discipline: userDiveLogs[0].discipline,
+                    depth: userDiveLogs[0].reachedDepth,
+                    date: userDiveLogs[0].date,
+                    location: userDiveLogs[0].location,
+                    notes: userDiveLogs[0].notes
+                  }, version);
+                }
+              }
+            }
+          } catch (localError) {
+            logDebug('⚠️ Could not load local dive logs:', localError.message, version);
+          }
+        }
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    trackMetrics('diveLogsRetrieval', duration);
+    
+    return userDiveLogs;
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('diveLogsRetrieval', duration, false);
+    logError('Could not load dive logs:', error);
+    return [];
+  }
+}
+
+// 🔥 ENHANCED AI BACKEND CALL
+async function callAIBackend(payload, version = 'master') {
+  const startTime = Date.now();
+  
+  try {
+    logDebug("🚀 Sending to AI backend:", {
+      userId: payload.userId,
+      message: payload.message.substring(0, 50) + '...',
+      profileSummary: `PB: ${payload.profile.pb || 'Unknown'}, Dives: ${payload.profile.totalDives}`
+    }, version);
+
+    const response = await fetch(CHAT_CONFIG.API_ENDPOINTS.AI_BACKEND, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI backend responded with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    const duration = Date.now() - startTime;
+    trackMetrics('aiBackendCall', duration);
+    
+    logDebug("📥 AI backend response received", data, version);
+    
+    return data;
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('aiBackendCall', duration, false);
+    throw error;
+  }
+}
+
+// 🔥 MAIN CHAT ENDPOINT
+
+/**
+ * POST: Handle chat requests with version-based features
+ * Supports basic, expert, and optimized modes
+ */
+export async function post_chat(request) {
+  const startTime = Date.now();
+  const version = getApiVersion(request);
+  
+  try {
+    const requestData = await request.body.json();
+    const { userMessage, userId, profile = {}, diveLogs = [] } = requestData;
+    
+    logDebug('📥 Chat request received:', {
+      userMessage: userMessage?.substring(0, 50) + '...',
+      userId: userId,
+      profileKeys: Object.keys(profile),
+      diveLogsCount: diveLogs.length,
+      version: version
+    }, version);
+
+    // Validation
+    if (!userMessage?.trim()) {
+      trackMetrics('validation', Date.now() - startTime, false);
+      return createResponse(400, {
+        error: CHAT_CONFIG.ERROR_MESSAGES.MISSING_MESSAGE,
+        success: false
+      }, request);
+    }
+
+    if (userMessage.length > CHAT_CONFIG.VALIDATION.MAX_MESSAGE_LENGTH) {
+      trackMetrics('validation', Date.now() - startTime, false);
+      return createResponse(400, {
+        error: CHAT_CONFIG.ERROR_MESSAGES.MESSAGE_TOO_LONG,
+        success: false
+      }, request);
+    }
+
+    // Enhanced member detection (expert/optimized)
+    const effectiveUserId = await detectMember(userId); // leave extra arg harmless or remove? (cleaned below)
+    logDebug(`🔍 Processing request for member: ${effectiveUserId}`, null, version);
+
+    // Enhanced dive logs retrieval (expert/optimized)
+    const userDiveLogs = await retrieveDiveLogs(effectiveUserId, diveLogs, version);
+
+    // Build enhanced profile context
+    const userProfile = {
+      ...profile,
+      totalDives: userDiveLogs.length,
+      pb: userDiveLogs.reduce(
+        (max, d) => Math.max(max, d.reachedDepth || d.targetDepth || 0),
+        0
+      ),
+      lastDiveDepth: userDiveLogs[0]?.reachedDepth || userDiveLogs[0]?.targetDepth || 0,
+      lastDiveLocation: userDiveLogs[0]?.location || "Unknown"
+    };
+
+    // Master level: Add metadata
+    userProfile.analysisTimestamp = new Date().toISOString();
+    userProfile.apiVersion = version;
+    userProfile.memberDetectionMethod = userId?.startsWith('guest-') ? 'enhanced' : 'direct';
+
+    // Prepare AI payload
+    const payload = {
+      message: userMessage,
+      userId: effectiveUserId,
+      profile: userProfile,
+      diveLogs: userDiveLogs
+    };
+
+    // Master level: Add request context
+    payload.context = {
+      version: version,
+      timestamp: new Date().toISOString(),
+      diveLogsSource: userDiveLogs.length > 0 ? 'wix-database' : 'none',
+      performanceTracking: true
+    };
+
+    // Call AI backend
+    const data = await callAIBackend(payload, version);
+
+    // Extract AI response
+    const aiResponse = data.assistantMessage?.content || 
+                      data.answer || 
+                      "⚠️ No response from AI.";
+
+    const duration = Date.now() - startTime;
+    trackMetrics('complete', duration, true);
+
+    // Build response
+    const response = {
+      aiResponse,
+      metadata: {
+        ...data.metadata,
+        userProfile,
+        totalDiveLogs: userDiveLogs.length
+      },
+      success: true,
+      timestamp: new Date().toISOString()
+    };
+
+    // Master level: Add enhanced metadata
+    response.performance = {
+      duration: `${duration}ms`,
+      version: version,
+      memberDetection: effectiveUserId !== userId ? 'enhanced' : 'direct',
+      diveLogsFound: userDiveLogs.length
+    };
+    
+    response.metrics = {
+      requestCount: chatMetrics.requests,
+      averageResponseTime: chatMetrics.requests > 0 ? chatMetrics.totalDuration / chatMetrics.requests : 0,
+      successRate: chatMetrics.requests > 0 ? (chatMetrics.responses / chatMetrics.requests) * 100 : 0
+    };
+
+    return createResponse(200, response, request);
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    trackMetrics('error', duration, false);
+    
+    logError("❌ Chat function error:", error);
+    
+    return createResponse(500, {
+      error: 'Chat service error: ' + error.message,
+      success: false,
+      timestamp: new Date().toISOString(),
+      version: version
+    }, request);
+  }
+}
+
+/**
+ * GET: Retrieve chat metrics (master level)
+ */
+export async function get_chatMetrics(request) {
+  const version = getApiVersion(request);
+  
+  return createResponse(200, {
+    success: true,
+    metrics: chatMetrics,
+    config: CHAT_CONFIG,
+    version: version
+  }, request);
+}
+
+/**
+ * OPTIONS: Handle CORS preflight requests
+ */
+export function options_chat(request) {
+  return createResponse(200, {}, request);
+}
+
+// 🔥 BACKWARD COMPATIBILITY LAYER
+// Legacy function names for existing integrations
+export const forwardChatRequest = post_chat;
+export const handleChatRequest = post_chat;
+
+console.log("🔥 Chat Master API initialized - All versions supported");

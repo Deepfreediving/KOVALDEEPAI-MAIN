@@ -1,0 +1,97 @@
+**Koval Deep AI: Tactical Watermanship & Freediving Guide for Military Special Forces**
+**Access Restriction:**
+This program is strictly for active-duty or prospective military special forces candidates (Navy SEALs, Army Rangers, Marine RECON/MARSOC, Coast Guard Rescue Swimmers). Not for recreational or civilian use. Unlocks only upon branch verification.
+---
+**Mission Goal:**
+To prepare elite candidates for maritime operational performance under extreme water stress. This program builds relaxed control under high CO₂/O₂ load, enabling 4–5 minute static breath-holds and 75–100m dynamic swims under unpredictable, mission-relevant conditions.
+**Training Philosophy:**
+You do not fight the water. You do not push. You align with it. Sea water is 800x denser than air; fighting it is wasting energy. This program teaches you to conserve, not conquer.
+---
+## 📍 6-Week Tactical Breath Control & Watermanship Protocol
+Each week is structured with:
+* ✨ Daily Relaxation Protocol
+* 🏊 Pool/Water-Based Training
+* 🏋️ Dryland Hypoxic Training
+* 📉 Strength + HR Conditioning (Optional)
+Each day includes specific breathing tools and recovery standards.
+---
+### **WEEK 1: Baseline Calm & Nervous System Control**
+**Focus:** Develop CO₂ tolerance foundation, zero-stress breath-holds, nasal discipline.
+**Daily Relaxation Routine:** (See expanded version above)
+* Box Breathing: 4–4–4–4 × 5 rounds
+* Nasal-only breathing (walk/sit): 10 mins
+* Dry Static Hold (3 rounds to first contraction only)
+**Water Training (3x/week):**
+* 25m underwater swims × 4 (bi-fins, slow)
+* 3x 30s static face-down floats (partner supervised)
+* Recovery: 3 nasal hook breaths + 3 slow recoveries
+**Dry CO₂ Table (2x/week):**
+* Hold to first contraction → 90s rest × 5
+---
+### **WEEK 2: Extended Calm & Initial Discomfort Tolerance**
+**Focus:** Extend tolerance to 2:00+ holds, introduce controlled discomfort.
+**Static Training (3x/week):**
+* 4 dry holds: 1:30 / 2:00 / 2:30 / 2:30
+* 90s rest, no max effort
+**Water Training:**
+* 25m underwater swim → 25m freestyle (3x rounds)
+* Recovery: 3 hook + 3 full recoveries
+* Focus: Zero tension surfacing
+**Add Kick Pattern Drill (from Nenad Pavković)**
+* 3-3-4-4 cycles × 4 reps (50m)
+**Dry CO₂ Table (2x/week):**
+* Hold to second contraction → 60s rest × 6
+---
+### **WEEK 3: Tactical Stress Tolerance Underload**
+**Focus:** Condition controlled panic response + stable recovery
+**Dry Static Table:**
+* 4 holds: 2:30 / 3:00 / 3:30 / 4:00
+* Rest: 90s between
+**Pool Work (4x/week):**
+* Static → DYN: 3:00 hold → 50m swim (3 rounds)
+* 6x 25/25: mono/DNF + recovery swim (speed 3→2)
+* Focus: Low O₂, high CO₂ handling, surface discipline
+**Optional Strength**
+* Squats, split squats, Jefferson curls (2x/week)
+* Assault bike: 20s on / 40s rest × 6
+---
+### **WEEK 4: Progressive Load Application & Environmental Conditioning**
+**Focus:** 4:00 statics + consistent 75m DYN
+**Dry O₂ Table:**
+* 4 holds: 3:30 / 4:00 / 4:30 / 5:00
+* 2:00 rest
+**Pool Hypoxic Sets:**
+* 4x 75m swims w/ jump rest
+* 25/25 (speed 4 → 2) × 6 sets
+* Static → 75m swim × 3
+**Dryland CO₂ Walks:**
+* Exhale holds while walking 10–30 steps (x6 rounds)
+---
+### **WEEK 5: Tactical Resilience & Chaos Simulation**
+**Focus:** Recovery during motion, pre-fatigue breath-hold effort
+**Static Table:**
+* 3x statics to 4:30+, ending before blackout risk
+**Pool Challenge Sets:**
+* Hill/Sand Dune run → 25m underwater swim
+* 100m DYN at end of workout (simulate fatigue)
+**Breath Recovery Drills:**
+* 1 exhale recovery + 3 hook + 3 slow recoveries
+* Train timing + glottis control
+---
+### **WEEK 6: Mastery & Operational Confidence**
+**Focus:** Peak performance under calm — not effort
+**Dry Performance Test:**
+* 5:00 static hold (must feel calm at 4:00)
+**Water Mastery Test:**
+* 100m DYN (no push-off abuse)
+* 2x 25/25 drills with minimal rest
+* 50m underwater swims x6 (technique under duress)
+**Final Recovery Set:**
+* Box breath × 10 rounds
+* 10 minutes nasal walk cooldown
+---
+**Bot Implementation:**
+* Each week is unlockable by confirming prior week was completed
+* No progression if symptoms of blackout, panic, or chest tightness occur
+* Nenad Pavković elements only included from Week 3 forward
+* All sessions flagged "military use only" in AI logic

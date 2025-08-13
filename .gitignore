@@ -11,3 +11,14 @@ node_modules/
 .DS_Store
 # Ignore swap files
 *.swp
+# prevent uploaded images from being committed
+/public/uploads/
+.next
+
+# Wix development files - legacy locations (keep for now during transition)
+# These will be moved to /wix-site/ mirror folder
+# Wix App/
+# wix page/
+# wix guides/
+
+# Optional: uncomment above lines after verifying wix-site/ mirror is complete

@@ -1,0 +1,475 @@
+// 🔥 WIX PAGE BACKEND: HTTP-USERMEMORY.JSW - OPTIMIZED FOR WIX PAGE
+// Deploy this to Wix Page Backend: wix-page/backend/http-functions/http-userMemory.jsw
+// Version: 4.x - Updated for Wix Page Integration (Auto-versioning for 4.0 release)
+
+import { ok, badRequest, serverError } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { authentication } from 'wix-members-backend';
+
+// 🎯 ENHANCED CONFIGURATION FOR WIX PAGE
+const MEMORY_CONFIG = {
+  COLLECTION_NAME: 'DiveLogs', // ✅ Page collection (not app collection)
+  PAGE_ID: 'large-koval-deep-ai-page',
+  VERSION: '4.x',
+  
+  CORS_HEADERS: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Wix-Page-ID',
+    'X-Wix-Page-ID': 'large-koval-deep-ai-page'
+  }
+};
+
+// 🔥 ENHANCED GET: RETRIEVE COMPRESSED DIVE LOGS FROM DIVELOGS COLLECTION
+export async function get_userMemory(request) {
+  console.log('🔄 UserMemory GET request - querying DiveLogs collection for compressed data');
+  
+  try {
+    // Enhanced request validation
+    const userId = request.query.userId;
+    const dataType = request.query.type || 'all'; // 'dive_log', 'chat_memory', 'all'
+    const includeDetails = request.query.includeDetails === 'true';
+    const limit = parseInt(request.query.limit) || 50;
+    
+    if (!userId) {
+      return badRequest({
+        error: 'userId parameter is required',
+        appId: MEMORY_CONFIG.APP_ID,
+        version: MEMORY_CONFIG.VERSION
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    console.log(`📋 Looking up ${dataType} data for user: ${userId}`);
+
+    // ✅ OPTIMIZED QUERY: Get compressed dive logs from DiveLogs collection
+    let query = wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+      .eq('userId', userId);
+
+    // Filter by data type if specified
+    if (dataType !== 'all') {
+      query = query.eq('dataType', dataType);
+    }
+
+    const results = await query
+      .descending('diveDate')
+      .limit(limit)
+      .find();
+    
+    console.log(`✅ Found ${results.items.length} compressed records`);
+    
+    // ✅ PARSE COMPRESSED DATA: Extract logEntry for AI analysis
+    const processedItems = results.items.map(item => {
+      let parsedLogEntry = {};
+      try {
+        parsedLogEntry = JSON.parse(item.logEntry || '{}');
+      } catch (e) {
+        console.warn('Could not parse logEntry for item:', item._id);
+        parsedLogEntry = { error: 'Invalid logEntry format' };
+      }
+
+      return {
+        _id: item._id,
+        userId: item.userId,
+        diveLogId: item.diveLogId,
+        diveDate: item.diveDate,
+        diveTime: item.diveTime,
+        diveLogWatch: item.diveLogWatch,
+        dataType: item.dataType || 'dive_log',
+        // Include parsed logEntry for easy access
+        logEntry: parsedLogEntry,
+        // Keep original compressed format for storage
+        logEntryRaw: item.logEntry,
+        _createdDate: item._createdDate
+      };
+    });
+    
+    // Separate different types of data
+    const diveLogs = processedItems.filter(item => 
+      item.dataType === 'dive_log' || !item.dataType
+    );
+    const memories = processedItems.filter(item => 
+      item.dataType === 'chat_memory' || item.dataType === 'user_summary'
+    );
+
+    const responseData = {
+      success: true,
+      userId: userId,
+      diveLogsCount: diveLogs.length,
+      memoriesCount: memories.length,
+      totalRecords: processedItems.length,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
+    };
+
+    if (includeDetails) {
+      responseData.diveLogs = diveLogs;
+      responseData.memories = memories;
+      responseData.allRecords = processedItems;
+    } else {
+      // Return summary info only
+      responseData.lastDiveLogDate = diveLogs.length > 0 ? diveLogs[0].diveDate : null;
+      responseData.recentDives = diveLogs.slice(0, 5).map(dive => ({
+        diveLogId: dive.diveLogId,
+        diveDate: dive.diveDate,
+        discipline: dive.logEntry.discipline || 'Unknown',
+        depth: dive.logEntry.depth || 0
+      }));
+    }
+
+    return ok(responseData, MEMORY_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    console.error('❌ GET userMemory error:', error);
+    
+    return serverError({
+      error: 'Failed to retrieve user memory',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 ENHANCED POST: SAVE COMPRESSED DIVE LOG TO DIVELOGS COLLECTION
+export async function post_userMemory(request) {
+  console.log('🔄 UserMemory POST request - saving compressed dive log to DiveLogs collection');
+  
+  try {
+    // Enhanced request parsing and validation
+    let requestData;
+    try {
+      const requestBody = await request.body.text();
+      requestData = JSON.parse(requestBody);
+      console.log('📋 Parsed request data:', JSON.stringify(requestData, null, 2));
+    } catch (error) {
+      return badRequest({
+        error: 'Invalid JSON in request body',
+        details: error.message,
+        appId: MEMORY_CONFIG.APP_ID
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    const { userId, memoryContent, type = 'chat_memory', diveLogData, sessionName } = requestData;
+    
+    if (!userId) {
+      return badRequest({
+        error: 'userId is required',
+        appId: MEMORY_CONFIG.APP_ID
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    // ✅ COMPRESSED STRUCTURE: Create record using structured format for AI analysis
+    let diveLogRecord;
+    
+    if (diveLogData) {
+      // ✅ OPTIMIZED: Create full compressed dive log structure for AI analysis
+      const timestamp = new Date().toISOString();
+      const diveLogId = `dive_${userId}_${Date.now()}`;
+      
+      // Parse numeric values
+      const targetDepth = parseFloat(diveLogData.targetDepth) || 0;
+      const reachedDepth = parseFloat(diveLogData.reachedDepth) || 0;
+      const mouthfillDepth = parseFloat(diveLogData.mouthfillDepth) || 0;
+      const issueDepth = parseFloat(diveLogData.issueDepth) || 0;
+      
+      // Calculate analysis fields
+      const depthAchievement = targetDepth > 0 ? (reachedDepth / targetDepth) * 100 : 0;
+      const progressionScore = Math.max(0, Math.min(100, 
+        depthAchievement + 
+        (diveLogData.exit === 'Good' ? 10 : 0) + 
+        (issueDepth > 0 ? -20 : 0)
+      ));
+      
+      // Identify risk factors
+      const riskFactors = [];
+      if (diveLogData.squeeze) riskFactors.push('squeeze-reported');
+      if (issueDepth > 0) riskFactors.push('depth-issue');
+      if (diveLogData.exit !== 'Good') riskFactors.push('difficult-exit');
+      if (reachedDepth > targetDepth * 1.1) riskFactors.push('depth-exceeded');
+      
+      // Extract technical notes
+      const technicalNotes = [];
+      if (mouthfillDepth > 0) technicalNotes.push(`Mouthfill at ${mouthfillDepth}m`);
+      if (diveLogData.issueComment) technicalNotes.push(`Issue: ${diveLogData.issueComment}`);
+      if (diveLogData.surfaceProtocol) technicalNotes.push(`Surface: ${diveLogData.surfaceProtocol}`);
+      
+      // ✅ Create compressed logEntry with complete structure for AI analysis
+      const compressedLogEntry = {
+        // Core dive data
+        id: diveLogId,
+        userId: userId,
+        timestamp: timestamp,
+        
+        // Dive details
+        dive: {
+          date: diveLogData.date || '',
+          disciplineType: diveLogData.disciplineType || '',
+          discipline: diveLogData.discipline || 'Freedive',
+          location: diveLogData.location || 'Unknown',
+          depths: {
+            target: targetDepth,
+            reached: reachedDepth,
+            mouthfill: mouthfillDepth,
+            issue: issueDepth
+          },
+          performance: {
+            exit: diveLogData.exit || '',
+            duration: diveLogData.durationOrDistance || '',
+            totalTime: diveLogData.totalDiveTime || '',
+            attemptType: diveLogData.attemptType || '',
+            surfaceProtocol: diveLogData.surfaceProtocol || ''
+          },
+          issues: {
+            squeeze: Boolean(diveLogData.squeeze),
+            issueComment: diveLogData.issueComment || ''
+          },
+          notes: diveLogData.notes || ''
+        },
+        
+        // AI analysis fields
+        analysis: {
+          progressionScore: progressionScore,
+          riskFactors: riskFactors,
+          technicalNotes: technicalNotes.join(' | '),
+          depthAchievement: depthAchievement
+        },
+        
+        // Additional metadata
+        metadata: {
+          source: 'koval-ai-widget',
+          version: '2.0',
+          type: 'dive_log'
+        }
+      };
+      
+      // Create DiveLogs collection record
+      diveLogRecord = {
+        userId: userId,
+        diveLogId: diveLogId,
+        logEntry: JSON.stringify(compressedLogEntry), // Complete compressed structure
+        diveDate: diveLogData.date ? new Date(diveLogData.date) : new Date(),
+        diveTime: diveLogData.time || new Date().toLocaleTimeString(),
+        diveLogWatch: diveLogData.photos || diveLogData.watchPhoto || diveLogData.diveLogWatch || null,
+        dataType: 'dive_log',
+        _createdDate: new Date(),
+        _updatedDate: new Date()
+      };
+      
+    } else if (memoryContent) {
+      // For chat/memory: use compressed logEntry for AI context
+      diveLogRecord = {
+        userId: userId,
+        diveLogId: `memory_${Date.now()}`,
+        logEntry: JSON.stringify({
+          // Compressed memory data for AI analysis
+          content: memoryContent,
+          type: type,
+          sessionName: sessionName || `Memory - ${new Date().toISOString()}`,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            source: 'chat-memory',
+            version: '2.0'
+          }
+        }),
+        diveDate: new Date(),
+        diveTime: new Date().toLocaleTimeString(),
+        diveLogWatch: null,
+        dataType: type || 'chat_memory',
+        _createdDate: new Date(),
+        _updatedDate: new Date()
+      };
+    } else {
+      return badRequest({
+        error: 'Either diveLogData or memoryContent is required',
+        appId: MEMORY_CONFIG.APP_ID
+      }, MEMORY_CONFIG.CORS_HEADERS);
+    }
+
+    // Save directly to DiveLogs collection
+    const result = await wixData.insert(MEMORY_CONFIG.COLLECTION_NAME, diveLogRecord);
+    console.log(`✅ Compressed structure saved to DiveLogs collection: ${result._id}`);
+    
+    // Parse the saved logEntry to show what was stored
+    let savedStructure = {};
+    try {
+      savedStructure = JSON.parse(diveLogRecord.logEntry);
+    } catch (e) {
+      console.warn('Could not parse saved logEntry for logging');
+    }
+
+    return ok({
+      success: true,
+      userId: userId,
+      _id: result._id,
+      diveLogId: diveLogRecord.diveLogId,
+      dataType: diveLogRecord.dataType,
+      hasPhoto: !!diveLogRecord.diveLogWatch,
+      compressedStructure: {
+        hasDiveData: !!savedStructure.dive,
+        hasAnalysis: !!savedStructure.analysis,
+        progressionScore: savedStructure.analysis?.progressionScore,
+        riskFactors: savedStructure.analysis?.riskFactors?.length || 0,
+        depthAchievement: savedStructure.analysis?.depthAchievement
+      },
+      logEntry: diveLogRecord.logEntry, // Return compressed data for verification
+      timestamp: new Date().toISOString()
+    }, MEMORY_CONFIG.CORS_HEADERS);
+
+  } catch (error) {
+    console.error('❌ POST userMemory error:', error);
+    
+    return serverError({
+      error: 'Failed to save dive log',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION
+    }, MEMORY_CONFIG.CORS_HEADERS);
+  }
+}
+
+// 🔥 ENHANCED OPTIONS: CORS PREFLIGHT WITH APP VALIDATION
+export function options_userMemory(request) {
+  console.log('🔄 CORS preflight request for Wix App:', MEMORY_CONFIG.APP_ID);
+  
+  return ok({
+    message: 'CORS preflight OK',
+    appId: MEMORY_CONFIG.APP_ID,
+    version: MEMORY_CONFIG.VERSION,
+    allowedMethods: ['GET', 'POST', 'OPTIONS'],
+    timestamp: new Date().toISOString()
+  }, MEMORY_CONFIG.CORS_HEADERS);
+}
+
+// 🔥 ENHANCED WRAPPER FUNCTIONS FOR DIRECT BACKEND CALLS
+// These functions are called directly by the frontend using backend.saveUserMemory() etc.
+// Updated for Wix App integration with proper validation and error handling
+
+export async function saveUserMemory(requestData) {
+  console.log('🔄 SaveUserMemory wrapper called for app:', MEMORY_CONFIG.APP_ID);
+  console.log('📋 Request data:', JSON.stringify(requestData, null, 2));
+  
+  try {
+    // Enhanced input validation
+    if (!requestData || typeof requestData !== 'object') {
+      throw new Error('Invalid request data - must be an object');
+    }
+    
+    if (!requestData.userId || !requestData.diveLogData) {
+      throw new Error('Missing required fields: userId and diveLogData');
+    }
+    
+    // Create a mock request object that matches the HTTP function signature
+    const mockRequest = {
+      body: {
+        text: () => Promise.resolve(JSON.stringify(requestData)),
+        json: () => Promise.resolve(requestData)
+      },
+      headers: {
+        'X-Wix-App-ID': MEMORY_CONFIG.APP_ID,
+        'Content-Type': 'application/json'
+      },
+      query: {},
+      method: 'POST'
+    };
+    
+    // Call the main HTTP function and extract the response body
+    const result = await post_userMemory(mockRequest);
+    console.log('✅ SaveUserMemory wrapper successful, result status:', result.status || 'unknown');
+    
+    return result.body || result;
+  } catch (error) {
+    console.error('❌ SaveUserMemory wrapper error:', error);
+    
+    // Return a structured error response instead of throwing
+    return {
+      error: 'SaveUserMemory wrapper failed',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      success: false
+    };
+  }
+}
+
+// Enhanced wrapper for GET operations
+export async function getUserMemory(requestData) {
+  console.log('🔄 GetUserMemory wrapper called for app:', MEMORY_CONFIG.APP_ID);
+  console.log('📋 Request data:', JSON.stringify(requestData, null, 2));
+  
+  try {
+    // Enhanced input validation
+    if (requestData && typeof requestData !== 'object') {
+      throw new Error('Invalid request data - must be an object or null');
+    }
+    
+    const mockRequest = {
+      body: { 
+        text: () => Promise.resolve('{}'),
+        json: () => Promise.resolve({}) 
+      },
+      headers: {
+        'X-Wix-App-ID': MEMORY_CONFIG.APP_ID,
+        'Content-Type': 'application/json'
+      },
+      query: requestData || {},
+      method: 'GET'
+    };
+    
+    const result = await get_userMemory(mockRequest);
+    console.log('✅ GetUserMemory wrapper successful, result status:', result.status || 'unknown');
+    
+    return result.body || result;
+  } catch (error) {
+    console.error('❌ GetUserMemory wrapper error:', error);
+    
+    // Return a structured error response instead of throwing
+    return {
+      error: 'GetUserMemory wrapper failed',
+      details: error.message,
+      timestamp: new Date().toISOString(),
+      appId: MEMORY_CONFIG.APP_ID,
+      success: false
+    };
+  }
+}
+
+// 🔥 NEW: App Status Check Function
+export async function getAppStatus() {
+  console.log('🔄 App status check for:', MEMORY_CONFIG.APP_ID);
+  
+  try {
+    // Test collection access
+    const testQuery = await wixData.query(MEMORY_CONFIG.COLLECTION_NAME)
+      .limit(1)
+      .find();
+    
+    return {
+      success: true,
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION,
+      collection: MEMORY_CONFIG.COLLECTION_NAME,
+      collectionAccessible: true,
+      totalRecords: testQuery.totalCount || 0,
+      timestamp: new Date().toISOString(),
+      status: 'operational'
+    };
+    
+  } catch (error) {
+    console.error('❌ App status check failed:', error);
+    
+    return {
+      success: false,
+      appId: MEMORY_CONFIG.APP_ID,
+      version: MEMORY_CONFIG.VERSION,
+      collection: MEMORY_CONFIG.COLLECTION_NAME,
+      collectionAccessible: false,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      status: 'error'
+    };
+  }
+}
