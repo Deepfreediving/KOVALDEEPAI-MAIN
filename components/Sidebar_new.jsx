@@ -139,99 +139,134 @@ export default function Sidebar({
                 : "bg-blue-50 hover:bg-blue-100 text-black"
             }`}
           >
-             Open Dive Journal
+            📒 Open Dive Journal
           </button>
 
-          {/* Dive Logs Summary */}
+          {/* 📒 Dive Logs - Chat-like Display */}
           <div className="mt-4">
             <h3 className="font-semibold mb-3">📒 Dive Logs ({diveLogs.length})</h3>
             {diveLogs.length > 0 ? (
-              <ul className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
                 {diveLogs.slice(0, 10).map((log, i) => {
-                  const formattedLog = formatDiveLogForDisplay(log);
                   return (
-                    <li
+                    <div
                       key={log.id || i}
-                      className={`border p-3 rounded text-sm transition-colors ${
-                        darkMode ? "bg-gray-800 text-white border-gray-600" : "bg-white text-black border-gray-200"
+                      className={`group p-3 rounded-lg border-l-4 transition-all duration-200 hover:shadow-sm ${
+                        darkMode 
+                          ? "bg-gray-800 border-l-blue-500 hover:bg-gray-750" 
+                          : "bg-gray-50 border-l-blue-400 hover:bg-white"
                       }`}
                     >
-                        {/* ✅ Structured dive log display */}
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-start">
-                            <div className="text-xs font-medium text-gray-500">
-                              {new Date(log.date || log.timestamp).toLocaleDateString()}
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <span className={`text-xs px-2 py-1 rounded font-medium ${
-                                darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {log.reachedDepth || log.targetDepth}m
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* ✅ Formatted dive log content */}
-                          <div className={`text-xs whitespace-pre-line ${
-                            darkMode ? 'text-gray-300' : 'text-gray-600'
+                      {/* 💬 Chat-like Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            {log.discipline || 'Freediving'}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                            darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {formattedLog}
-                          </div>
-                          
-                          {/* ✅ Action buttons */}
-                          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                            <AIAnalyzeButton
-                              diveLog={log}
-                              userId={userId}
-                              onAnalysisComplete={(analysis) => {
-                                if (setMessages) {
-                                  setMessages(prev => [...prev, {
-                                    role: 'assistant',
-                                    content: `🎯 **Analysis of your ${log.discipline || 'freediving'} dive:**\n\n${analysis}`
-                                  }]);
-                                }
-                              }}
-                              darkMode={darkMode}
-                              size="sm"
-                            />
-                            
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleEdit?.(i)}
-                                className={`text-xs px-2 py-1 rounded transition-colors ${
-                                  darkMode 
-                                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                }`}
-                                title="Edit dive log"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteWithWixSync(log, i)}
-                                className={`text-xs px-2 py-1 rounded transition-colors ${
-                                  darkMode 
-                                    ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' 
-                                    : 'text-red-500 hover:text-red-700 hover:bg-red-50'
-                                }`}
-                                title="Delete dive log"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
-                          </div>
+                            {log.reachedDepth || log.targetDepth}m
+                          </span>
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm italic text-gray-500 mb-2">No dive logs yet. Add your first dive above!</p>
-                  <p className="text-xs text-gray-400">Each log will be saved to your UserMemory database for AI pattern analysis</p>
-                </div>
-              )}
-            </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(log.date || log.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {/* 📍 Location & Exit Quality */}
+                      <div className="text-xs mb-2 space-y-1">
+                        {log.location && (
+                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            📍 {log.location}
+                          </div>
+                        )}
+                        {log.exit && (
+                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            🎯 Exit: {log.exit}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* 💭 Notes Preview */}
+                      {log.notes && (
+                        <div className={`text-xs mb-3 p-2 rounded italic ${
+                          darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-gray-600'
+                        }`}>
+                          "{log.notes.length > 60 ? log.notes.substring(0, 60) + '...' : log.notes}"
+                        </div>
+                      )}
+                      
+                      {/* 🔧 Action Buttons - Compact Row */}
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-300 dark:border-gray-600">
+                        <AIAnalyzeButton
+                          diveLog={log}
+                          userId={userId}
+                          onAnalysisComplete={(analysis) => {
+                            if (setMessages) {
+                              setMessages(prev => [...prev, {
+                                role: 'assistant',
+                                content: `🎯 **Analysis of your ${log.discipline || 'freediving'} dive:**\n\n${analysis}`
+                              }]);
+                            }
+                          }}
+                          darkMode={darkMode}
+                          size="xs"
+                          className="text-xs px-2 py-1"
+                        />
+                        
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={async () => {
+                              // ✅ Sync with Wix repeater on edit
+                              if (handleEdit) {
+                                handleEdit(i);
+                                // Trigger Wix sync after edit
+                                if (userId && refreshDiveLogs) {
+                                  await refreshWixRepeaterSync(userId);
+                                }
+                              }
+                            }}
+                            className={`text-xs px-2 py-1 rounded transition-all ${
+                              darkMode 
+                                ? 'text-gray-400 hover:text-white hover:bg-blue-600' 
+                                : 'text-gray-500 hover:text-white hover:bg-blue-500'
+                            }`}
+                            title="Edit dive log"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={async () => {
+                              // ✅ Sync with Wix repeater on delete
+                              if (handleDelete && confirm('Delete this dive log?')) {
+                                await handleDeleteWithWixSync(log, i);
+                              }
+                            }}
+                            className={`text-xs px-2 py-1 rounded transition-all ${
+                              darkMode 
+                                ? 'text-red-400 hover:text-white hover:bg-red-600' 
+                                : 'text-red-500 hover:text-white hover:bg-red-500'
+                            }`}
+                            title="Delete dive log"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="text-4xl mb-2">🌊</div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No dive logs yet</p>
+                <p className="text-xs text-gray-500">Add your first dive above to start tracking your progress!</p>
+                <p className="text-xs text-gray-400 mt-2">💾 Automatically synced with Wix database</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
             

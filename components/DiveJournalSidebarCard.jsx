@@ -1,106 +1,80 @@
 import { useState } from 'react';
-import DiveJournalForm from './DiveJournalForm';
 import DiveJournalDisplay from './DiveJournalDisplay';
 
 export default function DiveJournalSidebarCard({ 
   userId, 
   darkMode, 
-  onSubmit, 
-  onDelete, 
+  onSubmit,          // Called when dive log is saved
+  onDelete,          // Called when dive log is deleted 
   diveLogs, 
   loadingDiveLogs, 
   editLogIndex, 
   setEditLogIndex,
-  setMessages // ✅ Add setMessages prop for analysis integration
+  setMessages,       // For analysis integration
+  onRefreshDiveLogs  // 🚀 NEW: To refresh dive logs in parent
 }) {
-  const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'add'
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleFormSubmit = async (data) => {
+  // 🚀 Handle dive log save with parent communication
+  const handleDiveLogSaved = async (diveLog, result) => {
     try {
-      console.log('🚀 DiveJournalSidebarCard: Submitting dive log...', data);
-      if(!userId || userId.startsWith('guest-')) {
-        console.error('❌ DiveJournalSidebarCard: Invalid userId at submit time:', userId);
-      }
-      // Call the onSubmit callback from parent (embed page) FIRST
+      console.log('✅ DiveJournalSidebarCard: Dive log saved callback triggered:', {
+        diveLogId: diveLog.id,
+        success: result.success,
+        userId: userId
+      });
+      
+      // Call parent onSubmit callback if provided
       if (onSubmit) {
-        await onSubmit(data);
+        await onSubmit(diveLog);
         console.log('✅ DiveJournalSidebarCard: Parent onSubmit completed');
-      } else {
-        console.warn('⚠️ DiveJournalSidebarCard: onSubmit missing');
       }
-      // Force refresh the logs display by updating key
+      
+      // Trigger parent refresh if provided
+      if (onRefreshDiveLogs) {
+        console.log('🔄 DiveJournalSidebarCard: Triggering parent dive logs refresh...');
+        await onRefreshDiveLogs();
+      }
+      
+      // Update local refresh key to force DiveJournalDisplay to refresh
       setRefreshKey(prev => prev + 1);
-      setActiveTab('logs'); // Switch to logs after saving
-      console.log('✅ DiveJournalSidebarCard: Dive log submitted successfully, refreshing display');
+      
+      console.log('🎉 DiveJournalSidebarCard: All dive log save callbacks completed');
+      
     } catch (error) {
-      console.error('❌ DiveJournalSidebarCard: Error submitting dive log:', error);
+      console.error('❌ DiveJournalSidebarCard: Error in dive log save callback:', error);
     }
   };
 
   return (
     <div className={`w-full h-full flex flex-col ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
-      {/* Header with Tabs */}
-      <div className={`border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'logs'
-                ? darkMode 
-                  ? "bg-blue-900 text-blue-200 border-b-2 border-blue-400"
-                  : "bg-blue-50 text-blue-700 border-b-2 border-blue-500"
-                : darkMode
-                  ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-            }`}
-          >
-            <span className="flex items-center justify-center gap-2">
-              � <span>My Logs</span>
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('add')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'add'
-                ? darkMode 
-                  ? "bg-green-900 text-green-200 border-b-2 border-green-400"
-                  : "bg-green-50 text-green-700 border-b-2 border-green-500"
-                : darkMode
-                  ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-            }`}
-          >
-            <span className="flex items-center justify-center gap-2">
-              ➕ <span>Add Dive</span>
-            </span>
-          </button>
+      {/* Header */}
+      <div className={`border-b ${darkMode ? "border-gray-700" : "border-gray-200"} p-4`}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            🤿 <span>Dive Journal</span>
+          </h2>
         </div>
+        {diveLogs && diveLogs.length > 0 && (
+          <p className={`text-sm mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+            {diveLogs.length} dive{diveLogs.length !== 1 ? 's' : ''} logged
+          </p>
+        )}
       </div>
 
-      {/* Content Area */}
+      {/* Content Area - Full DiveJournalDisplay */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'logs' ? (
-          <div className="h-full">
-            <DiveJournalDisplay 
-              key={refreshKey} 
-              refreshKey={refreshKey}
-              userId={userId} 
-              darkMode={darkMode}
-              isEmbedded={true}
-              setMessages={setMessages} // ✅ Pass setMessages for analysis integration
-            />
-          </div>
-        ) : (
-          <div className="h-full overflow-y-auto p-4">
-            <div className={`rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} p-4`}>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                🤿 <span>New Dive Entry</span>
-              </h3>
-              <DiveJournalForm onSubmit={handleFormSubmit} darkMode={darkMode} userId={userId} />
-            </div>
-          </div>
-        )}
+        <DiveJournalDisplay 
+          key={refreshKey} 
+          refreshKey={refreshKey}
+          userId={userId} 
+          darkMode={darkMode}
+          isEmbedded={true}
+          setMessages={setMessages}
+          onDiveLogSaved={handleDiveLogSaved}
+          onDiveLogDeleted={onDelete}
+          onRefreshDiveLogs={onRefreshDiveLogs}
+        />
       </div>
     </div>
   );

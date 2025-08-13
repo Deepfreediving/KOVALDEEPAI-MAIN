@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
 
-export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, isEmbedded = false, setMessages, refreshKey }) {
+export default function DiveJournalDisplay({ 
+  userId, 
+  darkMode, 
+  isOpen, 
+  onClose, 
+  isEmbedded = false, 
+  setMessages, 
+  refreshKey,
+  onDiveLogSaved,     // 🚀 NEW: Callback when dive log is saved
+  onDiveLogDeleted,   // 🚀 NEW: Callback when dive log is deleted
+  onRefreshDiveLogs   // 🚀 NEW: Callback to refresh dive logs in parent
+}) {
   const [logs, setLogs] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState('date');
+  const [activeTab, setActiveTab] = useState('summary'); // Tab navigation: summary, history, add
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split('T')[0],
     disciplineType: 'depth',
@@ -65,23 +77,110 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🚀 DiveJournalDisplay: Starting dive log submit process...');
+    
     const newLog = {
       ...newEntry,
       id: Date.now().toString(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      userId: userId // Ensure userId is included
     };
     
-    const updatedLogs = [...logs, newLog];
-    setLogs(updatedLogs);
+    console.log('📝 DiveJournalDisplay: Prepared dive log data:', {
+      id: newLog.id,
+      userId: newLog.userId,
+      location: newLog.location,
+      depth: newLog.reachedDepth || newLog.targetDepth,
+      date: newLog.date
+    });
     
-    // Save to localStorage
     try {
-      localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
+      // 🚀 STEP 1: Save to Wix via API (backend handles both Wix and localStorage)
+      console.log('🌐 DiveJournalDisplay: Saving to Wix via API...');
+      const response = await fetch('/api/analyze/save-dive-log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          diveLogData: newLog,
+          source: 'dive-journal-display'
+        })
+      });
+
+      console.log('📥 DiveJournalDisplay: API response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ DiveJournalDisplay: Save successful:', result);
+        
+        // 🚀 STEP 2: Update local state
+        const updatedLogs = [...logs, newLog];
+        setLogs(updatedLogs);
+        
+        // 🚀 STEP 3: Update localStorage as backup
+        try {
+          localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
+          console.log('💾 DiveJournalDisplay: Updated localStorage backup');
+        } catch (error) {
+          console.warn("⚠️ DiveJournalDisplay: Failed to update localStorage:", error);
+        }
+        
+        // 🚀 STEP 4: Notify parent components
+        if (onDiveLogSaved) {
+          console.log('📢 DiveJournalDisplay: Notifying parent of successful save...');
+          onDiveLogSaved(newLog, result);
+        }
+        
+        if (onRefreshDiveLogs) {
+          console.log('🔄 DiveJournalDisplay: Triggering parent dive logs refresh...');
+          onRefreshDiveLogs();
+        }
+        
+        // 🚀 STEP 5: Show success message in chat
+        if (setMessages) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `✅ **Dive Log Saved Successfully!** \n\n📊 ${newLog.discipline || 'Freediving'} dive to ${newLog.reachedDepth || newLog.targetDepth}m at ${newLog.location || 'your location'} has been logged.`
+          }]);
+        }
+        
+        console.log('🎉 DiveJournalDisplay: Dive log save process completed successfully');
+        
+      } else {
+        throw new Error(`API save failed: ${response.status} ${response.statusText}`);
+      }
+      
     } catch (error) {
-      console.error("Failed to save dive log:", error);
+      console.error("❌ DiveJournalDisplay: Failed to save dive log via API:", error);
+      
+      // 🚀 FALLBACK: Save to localStorage only and show warning
+      const updatedLogs = [...logs, newLog];
+      setLogs(updatedLogs);
+      
+      try {
+        localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
+        console.log('💾 DiveJournalDisplay: Fallback - saved to localStorage only');
+      } catch (localError) {
+        console.error("❌ DiveJournalDisplay: Even localStorage save failed:", localError);
+      }
+      
+      // Notify parent even if API failed
+      if (onDiveLogSaved) {
+        onDiveLogSaved(newLog, { success: false, error: error.message, savedLocally: true });
+      }
+      
+      // Show error message in chat
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `⚠️ **Dive Log Saved Locally** \n\nYour dive was saved to your device but couldn't sync to the cloud. It will sync automatically when connection is restored. \n\nError: ${error.message}`
+        }]);
+      }
     }
     
-    // Reset form
+    // Reset form regardless of save outcome
     setNewEntry({
       date: new Date().toISOString().split('T')[0],
       disciplineType: 'depth',
@@ -190,6 +289,106 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
       }
     } finally {
       setAnalyzingLogId(null);
+    }
+  };
+
+  // 🚀 Add delete functionality with API integration
+  const handleDeleteDiveLog = async (logToDelete) => {
+    if (!logToDelete || !logToDelete.id) {
+      console.warn('⚠️ DiveJournalDisplay: No log to delete');
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete the dive log from ${logToDelete.date} at ${logToDelete.location || 'unknown location'}?`)) {
+      return;
+    }
+    
+    console.log('🗑️ DiveJournalDisplay: Starting delete process for log:', logToDelete.id);
+    
+    try {
+      // 🚀 STEP 1: Delete from API/Wix
+      console.log('🌐 DiveJournalDisplay: Deleting from Wix via API...');
+      const response = await fetch('/api/analyze/delete-dive-log', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          logId: logToDelete.id,
+          source: 'dive-journal-display'
+        })
+      });
+
+      console.log('📥 DiveJournalDisplay: Delete API response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ DiveJournalDisplay: Delete successful:', result);
+        
+        // 🚀 STEP 2: Update local state
+        const updatedLogs = logs.filter(log => log.id !== logToDelete.id);
+        setLogs(updatedLogs);
+        
+        // 🚀 STEP 3: Update localStorage
+        try {
+          localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
+          console.log('💾 DiveJournalDisplay: Updated localStorage after delete');
+        } catch (error) {
+          console.warn("⚠️ DiveJournalDisplay: Failed to update localStorage:", error);
+        }
+        
+        // 🚀 STEP 4: Notify parent components
+        if (onDiveLogDeleted) {
+          console.log('📢 DiveJournalDisplay: Notifying parent of successful delete...');
+          onDiveLogDeleted(logToDelete, result);
+        }
+        
+        if (onRefreshDiveLogs) {
+          console.log('🔄 DiveJournalDisplay: Triggering parent dive logs refresh...');
+          onRefreshDiveLogs();
+        }
+        
+        // 🚀 STEP 5: Show success message in chat
+        if (setMessages) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `🗑️ **Dive Log Deleted** \n\nThe dive log from ${logToDelete.date} at ${logToDelete.location || 'unknown location'} has been removed.`
+          }]);
+        }
+        
+        console.log('✅ DiveJournalDisplay: Delete process completed successfully');
+        
+      } else {
+        throw new Error(`API delete failed: ${response.status} ${response.statusText}`);
+      }
+      
+    } catch (error) {
+      console.error("❌ DiveJournalDisplay: Failed to delete dive log via API:", error);
+      
+      // 🚀 FALLBACK: Delete from localStorage only
+      const updatedLogs = logs.filter(log => log.id !== logToDelete.id);
+      setLogs(updatedLogs);
+      
+      try {
+        localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
+        console.log('💾 DiveJournalDisplay: Fallback - deleted from localStorage only');
+      } catch (localError) {
+        console.error("❌ DiveJournalDisplay: Even localStorage delete failed:", localError);
+      }
+      
+      // Notify parent even if API failed
+      if (onDiveLogDeleted) {
+        onDiveLogDeleted(logToDelete, { success: false, error: error.message, deletedLocally: true });
+      }
+      
+      // Show error message in chat
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `⚠️ **Dive Log Deleted Locally** \n\nThe dive log was removed from your device but couldn't sync to the cloud. The deletion will sync automatically when connection is restored. \n\nError: ${error.message}`
+        }]);
+      }
     }
   };
 
@@ -356,12 +555,16 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
                       <button className={`${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-500"}`}>
                         Edit
                       </button>
-                      <button className={`${darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-500"}`}>
+                      <button 
+                        onClick={() => handleDeleteDiveLog(log)} 
+                        className={`${darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-500"}`}
+                      >
                         Delete
                       </button>
                       <button 
                         onClick={() => handleAnalyzeDiveLog(log)} 
                         className={`${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-500"}`}
+                        disabled={analyzingLogId === log.id}
                       >
                         {analyzingLogId === log.id ? 'Analyzing...' : 'Analyze'}
                       </button>
@@ -382,27 +585,249 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
       <div className="p-4 border-b border-gray-700">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-white">📘 Dive Journal</h2>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowForm(!showForm)}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-            >
-              {showForm ? 'Cancel' : '+ Add Dive'}
-            </button>
-            <button 
-              onClick={onClose} 
-              className="text-gray-400 hover:text-white text-xl"
-            >
-              ✕
-            </button>
-          </div>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-white text-xl"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-4">
-        {/* Add Dive Form */}
-        {showForm && (
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-700">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'summary' 
+                ? 'bg-blue-600 text-white border-b-2 border-blue-400' 
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            📊 Summary
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'history' 
+                ? 'bg-blue-600 text-white border-b-2 border-blue-400' 
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            📋 History
+          </button>
+          <button
+            onClick={() => setActiveTab('add')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'add' 
+                ? 'bg-blue-600 text-white border-b-2 border-blue-400' 
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            ➕ Add New
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="p-4 flex-1 overflow-y-auto">
+        {/* Summary Tab */}
+        {activeTab === 'summary' && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🤿</div>
+              <h3 className="text-lg font-semibold text-white mb-2">Dive Summary</h3>
+              
+              {logs.length === 0 ? (
+                <div className="text-gray-400">
+                  <p>No dives logged yet.</p>
+                  <p className="text-sm mt-1">Use the "Add New" tab to start logging!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                      <div className="text-2xl font-bold text-blue-400">{logs.length}</div>
+                      <div className="text-xs text-gray-400">Total Dives</div>
+                    </div>
+                    <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                      <div className="text-2xl font-bold text-green-400">
+                        {Math.max(...logs.map(log => parseInt(log.reachedDepth) || 0))}m
+                      </div>
+                      <div className="text-xs text-gray-400">Max Depth</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                    <div className="text-sm text-gray-300 mb-2">Recent Activities</div>
+                    <div className="space-y-1 text-xs">
+                      {logs.slice(0, 3).map((log, i) => (
+                        <div key={i} className="flex justify-between text-gray-400">
+                          <span>{log.date}</span>
+                          <span>{log.reachedDepth}m</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={() => setActiveTab('history')}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                  >
+                    View All Dives →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white font-medium">Dive History</h3>
+              <button 
+                onClick={() => setActiveTab('add')}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+              >
+                + Add Dive
+              </button>
+            </div>
+
+            {/* Existing Logs */}
+            {!logs.length ? (
+              <div className="text-center text-gray-400 mt-8">
+                <div className="text-4xl mb-4">📝</div>
+                <p>No dive logs yet.</p>
+                <p className="text-sm mt-2">Start logging your dives!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-gray-300">
+                    {logs.length} dive{logs.length !== 1 ? 's' : ''} logged
+                  </p>
+                  <select className="text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1">
+                    <option>Sort by Date (newest first)</option>
+                    <option>Sort by Depth</option>
+                    <option>Sort by Location</option>
+                  </select>
+                </div>
+                
+                <div className="grid gap-3">
+                  {logs.map((log, i) => (
+                    <div
+                      key={i}
+                      className="bg-gray-800 border border-gray-700 p-4 rounded-lg hover:bg-gray-750 transition-colors"
+                    >
+                      {/* Header Row */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-white font-medium">{log.date}</span>
+                            <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded">
+                              {log.disciplineType}
+                            </span>
+                          </div>
+                          <p className="text-blue-300 font-medium">{log.discipline}</p>
+                          {log.location && (
+                            <p className="text-gray-300 text-sm">📍 {log.location}</p>
+                          )}
+                        </div>
+                        
+                        {/* Depth Badge */}
+                        <div className="text-right">
+                          {log.reachedDepth && (
+                            <div className="text-lg font-bold text-green-400">
+                              {log.reachedDepth}m
+                            </div>
+                          )}
+                          {log.targetDepth && log.targetDepth !== log.reachedDepth && (
+                            <div className="text-xs text-gray-400">
+                              Target: {log.targetDepth}m
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Key Metrics Row */}
+                      <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                        {log.mouthfillDepth && (
+                          <div className="bg-gray-700 px-2 py-1 rounded">
+                            <span className="text-gray-400">MF:</span> <span className="text-white">{log.mouthfillDepth}m</span>
+                          </div>
+                        )}
+                        {log.totalDiveTime && (
+                          <div className="bg-gray-700 px-2 py-1 rounded">
+                            <span className="text-gray-400">Time:</span> <span className="text-white">{log.totalDiveTime}</span>
+                          </div>
+                        )}
+                        {log.exit && (
+                          <div className="bg-gray-700 px-2 py-1 rounded">
+                            <span className="text-gray-400">Exit:</span> <span className="text-white">{log.exit}</span>
+                          </div>
+                        )}
+                        {log.attemptType && (
+                          <div className="bg-gray-700 px-2 py-1 rounded">
+                            <span className="text-gray-400">Type:</span> <span className="text-white">{log.attemptType}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Issues & Notes */}
+                      {(log.issueDepth || log.issueComment || log.squeeze) && (
+                        <div className="mb-3 p-2 bg-red-900 bg-opacity-30 border border-red-700 rounded">
+                          <div className="text-red-300 text-xs font-medium mb-1">⚠️ Issues</div>
+                          {log.issueDepth && (
+                            <div className="text-red-200 text-xs">Issue at: {log.issueDepth}m</div>
+                          )}
+                          {log.squeeze && (
+                            <div className="text-red-200 text-xs">Squeeze experienced</div>
+                          )}
+                          {log.issueComment && (
+                            <div className="text-red-200 text-xs mt-1">"{log.issueComment}"</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Notes */}
+                      {log.notes && (
+                        <div className="mb-3 p-2 bg-gray-700 rounded">
+                          <div className="text-gray-300 text-xs">{log.notes}</div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex justify-end space-x-2 pt-2 border-t border-gray-700">
+                        <button className="text-blue-400 hover:text-blue-300 text-xs">
+                          📝 Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteDiveLog(log)} 
+                          className="text-red-400 hover:text-red-300 text-xs"
+                        >
+                          🗑️ Delete
+                        </button>
+                        <button 
+                          onClick={() => handleAnalyzeDiveLog(log)} 
+                          className={`text-gray-400 hover:text-gray-300 text-xs ${analyzingLogId === log.id ? 'animate-pulse' : ''}`}
+                          disabled={analyzingLogId === log.id}
+                        >
+                          {analyzingLogId === log.id ? 'Analyzing...' : '📊 Analyze'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add New Tab */}
+        {activeTab === 'add' && (
           <form onSubmit={handleSubmit} className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
             <h3 className="text-white font-semibold mb-4">📝 New Dive Entry</h3>
             
@@ -641,130 +1066,6 @@ export default function DiveJournalDisplay({ userId, darkMode, isOpen, onClose, 
               </button>
             </div>
           </form>
-        )}
-
-        {/* Existing Logs */}
-        {!logs.length ? (
-          <div className="text-center text-gray-400 mt-8">
-            <div className="text-4xl mb-4">📝</div>
-            <p>No dive logs yet.</p>
-            <p className="text-sm mt-2">Start logging your dives!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-gray-300">
-                {logs.length} dive{logs.length !== 1 ? 's' : ''} logged
-              </p>
-              <select className="text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1">
-                <option>Sort by Date (newest first)</option>
-                <option>Sort by Depth</option>
-                <option>Sort by Location</option>
-              </select>
-            </div>
-            
-            <div className="grid gap-3">
-              {logs.map((log, i) => (
-                <div
-                  key={i}
-                  className="bg-gray-800 border border-gray-700 p-4 rounded-lg hover:bg-gray-750 transition-colors"
-                >
-                  {/* Header Row */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white font-medium">{log.date}</span>
-                        <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded">
-                          {log.disciplineType}
-                        </span>
-                      </div>
-                      <p className="text-blue-300 font-medium">{log.discipline}</p>
-                      {log.location && (
-                        <p className="text-gray-300 text-sm">📍 {log.location}</p>
-                      )}
-                    </div>
-                    
-                    {/* Depth Badge */}
-                    <div className="text-right">
-                      {log.reachedDepth && (
-                        <div className="text-lg font-bold text-green-400">
-                          {log.reachedDepth}m
-                        </div>
-                      )}
-                      {log.targetDepth && log.targetDepth !== log.reachedDepth && (
-                        <div className="text-xs text-gray-400">
-                          Target: {log.targetDepth}m
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Key Metrics Row */}
-                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                    {log.mouthfillDepth && (
-                      <div className="bg-gray-700 px-2 py-1 rounded">
-                        <span className="text-gray-400">MF:</span> <span className="text-white">{log.mouthfillDepth}m</span>
-                      </div>
-                    )}
-                    {log.totalDiveTime && (
-                      <div className="bg-gray-700 px-2 py-1 rounded">
-                        <span className="text-gray-400">Time:</span> <span className="text-white">{log.totalDiveTime}</span>
-                      </div>
-                    )}
-                    {log.exit && (
-                      <div className="bg-gray-700 px-2 py-1 rounded">
-                        <span className="text-gray-400">Exit:</span> <span className="text-white">{log.exit}</span>
-                      </div>
-                    )}
-                    {log.attemptType && (
-                      <div className="bg-gray-700 px-2 py-1 rounded">
-                        <span className="text-gray-400">Type:</span> <span className="text-white">{log.attemptType}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Issues & Notes */}
-                  {(log.issueDepth || log.issueComment || log.squeeze) && (
-                    <div className="mb-3 p-2 bg-red-900 bg-opacity-30 border border-red-700 rounded">
-                      <div className="text-red-300 text-xs font-medium mb-1">⚠️ Issues</div>
-                      {log.issueDepth && (
-                        <div className="text-red-200 text-xs">Issue at: {log.issueDepth}m</div>
-                      )}
-                      {log.squeeze && (
-                        <div className="text-red-200 text-xs">Squeeze experienced</div>
-                      )}
-                      {log.issueComment && (
-                        <div className="text-red-200 text-xs mt-1">"{log.issueComment}"</div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {log.notes && (
-                    <div className="mb-3 p-2 bg-gray-700 rounded">
-                      <div className="text-gray-300 text-xs">{log.notes}</div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex justify-end space-x-2 pt-2 border-t border-gray-700">
-                    <button className="text-blue-400 hover:text-blue-300 text-xs">
-                      📝 Edit
-                    </button>
-                    <button className="text-red-400 hover:text-red-300 text-xs">
-                      🗑️ Delete
-                    </button>
-                    <button 
-                      onClick={() => handleAnalyzeDiveLog(log)} 
-                      className={`text-gray-400 hover:text-gray-300 text-xs ${analyzingLogId === log.id ? 'animate-pulse' : ''}`}
-                    >
-                      {analyzingLogId === log.id ? 'Analyzing...' : '📊 Analyze'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
       </div>
     </div>

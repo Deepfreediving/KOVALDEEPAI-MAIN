@@ -50,7 +50,16 @@ const nextConfig = {
   /**
    * Webpack configuration
    */
-  webpack(config, { isServer }) {
+  webpack(config, { isServer, dev }) {
+    // ✅ Handle spaces in directory paths for file watcher
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules/**', '**/.next/**', '**/.git/**'],
+      };
+    }
+
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),

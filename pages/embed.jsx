@@ -1036,7 +1036,6 @@ export default function Embed() {
       darkMode,
       setDarkMode,
       // ✅ Sidebar-specific props
-      showDiveJournalForm: isDiveJournalOpen,
       toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
       handleSelectSession,
       handleDeleteSession: () => {}, // Add if needed
@@ -1188,6 +1187,8 @@ export default function Embed() {
                 loadingDiveLogs={loadingDiveLogs}
                 editLogIndex={editLogIndex}
                 setEditLogIndex={setEditLogIndex}
+                setMessages={setMessages}
+                onRefreshDiveLogs={loadDiveLogs}
               />
             </div>
           </div>
