@@ -477,11 +477,17 @@ export default function Embed() {
   // ✅ SIMPLIFIED CHAT SUBMISSION - ALWAYS WORKS
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && files.length === 0) || loading) return;
 
-    const userMessage = { role: "user", content: input };
+    const userMessage = { 
+      role: "user", 
+      content: input,
+      files: files.length > 0 ? files.map(f => ({ name: f.name, size: f.size, type: f.type })) : undefined
+    };
     setMessages(prev => [...prev, userMessage]);
     setInput("");
+    const currentFiles = [...files];
+    setFiles([]);
     setLoading(true);
 
     try {
@@ -490,35 +496,60 @@ export default function Embed() {
         userId,
         profileSource: profile?.source,
         diveLogsCount: diveLogs?.length || 0,
+        filesCount: currentFiles.length,
         embedMode: true
       });
+      
+      // Prepare request body with files if present
+      const requestBody = {
+        userMessage: input,
+        userId,
+        profile,
+        embedMode: true,
+        diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
+        conversationHistory: messages.slice(-6), // Last 3 conversation pairs
+      };
+      
+      // Add files if present
+      if (currentFiles.length > 0) {
+        requestBody.files = currentFiles.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type
+        }));
+        console.log("📎 Including files in chat request:", requestBody.files);
+      }
+      
       const response = await fetch(API_ROUTES.CHAT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userMessage: input,
-          userId,
-          profile,
-          embedMode: true,
-          diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
-          conversationHistory: messages.slice(-6), // Last 3 conversation pairs
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         console.warn(`⚠️ Chat bridge failed (${response.status}), trying fallback...`);
         
         // ✅ Fallback to direct chat API
+        const fallbackBody = {
+          message: input,
+          userId,
+          profile,
+          embedMode: true,
+          diveLogs: diveLogs.slice(0, 5),
+        };
+        
+        if (currentFiles.length > 0) {
+          fallbackBody.files = currentFiles.map(file => ({
+            name: file.name,
+            size: file.size,
+            type: file.type
+          }));
+        }
+        
         const fallbackResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: input,
-            userId,
-            profile,
-            embedMode: true,
-            diveLogs: diveLogs.slice(0, 5),
-          }),
+          body: JSON.stringify(fallbackBody),
         });
 
         if (!fallbackResponse.ok) {
@@ -563,7 +594,7 @@ export default function Embed() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, userId, profile, diveLogs, messages]);
+  }, [input, loading, userId, profile, diveLogs, messages, files]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -715,8 +746,20 @@ export default function Embed() {
       console.error("❌ No valid userId available for dive log submission");
       console.error("❌ userId:", userId);
       console.error("❌ Profile source:", profile?.source);
+      
+      // Show user feedback
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "❌ Cannot save dive log: No valid user ID. Please refresh the page and try again."
+      }]);
       return;
     }
+
+    // Show immediate feedback
+    setMessages(prev => [...prev, {
+      role: "assistant",
+      content: "💾 Saving dive log..."
+    }]);
 
     try {
       // Add userId to dive data
