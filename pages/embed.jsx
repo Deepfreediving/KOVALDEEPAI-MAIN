@@ -60,6 +60,7 @@ export default function Embed() {
     pinecone: "⏳ Checking...",
   });
   const [sessionStatus, setSessionStatus] = useState("Ready");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const bottomRef = useRef(null);
 
@@ -131,11 +132,25 @@ export default function Embed() {
   }, [profile, userId]);
 
   const getProfilePhoto = useCallback(() => {
-    // Return profile photo URL if available
-    if (profile?.profilePicture && profile.profilePicture !== 'unknown') {
+    // Return profile photo URL if available and valid
+    if (profile?.profilePicture && 
+        profile.profilePicture !== 'unknown' && 
+        profile.profilePicture !== '' &&
+        typeof profile.profilePicture === 'string' &&
+        profile.profilePicture.startsWith('http')) {
       return profile.profilePicture;
     }
-    if (profile?.contactDetails?.picture) {
+    
+    // Debug warning for invalid profile pictures
+    if (profile?.profilePicture === 'unknown') {
+      console.warn('⚠️ Invalid profilePicture value "unknown" detected in profile:', profile);
+    }
+    
+    if (profile?.contactDetails?.picture &&
+        profile.contactDetails.picture !== 'unknown' &&
+        profile.contactDetails.picture !== '' &&
+        typeof profile.contactDetails.picture === 'string' &&
+        profile.contactDetails.picture.startsWith('http')) {
       return profile.contactDetails.picture;
     }
     return null;
@@ -251,7 +266,12 @@ export default function Embed() {
                 loginEmail: profile.loginEmail || '',
                 firstName: profile.firstName || '',
                 lastName: profile.lastName || '',
-                profilePicture: profile.profilePhoto || '',
+                profilePicture: (profile.profilePhoto && 
+                               profile.profilePhoto !== 'unknown' &&
+                               profile.profilePhoto !== '' &&
+                               typeof profile.profilePhoto === 'string' &&
+                               profile.profilePhoto.startsWith('http')) 
+                               ? profile.profilePhoto : '',
                 source: 'wix-initialized',
                 ...profile
               };
@@ -293,7 +313,12 @@ export default function Embed() {
               loginEmail: event.data.data.userEmail || '',
               firstName: event.data.data.firstName || '',
               lastName: event.data.data.lastName || '',
-              profilePicture: event.data.data.profilePicture || '',
+              profilePicture: (event.data.data.profilePicture && 
+                              event.data.data.profilePicture !== 'unknown' &&
+                              event.data.data.profilePicture !== '' &&
+                              typeof event.data.data.profilePicture === 'string' &&
+                              event.data.data.profilePicture.startsWith('http')) 
+                              ? event.data.data.profilePicture : '',
               source: event.data.data.source || 'wix-collections',
               isWixMember: event.data.data.isWixMember || false
             };
@@ -359,7 +384,14 @@ export default function Embed() {
               displayName: globalUserData.profile.displayName || globalUserData.profile.nickname || 'User',
               loginEmail: globalUserData.profile.loginEmail || '',
               source: 'global-data',
-              ...globalUserData.profile
+              ...globalUserData.profile,
+              // Override profilePicture with safe value
+              profilePicture: (globalUserData.profile.profilePicture && 
+                              globalUserData.profile.profilePicture !== 'unknown' &&
+                              globalUserData.profile.profilePicture !== '' &&
+                              typeof globalUserData.profile.profilePicture === 'string' &&
+                              globalUserData.profile.profilePicture.startsWith('http')) 
+                              ? globalUserData.profile.profilePicture : ''
             };
             
             setProfile(globalProfile);
@@ -976,13 +1008,14 @@ export default function Embed() {
       connectionStatus,
       loadingConnections,
       setLoading,
-      sessionStatus // Add session status to sidebar props
+      sessionStatus, // Add session status to sidebar props
+      isAuthenticating // Add authentication status
     };
   }, [
     sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
     isDiveJournalOpen, startNewSession, handleSaveSession, handleSelectSession, 
     handleJournalSubmit, handleDelete, loadDiveLogs, loadingDiveLogs, 
-    editingSessionName, connectionStatus, loadingConnections, sessionStatus
+    editingSessionName, connectionStatus, loadingConnections, sessionStatus, isAuthenticating
   ]);
 
   return (
@@ -1067,6 +1100,7 @@ export default function Embed() {
               files={files}
               setFiles={setFiles}
               loading={loading}
+              isAuthenticating={isAuthenticating}
               darkMode={darkMode}
             />
           </div>
