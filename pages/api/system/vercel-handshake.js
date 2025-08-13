@@ -9,6 +9,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400', // 24 hours
+  'Cross-Origin-Embedder-Policy': 'unsafe-none',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+  'Cross-Origin-Opener-Policy': 'unsafe-none',
 };
 
 export default async function handler(req, res) {
