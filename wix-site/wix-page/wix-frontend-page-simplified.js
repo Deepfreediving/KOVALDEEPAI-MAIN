@@ -40,10 +40,28 @@ let globalSessionData = {
 $w.onReady(function () {
     console.log("🚀 Koval AI Widget V4.0 initialization starting...");
 
+    // ===== PREVENT DUPLICATE INITIALIZATION =====
+    if (window.KOVAL_WIDGET_INITIALIZED) {
+        console.log("⚠️ Widget already initialized, skipping duplicate initialization");
+        return;
+    }
+    
+    // ===== PREVENT MULTIPLE WIDGETS ON SAME PAGE =====
+    var existingIframes = document.querySelectorAll('iframe[src*="kovaldeepai-main.vercel.app"]');
+    if (existingIframes.length > 0) {
+        console.log("⚠️ Koval AI iframe already exists on page, preventing duplicate");
+        return;
+    }
+    
+    window.KOVAL_WIDGET_INITIALIZED = true;
+    console.log("✅ Widget initialization lock acquired");
+
     // ===== FIND WIDGET =====
     var aiWidget = findWidget();
     if (!aiWidget) {
         console.error("❌ No AI widget found. Please check widget ID in Wix editor.");
+        // Reset initialization flag on failure
+        window.KOVAL_WIDGET_INITIALIZED = false;
         return;
     }
     
@@ -580,11 +598,31 @@ function handleUserAuthRequest(data) {
  * Handle dive log save request
  */
 function handleSaveDiveLog(data) {
-    console.log("💾 Widget requesting dive log save...");
+    console.log("💾 Widget requesting dive log save...", data);
+    
+    // Validate dive log data
+    if (!data || !data.data) {
+        console.error("❌ Invalid dive log data received:", data);
+        sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
+            success: false,
+            error: 'Invalid dive log data',
+            message: 'Dive log data is missing or invalid'
+        });
+        return;
+    }
+    
+    var diveLogData = data.data;
+    console.log("📝 Processing dive log with data:", {
+        hasUserId: !!diveLogData.userId,
+        hasDate: !!diveLogData.date,
+        hasDepth: !!(diveLogData.reachedDepth || diveLogData.targetDepth),
+        hasLocation: !!diveLogData.location
+    });
     
     if (globalSessionData.connectionStatus !== 'connected') {
         // Buffer the data for later sync
-        bufferData('saveDiveLog', data.data);
+        console.log("📦 No connection - buffering dive log data");
+        bufferData('saveDiveLog', diveLogData);
         
         sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
             success: true,
@@ -593,8 +631,10 @@ function handleSaveDiveLog(data) {
         });
     } else {
         // Try to save directly to Wix collections
-        saveDiveLogToWix(data.data)
+        console.log("🌐 Connection available - attempting direct save");
+        saveDiveLogToWix(diveLogData)
             .then(function(result) {
+                console.log("✅ Dive log save successful:", result);
                 sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
                     success: true,
                     buffered: false,
@@ -604,11 +644,12 @@ function handleSaveDiveLog(data) {
             })
             .catch(function(error) {
                 console.error("❌ Wix save failed, buffering:", error);
-                bufferData('saveDiveLog', data.data);
+                bufferData('saveDiveLog', diveLogData);
                 
                 sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
                     success: true,
                     buffered: true,
+                    error: error.message,
                     message: 'Saved locally, will sync to Wix when possible'
                 });
             });
@@ -927,79 +968,147 @@ if (typeof window !== 'undefined') {
 
 // ===== SAVE DIVE LOG TO WIX COLLECTION WITH BUFFERING =====
 function saveDiveLogToWix(diveLogData) {
-    try {
-        console.log('💾 Processing dive log save:', diveLogData);
-        
-        if (!diveLogData) {
-            console.log('⚠️ No dive log data provided');
-            return;
-        }
-        
-        // Get current user data for the save
-        getUserDataWithFallback()
-            .then(function(userData) {
-                var logToSave = {
-                    userId: userData.userId,
-                    userName: userData.userName,
-                    diveData: JSON.stringify(diveLogData),
-                    timestamp: new Date(),
-                    source: 'koval-ai-widget'
-                };
-                
-                // If connected to Vercel, try to save via API first
-                if (globalSessionData.connectionStatus === 'connected') {
-                    console.log('🌐 Saving dive log via Vercel API...');
-                    
-                    fetch(SESSION_CONFIG.VERCEL_URL + '/api/analyze/save-dive-log', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(logToSave)
-                    })
-                    .then(function(response) {
-                        if (response.ok) {
-                            console.log('✅ Dive log saved via Vercel API');
-                            return response.json();
-                        } else {
-                            throw new Error('Vercel API save failed: ' + response.status);
-                        }
-                    })
-                    .catch(function(error) {
-                        console.log('⚠️ Vercel API save failed, buffering data:', error.message);
-                        addToBuffer('saveDiveLog', logToSave);
-                        // Fallback to local Wix save
-                        tryWixCollectionSave(logToSave);
-                    });
-                } else {
-                    console.log('📦 No Vercel connection, buffering dive log and trying Wix save...');
-                    addToBuffer('saveDiveLog', logToSave);
-                    tryWixCollectionSave(logToSave);
-                }
-            });
+    return new Promise(function(resolve, reject) {
+        try {
+            console.log('💾 Processing dive log save for Wix:', diveLogData);
             
-    } catch (error) {
-        console.log('ℹ️ Dive log save error:', error.message);
-    }
+            if (!diveLogData) {
+                var error = new Error('No dive log data provided');
+                console.error('❌', error.message);
+                reject(error);
+                return;
+            }
+            
+            // Validate required fields
+            if (!diveLogData.userId) {
+                var userError = new Error('Dive log missing userId');
+                console.error('❌', userError.message, 'Data:', diveLogData);
+                reject(userError);
+                return;
+            }
+            
+            // Get current user data for the save
+            getUserDataWithFallback()
+                .then(function(userData) {
+                    console.log('👤 User data for dive log save:', {
+                        userId: userData.userId,
+                        userName: userData.userName,
+                        source: userData.source
+                    });
+                    
+                    var logToSave = {
+                        userId: userData.userId,
+                        userName: userData.userName,
+                        diveData: JSON.stringify(diveLogData),
+                        timestamp: new Date(),
+                        source: 'koval-ai-widget',
+                        // Additional fields for easier querying
+                        depth: diveLogData.reachedDepth || diveLogData.targetDepth || 0,
+                        location: diveLogData.location || 'Unknown',
+                        date: diveLogData.date || new Date().toISOString(),
+                        discipline: diveLogData.discipline || 'freediving'
+                    };
+                    
+                    console.log('📝 Prepared log for save:', {
+                        userId: logToSave.userId,
+                        depth: logToSave.depth,
+                        location: logToSave.location,
+                        hasData: !!logToSave.diveData
+                    });
+                    
+                    // If connected to Vercel, try to save via API first
+                    if (globalSessionData.connectionStatus === 'connected') {
+                        console.log('🌐 Saving dive log via Vercel API...');
+                        
+                        fetch(SESSION_CONFIG.VERCEL_URL + '/api/analyze/save-dive-log', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(logToSave)
+                        })
+                        .then(function(response) {
+                            console.log('📥 Vercel API response status:', response.status);
+                            if (response.ok) {
+                                return response.json();
+                            } else {
+                                throw new Error('Vercel API save failed: ' + response.status);
+                            }
+                        })
+                        .then(function(result) {
+                            console.log('✅ Dive log saved via Vercel API:', result);
+                            resolve(result);
+                        })
+                        .catch(function(error) {
+                            console.log('⚠️ Vercel API save failed, trying Wix fallback:', error.message);
+                            
+                            // Fallback to local Wix save
+                            tryWixCollectionSave(logToSave)
+                                .then(resolve)
+                                .catch(function(wixError) {
+                                    console.error('❌ Both Vercel and Wix saves failed');
+                                    addToBuffer('saveDiveLog', logToSave);
+                                    reject(new Error('Save failed: ' + error.message + '; Wix: ' + wixError.message));
+                                });
+                        });
+                    } else {
+                        console.log('📦 No Vercel connection, trying Wix save directly...');
+                        
+                        // Try Wix collection save directly
+                        tryWixCollectionSave(logToSave)
+                            .then(function(result) {
+                                console.log('✅ Dive log saved via Wix collection');
+                                resolve(result);
+                            })
+                            .catch(function(error) {
+                                console.log('⚠️ Wix collection save failed, buffering:', error.message);
+                                addToBuffer('saveDiveLog', logToSave);
+                                reject(new Error('Wix save failed, data buffered: ' + error.message));
+                            });
+                    }
+                })
+                .catch(function(userError) {
+                    console.error('❌ Failed to get user data for dive log save:', userError);
+                    reject(userError);
+                });
+                
+        } catch (error) {
+            console.error('❌ Dive log save error:', error);
+            reject(error);
+        }
+    });
 }
 
 // ===== TRY WIX COLLECTION SAVE AS FALLBACK =====
 function tryWixCollectionSave(logToSave) {
-    try {
-        if (typeof wixData !== 'undefined' && wixData.save) {
-            wixData.save('DiveLogs', logToSave)
-                .then(function(result) {
-                    console.log('✅ Dive log saved to Wix collection:', result._id);
-                })
-                .catch(function(error) {
-                    console.log('ℹ️ Wix collection save failed:', error.message);
-                });
-        } else {
-            console.log('ℹ️ Wix data not available');
+    return new Promise(function(resolve, reject) {
+        try {
+            console.log('💾 Attempting Wix collection save...', {
+                hasWixData: typeof wixData !== 'undefined',
+                hasSaveMethod: typeof wixData !== 'undefined' && typeof wixData.save === 'function',
+                userId: logToSave.userId
+            });
+            
+            if (typeof wixData !== 'undefined' && wixData.save) {
+                wixData.save('DiveLogs', logToSave)
+                    .then(function(result) {
+                        console.log('✅ Dive log saved to Wix collection:', result._id);
+                        resolve(result);
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Wix collection save failed:', error);
+                        reject(error);
+                    });
+            } else {
+                var error = new Error('Wix data API not available');
+                console.error('❌', error.message);
+                reject(error);
+            }
+        } catch (error) {
+            console.error('❌ Wix collection save error:', error);
+            reject(error);
         }
-    } catch (error) {
-        console.log('ℹ️ Wix collection save error:', error.message);
-    }
+    });
 }
 
 console.log("✅ Simplified Wix page code loaded - Never breaks due to authentication!");
