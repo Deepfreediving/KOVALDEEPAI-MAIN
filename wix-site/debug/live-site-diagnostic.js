@@ -1,5 +1,6 @@
 // ===== 🔍 LIVE SITE WIDGET DIAGNOSTIC =====
 // Run this in browser console on: https://www.deepfreediving.com/large-koval-deep-ai-page
+/* eslint-disable no-undef */
 
 function checkLiveWidgetStatus() {
     console.log('🔍 Checking live widget status...');
@@ -65,6 +66,10 @@ function checkLiveWidgetStatus() {
     if (!kovalIframe) {
         console.log('   ❌ No Koval AI iframe found');
     }
+    
+    // 2.1 Bridge Connection Check (NEW)
+    console.log('\n2.1 🌉 Bridge Connection Check:');
+    checkBridgeConnection();
     
     // 3. Test CORS connectivity
     console.log('\n3. 🌐 CORS Connectivity Test:');
@@ -309,6 +314,71 @@ function quickVisualCheck() {
         }, 5000);
     } else {
         console.log(`\n❌ No element with ID 'koval-ai' found`);
+    }
+}
+
+// Bridge connection diagnostic function
+function checkBridgeConnection() {
+    console.log('🌉 Checking bridge connection...');
+    
+    // Check Wix APIs availability
+    const wixAPIs = {
+        '$w': typeof $w !== 'undefined',
+        'wixData': typeof wixData !== 'undefined', 
+        'wixStorage': typeof wixStorage !== 'undefined',
+        'currentMember': typeof currentMember !== 'undefined'
+    };
+    
+    console.log('   📊 Wix APIs:');
+    Object.entries(wixAPIs).forEach(([name, available]) => {
+        console.log(`      ${available ? '✅' : '❌'} ${name}: ${available ? 'Available' : 'Missing'}`);
+    });
+    
+    // Check if bridge connection is broken
+    const availableAPIs = Object.values(wixAPIs).filter(Boolean).length;
+    if (availableAPIs === 0) {
+        console.log('   🚨 BRIDGE CONNECTION BROKEN: No Wix APIs available');
+        console.log('   💡 This explains why user info is not showing');
+        console.log('   🔧 Try: autoFixBridgeConnection() or refresh page');
+    } else if (availableAPIs < 4) {
+        console.log('   ⚠️ PARTIAL BRIDGE CONNECTION: Some APIs missing');
+    } else {
+        console.log('   ✅ Bridge connection appears healthy');
+    }
+    
+    // Check session management
+    if (typeof window !== 'undefined' && typeof window.globalSessionData !== 'undefined') {
+        console.log('   📋 Session Status:', {
+            userId: window.globalSessionData.userId ? 'Set' : 'Missing',
+            connectionStatus: window.globalSessionData.connectionStatus || 'Unknown',
+            isAuthenticated: window.globalSessionData.isAuthenticated || false,
+            widgetReady: window.globalSessionData.widgetReady || false
+        });
+    } else if (typeof globalSessionData !== 'undefined') {
+        console.log('   📋 Session Status:', {
+            userId: globalSessionData.userId ? 'Set' : 'Missing',
+            connectionStatus: globalSessionData.connectionStatus || 'Unknown',
+            isAuthenticated: globalSessionData.isAuthenticated || false,
+            widgetReady: globalSessionData.widgetReady || false
+        });
+    } else {
+        console.log('   ❌ globalSessionData not found - session management broken');
+    }
+}
+
+// Auto-fix bridge connection
+function autoFixBridgeConnection() {
+    console.log('🔧 Attempting to auto-fix bridge connection...');
+    
+    // Force reload the page to reinitialize APIs
+    if (typeof $w !== 'undefined' && $w.window && $w.window.location) {
+        console.log('✅ Reloading page to fix bridge connection...');
+        $w.window.location.reload();
+    } else if (window.location) {
+        console.log('✅ Reloading page via window.location...');
+        window.location.reload();
+    } else {
+        console.log('❌ Cannot reload page - try manual refresh (Ctrl+F5)');
     }
 }
 
