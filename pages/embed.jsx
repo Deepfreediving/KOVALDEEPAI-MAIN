@@ -59,6 +59,7 @@ export default function Embed() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
+  const [sessionStatus, setSessionStatus] = useState("Ready");
 
   const bottomRef = useRef(null);
 

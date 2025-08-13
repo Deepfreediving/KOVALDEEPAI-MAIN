@@ -3,7 +3,25 @@
  * Processes buffered data when connection is restored
  */
 
+// CORS configuration for Wix domain
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://www.deepfreediving.com',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400', // 24 hours
+};
+
 export default async function handler(req, res) {
+  // Add CORS headers to all responses
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
