@@ -742,18 +742,21 @@ export default function Embed() {
     console.log('📊 Dive data to save:', diveData);
     console.log('📊 Current profile:', profile);
     
-    if (!userId || userId.startsWith('guest-')) {
-      console.error("❌ No valid userId available for dive log submission");
+    if (!userId) {
+      console.error("❌ No userId available for dive log submission");
       console.error("❌ userId:", userId);
       console.error("❌ Profile source:", profile?.source);
       
       // Show user feedback
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "❌ Cannot save dive log: No valid user ID. Please refresh the page and try again."
+        content: "❌ Cannot save dive log: No user ID available. Please refresh the page and try again."
       }]);
       return;
     }
+
+    // Allow both authenticated users and guest users to save dive logs
+    console.log("✅ Proceeding with dive log save for user:", userId);
 
     // Show immediate feedback
     setMessages(prev => [...prev, {
