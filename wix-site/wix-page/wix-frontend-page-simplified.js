@@ -1248,15 +1248,16 @@ function saveDiveLogToWix(diveLogData) {
                     });
                     
                     var logToSave = {
-                        userId: userData.userId,
-                        userName: userData.userName,
-                        diveData: JSON.stringify(diveLogData),
+                        "User ID": userData.userId,
+                        "Dive Log ID": diveLogData.id || 'dive_' + userData.userId + '_' + Date.now(),
+                        "Log Entry": JSON.stringify(diveLogData),
+                        "Dive Date": diveLogData.date || new Date().toISOString().split('T')[0],
+                        "Dive Time": diveLogData.totalDiveTime || '',
                         timestamp: new Date(),
                         source: 'koval-ai-widget',
-                        // Additional fields for easier querying
+                        // Additional fields for easier querying (optional)
                         depth: diveLogData.reachedDepth || diveLogData.targetDepth || 0,
                         location: diveLogData.location || 'Unknown',
-                        date: diveLogData.date || new Date().toISOString(),
                         discipline: diveLogData.discipline || 'freediving'
                     };
                     

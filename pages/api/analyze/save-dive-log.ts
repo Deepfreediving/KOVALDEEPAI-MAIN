@@ -96,14 +96,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             'N/A'
         });
         
-        // ✅ Format for Wix DiveLogs Repeater - Required fields: diveTime, watchedPhoto, diveDate, logEntry, diveLogId, userId
+        // ✅ Format for Wix DiveLogs Collection - Field names must match exactly!
+        // Based on Wix collection structure: "User ID", "Dive Log ID", "Log Entry", "Dive Date", "Dive Time"
         const diveLogData = {
-          diveLogId: ('diveLogId' in compressedData ? compressedData.diveLogId : null) || localLogData.id,
-          userId: ('userId' in compressedData ? compressedData.userId : null) || localLogData.userId,
-          diveDate: ('diveDate' in compressedData ? compressedData.diveDate : null) || localLogData.date,
-          diveTime: ('diveTime' in compressedData ? compressedData.diveTime : null) || localLogData.totalDiveTime,
-          watchedPhoto: ('watchedPhoto' in compressedData ? compressedData.watchedPhoto : null) || null,
-          logEntry: ('logEntry' in compressedData ? compressedData.logEntry : null) || JSON.stringify(localLogData),
+          "Dive Log ID": ('diveLogId' in compressedData ? compressedData.diveLogId : null) || localLogData.id,
+          "User ID": ('userId' in compressedData ? compressedData.userId : null) || localLogData.userId,
+          "Dive Date": ('diveDate' in compressedData ? compressedData.diveDate : null) || localLogData.date,
+          "Dive Time": ('diveTime' in compressedData ? compressedData.diveTime : null) || localLogData.totalDiveTime,
+          "Log Entry": ('logEntry' in compressedData ? compressedData.logEntry : null) || JSON.stringify(localLogData),
+          // Optional fields for additional data
           squeeze: localLogData.squeeze || false,
           compressed: true,
           syncedAt: new Date().toISOString()
