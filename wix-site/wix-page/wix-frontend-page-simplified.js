@@ -1,10 +1,17 @@
-// ===== 🔥 WIX MASTER PAGE - KOVAL AI INTEGRATION V4.0 =====
+// ===== 🔥 WIX MASTER PAGE - KOVAL AI INTEGRATION V5.0 =====
 // 
-// � VERSION INFO:
-// • Version: 4.0.0
-// • Last Updated: December 2024
-// • Architecture: Session-managed with Vercel integration
-// • Status: Production Ready ✅
+// ✨ VERSION INFO:
+// • Version: 5.0.0
+// • Last Updated: August 2025
+// • Architecture: Enhanced session-managed with Vercel integration
+// • Status: Production Ready ✅ - DiveLogs Collection Fixed
+//
+// 🎯 V5.0 MAJOR UPDATES:
+// ✅ Fixed 3-week DiveLogs collection save issue
+// ✅ Corrected field mapping for Wix collection structure
+// ✅ Enhanced error handling and debugging capabilities
+// ✅ Improved localStorage integration for immediate UI updates
+// ✅ Optimized session management and data flow
 //
 // �📋 SYSTEM OVERVIEW:
 // ✅ Production-ready Koval AI widget integration for Wix sites
@@ -138,7 +145,7 @@ let globalSessionData = {
 
 // ===== MAIN PAGE INITIALIZATION =====
 $w.onReady(function () {
-    console.log("🚀 Koval AI Widget V4.0 initialization starting...");
+    console.log("🚀 Koval AI Widget V5.0 initialization starting...");
     console.log("📊 System Status Check:");
     console.log("   • Wix APIs:", typeof wixData !== 'undefined' ? '✅ Available' : '❌ Not Available');
     console.log("   • Storage:", typeof wixStorage !== 'undefined' ? '✅ Available' : '❌ Not Available');
@@ -1465,7 +1472,7 @@ function saveDiveLogToLocalStorage(diveLogData, userId) {
 }
 
 // ===== INITIALIZATION COMPLETE =====
-console.log("✅ Koval AI Widget V4.0 - Master Page Code Loaded Successfully!");
+console.log("✅ Koval AI Widget V5.0 - Master Page Code Loaded Successfully!");
 console.log("📋 System Features:");
 console.log("   • Session Management: ✅ Vercel handshake & upgrade");
 console.log("   • Offline Buffering: ✅ Automatic data persistence");

@@ -1,6 +1,7 @@
 # 🧪 LIVE SITE TESTING - DiveLogs Collection Fix
 
 ## Testing Location
+
 **Live Site:** https://www.deepfreediving.com/large-koval-deep-ai-page
 
 ## STEP 1: Basic Functionality Test
@@ -12,7 +13,7 @@
 
 ```javascript
 // Test widget initialization
-runDiagnostics()
+runDiagnostics();
 ```
 
 ## STEP 2: Test Dive Log Save (CRITICAL)
@@ -22,29 +23,32 @@ Run this in the browser console to test if dive logs save to the DiveLogs collec
 ```javascript
 // Test dive log save directly
 function testDiveLogSave() {
-    console.log('🧪 Testing dive log save to DiveLogs collection...');
-    
-    const testDiveLog = {
-        userId: 'test-user-' + Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        discipline: 'TEST - Constant Weight',
-        location: 'Test Pool - Live Site',
-        targetDepth: 20,
-        reachedDepth: 18,
-        notes: 'LIVE TEST - If you see this in your DiveLogs collection, the fix worked!',
-        timestamp: new Date().toISOString()
-    };
-    
-    // Test the Wix frontend save function
-    saveDiveLogToWix(testDiveLog)
-        .then(result => {
-            console.log('✅ SUCCESS! Dive log saved:', result);
-            console.log('🎉 Check your Wix DiveLogs collection - it should now have this entry!');
-        })
-        .catch(error => {
-            console.error('❌ FAILED to save dive log:', error);
-            console.log('🔍 This tells us what still needs to be fixed...');
-        });
+  console.log("🧪 Testing dive log save to DiveLogs collection...");
+
+  const testDiveLog = {
+    userId: "test-user-" + Date.now(),
+    date: new Date().toISOString().split("T")[0],
+    discipline: "TEST - Constant Weight",
+    location: "Test Pool - Live Site",
+    targetDepth: 20,
+    reachedDepth: 18,
+    notes:
+      "LIVE TEST - If you see this in your DiveLogs collection, the fix worked!",
+    timestamp: new Date().toISOString(),
+  };
+
+  // Test the Wix frontend save function
+  saveDiveLogToWix(testDiveLog)
+    .then((result) => {
+      console.log("✅ SUCCESS! Dive log saved:", result);
+      console.log(
+        "🎉 Check your Wix DiveLogs collection - it should now have this entry!"
+      );
+    })
+    .catch((error) => {
+      console.error("❌ FAILED to save dive log:", error);
+      console.log("🔍 This tells us what still needs to be fixed...");
+    });
 }
 
 // Run the test
@@ -73,12 +77,14 @@ If the test worked, try saving a real dive log through the AI widget:
 ## Expected Results
 
 ### ✅ SUCCESS Indicators:
+
 - Console shows "✅ SUCCESS! Dive log saved"
 - Entry appears in Wix DiveLogs collection
 - Sidebar updates immediately
 - No duplicate entries
 
 ### ❌ FAILURE Indicators:
+
 - Console shows "❌ FAILED to save dive log"
 - No entry in DiveLogs collection
 - Sidebar doesn't update
@@ -104,6 +110,7 @@ If the test worked, try saving a real dive log through the AI widget:
 Based on the test results, we'll know exactly what still needs to be fixed!
 
 **Report back with:**
+
 - Console output from the test
 - Whether entry appears in DiveLogs collection
 - Any error messages you see

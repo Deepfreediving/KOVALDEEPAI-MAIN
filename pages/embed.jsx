@@ -794,7 +794,7 @@ export default function Embed() {
               type: 'dive_log',
               source: 'dive-journal-widget',
               timestamp: new Date().toISOString(),
-              version: '4.0'
+              version: '5.0'
             }
           }),
           diveDate: new Date(diveLogWithUser.date || new Date()), // Maps to "Dive Date" field

@@ -24,7 +24,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       pineconeQuery: '/api/pinecone/pineconequery-gpt',
       healthCheck: '/api/system/health-check',
     },
-    version: 'v4.0-enhanced-bridge',
+    version: 'v5.0-divelogs-fix',
     features: {
       wixIntegration: true,
       bridgeAPIs: true,

@@ -11,7 +11,7 @@
 // - User-specific JSON files (backup)
 // - General example files (demonstration data)
 //
-// Version: 4.0 - Updated for DiveLogs collection integration
+// Version: 5.0 - Fixed DiveLogs collection field mapping and save issues
 
 import fs from 'fs';
 import path from 'path';

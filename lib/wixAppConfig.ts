@@ -1,5 +1,5 @@
 // Configuration for Wix App Backend Communication
-// @deepfreediving/kovaldeepai-app - Version 4.x (Auto-versioning for 4.0 release)
+// @deepfreediving/kovaldeepai-app - Version 5.x (DiveLogs Collection Fix Release)
 
 export const WIX_APP_CONFIG = {
   // Your Wix App Details
