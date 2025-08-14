@@ -203,29 +203,49 @@ function initializeSessionManagement() {
     return new Promise(function(resolve, reject) {
         console.log("🔄 Initializing session management...");
         
-        // Generate or retrieve userId
-        var userId = generateOrRetrieveUserId();
+        // Generate or retrieve userId - BUT first check for real member ID
+        var userId;
         var sessionId = generateSessionId();
         
-        // Load any buffered data from previous sessions
-        loadBufferedData();
-        
-        // Try to get Wix member data
+        // 🚀 V5.0: Try to get REAL Wix Member ID first before generating fallback
         getWixMemberData()
             .then(function(memberData) {
-                globalSessionData.userId = userId;
-                globalSessionData.wixMemberId = memberData ? memberData.id : null;
-                globalSessionData.sessionId = sessionId;
-                globalSessionData.isAuthenticated = !!memberData;
+                // ✅ V5.0: If we have a real member, use their ID - NOT a generated one!
+                if (memberData && memberData.id) {
+                    userId = memberData.id;  // Use actual Wix Member ID: 2ac69a3d-1838-4a13-b118-4712b45d1b41
+                    globalSessionData.userId = userId;
+                    globalSessionData.wixMemberId = memberData.id;
+                    globalSessionData.sessionId = sessionId;
+                    globalSessionData.isAuthenticated = true;
+                    
+                    console.log("✅ V5.0: Using REAL Wix Member ID:", {
+                        userId: userId,
+                        memberEmail: memberData.email,
+                        source: memberData.source
+                    });
+                } else {
+                    // Only generate fallback ID if no member found
+                    userId = generateOrRetrieveUserId();
+                    globalSessionData.userId = userId;
+                    globalSessionData.wixMemberId = null;
+                    globalSessionData.sessionId = sessionId;
+                    globalSessionData.isAuthenticated = false;
+                    
+                    console.log("ℹ️ V5.0: No member found, using fallback ID:", userId);
+                }
                 
-                console.log("👤 User data prepared:", {
+                // Load any buffered data from previous sessions
+                loadBufferedData();
+                
+                console.log("👤 V5.0: User data prepared:", {
                     userId: userId,
-                    wixMemberId: memberData ? "***" + memberData.id.slice(-4) : null,
-                    isAuthenticated: globalSessionData.isAuthenticated
+                    wixMemberId: globalSessionData.wixMemberId ? "***" + globalSessionData.wixMemberId.slice(-4) : null,
+                    isAuthenticated: globalSessionData.isAuthenticated,
+                    sessionType: globalSessionData.isAuthenticated ? 'REAL_MEMBER' : 'GUEST_FALLBACK'
                 });
                 
-                // Attempt Vercel handshake
-                return performVercelHandshake(userId, memberData ? memberData.id : null, sessionId);
+                // Attempt Vercel handshake with proper member ID
+                return performVercelHandshake(userId, globalSessionData.wixMemberId, sessionId);
             })
             .then(function(handshakeResult) {
                 if (handshakeResult.success) {
@@ -965,8 +985,8 @@ function getUserDataWithFallback() {
                             userId: member._id,  // ✅ V5.0: Use raw Wix member ID
                             memberId: member._id,  // ✅ V5.0: Explicit member ID field
                             userEmail: member.loginEmail || '',
-                            userName: member._id,  // ✅ V5.0: Use member ID for consistency
-                            nickname: profile.nickname || profile.displayName || `Member-${member._id}`,
+                            userName: profile.nickname || profile.displayName || profile.firstName || member.loginEmail || `Member-${member._id}`,  // ✅ V5.0: Use meaningful display name
+                            nickname: profile.nickname || profile.displayName || profile.firstName || 'Freediver',
                             firstName: profile.firstName || '',
                             lastName: profile.lastName || '',
                             profilePicture: profile.photo || '',

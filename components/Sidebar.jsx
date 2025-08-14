@@ -142,44 +142,74 @@ export default function Sidebar({
              Open Dive Journal
           </button>
 
-          {/* Dive Logs Summary */}
+          {/* Dive Logs Summary - Improved for Many Logs */}
           <div className="mt-4">
-            <h3 className="font-semibold mb-3">📒 Dive Logs ({diveLogs.length})</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">📒 Dive Logs ({diveLogs.length})</h3>
+              {diveLogs.length > 5 && (
+                <span className="text-xs text-gray-500">Showing 10 latest</span>
+              )}
+            </div>
             {diveLogs.length > 0 ? (
-              <ul className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-2 max-h-[35rem] overflow-y-auto custom-scrollbar">
                 {diveLogs.slice(0, 10).map((log, i) => {
                   const formattedLog = formatDiveLogForDisplay(log);
                   return (
                     <li
                       key={log.id || i}
-                      className={`border p-3 rounded text-sm transition-colors ${
-                        darkMode ? "bg-gray-800 text-white border-gray-600" : "bg-white text-black border-gray-200"
+                      className={`border p-2 rounded-lg text-sm transition-all duration-200 hover:shadow-md ${
+                        darkMode ? "bg-gray-800 text-white border-gray-600 hover:bg-gray-750" : "bg-white text-black border-gray-200 hover:bg-gray-50"
                       }`}
                     >
-                        {/* ✅ Structured dive log display */}
-                        <div className="space-y-2">
+                        {/* ✅ Compact dive log display for better space usage */}
+                        <div className="space-y-1.5">
                           <div className="flex justify-between items-start">
-                            <div className="text-xs font-medium text-gray-500">
-                              {new Date(log.date || log.timestamp).toLocaleDateString()}
+                            <div className="text-xs font-medium text-gray-500 min-w-0 flex-1">
+                              {new Date(log.date || log.timestamp).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                              {log.location && (
+                                <span className="ml-2 text-gray-400">@ {log.location.slice(0, 12)}{log.location.length > 12 ? '...' : ''}</span>
+                              )}
                             </div>
-                            <div className="flex items-center space-x-1">
-                              <span className={`text-xs px-2 py-1 rounded font-medium ${
+                            <div className="flex items-center space-x-1 flex-shrink-0">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                 darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
                               }`}>
                                 {log.reachedDepth || log.targetDepth}m
                               </span>
+                              {log.discipline && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                  darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {log.discipline.slice(0, 3)}
+                                </span>
+                              )}
                             </div>
                           </div>
                           
-                          {/* ✅ Formatted dive log content */}
-                          <div className={`text-xs whitespace-pre-line ${
-                            darkMode ? 'text-gray-300' : 'text-gray-600'
-                          }`}>
-                            {formattedLog}
-                          </div>
+                          {/* ✅ Collapsible content to save space */}
+                          <details className="group">
+                            <summary className={`cursor-pointer text-xs ${
+                              darkMode ? 'text-gray-300 hover:text-gray-100' : 'text-gray-600 hover:text-gray-800'
+                            } list-none`}>
+                              <span className="flex items-center justify-between">
+                                <span>📝 {log.notes ? log.notes.slice(0, 30) + '...' : 'View details'}</span>
+                                <span className="group-open:rotate-90 transition-transform text-gray-400">▶</span>
+                              </span>
+                            </summary>
+                            <div className={`mt-2 text-xs whitespace-pre-line ${
+                              darkMode ? 'text-gray-300' : 'text-gray-600'
+                            } p-2 rounded bg-opacity-50 ${
+                              darkMode ? 'bg-gray-700' : 'bg-gray-100'
+                            }`}>
+                              {formattedLog}
+                            </div>
+                          </details>
                           
-                          {/* ✅ Action buttons */}
-                          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                          {/* ✅ Compact action buttons */}
+                          <div className="flex items-center justify-between pt-1.5 border-t border-opacity-30 border-gray-300 dark:border-gray-600">
                             <AIAnalyzeButton
                               diveLog={log}
                               userId={userId}
@@ -193,31 +223,31 @@ export default function Sidebar({
                                 }
                               }}
                               darkMode={darkMode}
-                              size="sm"
+                              size="xs"
                             />
                             
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1">
                               <button
                                 onClick={() => handleEdit?.(i)}
-                                className={`text-xs px-2 py-1 rounded transition-colors ${
+                                className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
                                   darkMode 
                                     ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
                                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 }`}
                                 title="Edit dive log"
                               >
-                                ✏️ Edit
+                                ✏️
                               </button>
                               <button
                                 onClick={() => handleDeleteWithWixSync(log, i)}
-                                className={`text-xs px-2 py-1 rounded transition-colors ${
+                                className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
                                   darkMode 
                                     ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' 
                                     : 'text-red-500 hover:text-red-700 hover:bg-red-50'
                                 }`}
                                 title="Delete dive log"
                               >
-                                🗑️ Delete
+                                🗑️
                               </button>
                             </div>
                           </div>
@@ -225,7 +255,7 @@ export default function Sidebar({
                       </li>
                     );
                   })}
-                </ul>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm italic text-gray-500 mb-2">No dive logs yet. Add your first dive above!</p>

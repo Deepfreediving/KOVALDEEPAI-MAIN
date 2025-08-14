@@ -160,10 +160,14 @@ export default function DiveJournalDisplay({
         }
         setLogs(updatedLogs);
         
-        // 🚀 STEP 3: Update localStorage with deduplication
+        // 🚀 STEP 3: Update localStorage IMMEDIATELY with deduplication
         try {
           const storageKey = `diveLogs-${userId}`;
+          console.log('💾 DiveJournalDisplay: Updating localStorage with key:', storageKey);
+          
+          // Get existing logs
           const existingLogs = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          console.log('📋 DiveJournalDisplay: Found', existingLogs.length, 'existing logs in localStorage');
           
           // Deduplicate logs in localStorage too
           const filteredExisting = existingLogs.filter(log => 
@@ -173,14 +177,32 @@ export default function DiveJournalDisplay({
               log.location === newLog.location)
           );
           
+          // Add new log and sort by date
           const finalLogs = [...filteredExisting, newLog].sort((a, b) => 
             new Date(b.date) - new Date(a.date)
           );
           
+          // Save to localStorage
           localStorage.setItem(storageKey, JSON.stringify(finalLogs));
-          console.log('💾 DiveJournalDisplay: Updated localStorage with deduplication');
-        } catch (error) {
-          console.warn("⚠️ DiveJournalDisplay: Failed to update localStorage:", error);
+          console.log('✅ DiveJournalDisplay: localStorage updated successfully');
+          console.log('   • Storage key:', storageKey);
+          console.log('   • Total logs stored:', finalLogs.length);
+          console.log('   • New log ID:', newLog.id);
+          
+          // 🔍 VERIFICATION: Check if data was actually saved
+          const verifyStorage = localStorage.getItem(storageKey);
+          if (verifyStorage) {
+            const verifyLogs = JSON.parse(verifyStorage);
+            console.log('✅ DiveJournalDisplay: localStorage verification passed -', verifyLogs.length, 'logs found');
+          } else {
+            console.error('❌ DiveJournalDisplay: localStorage verification failed - no data found');
+          }
+          
+        } catch (storageError) {
+          console.error("❌ DiveJournalDisplay: Failed to update localStorage:", storageError);
+          console.log('   • Storage key attempted:', `diveLogs-${userId}`);
+          console.log('   • UserId:', userId);
+          console.log('   • Browser storage available:', typeof localStorage !== 'undefined');
         }
         
         // 🚀 STEP 4: Notify parent components

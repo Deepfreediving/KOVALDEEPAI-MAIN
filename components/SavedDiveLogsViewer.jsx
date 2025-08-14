@@ -202,7 +202,7 @@ export default function SavedDiveLogsViewer({
       </div>
 
       {showLogs && (
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="space-y-2 max-h-[42rem] overflow-y-auto custom-scrollbar">
           {savedLogs.map((log, index) => (
             <div
               key={log.id || index}
