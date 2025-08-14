@@ -24,23 +24,30 @@ interface MemoryLog {
   };
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
   try {
     // ✅ Use handleCors
     if (handleCors(req, res)) return; // Early exit for OPTIONS
-    
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { userId, sessionName, profile, eqState, messages, timestamp } = req.body;
+    const { userId, sessionName, profile, eqState, messages, timestamp } =
+      req.body;
 
     // ✅ Validate inputs
     if (!userId || !Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: "Missing or invalid userId/messages." });
+      return res
+        .status(400)
+        .json({ error: "Missing or invalid userId/messages." });
     }
 
-    const WIX_BASE_URL = process.env.WIX_BASE_URL || "https://www.deepfreediving.com/_functions";
+    const WIX_BASE_URL =
+      process.env.WIX_BASE_URL || "https://www.deepfreediving.com/_functions";
     const endpoint = `${WIX_BASE_URL}/saveToUserMemory`;
 
     const sessionId = `${userId}-${Date.now()}`;
@@ -53,9 +60,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (msg.role === "user" && msg.content?.trim()) {
         const nextMsg = messages[i + 1] as ChatMessage | undefined;
-        const assistantReply = nextMsg?.role === "assistant" && nextMsg.content?.trim()
-          ? nextMsg.content
-          : "⚠️ No assistant response recorded";
+        const assistantReply =
+          nextMsg?.role === "assistant" && nextMsg.content?.trim()
+            ? nextMsg.content
+            : "⚠️ No assistant response recorded";
 
         pairedMessages.push({
           userId,
@@ -68,7 +76,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           metadata: {
             intentLabel: "manual-save",
             sessionType: "manual",
-            sessionName: sessionName || `Manual – ${new Date().toLocaleString()}`,
+            sessionName:
+              sessionName || `Manual – ${new Date().toLocaleString()}`,
           },
         });
       }
@@ -84,15 +93,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         results.push({ logEntry: log.logEntry, status: "saved" });
       } catch (uploadErr: any) {
-        console.error(`⚠️ Failed to save log:`, uploadErr.response?.data || uploadErr.message);
+        console.error(
+          `⚠️ Failed to save log:`,
+          uploadErr.response?.data || uploadErr.message,
+        );
         results.push({ logEntry: log.logEntry, status: "failed" });
       }
     }
 
     return res.status(200).json({ success: true, saved: results });
-
   } catch (error) {
-    console.error('❌ Save session error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("❌ Save session error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

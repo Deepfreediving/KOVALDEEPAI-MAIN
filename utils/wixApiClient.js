@@ -1,12 +1,12 @@
 // ✅ Wix API Client - Centralized API calls to Wix DiveLogs collection
 // This handles all communication with the Wix backend for dive logs
 
-import WIX_APP_CONFIG from '@/lib/wixAppConfig';
+import WIX_APP_CONFIG from "@/lib/wixAppConfig";
 
 export class WixApiClient {
   constructor() {
     this.baseUrl = WIX_APP_CONFIG.baseUrl;
-    this.apiKey = WIX_APP_CONFIG.apiKey || 'dev-mode';
+    this.apiKey = WIX_APP_CONFIG.apiKey || "dev-mode";
   }
 
   /**
@@ -16,32 +16,42 @@ export class WixApiClient {
    */
   async saveDiveLog(diveLogData) {
     try {
-      console.log('🌐 WixApiClient: Saving dive log to DiveLogs collection...');
-      
-      const response = await fetch(`${this.baseUrl}/api/wix/dive-journal-repeater`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+      console.log("🌐 WixApiClient: Saving dive log to DiveLogs collection...");
+
+      const response = await fetch(
+        `${this.baseUrl}/api/wix/dive-journal-repeater`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            action: "insert",
+            collection: "DiveLogs",
+            data: diveLogData,
+          }),
         },
-        body: JSON.stringify({
-          action: 'insert',
-          collection: 'DiveLogs',
-          data: diveLogData
-        })
-      });
+      );
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ WixApiClient: Dive log saved successfully:', result.data?._id);
+        console.log(
+          "✅ WixApiClient: Dive log saved successfully:",
+          result.data?._id,
+        );
         return { success: true, data: result.data };
       } else {
         const errorText = await response.text();
-        console.error('❌ WixApiClient: Save failed:', response.status, errorText);
+        console.error(
+          "❌ WixApiClient: Save failed:",
+          response.status,
+          errorText,
+        );
         return { success: false, error: errorText, status: response.status };
       }
     } catch (error) {
-      console.error('❌ WixApiClient: Save error:', error);
+      console.error("❌ WixApiClient: Save error:", error);
       return { success: false, error: error.message };
     }
   }
@@ -55,32 +65,41 @@ export class WixApiClient {
   async getDiveLogs(userId, limit = 50) {
     try {
       console.log(`🌐 WixApiClient: Fetching dive logs for user: ${userId}`);
-      
-      const response = await fetch(`${this.baseUrl}/api/wix/dive-journal-repeater`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+
+      const response = await fetch(
+        `${this.baseUrl}/api/wix/dive-journal-repeater`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            action: "query",
+            collection: "DiveLogs",
+            userId: userId,
+            limit: limit,
+          }),
         },
-        body: JSON.stringify({
-          action: 'query',
-          collection: 'DiveLogs',
-          userId: userId,
-          limit: limit
-        })
-      });
+      );
 
       if (response.ok) {
         const result = await response.json();
-        console.log(`✅ WixApiClient: Found ${result.data?.items?.length || 0} dive logs`);
+        console.log(
+          `✅ WixApiClient: Found ${result.data?.items?.length || 0} dive logs`,
+        );
         return { success: true, data: result.data };
       } else {
         const errorText = await response.text();
-        console.error('❌ WixApiClient: Query failed:', response.status, errorText);
+        console.error(
+          "❌ WixApiClient: Query failed:",
+          response.status,
+          errorText,
+        );
         return { success: false, error: errorText, status: response.status };
       }
     } catch (error) {
-      console.error('❌ WixApiClient: Query error:', error);
+      console.error("❌ WixApiClient: Query error:", error);
       return { success: false, error: error.message };
     }
   }
@@ -93,31 +112,38 @@ export class WixApiClient {
   async deleteDiveLog(diveLogId) {
     try {
       console.log(`🌐 WixApiClient: Deleting dive log: ${diveLogId}`);
-      
-      const response = await fetch(`${this.baseUrl}/api/wix/dive-journal-repeater`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+
+      const response = await fetch(
+        `${this.baseUrl}/api/wix/dive-journal-repeater`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            action: "remove",
+            collection: "DiveLogs",
+            itemId: diveLogId,
+          }),
         },
-        body: JSON.stringify({
-          action: 'remove',
-          collection: 'DiveLogs',
-          itemId: diveLogId
-        })
-      });
+      );
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ WixApiClient: Dive log deleted successfully');
+        console.log("✅ WixApiClient: Dive log deleted successfully");
         return { success: true, data: result.data };
       } else {
         const errorText = await response.text();
-        console.error('❌ WixApiClient: Delete failed:', response.status, errorText);
+        console.error(
+          "❌ WixApiClient: Delete failed:",
+          response.status,
+          errorText,
+        );
         return { success: false, error: errorText, status: response.status };
       }
     } catch (error) {
-      console.error('❌ WixApiClient: Delete error:', error);
+      console.error("❌ WixApiClient: Delete error:", error);
       return { success: false, error: error.message };
     }
   }
@@ -131,32 +157,39 @@ export class WixApiClient {
   async updateDiveLog(diveLogId, updateData) {
     try {
       console.log(`🌐 WixApiClient: Updating dive log: ${diveLogId}`);
-      
-      const response = await fetch(`${this.baseUrl}/api/wix/dive-journal-repeater`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+
+      const response = await fetch(
+        `${this.baseUrl}/api/wix/dive-journal-repeater`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            action: "update",
+            collection: "DiveLogs",
+            itemId: diveLogId,
+            data: updateData,
+          }),
         },
-        body: JSON.stringify({
-          action: 'update',
-          collection: 'DiveLogs',
-          itemId: diveLogId,
-          data: updateData
-        })
-      });
+      );
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ WixApiClient: Dive log updated successfully');
+        console.log("✅ WixApiClient: Dive log updated successfully");
         return { success: true, data: result.data };
       } else {
         const errorText = await response.text();
-        console.error('❌ WixApiClient: Update failed:', response.status, errorText);
+        console.error(
+          "❌ WixApiClient: Update failed:",
+          response.status,
+          errorText,
+        );
         return { success: false, error: errorText, status: response.status };
       }
     } catch (error) {
-      console.error('❌ WixApiClient: Update error:', error);
+      console.error("❌ WixApiClient: Update error:", error);
       return { success: false, error: error.message };
     }
   }
@@ -167,25 +200,32 @@ export class WixApiClient {
    */
   async testConnection() {
     try {
-      console.log('🌐 WixApiClient: Testing connection to DiveLogs collection...');
-      
-      const response = await fetch(`${this.baseUrl}/api/wix/dive-journal-repeater`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+      console.log(
+        "🌐 WixApiClient: Testing connection to DiveLogs collection...",
+      );
+
+      const response = await fetch(
+        `${this.baseUrl}/api/wix/dive-journal-repeater`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            action: "test",
+            collection: "DiveLogs",
+          }),
         },
-        body: JSON.stringify({
-          action: 'test',
-          collection: 'DiveLogs'
-        })
-      });
+      );
 
       const isConnected = response.ok;
-      console.log(`${isConnected ? '✅' : '❌'} WixApiClient: Connection test ${isConnected ? 'passed' : 'failed'}`);
+      console.log(
+        `${isConnected ? "✅" : "❌"} WixApiClient: Connection test ${isConnected ? "passed" : "failed"}`,
+      );
       return isConnected;
     } catch (error) {
-      console.error('❌ WixApiClient: Connection test error:', error);
+      console.error("❌ WixApiClient: Connection test error:", error);
       return false;
     }
   }

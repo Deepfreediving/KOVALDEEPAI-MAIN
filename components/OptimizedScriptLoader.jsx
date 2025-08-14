@@ -1,14 +1,14 @@
 // ===== 📄 components/OptimizedScriptLoader.jsx =====
 // Optimized script loader with better control over external resources
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-const OptimizedScriptLoader = ({ 
-  scripts = [], 
-  defer = true, 
-  onLoad, 
+const OptimizedScriptLoader = ({
+  scripts = [],
+  defer = true,
+  onLoad,
   onError,
-  priority = 'low' 
+  priority = "low",
 }) => {
   const loadedScripts = useRef(new Set());
 
@@ -17,8 +17,13 @@ const OptimizedScriptLoader = ({
 
     const loadScript = (scriptConfig) => {
       return new Promise((resolve, reject) => {
-        const { src, id, async = true, defer: scriptDefer = defer } = scriptConfig;
-        
+        const {
+          src,
+          id,
+          async = true,
+          defer: scriptDefer = defer,
+        } = scriptConfig;
+
         // Skip if already loaded
         if (loadedScripts.current.has(src)) {
           resolve();
@@ -33,34 +38,34 @@ const OptimizedScriptLoader = ({
           return;
         }
 
-        const script = document.createElement('script');
+        const script = document.createElement("script");
         script.src = src;
         script.async = async;
         script.defer = scriptDefer;
-        
+
         if (id) script.id = id;
 
         script.onload = () => {
           loadedScripts.current.add(src);
-          console.log('✅ Script loaded:', src);
+          console.log("✅ Script loaded:", src);
           onLoad?.(src);
           resolve();
         };
 
         script.onerror = (error) => {
-          console.error('❌ Script failed to load:', src, error);
+          console.error("❌ Script failed to load:", src, error);
           onError?.(src, error);
           reject(error);
         };
 
         // Use different loading strategies based on priority
-        if (priority === 'high') {
+        if (priority === "high") {
           // High priority: load immediately
           document.head.appendChild(script);
-        } else if (priority === 'medium') {
+        } else if (priority === "medium") {
           // Medium priority: load after DOM content loaded
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", () => {
               document.head.appendChild(script);
             });
           } else {
@@ -68,7 +73,7 @@ const OptimizedScriptLoader = ({
           }
         } else {
           // Low priority: load when browser is idle
-          if ('requestIdleCallback' in window) {
+          if ("requestIdleCallback" in window) {
             requestIdleCallback(() => {
               document.head.appendChild(script);
             });
@@ -82,9 +87,13 @@ const OptimizedScriptLoader = ({
     };
 
     // Load scripts based on priority
-    const highPriorityScripts = scripts.filter(s => s.priority === 'high');
-    const mediumPriorityScripts = scripts.filter(s => s.priority === 'medium');
-    const lowPriorityScripts = scripts.filter(s => !s.priority || s.priority === 'low');
+    const highPriorityScripts = scripts.filter((s) => s.priority === "high");
+    const mediumPriorityScripts = scripts.filter(
+      (s) => s.priority === "medium",
+    );
+    const lowPriorityScripts = scripts.filter(
+      (s) => !s.priority || s.priority === "low",
+    );
 
     // Load high priority first
     Promise.all(highPriorityScripts.map(loadScript))
@@ -96,8 +105,8 @@ const OptimizedScriptLoader = ({
         // Finally low priority
         return Promise.all(lowPriorityScripts.map(loadScript));
       })
-      .catch(error => {
-        console.error('Script loading error:', error);
+      .catch((error) => {
+        console.error("Script loading error:", error);
       });
 
     // Cleanup function to remove scripts if needed
@@ -120,29 +129,29 @@ export const useScriptLoader = (src, options = {}) => {
     const existingScript = document.querySelector(`script[src="${src}"]`);
     if (existingScript) return;
 
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = src;
     script.async = async;
     script.defer = defer;
 
     const handleLoad = () => {
-      console.log('✅ Script loaded:', src);
+      console.log("✅ Script loaded:", src);
       onLoad?.();
     };
 
     const handleError = (error) => {
-      console.error('❌ Script failed:', src, error);
+      console.error("❌ Script failed:", src, error);
       onError?.(error);
     };
 
-    script.addEventListener('load', handleLoad);
-    script.addEventListener('error', handleError);
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
 
     document.head.appendChild(script);
 
     return () => {
-      script.removeEventListener('load', handleLoad);
-      script.removeEventListener('error', handleError);
+      script.removeEventListener("load", handleLoad);
+      script.removeEventListener("error", handleError);
       // Don't remove script element as it might be needed by other components
     };
   }, [src, defer, async, onLoad, onError]);

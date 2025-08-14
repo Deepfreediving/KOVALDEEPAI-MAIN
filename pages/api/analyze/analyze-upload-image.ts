@@ -1,9 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs/promises';
-import path from 'path';
+import type { NextApiRequest, NextApiResponse } from "next";
+import fs from "fs/promises";
+import path from "path";
 import handleCors from "@/utils/handleCors";
 
-const LOG_DIR = path.resolve('./data/diveLogs');
+const LOG_DIR = path.resolve("./data/diveLogs");
 const SAFE_USERID = /^[a-zA-Z0-9_-]+$/;
 
 interface DiveLog {
@@ -13,21 +13,21 @@ interface DiveLog {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ): Promise<void> {
   try {
     // ✅ Use handleCors
     if (handleCors(req, res)) return; // Early exit for OPTIONS
-    
-    if (req.method !== 'GET') {
-      return res.status(405).json({ error: 'Method not allowed' });
+
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
     }
 
     const { userId } = req.query;
 
     // ✅ Validate userId format
-    if (!userId || typeof userId !== 'string' || !SAFE_USERID.test(userId)) {
-      res.status(400).json({ error: 'Missing or invalid userId' });
+    if (!userId || typeof userId !== "string" || !SAFE_USERID.test(userId)) {
+      res.status(400).json({ error: "Missing or invalid userId" });
       return;
     }
 
@@ -46,10 +46,10 @@ export default async function handler(
       const logs: DiveLog[] = [];
 
       for (const file of files) {
-        if (file.endsWith('.json')) {
+        if (file.endsWith(".json")) {
           try {
             const filePath = path.join(userPath, file);
-            const content = await fs.readFile(filePath, 'utf8');
+            const content = await fs.readFile(filePath, "utf8");
             logs.push(JSON.parse(content));
           } catch (parseErr) {
             console.warn(`⚠️ Could not parse file ${file}:`, parseErr);
@@ -66,12 +66,12 @@ export default async function handler(
 
       res.status(200).json({ logs });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('❌ Failed to read dive logs:', message);
-      res.status(500).json({ error: 'Internal Server Error' });
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("❌ Failed to read dive logs:", message);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   } catch (error) {
-    console.error('❌ Analyze upload image error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("❌ Analyze upload image error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

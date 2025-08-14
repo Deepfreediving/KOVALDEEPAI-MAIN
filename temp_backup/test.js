@@ -1,10 +1,12 @@
-import handleCors from '@/utils/handleCors'; // ✅ CHANGED
+import handleCors from "@/utils/handleCors"; // ✅ CHANGED
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   // Check if the OpenAI API key is missing or empty from environment variables
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === "") {
-    return res.status(500).json({ error: "OPENAI_API_KEY is missing or empty" });
+    return res
+      .status(500)
+      .json({ error: "OPENAI_API_KEY is missing or empty" });
   }
   try {
     // Make a POST request to the correct OpenAI endpoint
@@ -24,13 +26,17 @@ export default async function handler(req, res) {
     // Check if the response status is ok (2xx)
     if (!response.ok) {
       const errorResponse = await response.json(); // Get error details from OpenAI response
-      return res.status(response.status).json({ error: errorResponse.error || "Failed to fetch data from OpenAI" });
+      return res.status(response.status).json({
+        error: errorResponse.error || "Failed to fetch data from OpenAI",
+      });
     }
 
     const data = await response.json();
     res.status(200).json(data);
   } catch (error) {
     console.error(error); // Log the error for debugging
-    res.status(500).json({ error: "API request failed", message: error.message });
+    res
+      .status(500)
+      .json({ error: "API request failed", message: error.message });
   }
 }

@@ -23,12 +23,12 @@ export default function ChatBox({
   const BOT_NAME = "Koval AI";
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
-  
+
   // ✅ IMPROVED USER ID MANAGEMENT
   const effectiveUserId = getOrCreateUserId(userId);
-  
+
   useEffect(() => {
-    console.log('💬 ChatBox using effective user ID:', effectiveUserId);
+    console.log("💬 ChatBox using effective user ID:", effectiveUserId);
   }, [effectiveUserId]);
 
   // ✅ Smooth Auto-scroll
@@ -36,7 +36,8 @@ export default function ChatBox({
     const container = containerRef.current;
     if (!container) return;
     const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      150;
     if (isNearBottom) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
@@ -78,12 +79,16 @@ export default function ChatBox({
           });
 
           const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+          if (!res.ok)
+            throw new Error(data?.error || `Upload failed (${res.status})`);
 
           setMessages((prev) => [
             ...prev,
             { role: "user", content: `📤 Uploaded: ${file.name}` },
-            { role: "assistant", content: data.answer || "✅ Image uploaded successfully." },
+            {
+              role: "assistant",
+              content: data.answer || "✅ Image uploaded successfully.",
+            },
           ]);
 
           onUploadSuccess?.("✅ Dive profile uploaded.");
@@ -93,19 +98,22 @@ export default function ChatBox({
 
       // -------- CHAT MESSAGE --------
       if (trimmedInput) {
-        setMessages((prev) => [...prev, { role: "user", content: trimmedInput }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: trimmedInput },
+        ]);
         setInput("");
 
         // ✅ Use enhanced Wix bridge API for better integration
         const res = await fetch("/api/wix/chat-bridge", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            userMessage: trimmedInput, 
-            profile, 
-            eqState, 
+          body: JSON.stringify({
+            userMessage: trimmedInput,
+            profile,
+            eqState,
             userId: effectiveUserId,
-            embedMode: false // This is for direct usage, not embedded
+            embedMode: false, // This is for direct usage, not embedded
           }),
         });
 
@@ -118,28 +126,43 @@ export default function ChatBox({
         }
 
         if (!res.ok) {
-          console.warn(`⚠️ Chat bridge failed (${res.status}), trying fallback...`);
-          
+          console.warn(
+            `⚠️ Chat bridge failed (${res.status}), trying fallback...`,
+          );
+
           // Fallback to direct OpenAI chat API
           const fallbackRes = await fetch("/api/openai/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: trimmedInput, profile, eqState, userId: effectiveUserId }),
+            body: JSON.stringify({
+              message: trimmedInput,
+              profile,
+              eqState,
+              userId: effectiveUserId,
+            }),
           });
-          
+
           if (!fallbackRes.ok) {
-            throw new Error(`Both chat APIs failed: Bridge ${res.status}, Fallback ${fallbackRes.status}`);
+            throw new Error(
+              `Both chat APIs failed: Bridge ${res.status}, Fallback ${fallbackRes.status}`,
+            );
           }
-          
+
           const fallbackData = await fallbackRes.json();
           console.log("✅ Fallback chat response received:", fallbackData);
-          
+
           if (fallbackData.assistantMessage) {
             setMessages((prev) => [...prev, fallbackData.assistantMessage]);
           } else {
             setMessages((prev) => [
               ...prev,
-              { role: "assistant", content: fallbackData.answer || fallbackData.aiResponse || "I received your message!" },
+              {
+                role: "assistant",
+                content:
+                  fallbackData.answer ||
+                  fallbackData.aiResponse ||
+                  "I received your message!",
+              },
             ]);
           }
           return;
@@ -152,29 +175,37 @@ export default function ChatBox({
         if (bridgeData.aiResponse || bridgeData.assistantMessage?.content) {
           const assistantMessage = {
             role: "assistant",
-            content: bridgeData.aiResponse || bridgeData.assistantMessage?.content || "I received your message!",
+            content:
+              bridgeData.aiResponse ||
+              bridgeData.assistantMessage?.content ||
+              "I received your message!",
           };
-          
+
           // Add metadata if available
           if (bridgeData.metadata) {
             assistantMessage.metadata = bridgeData.metadata;
-            console.log(`📊 Chat metadata: ${bridgeData.metadata.processingTime}ms, source: ${bridgeData.source}`);
+            console.log(
+              `📊 Chat metadata: ${bridgeData.metadata.processingTime}ms, source: ${bridgeData.source}`,
+            );
           }
-          
+
           setMessages((prev) => [...prev, assistantMessage]);
         } else if (bridgeData.type === "eq-followup") {
           setEqState?.((prev) => ({
             ...prev,
             answers: { ...prev.answers, [bridgeData.key]: trimmedInput },
           }));
-          setMessages((prev) => [...prev, { role: "assistant", content: `🔍 ${bridgeData.question}` }]);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: `🔍 ${bridgeData.question}` },
+          ]);
         } else if (bridgeData.type === "eq-diagnosis") {
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
               content: `🧠 Diagnosis: ${bridgeData.label}\n\nRecommended Drills:\n${bridgeData.drills.join(
-                "\n"
+                "\n",
               )}`,
             },
           ]);
@@ -184,7 +215,10 @@ export default function ChatBox({
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: bridgeData.answer || "⚠️ Unrecognized response format." },
+            {
+              role: "assistant",
+              content: bridgeData.answer || "⚠️ Unrecognized response format.",
+            },
           ]);
         }
       }
@@ -224,11 +258,17 @@ export default function ChatBox({
         {/* Header */}
         <div
           className={`flex items-center justify-between px-6 py-4 border-b ${
-            darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
+            darkMode
+              ? "border-gray-700 bg-[#1a1a1a]"
+              : "border-gray-200 bg-gray-100"
           }`}
         >
           <div className="flex items-center gap-4">
-            <img src="/deeplogo.jpg" alt="Logo" className="w-10 h-10 rounded-full" />
+            <img
+              src="/deeplogo.jpg"
+              alt="Logo"
+              className="w-10 h-10 rounded-full"
+            />
             <div>
               <h1 className="text-xl font-semibold">koval-ai Deep Chat</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">

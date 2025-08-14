@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 
 export interface Status {
   wix: string;
@@ -17,19 +17,19 @@ export interface ApiResponse {
  * ✅ Simple fetch-based API client (no axios dependency)
  */
 async function sendRequest(
-  endpoint: string, 
-  data: any = {}, 
-  options: RequestInit = {}
+  endpoint: string,
+  data: any = {},
+  options: RequestInit = {},
 ): Promise<ApiResponse> {
   try {
     const response = await fetch(endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
+        "Content-Type": "application/json",
+        ...options.headers,
       },
       body: JSON.stringify(data),
-      ...options
+      ...options,
     });
 
     if (!response.ok) {
@@ -40,15 +40,14 @@ async function sendRequest(
     return {
       success: true,
       data: result,
-      message: 'Request successful'
+      message: "Request successful",
     };
-
   } catch (error: any) {
     console.error(`❌ API request failed:`, error.message);
     return {
       success: false,
       error: error.message,
-      message: `Request failed: ${error.message}`
+      message: `Request failed: ${error.message}`,
     };
   }
 }
@@ -56,22 +55,25 @@ async function sendRequest(
 /**
  * ✅ Test OpenAI chat endpoint
  */
-export async function testOpenAI(): Promise<{ success: boolean; message: string }> {
+export async function testOpenAI(): Promise<{
+  success: boolean;
+  message: string;
+}> {
   try {
-    const result = await sendRequest('/api/openai/chat', {
-      message: 'ping',
-      userId: 'test-user',
-      profile: { nickname: 'Test User' }
+    const result = await sendRequest("/api/openai/chat", {
+      message: "ping",
+      userId: "test-user",
+      profile: { nickname: "Test User" },
     });
 
     return {
       success: result.success,
-      message: result.success ? 'OpenAI connected' : 'OpenAI failed'
+      message: result.success ? "OpenAI connected" : "OpenAI failed",
     };
   } catch (error) {
     return {
       success: false,
-      message: 'OpenAI test failed'
+      message: "OpenAI test failed",
     };
   }
 }
@@ -79,22 +81,25 @@ export async function testOpenAI(): Promise<{ success: boolean; message: string 
 /**
  * ✅ Test Pinecone connection (UPDATED)
  */
-export async function testPinecone(): Promise<{ success: boolean; message: string }> {
+export async function testPinecone(): Promise<{
+  success: boolean;
+  message: string;
+}> {
   try {
     // ✅ Use pineconequery-gpt endpoint
-    const result = await sendRequest('/api/pinecone/pineconequery-gpt', {
-      query: 'freediving safety',
-      returnChunks: true
+    const result = await sendRequest("/api/pinecone/pineconequery-gpt", {
+      query: "freediving safety",
+      returnChunks: true,
     });
 
     return {
       success: result.success,
-      message: result.success ? 'Pinecone connected' : 'Pinecone failed'
+      message: result.success ? "Pinecone connected" : "Pinecone failed",
     };
   } catch (error) {
     return {
       success: false,
-      message: 'Pinecone test failed'
+      message: "Pinecone test failed",
     };
   }
 }
@@ -102,22 +107,25 @@ export async function testPinecone(): Promise<{ success: boolean; message: strin
 /**
  * ✅ Test API Handler (if you're using it)
  */
-export async function testApiHandler(): Promise<{ success: boolean; message: string }> {
+export async function testApiHandler(): Promise<{
+  success: boolean;
+  message: string;
+}> {
   try {
-    const result = await sendRequest('/api/apiHandler', {
-      service: 'openai',
-      action: 'check',
-      data: { test: true }
+    const result = await sendRequest("/api/apiHandler", {
+      service: "openai",
+      action: "check",
+      data: { test: true },
     });
 
     return {
       success: result.success,
-      message: result.success ? 'API Handler connected' : 'API Handler failed'
+      message: result.success ? "API Handler connected" : "API Handler failed",
     };
   } catch (error) {
     return {
       success: false,
-      message: 'API Handler test failed'
+      message: "API Handler test failed",
     };
   }
 }
@@ -127,27 +135,28 @@ export async function testApiHandler(): Promise<{ success: boolean; message: str
  */
 export async function checkAllConnections(): Promise<Status> {
   const status: Status = {
-    wix: '⏳ Checking...',
-    openai: '⏳ Checking...',
-    pinecone: '⏳ Checking...'
+    wix: "⏳ Checking...",
+    openai: "⏳ Checking...",
+    pinecone: "⏳ Checking...",
   };
 
   // ✅ Test OpenAI
-  console.log('🔍 Testing OpenAI...');
+  console.log("🔍 Testing OpenAI...");
   const openaiTest = await testOpenAI();
-  status.openai = openaiTest.success ? '✅ Connected' : '❌ Failed';
+  status.openai = openaiTest.success ? "✅ Connected" : "❌ Failed";
 
   // ✅ Test Pinecone
-  console.log('🔍 Testing Pinecone...');
+  console.log("🔍 Testing Pinecone...");
   const pineconeTest = await testPinecone();
-  status.pinecone = pineconeTest.success ? '✅ Connected' : '❌ Failed';
+  status.pinecone = pineconeTest.success ? "✅ Connected" : "❌ Failed";
 
   // ✅ For Wix, just check if we're in embed mode
-  status.wix = typeof window !== 'undefined' && window.parent !== window 
-    ? '✅ Embedded' 
-    : '⚠️ Not embedded';
+  status.wix =
+    typeof window !== "undefined" && window.parent !== window
+      ? "✅ Embedded"
+      : "⚠️ Not embedded";
 
-  console.log('📊 Connection status:', status);
+  console.log("📊 Connection status:", status);
   return status;
 }
 
@@ -156,29 +165,32 @@ export async function checkAllConnections(): Promise<Status> {
  */
 export async function sendChatMessage(
   message: string,
-  userId: string = 'guest',
-  profile: any = {}
+  userId: string = "guest",
+  profile: any = {},
 ): Promise<ApiResponse> {
-  return await sendRequest('/api/openai/chat', {
+  return await sendRequest("/api/openai/chat", {
     message,
     userId,
     profile,
-    embedMode: true
+    embedMode: true,
   });
 }
 
 /**
  * ✅ Upload image
  */
-export async function uploadImage(file: File, userId?: string): Promise<ApiResponse> {
+export async function uploadImage(
+  file: File,
+  userId?: string,
+): Promise<ApiResponse> {
   try {
     const formData = new FormData();
-    formData.append('image', file);
-    if (userId) formData.append('userId', userId);
+    formData.append("image", file);
+    if (userId) formData.append("userId", userId);
 
-    const response = await fetch('/api/openai/upload-dive-image', {
-      method: 'POST',
-      body: formData
+    const response = await fetch("/api/openai/upload-dive-image", {
+      method: "POST",
+      body: formData,
     });
 
     if (!response.ok) {
@@ -189,14 +201,13 @@ export async function uploadImage(file: File, userId?: string): Promise<ApiRespo
     return {
       success: true,
       data: result,
-      message: 'Image uploaded successfully'
+      message: "Image uploaded successfully",
     };
-
   } catch (error: any) {
     return {
       success: false,
       error: error.message,
-      message: 'Image upload failed'
+      message: "Image upload failed",
     };
   }
 }
@@ -206,12 +217,12 @@ export async function uploadImage(file: File, userId?: string): Promise<ApiRespo
  */
 export async function queryDocuments(
   query: string,
-  topK: number = 5
+  topK: number = 5,
 ): Promise<ApiResponse> {
   // ✅ Use pineconequery-gpt endpoint
-  return await sendRequest('/api/pinecone/pineconequery-gpt', {
+  return await sendRequest("/api/pinecone/pineconequery-gpt", {
     query,
-    returnChunks: true
+    returnChunks: true,
   });
 }
 
@@ -224,7 +235,7 @@ const apiClient = {
   testOpenAI,
   testPinecone,
   testApiHandler,
-  checkAllConnections
+  checkAllConnections,
 };
 
 export default apiClient;

@@ -1,8 +1,15 @@
 // components/ChatMessages.jsx
-export default function ChatMessages({ messages, BOT_NAME, darkMode, loading, bottomRef, userId }) {
+export default function ChatMessages({
+  messages,
+  BOT_NAME,
+  darkMode,
+  loading,
+  bottomRef,
+  userId,
+}) {
   // ✅ Generate consistent user display name from member ID
   const getUserDisplayName = () => {
-    if (!userId || userId.startsWith('guest')) {
+    if (!userId || userId.startsWith("guest")) {
       return "Guest User";
     }
     // Use member ID format for consistent, fast recognition (no emoji - handled elsewhere)
@@ -26,11 +33,13 @@ export default function ChatMessages({ messages, BOT_NAME, darkMode, loading, bo
                 ? "bg-gray-800 text-white self-start shadow"
                 : "bg-teal-100 text-black self-start shadow"
               : darkMode
-              ? "bg-blue-700 text-white self-end shadow"
-              : "bg-blue-600 text-white self-end shadow"
+                ? "bg-blue-700 text-white self-end shadow"
+                : "bg-blue-600 text-white self-end shadow"
           }`}
         >
-          <strong>{m.role === "user" ? getUserDisplayName() : BOT_NAME}:</strong>
+          <strong>
+            {m.role === "user" ? getUserDisplayName() : BOT_NAME}:
+          </strong>
           <div>{m.content}</div>
         </div>
       ))}

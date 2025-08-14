@@ -42,7 +42,9 @@ export default function ChatInput({
         handleSubmit();
       }}
       className={`w-full flex flex-col gap-3 p-4 border-t ${
-        darkMode ? "border-gray-700 bg-[#1a1a1a]" : "border-gray-200 bg-gray-100"
+        darkMode
+          ? "border-gray-700 bg-[#1a1a1a]"
+          : "border-gray-200 bg-gray-100"
       }`}
     >
       <label htmlFor="chatInput" className="sr-only">
@@ -93,23 +95,33 @@ export default function ChatInput({
           loading || isAuthenticating
             ? "opacity-50 cursor-not-allowed"
             : darkMode
-            ? "bg-blue-500 hover:bg-blue-600 text-white"
-            : "bg-blue-600 hover:bg-blue-700 text-white"
+              ? "bg-blue-500 hover:bg-blue-600 text-white"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
         }`}
-        disabled={loading || isAuthenticating || (!input.trim() && files.length === 0)}
+        disabled={
+          loading || isAuthenticating || (!input.trim() && files.length === 0)
+        }
       >
-        {loading ? "Thinking..." : isAuthenticating ? "Authenticating..." : "Send"}
+        {loading
+          ? "Thinking..."
+          : isAuthenticating
+            ? "Authenticating..."
+            : "Send"}
       </button>
-      
+
       {/* Authentication Status Message */}
       {isAuthenticating && (
-        <p className={`text-xs text-center ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+        <p
+          className={`text-xs text-center ${darkMode ? "text-gray-400" : "text-gray-600"}`}
+        >
           ⏳ Verifying your authentication, please wait...
         </p>
       )}
-      
+
       {authTimeoutReached && (
-        <p className={`text-xs text-center ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+        <p
+          className={`text-xs text-center ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}
+        >
           ⚠️ Using limited access mode. Some features may not work properly.
         </p>
       )}

@@ -2,22 +2,25 @@
 // Query UserMemory collection for authenticated users
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { fetchUserMemory, queryUserMemoryByEmail } from "@/lib/userMemoryManager";
-import handleCors from '@/utils/handleCors';
+import {
+  fetchUserMemory,
+  queryUserMemoryByEmail,
+} from "@/lib/userMemoryManager";
+import handleCors from "@/utils/handleCors";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   // ✅ Handle CORS
   if (handleCors(req, res)) return;
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
@@ -25,13 +28,15 @@ export default async function handler(
 
     // Validate input
     if (!userId && !email) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Either 'userId' or 'email' parameter is required",
-        example: "/api/auth/get-user-memory?userId=12345"
+        example: "/api/auth/get-user-memory?userId=12345",
       });
     }
 
-    console.log(`🔍 Querying UserMemory for ${userId ? `userId: ${userId}` : `email: ${email}`}`);
+    console.log(
+      `🔍 Querying UserMemory for ${userId ? `userId: ${userId}` : `email: ${email}`}`,
+    );
 
     let userMemory = null;
 
@@ -49,7 +54,7 @@ export default async function handler(
         success: true,
         data: userMemory,
         message: "User memory data retrieved successfully",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else {
       console.log("ℹ️ No user memory data found");
@@ -58,7 +63,7 @@ export default async function handler(
         message: "User not found in UserMemory collection",
         userId: userId || null,
         email: email || null,
-        suggestion: "User may not have interacted with the system yet"
+        suggestion: "User may not have interacted with the system yet",
       });
     }
   } catch (error: any) {
@@ -67,7 +72,7 @@ export default async function handler(
       success: false,
       error: "Failed to query user memory",
       details: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

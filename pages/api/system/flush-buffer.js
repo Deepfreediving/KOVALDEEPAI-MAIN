@@ -5,13 +5,13 @@
 
 // CORS configuration for Wix domain
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://www.deepfreediving.com',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400', // 24 hours
-  'Cross-Origin-Embedder-Policy': 'unsafe-none',
-  'Cross-Origin-Resource-Policy': 'cross-origin',
-  'Cross-Origin-Opener-Policy': 'unsafe-none',
+  "Access-Control-Allow-Origin": "https://www.deepfreediving.com",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400", // 24 hours
+  "Cross-Origin-Embedder-Policy": "unsafe-none",
+  "Cross-Origin-Resource-Policy": "cross-origin",
+  "Cross-Origin-Opener-Policy": "unsafe-none",
 };
 
 export default async function handler(req, res) {
@@ -21,12 +21,12 @@ export default async function handler(req, res) {
   });
 
   // Handle preflight requests
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
@@ -34,13 +34,13 @@ export default async function handler(req, res) {
 
     // Validate required fields
     if (!userId || !bufferData) {
-      return res.status(400).json({ 
-        error: 'Missing required fields',
-        required: ['userId', 'bufferData']
+      return res.status(400).json({
+        error: "Missing required fields",
+        required: ["userId", "bufferData"],
       });
     }
 
-    console.log('💾 Buffer flush request:', {
+    console.log("💾 Buffer flush request:", {
       userId,
       wixMemberId: wixMemberId ? `***${wixMemberId.slice(-4)}` : null,
       sessionId: sessionId ? `***${sessionId.slice(-8)}` : null,
@@ -57,10 +57,17 @@ export default async function handler(req, res) {
     // Process each buffered item
     for (const bufferedItem of bufferData) {
       try {
-        console.log('🔄 Processing buffered item:', bufferedItem.operation, bufferedItem.id);
-        
-        const result = await processBufferedOperation(bufferedItem, wixMemberId);
-        
+        console.log(
+          "🔄 Processing buffered item:",
+          bufferedItem.operation,
+          bufferedItem.id,
+        );
+
+        const result = await processBufferedOperation(
+          bufferedItem,
+          wixMemberId,
+        );
+
         results.processed++;
         results.processedItems.push({
           id: bufferedItem.id,
@@ -68,9 +75,12 @@ export default async function handler(req, res) {
           result,
           timestamp: bufferedItem.timestamp,
         });
-        
       } catch (error) {
-        console.error('❌ Failed to process buffered item:', bufferedItem.id, error);
+        console.error(
+          "❌ Failed to process buffered item:",
+          bufferedItem.id,
+          error,
+        );
         results.failed++;
         results.errors.push({
           id: bufferedItem.id,
@@ -80,7 +90,7 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log('✅ Buffer flush completed:', {
+    console.log("✅ Buffer flush completed:", {
       processed: results.processed,
       failed: results.failed,
       total: bufferData.length,
@@ -88,16 +98,15 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Buffer flush completed',
+      message: "Buffer flush completed",
       ...results,
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    console.error('❌ Buffer flush error:', error);
-    
+    console.error("❌ Buffer flush error:", error);
+
     return res.status(500).json({
-      error: 'Buffer flush failed',
+      error: "Buffer flush failed",
       message: error.message,
       timestamp: new Date().toISOString(),
     });
@@ -109,23 +118,23 @@ export default async function handler(req, res) {
  */
 async function processBufferedOperation(bufferedItem, wixMemberId) {
   const { operation, data, timestamp, userId } = bufferedItem;
-  
+
   // Use the authenticated wixMemberId if available, otherwise use the original userId
   const effectiveUserId = wixMemberId || userId;
-  
+
   switch (operation) {
-    case 'saveDiveLog':
+    case "saveDiveLog":
       return await processDiveLogOperation(data, effectiveUserId);
-      
-    case 'chatMessage':
+
+    case "chatMessage":
       return await processChatOperation(data, effectiveUserId);
-      
-    case 'imageUpload':
+
+    case "imageUpload":
       return await processImageOperation(data, effectiveUserId);
-      
-    case 'userMemory':
+
+    case "userMemory":
       return await processMemoryOperation(data, effectiveUserId);
-      
+
     default:
       throw new Error(`Unknown operation: ${operation}`);
   }
@@ -143,13 +152,13 @@ async function processDiveLogOperation(diveLogData, userId) {
     processedAt: new Date().toISOString(),
   };
 
-  // ✅ TEMPORARY: Skip buffered dive log saves to prevent duplicates  
+  // ✅ TEMPORARY: Skip buffered dive log saves to prevent duplicates
   // The main app now handles all dive log saves directly
-  console.log('⏭️ Skipping buffered dive log save to prevent duplicates');
-  return { 
-    success: true, 
-    message: 'Buffered save skipped - handled by main app',
-    logId: diveLogData.id || 'unknown'
+  console.log("⏭️ Skipping buffered dive log save to prevent duplicates");
+  return {
+    success: true,
+    message: "Buffered save skipped - handled by main app",
+    logId: diveLogData.id || "unknown",
   };
 }
 
@@ -157,16 +166,16 @@ async function processDiveLogOperation(diveLogData, userId) {
  * Process buffered chat message
  */
 async function processChatOperation(messageData, userId) {
-  console.log('💬 Processing buffered chat message for:', userId);
-  
+  console.log("💬 Processing buffered chat message for:", userId);
+
   // For chat messages, we might want to replay them or just log them
   // This depends on your chat system architecture
-  
+
   return {
     processed: true,
     messageId: messageData.id || `msg_${Date.now()}`,
     userId,
-    content: messageData.content?.substring(0, 50) + '...',
+    content: messageData.content?.substring(0, 50) + "...",
   };
 }
 
@@ -174,11 +183,11 @@ async function processChatOperation(messageData, userId) {
  * Process buffered image upload
  */
 async function processImageOperation(imageData, userId) {
-  console.log('🖼️ Processing buffered image operation for:', userId);
-  
+  console.log("🖼️ Processing buffered image operation for:", userId);
+
   // For image uploads, you might want to retry the upload or OCR processing
   // This depends on what was buffered (metadata vs actual file)
-  
+
   return {
     processed: true,
     imageId: imageData.id || `img_${Date.now()}`,
@@ -191,24 +200,29 @@ async function processImageOperation(imageData, userId) {
  * Process buffered memory operation
  */
 async function processMemoryOperation(memoryData, userId) {
-  console.log('🧠 Processing buffered memory operation for:', userId);
-  
+  console.log("🧠 Processing buffered memory operation for:", userId);
+
   // Internal API call to save user memory
-  const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/analyze/save-memory`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await fetch(
+    `${process.env.VERCEL_URL || "http://localhost:3000"}/api/analyze/save-memory`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...memoryData,
+        userId,
+        processedFromBuffer: true,
+      }),
     },
-    body: JSON.stringify({
-      ...memoryData,
-      userId,
-      processedFromBuffer: true,
-    }),
-  });
+  );
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Memory save failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+    throw new Error(
+      `Memory save failed: ${response.status} - ${errorData.message || "Unknown error"}`,
+    );
   }
 
   return await response.json();

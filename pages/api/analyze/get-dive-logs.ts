@@ -2,8 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs/promises";
 import path from "path";
 import handleCors from "@/utils/handleCors";
-import WIX_APP_CONFIG from '@/lib/wixAppConfig';
-import { decompressDiveLogFromWix } from '@/utils/diveLogCompression';
+import WIX_APP_CONFIG from "@/lib/wixAppConfig";
+import { decompressDiveLogFromWix } from "@/utils/diveLogCompression";
 
 const LOG_DIR = path.resolve("./data/diveLogs");
 const TMP_LOG_DIR = "/tmp/diveLogs"; // Check both locations for serverless
@@ -21,7 +21,7 @@ interface ApiResponse {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ApiResponse>
+  res: NextApiResponse<ApiResponse>,
 ): Promise<void> {
   try {
     // ✅ Use handleCors
@@ -40,49 +40,68 @@ export default async function handler(
     }
 
     console.log(`🔍 Loading dive logs for user: ${userId}`);
-    
-    let allLogs: DiveLog[] = [];
+
+    const allLogs: DiveLog[] = [];
 
     // 🌐 METHOD 1: Try to fetch from Wix DiveLogs collection first
     try {
-      console.log('🌐 Fetching dive logs from Wix DiveLogs collection...');
-      
-      const wixResponse = await fetch(`${WIX_APP_CONFIG.FUNCTIONS_BASE_URL}/dive-journal-repeater`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${WIX_APP_CONFIG.apiKey || 'dev-mode'}`
+      console.log("🌐 Fetching dive logs from Wix DiveLogs collection...");
+
+      const wixResponse = await fetch(
+        `${WIX_APP_CONFIG.FUNCTIONS_BASE_URL}/dive-journal-repeater`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${WIX_APP_CONFIG.apiKey || "dev-mode"}`,
+          },
+          body: JSON.stringify({
+            action: "query",
+            collection: "DiveLogs",
+            userId: userId,
+          }),
         },
-        body: JSON.stringify({
-          action: 'query',
-          collection: 'DiveLogs',
-          userId: userId
-        })
-      });
+      );
 
       if (wixResponse.ok) {
         const wixData = await wixResponse.json();
-        console.log(`✅ Found ${wixData.data?.items?.length || 0} logs in Wix DiveLogs collection`);
-        
+        console.log(
+          `✅ Found ${wixData.data?.items?.length || 0} logs in Wix DiveLogs collection`,
+        );
+
         if (wixData.data?.items?.length > 0) {
           // Decompress logs from Wix DiveLogs format
-          const decompressedLogs = wixData.data.items.map((item: any) => {
-            try {
-              return decompressDiveLogFromWix(item);
-            } catch (error) {
-              console.warn('Failed to decompress dive log:', item.diveLogId, error);
-              return null;
-            }
-          }).filter(Boolean);
-          
+          const decompressedLogs = wixData.data.items
+            .map((item: any) => {
+              try {
+                return decompressDiveLogFromWix(item);
+              } catch (error) {
+                console.warn(
+                  "Failed to decompress dive log:",
+                  item.diveLogId,
+                  error,
+                );
+                return null;
+              }
+            })
+            .filter(Boolean);
+
           allLogs.push(...decompressedLogs);
-          console.log(`✅ Decompressed ${decompressedLogs.length} logs from Wix`);
+          console.log(
+            `✅ Decompressed ${decompressedLogs.length} logs from Wix`,
+          );
         }
       } else {
-        console.warn('⚠️ Wix DiveLogs query failed, falling back to local files:', wixResponse.status);
+        console.warn(
+          "⚠️ Wix DiveLogs query failed, falling back to local files:",
+          wixResponse.status,
+        );
       }
     } catch (wixError) {
-      console.warn('⚠️ Wix DiveLogs error, falling back to local files:', wixError);
+      console.warn(
+        "⚠️ Wix DiveLogs error, falling back to local files:",
+        wixError,
+      );
     }
 
     // 📁 METHOD 2: Local file fallback (if no Wix data or for development)
@@ -93,8 +112,10 @@ export default async function handler(
       const userFileLogs = JSON.parse(content);
       if (Array.isArray(userFileLogs)) {
         allLogs.push(...userFileLogs);
-        console.log(`✅ Found ${userFileLogs.length} logs in user file: ${userId}.json`);
-      } else if (userFileLogs && typeof userFileLogs === 'object') {
+        console.log(
+          `✅ Found ${userFileLogs.length} logs in user file: ${userId}.json`,
+        );
+      } else if (userFileLogs && typeof userFileLogs === "object") {
         allLogs.push(userFileLogs);
         console.log(`✅ Found 1 log in user file: ${userId}.json`);
       }
@@ -107,7 +128,7 @@ export default async function handler(
     try {
       await fs.access(userPath);
       const files = await fs.readdir(userPath);
-      
+
       for (const file of files) {
         if (!file.endsWith(".json")) continue;
 
@@ -123,9 +144,11 @@ export default async function handler(
           console.warn(`⚠️ Could not parse file ${file}:`, parseErr);
         }
       }
-      
+
       if (files.length > 0) {
-        console.log(`✅ Found ${files.length} log files in directory: ${userId}/`);
+        console.log(
+          `✅ Found ${files.length} log files in directory: ${userId}/`,
+        );
       }
     } catch {
       console.log(`📁 No user directory found: ${userId}/`);
@@ -136,7 +159,7 @@ export default async function handler(
     try {
       await fs.access(tmpUserPath);
       const tmpFiles = await fs.readdir(tmpUserPath);
-      
+
       for (const file of tmpFiles) {
         if (!file.endsWith(".json")) continue;
 
@@ -152,9 +175,11 @@ export default async function handler(
           console.warn(`⚠️ Could not parse tmp file ${file}:`, parseErr);
         }
       }
-      
+
       if (tmpFiles.length > 0) {
-        console.log(`✅ Found ${tmpFiles.length} log files in tmp directory: ${userId}/`);
+        console.log(
+          `✅ Found ${tmpFiles.length} log files in tmp directory: ${userId}/`,
+        );
       }
     } catch {
       console.log(`📁 No user tmp directory found: ${userId}/`);
@@ -162,35 +187,42 @@ export default async function handler(
 
     // ✅ METHOD 3: Check for direct UUID files and match by actual user data
     if (allLogs.length === 0) {
-      console.log(`🔍 Searching for logs by content matching userId: ${userId}...`);
+      console.log(
+        `🔍 Searching for logs by content matching userId: ${userId}...`,
+      );
       try {
         const allFiles = await fs.readdir(LOG_DIR);
-        const jsonFiles = allFiles.filter(f => f.endsWith('.json') && !f.includes('/'));
-        
+        const jsonFiles = allFiles.filter(
+          (f) => f.endsWith(".json") && !f.includes("/"),
+        );
+
         for (const file of jsonFiles) {
           try {
             const filePath = path.join(LOG_DIR, file);
             const content = await fs.readFile(filePath, "utf8");
             const parsed: DiveLog = JSON.parse(content);
-            
+
             // ✅ Check if this log belongs to the user by various means
-            if (parsed && (
-              parsed.userId === userId ||
-              parsed.id?.includes(userId) ||
-              // For existing logs without userId, we'll need to check patterns
-              (file.includes(userId) && parsed.discipline)
-            )) {
+            if (
+              parsed &&
+              (parsed.userId === userId ||
+                parsed.id?.includes(userId) ||
+                // For existing logs without userId, we'll need to check patterns
+                (file.includes(userId) && parsed.discipline))
+            ) {
               allLogs.push({
                 ...parsed,
-                userId // Ensure userId is set for future queries
+                userId, // Ensure userId is set for future queries
               });
-              console.log(`✅ Found dive log: ${parsed.discipline} ${parsed.reachedDepth}m at ${parsed.location}`);
+              console.log(
+                `✅ Found dive log: ${parsed.discipline} ${parsed.reachedDepth}m at ${parsed.location}`,
+              );
             }
           } catch (parseErr) {
             console.warn(`⚠️ Could not parse UUID file ${file}:`, parseErr);
           }
         }
-        
+
         if (allLogs.length > 0) {
           console.log(`✅ Found ${allLogs.length} logs by content matching`);
         }
@@ -203,49 +235,59 @@ export default async function handler(
     if (allLogs.length === 0) {
       console.log(`🌐 No local logs found, checking Wix UserMemory backup...`);
       try {
-        // ✅ FIX: Always use production URL for internal API calls to avoid auth issues  
-        const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
-          
-        const response = await fetch(`https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&type=dive-log&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`, {
-          headers: { 'Accept': 'application/json' }
-        });
-        
+        // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
+        const baseUrl =
+          process.env.BASE_URL || "https://kovaldeepai-main.vercel.app";
+
+        const response = await fetch(
+          `https://www.deepfreediving.com/_functions/userMemory?userId=${userId}&type=dive-log&dataset=UserMemory-@deepfreediving/kovaldeepai-app/Import1`,
+          {
+            headers: { Accept: "application/json" },
+          },
+        );
+
         if (response.ok) {
           const wixData = await response.json();
           if (wixData.success && wixData.data) {
             // Parse dive logs from UserMemory entries
             for (const entry of wixData.data) {
-              if (entry.metadata?.type === 'dive-log' && entry.logEntry) {
+              if (entry.metadata?.type === "dive-log" && entry.logEntry) {
                 try {
                   const diveLog = JSON.parse(entry.logEntry);
                   allLogs.push(diveLog);
                 } catch (parseErr) {
-                  console.warn('⚠️ Could not parse dive log from UserMemory:', parseErr);
+                  console.warn(
+                    "⚠️ Could not parse dive log from UserMemory:",
+                    parseErr,
+                  );
                 }
               }
             }
-            console.log(`✅ Loaded ${allLogs.length} dive logs from Wix UserMemory backup`);
+            console.log(
+              `✅ Loaded ${allLogs.length} dive logs from Wix UserMemory backup`,
+            );
           }
         }
       } catch (wixError) {
-        console.warn('⚠️ Wix UserMemory backup failed:', wixError);
+        console.warn("⚠️ Wix UserMemory backup failed:", wixError);
       }
-
     }
 
     // ✅ Remove duplicates (only by ID, allow similar dives) and sort
     const uniqueLogs = allLogs.reduce((acc: DiveLog[], log: DiveLog) => {
       // Only remove if exact same ID (not similar dive data)
-      const existingIndex = acc.findIndex(existing => existing.id === log.id);
-      
+      const existingIndex = acc.findIndex((existing) => existing.id === log.id);
+
       if (existingIndex === -1) {
         acc.push(log);
       } else {
         // If same ID but different data, keep the more recent one
         const existingLog = acc[existingIndex];
         const logTime = new Date(log.timestamp || log.date || 0).getTime();
-        const existingTime = new Date(existingLog.timestamp || existingLog.date || 0).getTime();
-        
+        const existingTime = new Date(
+          existingLog.timestamp || existingLog.date || 0,
+        ).getTime();
+
         if (logTime > existingTime) {
           acc[existingIndex] = log; // Replace with newer version
         }
@@ -260,7 +302,9 @@ export default async function handler(
       return dateB - dateA;
     });
 
-    console.log(`✅ Returning ${uniqueLogs.length} dive logs for user ${userId}`);
+    console.log(
+      `✅ Returning ${uniqueLogs.length} dive logs for user ${userId}`,
+    );
     res.status(200).json({ logs: uniqueLogs });
   } catch (error) {
     console.error("❌ Get dive logs error:", error);

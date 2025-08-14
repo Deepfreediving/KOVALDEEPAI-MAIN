@@ -2,11 +2,31 @@
 import { DiveJournalEntry } from "@/components/models/journal";
 
 // Centralized depth range config
-const depthBuckets: { range: string; min: number; max: number; issues: string[] }[] = [
-  { range: "30-35", min: 30, max: 35, issues: ["MF timing", "mental hesitation"] },
-  { range: "35-40", min: 35, max: 40, issues: ["MF runs out", "RP volume too small", "mouthfill too early"] },
+const depthBuckets: {
+  range: string;
+  min: number;
+  max: number;
+  issues: string[];
+}[] = [
+  {
+    range: "30-35",
+    min: 30,
+    max: 35,
+    issues: ["MF timing", "mental hesitation"],
+  },
+  {
+    range: "35-40",
+    min: 35,
+    max: 40,
+    issues: ["MF runs out", "RP volume too small", "mouthfill too early"],
+  },
   { range: "40-45", min: 40, max: 45, issues: ["EQ fatigue", "glottis leak"] },
-  { range: "45-50", min: 45, max: 50, issues: ["lung squeeze warning", "soft palate locking"] },
+  {
+    range: "45-50",
+    min: 45,
+    max: 50,
+    issues: ["lung squeeze warning", "soft palate locking"],
+  },
 ];
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 export function useLocalStorage() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -8,7 +8,7 @@ export function useLocalStorage() {
       return false;
     }
   });
-  
+
   const [userId, setUserId] = useState("");
   const [profile, setProfile] = useState({});
   const [sessionsList, setSessionsList] = useState([]);
@@ -24,7 +24,10 @@ export function useLocalStorage() {
 
   const saveToStorage = (key, value) => {
     try {
-      localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+      localStorage.setItem(
+        key,
+        typeof value === "string" ? value : JSON.stringify(value),
+      );
     } catch (error) {
       console.warn(`⚠️ Failed to save ${key}:`, error);
     }
@@ -37,7 +40,7 @@ export function useLocalStorage() {
       setUserId(localStorage.getItem("kovalUser") || "");
       setProfile(safeParse("kovalProfile", {}));
     } catch (error) {
-      console.warn('⚠️ Failed to load from localStorage:', error);
+      console.warn("⚠️ Failed to load from localStorage:", error);
     }
   }, []);
 
@@ -47,7 +50,7 @@ export function useLocalStorage() {
       document.documentElement.classList.toggle("dark", darkMode);
       localStorage.setItem("kovalDarkMode", darkMode);
     } catch (error) {
-      console.warn('⚠️ Failed to save dark mode:', error);
+      console.warn("⚠️ Failed to save dark mode:", error);
     }
   }, [darkMode]);
 
@@ -61,6 +64,6 @@ export function useLocalStorage() {
     sessionsList,
     setSessionsList,
     saveToStorage,
-    safeParse
+    safeParse,
   };
 }

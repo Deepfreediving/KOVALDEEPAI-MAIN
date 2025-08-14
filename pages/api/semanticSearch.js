@@ -1,6 +1,6 @@
 import { OpenAI } from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
-import handleCors from '@/utils/handleCors';
+import handleCors from "@/utils/handleCors";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
@@ -10,7 +10,7 @@ if (!OPENAI_API_KEY) console.error("❌ OPENAI_API_KEY is required");
 if (!PINECONE_API_KEY) console.error("❌ PINECONE_API_KEY is required");
 if (!PINECONE_INDEX) console.error("❌ PINECONE_INDEX is missing");
 
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY || '' });
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY || "" });
 
 let pinecone, index;
 try {
@@ -24,7 +24,8 @@ try {
 }
 
 export async function semanticSearch(query, options = {}) {
-  if (!query?.trim()) throw new Error("Invalid query - must be a non-empty string");
+  if (!query?.trim())
+    throw new Error("Invalid query - must be a non-empty string");
   if (!OPENAI_API_KEY) throw new Error("OpenAI API key not configured");
   if (!index) throw new Error("Pinecone index not available");
 
@@ -55,7 +56,6 @@ export async function semanticSearch(query, options = {}) {
     const matches = pineconeResponse?.matches || [];
     console.log(`✅ Found ${matches.length} matches`);
     return matches;
-
   } catch (error) {
     console.error("❌ Semantic search error:", error);
     throw new Error(`Semantic search failed: ${error.message}`);
@@ -70,25 +70,25 @@ export default async function handler(req, res) {
     if (req.method === "OPTIONS") return;
 
     if (req.method !== "POST") {
-      return res.status(405).json({ 
+      return res.status(405).json({
         error: "Method Not Allowed",
-        message: "Only POST requests are allowed" 
+        message: "Only POST requests are allowed",
       });
     }
 
     const { query, topK, filter } = req.body;
 
     if (!query || typeof query !== "string" || !query.trim()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Invalid Query",
-        message: "query must be a non-empty string" 
+        message: "query must be a non-empty string",
       });
     }
 
     if (query.length > 8000) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Query Too Long",
-        message: "query must be less than 8000 characters" 
+        message: "query must be less than 8000 characters",
       });
     }
 
@@ -104,7 +104,6 @@ export default async function handler(req, res) {
         timestamp: new Date().toISOString(),
       },
     });
-
   } catch (error) {
     const processingTime = Date.now() - startTime;
     console.error("❌ Semantic search API error:", error.message);
@@ -122,7 +121,7 @@ export default async function handler(req, res) {
 
 export const config = {
   api: {
-    bodyParser: { sizeLimit: '1mb' },
+    bodyParser: { sizeLimit: "1mb" },
     responseLimit: false,
   },
 };

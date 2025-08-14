@@ -21,20 +21,20 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
   const [userId, setUserId] = useState<string | null>(propUserId || null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  
+
   const [entry, setEntry] = useState<DiveLog>({
     date: "",
     location: "",
     depth: "",
     notes: "",
-    localId: ""
+    localId: "",
   });
   const [loading, setLoading] = useState(false);
 
   // 🔄 NEW: Enterprise dive logs state
   const [diveLogs, setDiveLogs] = useState([]);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const [syncStatus, setSyncStatus] = useState("idle");
 
   // ✅ Authentication handling for standalone journal page
   useEffect(() => {
@@ -46,9 +46,10 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
     }
 
     // Try to get userId from localStorage first
-    const storedUserId = typeof window !== 'undefined' ? localStorage.getItem("kovalUser") : null;
-    if (storedUserId && !storedUserId.startsWith('guest-')) {
-      console.log('✅ Found stored userId:', storedUserId);
+    const storedUserId =
+      typeof window !== "undefined" ? localStorage.getItem("kovalUser") : null;
+    if (storedUserId && !storedUserId.startsWith("guest-")) {
+      console.log("✅ Found stored userId:", storedUserId);
       setUserId(storedUserId);
       setIsAuthenticating(false);
       return;
@@ -57,11 +58,11 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
     // Try to authenticate using user-profile-bridge
     const authenticateUser = async () => {
       try {
-        console.log('🔍 Attempting to authenticate user via bridge...');
-        
+        console.log("🔍 Attempting to authenticate user via bridge...");
+
         // First, try to get user ID from URL parameters
         const urlUserId = router.query.userId as string;
-        if (urlUserId && !urlUserId.startsWith('guest-')) {
+        if (urlUserId && !urlUserId.startsWith("guest-")) {
           setUserId(urlUserId);
           localStorage.setItem("kovalUser", urlUserId);
           setIsAuthenticating(false);
@@ -69,12 +70,13 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
         }
 
         // If no URL userId, show authentication required message
-        setAuthError('Authentication required. Please log in through the main app.');
+        setAuthError(
+          "Authentication required. Please log in through the main app.",
+        );
         setIsAuthenticating(false);
-        
       } catch (error) {
-        console.error('❌ Authentication failed:', error);
-        setAuthError('Authentication failed. Please try again.');
+        console.error("❌ Authentication failed:", error);
+        setAuthError("Authentication failed. Please try again.");
         setIsAuthenticating(false);
       }
     };
@@ -87,37 +89,38 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
   // 📊 Load dive logs from hybrid system
   const refreshDiveLogs = async () => {
     if (!userId) {
-      console.log('⚠️ No userId for loading dive logs');
+      console.log("⚠️ No userId for loading dive logs");
       return;
     }
-    
+
     try {
       setLoadingDiveLogs(true);
-      setSyncStatus('syncing');
-      console.log('🔄 Loading dive logs from hybrid system...');
-      
+      setSyncStatus("syncing");
+      console.log("🔄 Loading dive logs from hybrid system...");
+
       // 🚀 Local API first (fastest)
-      const localResponse = await fetch(`/api/analyze/get-dive-logs?userId=${userId}`);
-      
+      const localResponse = await fetch(
+        `/api/analyze/get-dive-logs?userId=${userId}`,
+      );
+
       if (localResponse.ok) {
         const localData = await localResponse.json();
         if (localData.logs && localData.logs.length > 0) {
           setDiveLogs(localData.logs);
-          setSyncStatus('synced');
+          setSyncStatus("synced");
           console.log(`✅ Loaded ${localData.logs.length} logs from local`);
-          
+
           // 🌐 Background sync with Wix
           setTimeout(() => syncWithWix(localData.logs), 1000);
           return;
         }
       }
-      
+
       // 🌐 Fallback: Load from Wix directly
       await loadFromWix();
-      
     } catch (error) {
-      console.error('❌ Failed to load dive logs:', error);
-      setSyncStatus('error');
+      console.error("❌ Failed to load dive logs:", error);
+      setSyncStatus("error");
       setDiveLogs([]);
     } finally {
       setLoadingDiveLogs(false);
@@ -127,16 +130,19 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
   // 🌐 Load from Wix backend
   const loadFromWix = async () => {
     try {
-      console.log('🌐 Loading from Wix backend...');
-      
-      const wixResponse = await fetch(`https://www.deepfreediving.com/_functions/diveLogs?userId=${userId}`, {
-        method: 'GET',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
+      console.log("🌐 Loading from Wix backend...");
+
+      const wixResponse = await fetch(
+        `https://www.deepfreediving.com/_functions/diveLogs?userId=${userId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        },
+      );
+
       if (wixResponse.ok) {
         const wixData = await wixResponse.json();
         if (wixData.success && wixData.data) {
@@ -151,16 +157,16 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
             notes: log.notes,
             timestamp: log.timestamp,
             syncedToWix: true,
-            wixId: log._id
+            wixId: log._id,
           }));
-          
+
           setDiveLogs(transformedLogs);
-          setSyncStatus('synced');
+          setSyncStatus("synced");
           console.log(`✅ Loaded ${transformedLogs.length} logs from Wix`);
         }
       }
     } catch (error) {
-      console.error('❌ Wix load failed:', error);
+      console.error("❌ Wix load failed:", error);
       throw error;
     }
   };
@@ -168,21 +174,23 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
   // 🔄 Background sync with Wix
   const syncWithWix = async (localLogs: DiveLog[]) => {
     try {
-      const syncResponse = await fetch('/api/analyze/sync-dive-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, localLogs })
+      const syncResponse = await fetch("/api/analyze/sync-dive-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, localLogs }),
       });
-      
+
       if (syncResponse.ok) {
         const syncData = await syncResponse.json();
         if (syncData.logs) {
           setDiveLogs(syncData.logs);
-          console.log(`✅ Background sync: ${syncData.totalCount} total, ${syncData.uploadedCount} uploaded`);
+          console.log(
+            `✅ Background sync: ${syncData.totalCount} total, ${syncData.uploadedCount} uploaded`,
+          );
         }
       }
     } catch (error) {
-      console.warn('⚠️ Background sync failed:', error);
+      console.warn("⚠️ Background sync failed:", error);
     }
   };
 
@@ -195,7 +203,7 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
 
   // ✅ Enhanced handlers
   const handleJournalSubmit = async (formData: DiveLog) => {
-    console.log('📝 Dive journal submitted:', formData);
+    console.log("📝 Dive journal submitted:", formData);
     setTimeout(() => refreshDiveLogs(), 2000);
   };
 
@@ -209,7 +217,7 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
       setDiveLogs(updatedLogs);
       setTimeout(() => refreshDiveLogs(), 1000);
     } catch (error) {
-      console.error('❌ Delete failed:', error);
+      console.error("❌ Delete failed:", error);
       refreshDiveLogs();
     } finally {
       setLoadingDiveLogs(false);
@@ -218,7 +226,7 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
 
   // ✅ Handles input change
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     setEntry({ ...entry, [e.target.name]: e.target.value });
   };
@@ -229,7 +237,10 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
     setLoading(true);
 
     try {
-      const newEntry = { ...entry, localId: entry.localId || `${userId}-${Date.now()}` };
+      const newEntry = {
+        ...entry,
+        localId: entry.localId || `${userId}-${Date.now()}`,
+      };
 
       // ✅ Save to API
       const res = await fetch("/api/analyze/save-dive-log", {
@@ -258,8 +269,12 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center p-8">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Authenticating...</h2>
-          <p className="text-gray-500">Please wait while we verify your credentials</p>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            Authenticating...
+          </h2>
+          <p className="text-gray-500">
+            Please wait while we verify your credentials
+          </p>
         </div>
       </div>
     );
@@ -270,13 +285,15 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center p-8 max-w-md mx-auto">
           <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">Authentication Required</h2>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+            Authentication Required
+          </h2>
           <p className="text-gray-600 mb-6">
-            {authError || 'Please log in to access your dive journal.'}
+            {authError || "Please log in to access your dive journal."}
           </p>
           <div className="space-y-3">
             <button
-              onClick={() => window.location.href = '/embed'}
+              onClick={() => (window.location.href = "/embed")}
               className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               🚀 Go to Main App
@@ -296,15 +313,22 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
   return (
     <div className="container mx-auto p-4">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">🤿 Dive Journal</h1>
-        <p className="text-gray-600">Welcome back! Track your freediving progress.</p>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          🤿 Dive Journal
+        </h1>
+        <p className="text-gray-600">
+          Welcome back! Track your freediving progress.
+        </p>
         <UserIdDebugger urlUserId={userId} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
           <h2 className="text-xl font-semibold mb-4">📝 Add New Dive Log</h2>
-          <form onSubmit={handleSubmit} className="p-6 bg-white rounded-lg shadow-md">
+          <form
+            onSubmit={handleSubmit}
+            className="p-6 bg-white rounded-lg shadow-md"
+          >
             <input
               type="date"
               name="date"
@@ -351,7 +375,9 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold mb-4">📚 Your Dive Logs ({diveLogs.length})</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            📚 Your Dive Logs ({diveLogs.length})
+          </h2>
           <div className="bg-white rounded-lg shadow-md p-6">
             {loadingDiveLogs ? (
               <div className="text-center py-8">
@@ -359,12 +385,12 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
                 <p className="text-gray-500">Loading dive logs...</p>
               </div>
             ) : (
-              <SavedDiveLogsViewer 
+              <SavedDiveLogsViewer
                 darkMode={false}
                 userId={userId}
                 setMessages={undefined} // No chat integration in standalone journal
                 onEditDiveLog={(log: any) => {
-                  console.log('📝 Edit dive log requested:', log.id);
+                  console.log("📝 Edit dive log requested:", log.id);
                   // Could open modal or navigate to edit page
                 }}
                 onRefreshDiveLogs={refreshDiveLogs}

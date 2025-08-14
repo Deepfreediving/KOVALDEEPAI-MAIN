@@ -18,7 +18,7 @@ interface WixApiResponse {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WixApiResponse>
+  res: NextApiResponse<WixApiResponse>,
 ) {
   try {
     // ✅ Apply CORS handling
@@ -42,8 +42,16 @@ export default async function handler(
       return res.status(200).json({
         success: true,
         data: [
-          { _id: "mock1", name: "Sample Item 1", description: "This is mock data." },
-          { _id: "mock2", name: "Sample Item 2", description: "This is mock data." },
+          {
+            _id: "mock1",
+            name: "Sample Item 1",
+            description: "This is mock data.",
+          },
+          {
+            _id: "mock2",
+            name: "Sample Item 2",
+            description: "This is mock data.",
+          },
         ],
       });
     }
@@ -70,7 +78,9 @@ export default async function handler(
     // ✅ Handle non-200 HTTP responses
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`❌ Wix API request failed: ${response.status} ${response.statusText}`);
+      console.error(
+        `❌ Wix API request failed: ${response.status} ${response.statusText}`,
+      );
       console.error(`📜 Error details: ${errText}`);
       return res.status(response.status).json({
         success: false,
@@ -89,9 +99,11 @@ export default async function handler(
       success: true,
       data: items,
     });
-
   } catch (error: any) {
-    console.error("❌ Unexpected error while fetching Wix data:", error?.message || error);
+    console.error(
+      "❌ Unexpected error while fetching Wix data:",
+      error?.message || error,
+    );
     return res.status(500).json({
       success: false,
       error: "An unexpected server error occurred while retrieving Wix data.",

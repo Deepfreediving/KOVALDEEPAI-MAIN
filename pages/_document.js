@@ -8,23 +8,24 @@ export default function Document() {
         <link rel="icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://cdn.openai.com" />
-        
+
         {/* ✅ Meta tags for performance */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Koval AI - Your freediving coach" />
         <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
-        
+
         {/* ✅ Preload critical resources */}
         <link rel="preload" href="/deeplogo.jpg" as="image" />
-        
+
         {/* ✅ DNS prefetch for external APIs */}
         <link rel="dns-prefetch" href="//openai.com" />
         <link rel="dns-prefetch" href="//pinecone.io" />
         <link rel="dns-prefetch" href="//deepfreediving.com" />
-        
+
         {/* ✅ Critical CSS inline for faster rendering */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
             /* Critical CSS for initial render */
             html, body { margin: 0; padding: 0; box-sizing: border-box; }
             * { box-sizing: inherit; }
@@ -51,18 +52,22 @@ export default function Document() {
               scroll-behavior: smooth;
               -webkit-overflow-scrolling: touch;
             }
-          `
-        }} />
+          `,
+          }}
+        />
       </Head>
       <body className="bg-black text-white">
         {/* ✅ Main app container with proper isolation */}
-        <div id="app-root" style={{ isolation: 'isolate', contain: 'layout style paint' }}>
+        <div
+          id="app-root"
+          style={{ isolation: "isolate", contain: "layout style paint" }}
+        >
           <Main />
         </div>
-        
+
         {/* ✅ Scripts at the end for optimal loading */}
         <NextScript />
-        
+
         {/* ✅ Performance monitoring script (deferred) */}
         <script
           dangerouslySetInnerHTML={{
@@ -88,7 +93,7 @@ export default function Document() {
                   }
                 });
               })();
-            `
+            `,
           }}
         />
       </body>

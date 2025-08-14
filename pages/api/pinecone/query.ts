@@ -16,31 +16,39 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
 });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  // Move function to top level
+  function handleCors(req: NextApiRequest, res: NextApiResponse): boolean {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      res.status(200).end();
+      return true;
+    }
+    return false;
+  }
+
   try {
     // ✅ Fix CORS handling - NOT async!
     if (handleCors(req, res)) return;
 
-    function handleCors(req: NextApiRequest, res: NextApiResponse): boolean {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-      if (req.method === "OPTIONS") {
-        res.status(200).end();
-        return true;
-      }
-      return false;
-    }
-
     if (req.method !== "POST") {
-      return res.status(405).json({ success: false, error: "Method Not Allowed" });
+      return res
+        .status(405)
+        .json({ success: false, error: "Method Not Allowed" });
     }
 
     const { query, topK = 5, filter } = req.body;
 
     if (!query || typeof query !== "string") {
-      return res.status(400).json({ success: false, error: "Query text is required." });
+      return res
+        .status(400)
+        .json({ success: false, error: "Query text is required." });
     }
 
     console.log(`🔍 Processing query: "${query}"`);
@@ -54,8 +62,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const queryVector = embeddingResponse.data[0].embedding;
 
     // ✅ 2. Query Pinecone index
-    const rawMatches: PineconeRecord<RecordMetadata>[] = await queryVectors(queryVector, topK, filter);
-    const matches: Array<{ id: string; score: number; metadata: RecordMetadata }> = rawMatches.map(match => ({
+    const rawMatches: PineconeRecord<RecordMetadata>[] = await queryVectors(
+      queryVector,
+      topK,
+      filter,
+    );
+    const matches: Array<{
+      id: string;
+      score: number;
+      metadata: RecordMetadata;
+    }> = rawMatches.map((match) => ({
       id: match.id,
       score: match.score || 0, // Default score to 0 if missing
       metadata: match.metadata || {}, // Provide an empty object as default metadata

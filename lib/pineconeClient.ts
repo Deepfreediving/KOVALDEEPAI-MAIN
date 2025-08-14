@@ -1,7 +1,12 @@
-import { Pinecone, type RecordMetadata, type PineconeRecord } from "@pinecone-database/pinecone";
+import {
+  Pinecone,
+  type RecordMetadata,
+  type PineconeRecord,
+} from "@pinecone-database/pinecone";
 
 // ✅ Load environment variables
-const { PINECONE_API_KEY, PINECONE_INDEX, PINECONE_HOST, PINECONE_NAMESPACE } = process.env;
+const { PINECONE_API_KEY, PINECONE_INDEX, PINECONE_HOST, PINECONE_NAMESPACE } =
+  process.env;
 
 if (!PINECONE_API_KEY) throw new Error("❌ Missing Pinecone API key.");
 if (!PINECONE_INDEX) throw new Error("❌ Missing Pinecone index name.");
@@ -11,7 +16,7 @@ let pineconeClient: Pinecone = (global as any)._pineconeClient;
 if (!pineconeClient) {
   pineconeClient = new Pinecone({
     apiKey: PINECONE_API_KEY,
-    ...(PINECONE_HOST && { host: PINECONE_HOST })
+    ...(PINECONE_HOST && { host: PINECONE_HOST }),
   });
   (global as any)._pineconeClient = pineconeClient;
 }
@@ -33,11 +38,13 @@ export async function upsertVectors(vectors: VectorData[]): Promise<any> {
       throw new Error("Vectors must be a non-empty array.");
     }
 
-    const formattedVectors: PineconeRecord<RecordMetadata>[] = vectors.map((v) => ({
-      id: v.id,
-      values: v.values,
-      metadata: v.metadata ?? {},
-    }));
+    const formattedVectors: PineconeRecord<RecordMetadata>[] = vectors.map(
+      (v) => ({
+        id: v.id,
+        values: v.values,
+        metadata: v.metadata ?? {},
+      }),
+    );
 
     const response = await index.upsert(formattedVectors);
     console.log(`✅ Upserted ${vectors.length} vectors`);
@@ -51,7 +58,11 @@ export async function upsertVectors(vectors: VectorData[]): Promise<any> {
 /**
  * 🔍 Query vectors from Pinecone
  */
-export async function queryVectors(vector: number[], topK = 5, filter?: any): Promise<PineconeRecord<RecordMetadata>[]> {
+export async function queryVectors(
+  vector: number[],
+  topK = 5,
+  filter?: any,
+): Promise<PineconeRecord<RecordMetadata>[]> {
   try {
     if (!Array.isArray(vector) || vector.length === 0) {
       throw new Error("Query vector must be a non-empty array of numbers.");
@@ -63,10 +74,12 @@ export async function queryVectors(vector: number[], topK = 5, filter?: any): Pr
       filter,
       includeMetadata: true,
       includeValues: true,
-      ...(PINECONE_NAMESPACE ? { namespace: PINECONE_NAMESPACE } : {})
+      ...(PINECONE_NAMESPACE ? { namespace: PINECONE_NAMESPACE } : {}),
     });
 
-    console.log(`✅ Query successful. Matches found: ${response.matches?.length || 0}`);
+    console.log(
+      `✅ Query successful. Matches found: ${response.matches?.length || 0}`,
+    );
     return response.matches ?? [];
   } catch (error: any) {
     console.error("❌ Error in queryVectors:", error.message || error);

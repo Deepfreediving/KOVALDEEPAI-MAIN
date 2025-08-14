@@ -6,7 +6,9 @@ const REFRESH_TOKEN = process.env.WIX_REFRESH_TOKEN || "FAKE_REFRESH_TOKEN";
 
 // ✅ Warn if tokens are missing
 if (ACCESS_TOKEN.startsWith("FAKE") || REFRESH_TOKEN.startsWith("FAKE")) {
-  console.warn("⚠️ WARNING: Using placeholder Wix tokens. Run OAuth flow to get real ones.");
+  console.warn(
+    "⚠️ WARNING: Using placeholder Wix tokens. Run OAuth flow to get real ones.",
+  );
 }
 
 const wixClient = createClient({
@@ -33,10 +35,16 @@ const COLLECTION_ID = "@deepfreediving/kovaldeepai-app/Import1";
  */
 export async function fetchUserMemory(userId: string) {
   try {
-    const query = await wixClient.items.query(COLLECTION_ID).eq("userId", userId).find();
+    const query = await wixClient.items
+      .query(COLLECTION_ID)
+      .eq("userId", userId)
+      .find();
     return query.items[0] || null;
   } catch (error: any) {
-    console.warn("⚠️ fetchUserMemory failed (using local only):", error.message);
+    console.warn(
+      "⚠️ fetchUserMemory failed (using local only):",
+      error.message,
+    );
     return null;
   }
 }
@@ -82,10 +90,16 @@ export async function saveUserMemory(userId: string, newData: any) {
  */
 export async function queryUserMemoryByEmail(email: string) {
   try {
-    const query = await wixClient.items.query(COLLECTION_ID).eq("profile.loginEmail", email).find();
+    const query = await wixClient.items
+      .query(COLLECTION_ID)
+      .eq("profile.loginEmail", email)
+      .find();
     return query.items[0] || null;
   } catch (error: any) {
-    console.warn("⚠️ queryUserMemoryByEmail failed (using local only):", error.message);
+    console.warn(
+      "⚠️ queryUserMemoryByEmail failed (using local only):",
+      error.message,
+    );
     return null;
   }
 }
@@ -93,10 +107,14 @@ export async function queryUserMemoryByEmail(email: string) {
 /**
  * Query UserMemory documents by multiple criteria
  */
-export async function queryUserMemory(criteria: { userId?: string; email?: string; displayName?: string }) {
+export async function queryUserMemory(criteria: {
+  userId?: string;
+  email?: string;
+  displayName?: string;
+}) {
   try {
     let query = wixClient.items.query(COLLECTION_ID);
-    
+
     if (criteria.userId) {
       query = query.eq("userId", criteria.userId);
     } else if (criteria.email) {
@@ -104,11 +122,14 @@ export async function queryUserMemory(criteria: { userId?: string; email?: strin
     } else if (criteria.displayName) {
       query = query.eq("profile.displayName", criteria.displayName);
     }
-    
+
     const result = await query.find();
     return result.items;
   } catch (error: any) {
-    console.warn("⚠️ queryUserMemory failed (using local only):", error.message);
+    console.warn(
+      "⚠️ queryUserMemory failed (using local only):",
+      error.message,
+    );
     return [];
   }
 }

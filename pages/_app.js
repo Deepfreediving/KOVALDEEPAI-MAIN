@@ -35,7 +35,10 @@ function MyApp({ Component, pageProps }) {
                 window.history.replaceState({}, document.title, url.toString());
               }
             } catch (storageError) {
-              console.warn("⚠️ Failed to save token to localStorage:", storageError);
+              console.warn(
+                "⚠️ Failed to save token to localStorage:",
+                storageError,
+              );
               // Continue without localStorage - not critical
             }
           } else {

@@ -4,7 +4,7 @@
  * ✅ Simple token management for Wix integration
  */
 
-const TOKEN_KEY = 'wixAppToken';
+const TOKEN_KEY = "wixAppToken";
 
 /**
  * ✅ Get token - simplified approach
@@ -19,7 +19,7 @@ export const getToken = () => {
     // 1️⃣ Check for token in URL first (most reliable)
     const params = new URLSearchParams(window.location.search);
     const tokenFromUrl = params.get("token");
-    
+
     if (tokenFromUrl && tokenFromUrl.length > 10) {
       // ✅ Save valid token
       saveToken(tokenFromUrl);
@@ -38,9 +38,8 @@ export const getToken = () => {
     }
 
     return null;
-
   } catch (error) {
-    console.warn('⚠️ Token error:', error);
+    console.warn("⚠️ Token error:", error);
     return null;
   }
 };
@@ -50,14 +49,14 @@ export const getToken = () => {
  */
 function saveToken(token) {
   if (!token) return;
-  
+
   try {
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== "undefined") {
       localStorage.setItem(TOKEN_KEY, token);
     }
   } catch (error) {
     // Silently fail - not critical for embed functionality
-    console.debug('Token save failed:', error);
+    console.debug("Token save failed:", error);
   }
 }
 
@@ -66,12 +65,12 @@ function saveToken(token) {
  */
 function getSavedToken() {
   try {
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== "undefined") {
       return localStorage.getItem(TOKEN_KEY);
     }
     return null;
   } catch (error) {
-    console.debug('Token retrieval failed:', error);
+    console.debug("Token retrieval failed:", error);
     return null;
   }
 }
@@ -81,11 +80,11 @@ function getSavedToken() {
  */
 export const clearToken = () => {
   try {
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== "undefined") {
       localStorage.removeItem(TOKEN_KEY);
     }
   } catch (error) {
-    console.debug('Token clear failed:', error);
+    console.debug("Token clear failed:", error);
   }
 };
 
@@ -103,17 +102,17 @@ export const hasValidToken = () => {
 export const getAuthHeader = () => {
   const token = getToken();
   if (!token) return null;
-  
+
   // ✅ Return appropriate header format
-  return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
 };
 
 /**
  * ✅ Simple token validation
  */
 export const isTokenValid = (token) => {
-  if (!token || typeof token !== 'string') return false;
-  
+  if (!token || typeof token !== "string") return false;
+
   // ✅ Basic validation - just check it's not empty and reasonable length
   return token.trim().length > 10 && token.trim().length < 1000;
 };

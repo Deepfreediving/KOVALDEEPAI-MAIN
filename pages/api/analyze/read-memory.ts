@@ -7,7 +7,10 @@ import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleC
 
 const MEMORY_DIR = path.resolve("./data/memoryLogs");
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
   try {
     // ✅ Use handleCors
     if (handleCors(req, res)) return; // Early exit for OPTIONS
@@ -33,39 +36,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const fileData = fs.readFileSync(memoryFile, "utf8");
           localMemory = JSON.parse(fileData);
         } catch {
-          console.warn(`⚠️ Failed to parse local memory file for ${userId}, ignoring corrupted data.`);
+          console.warn(
+            `⚠️ Failed to parse local memory file for ${userId}, ignoring corrupted data.`,
+          );
         }
       }
 
       // 1.5️⃣ Load Dive Logs Directory (NEW - for comprehensive data)
-      let diveLogsMemory: any[] = [];
+      const diveLogsMemory: any[] = [];
       const diveLogsDir = path.resolve("./data/diveLogs", userId);
       if (fs.existsSync(diveLogsDir)) {
         try {
-          const diveLogFiles = fs.readdirSync(diveLogsDir).filter(file => file.endsWith('.json'));
+          const diveLogFiles = fs
+            .readdirSync(diveLogsDir)
+            .filter((file) => file.endsWith(".json"));
           for (const file of diveLogFiles) {
             const filePath = path.join(diveLogsDir, file);
-            const diveLogData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            const diveLogData = JSON.parse(fs.readFileSync(filePath, "utf8"));
             // Convert dive log format to memory format
             diveLogsMemory.push({
               id: diveLogData.id,
               timestamp: diveLogData.timestamp,
-              type: 'dive-log',
-              source: 'dive-logs-directory',
-              ...diveLogData
+              type: "dive-log",
+              source: "dive-logs-directory",
+              ...diveLogData,
             });
           }
-          console.log(`📊 Loaded ${diveLogsMemory.length} dive logs from directory for user ${userId}`);
+          console.log(
+            `📊 Loaded ${diveLogsMemory.length} dive logs from directory for user ${userId}`,
+          );
         } catch (error) {
-          console.warn(`⚠️ Failed to load dive logs directory for ${userId}:`, error);
+          console.warn(
+            `⚠️ Failed to load dive logs directory for ${userId}:`,
+            error,
+          );
         }
       }
 
       // 2️⃣ Fetch Wix Memory
       let wixMemory: any[] = [];
       try {
-        const response = await axios.post("https://www.deepfreediving.com/_functions/getUserMemory", { userId });
-        wixMemory = Array.isArray(response.data?.logs) ? response.data.logs : [];
+        const response = await axios.post(
+          "https://www.deepfreediving.com/_functions/getUserMemory",
+          { userId },
+        );
+        wixMemory = Array.isArray(response.data?.logs)
+          ? response.data.logs
+          : [];
       } catch (err: any) {
         console.warn("⚠️ Wix memory fetch failed:", err.message);
       }
@@ -94,7 +111,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         total: sortedMemory.length,
         memory: sortedMemory,
       });
-
     } catch (err: any) {
       console.error("❌ read-memory error:", err.message);
       return res.status(500).json({ error: "Failed to read memory logs" });

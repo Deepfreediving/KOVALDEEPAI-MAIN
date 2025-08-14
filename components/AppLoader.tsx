@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { checkAllConnections } from '@/utils/apiClient';
+import React, { useEffect, useState } from "react";
+import { checkAllConnections } from "@/utils/apiClient";
 
 export default function AppLoader({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -14,10 +14,12 @@ export default function AppLoader({ children }: { children: React.ReactNode }) {
         // Add a timeout wrapper (5s fallback)
         await Promise.race([
           checkAllConnections(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 5000))
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Connection timeout")), 5000),
+          ),
         ]);
       } catch (err) {
-        console.warn('Connection check failed:', err);
+        console.warn("Connection check failed:", err);
       } finally {
         if (isMounted) setReady(true);
       }
@@ -32,7 +34,7 @@ export default function AppLoader({ children }: { children: React.ReactNode }) {
 
   if (!ready) {
     return (
-      <div style={{ textAlign: 'center', padding: '20px' }}>
+      <div style={{ textAlign: "center", padding: "20px" }}>
         <p>Loading application...</p>
       </div>
     );

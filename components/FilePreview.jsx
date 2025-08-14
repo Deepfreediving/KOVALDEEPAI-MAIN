@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { extractDiveText } from '../utils/extractTextFromImage';
+import { extractDiveText } from "../utils/extractTextFromImage";
 
-export default function FilePreview({ files, setFiles, darkMode = false, onOCRResult }) {
+export default function FilePreview({
+  files,
+  setFiles,
+  darkMode = false,
+  onOCRResult,
+}) {
   const [ocrResults, setOcrResults] = useState({});
   const [processing, setProcessing] = useState({});
 
@@ -14,7 +19,11 @@ export default function FilePreview({ files, setFiles, darkMode = false, onOCRRe
   // Auto-OCR when files change
   useEffect(() => {
     files.forEach((file, index) => {
-      if (file.type.startsWith('image/') && !ocrResults[index] && !processing[index]) {
+      if (
+        file.type.startsWith("image/") &&
+        !ocrResults[index] &&
+        !processing[index]
+      ) {
         performOCR(file, index);
       }
     });
@@ -22,31 +31,32 @@ export default function FilePreview({ files, setFiles, darkMode = false, onOCRRe
 
   const performOCR = async (file, index) => {
     try {
-      setProcessing(prev => ({ ...prev, [index]: true }));
-      
+      setProcessing((prev) => ({ ...prev, [index]: true }));
+
       console.log(`🔍 Running OCR on file ${index + 1}...`);
       const text = await extractDiveText(file);
-      
+
       const result = {
         text,
-        preview: text ? text.substring(0, 60) + (text.length > 60 ? '...' : '') : 'No text detected',
-        success: !!text?.trim()
+        preview: text
+          ? text.substring(0, 60) + (text.length > 60 ? "..." : "")
+          : "No text detected",
+        success: !!text?.trim(),
       };
-      
-      setOcrResults(prev => ({ ...prev, [index]: result }));
-      
+
+      setOcrResults((prev) => ({ ...prev, [index]: result }));
+
       if (onOCRResult) {
         onOCRResult(index, result);
       }
-      
     } catch (error) {
       console.warn(`⚠️ OCR failed for file ${index + 1}:`, error);
-      setOcrResults(prev => ({ 
-        ...prev, 
-        [index]: { text: '', preview: 'OCR failed', success: false }
+      setOcrResults((prev) => ({
+        ...prev,
+        [index]: { text: "", preview: "OCR failed", success: false },
       }));
     } finally {
-      setProcessing(prev => ({ ...prev, [index]: false }));
+      setProcessing((prev) => ({ ...prev, [index]: false }));
     }
   };
 
@@ -54,7 +64,7 @@ export default function FilePreview({ files, setFiles, darkMode = false, onOCRRe
     const updated = [...files];
     updated.splice(index, 1);
     setFiles(updated);
-    
+
     // Clean up OCR results
     const newOcrResults = { ...ocrResults };
     const newProcessing = { ...processing };
@@ -74,18 +84,20 @@ export default function FilePreview({ files, setFiles, darkMode = false, onOCRRe
           const previewUrl = URL.createObjectURL(file);
           const ocr = ocrResults[index];
           const isProcessing = processing[index];
-          
+
           return (
             <div key={index} className="relative">
-              <div className={`relative w-24 h-24 border rounded-lg overflow-hidden shadow ${
-                darkMode ? 'border-gray-600' : 'border-gray-300'
-              }`}>
+              <div
+                className={`relative w-24 h-24 border rounded-lg overflow-hidden shadow ${
+                  darkMode ? "border-gray-600" : "border-gray-300"
+                }`}
+              >
                 <img
                   src={previewUrl}
                   alt={`Preview ${index + 1}`}
                   className="object-cover w-full h-full"
                 />
-                
+
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
@@ -93,20 +105,22 @@ export default function FilePreview({ files, setFiles, darkMode = false, onOCRRe
                 >
                   ✕
                 </button>
-                
+
                 {/* Processing indicator */}
                 {isProcessing && (
                   <div className="absolute bottom-0 left-0 right-0 bg-blue-600 bg-opacity-90 text-white text-xs px-1 py-1 text-center">
                     🔍 OCR...
                   </div>
                 )}
-                
+
                 {/* Success/error indicator */}
                 {ocr && (
-                  <div className={`absolute bottom-0 left-0 text-white text-xs px-1 py-1 rounded-tr ${
-                    ocr.success ? 'bg-green-600' : 'bg-yellow-600'
-                  }`}>
-                    {ocr.success ? '✅' : '⚠️'}
+                  <div
+                    className={`absolute bottom-0 left-0 text-white text-xs px-1 py-1 rounded-tr ${
+                      ocr.success ? "bg-green-600" : "bg-yellow-600"
+                    }`}
+                  >
+                    {ocr.success ? "✅" : "⚠️"}
                   </div>
                 )}
               </div>
@@ -114,26 +128,39 @@ export default function FilePreview({ files, setFiles, darkMode = false, onOCRRe
           );
         })}
       </div>
-      
+
       {/* OCR Results */}
       {Object.keys(ocrResults).length > 0 && (
-        <div className={`border rounded-lg p-3 ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
-          <h4 className={`text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div
+          className={`border rounded-lg p-3 ${darkMode ? "border-gray-600 bg-gray-800" : "border-gray-300 bg-gray-50"}`}
+        >
+          <h4
+            className={`text-sm font-medium mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}
+          >
             📄 Text Detected:
           </h4>
-          
+
           {Object.entries(ocrResults).map(([index, result]) => (
-            <div key={index} className={`text-xs p-2 rounded mb-2 ${darkMode ? 'bg-gray-700' : 'bg-white'}`}>
-              <div className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <div
+              key={index}
+              className={`text-xs p-2 rounded mb-2 ${darkMode ? "bg-gray-700" : "bg-white"}`}
+            >
+              <div
+                className={`font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+              >
                 Image {parseInt(index) + 1}:
               </div>
-              <div className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <div
+                className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}
+              >
                 "{result.preview}"
               </div>
             </div>
           ))}
-          
-          <div className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+
+          <div
+            className={`text-xs mt-2 ${darkMode ? "text-gray-500" : "text-gray-500"}`}
+          >
             💡 This data will be automatically analyzed when you submit
           </div>
         </div>

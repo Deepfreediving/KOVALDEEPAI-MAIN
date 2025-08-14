@@ -1,9 +1,11 @@
-import { items } from '@wix/data';
-import { createClient, OAuthStrategy } from '@wix/sdk';
+import { items } from "@wix/data";
+import { createClient, OAuthStrategy } from "@wix/sdk";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed. Use GET instead." });
+    return res
+      .status(405)
+      .json({ error: "Method not allowed. Use GET instead." });
   }
 
   try {
@@ -11,7 +13,9 @@ export default async function handler(req, res) {
 
     // Validate input
     if (!collectionId || typeof collectionId !== "string") {
-      return res.status(400).json({ error: "Missing or invalid 'collectionId' parameter." });
+      return res
+        .status(400)
+        .json({ error: "Missing or invalid 'collectionId' parameter." });
     }
 
     // Initialize Wix SDK client
@@ -37,9 +41,10 @@ export default async function handler(req, res) {
         ...item.data,
       })),
     });
-
   } catch (error) {
     console.error("❌ Error fetching data from Wix:", error.message);
-    return res.status(500).json({ error: "Failed to fetch data from Wix", details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch data from Wix", details: error.message });
   }
 }

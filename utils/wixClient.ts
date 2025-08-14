@@ -1,16 +1,20 @@
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
+import axios from "axios";
+import fs from "fs";
+import path from "path";
 
 interface WixQueryData {
   data?: Record<string, any>;
   options?: Record<string, any>;
 }
 
-const TOKENS_FILE = path.join(process.cwd(), 'wix-tokens.json');
+const TOKENS_FILE = path.join(process.cwd(), "wix-tokens.json");
 
 class WixClient {
-  private tokens: { accessToken: string; refreshToken: string; expiresAt: number } | null = null;
+  private tokens: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+  } | null = null;
 
   constructor() {
     this.loadTokens();
@@ -21,9 +25,9 @@ class WixClient {
    */
   private loadTokens() {
     if (fs.existsSync(TOKENS_FILE)) {
-      this.tokens = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf-8'));
+      this.tokens = JSON.parse(fs.readFileSync(TOKENS_FILE, "utf-8"));
     } else {
-      console.warn('⚠️ Wix tokens not found. OAuth flow required.');
+      console.warn("⚠️ Wix tokens not found. OAuth flow required.");
       this.tokens = null;
     }
   }
@@ -40,19 +44,19 @@ class WixClient {
    * Refresh access token if expired
    */
   private async refreshTokensIfNeeded() {
-    if (!this.tokens) throw new Error('❌ Wix tokens not available.');
+    if (!this.tokens) throw new Error("❌ Wix tokens not available.");
     if (Date.now() < this.tokens.expiresAt - 60000) return; // Still valid
 
-    console.log('🔄 Refreshing Wix Access Token...');
+    console.log("🔄 Refreshing Wix Access Token...");
     const response = await axios.post(
-      'https://www.wix.com/oauth/access',
+      "https://www.wix.com/oauth/access",
       {
-        grant_type: 'refresh_token',
+        grant_type: "refresh_token",
         refresh_token: this.tokens.refreshToken,
         client_id: process.env.WIX_CLIENT_ID,
         client_secret: process.env.WIX_CLIENT_SECRET,
       },
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { "Content-Type": "application/json" } },
     );
 
     const { access_token, refresh_token, expires_in } = response.data;
@@ -112,28 +116,45 @@ class WixClient {
    * Create a new data item
    */
   async createItem(collectionId: string, itemData: Record<string, any>) {
-    return this.post(`/v2/data/collections/${collectionId}/items`, { item: itemData });
+    return this.post(`/v2/data/collections/${collectionId}/items`, {
+      item: itemData,
+    });
   }
 
   /**
    * Update a data item
    */
-  async updateItem(collectionId: string, itemId: string, itemData: Record<string, any>) {
-    return this.post(`/v2/data/collections/${collectionId}/items/${itemId}`, { item: itemData }, { _method: 'PATCH' });
+  async updateItem(
+    collectionId: string,
+    itemId: string,
+    itemData: Record<string, any>,
+  ) {
+    return this.post(
+      `/v2/data/collections/${collectionId}/items/${itemId}`,
+      { item: itemData },
+      { _method: "PATCH" },
+    );
   }
 
   /**
    * Delete a data item
    */
   async deleteItem(collectionId: string, itemId: string) {
-    return this.post(`/v2/data/collections/${collectionId}/items/${itemId}`, {}, { _method: 'DELETE' });
+    return this.post(
+      `/v2/data/collections/${collectionId}/items/${itemId}`,
+      {},
+      { _method: "DELETE" },
+    );
   }
 
   /**
    * Centralized error handler
    */
   private handleError(method: string, path: string, error: any) {
-    console.error(`❌ WixClient ${method} Error: ${path}`, error.response?.data || error.message);
+    console.error(
+      `❌ WixClient ${method} Error: ${path}`,
+      error.response?.data || error.message,
+    );
     throw new Error(error.response?.data?.error || error.message);
   }
 }

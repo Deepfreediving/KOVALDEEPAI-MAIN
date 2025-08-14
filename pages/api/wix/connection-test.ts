@@ -4,7 +4,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 interface ConnectionStatus {
-  status: 'connected' | 'fallback' | 'offline';
+  status: "connected" | "fallback" | "offline";
   timestamp: string;
   details?: string;
   wixConnectionAvailable?: boolean;
@@ -12,23 +12,26 @@ interface ConnectionStatus {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ConnectionStatus>
+  res: NextApiResponse<ConnectionStatus>,
 ) {
   // Set CORS headers for Wix integration
-  res.setHeader('Access-Control-Allow-Origin', 'https://www.deepfreediving.com');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "https://www.deepfreediving.com",
+  );
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'GET') {
+  if (req.method !== "GET") {
     return res.status(405).json({
-      status: 'offline',
+      status: "offline",
       timestamp: new Date().toISOString(),
-      details: 'Method not allowed'
+      details: "Method not allowed",
     });
   }
 
@@ -36,12 +39,12 @@ export default async function handler(
     console.log("🔍 Testing backend connection...");
 
     // Test 1: Check if Wix connection is available
-    let wixConnectionAvailable = false;
+    const wixConnectionAvailable = false;
     try {
       // This would test the original /_functions/wixConnection endpoint
       // For now, we'll simulate this check
       console.log("📡 Checking Wix backend connection...");
-      
+
       // You can uncomment this to test the actual Wix endpoint:
       /*
       const wixResponse = await fetch('https://www.deepfreediving.com/_functions/wixConnection', {
@@ -59,7 +62,6 @@ export default async function handler(
         console.warn(`⚠️ Wix backend failed: ${wixResponse.status}`);
       }
       */
-      
     } catch (error) {
       console.warn("⚠️ Wix backend connection failed:", error);
     }
@@ -68,12 +70,15 @@ export default async function handler(
     let oauthAvailable = false;
     try {
       // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
-      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
+      const baseUrl =
+        process.env.BASE_URL || "https://kovaldeepai-main.vercel.app";
       const oauthResponse = await fetch(`${baseUrl}/api/wix/oauth/status`);
       if (oauthResponse.ok) {
         const oauthData = await oauthResponse.json();
         oauthAvailable = oauthData.authenticated;
-        console.log(`🔐 OAuth status: ${oauthAvailable ? 'authenticated' : 'not authenticated'}`);
+        console.log(
+          `🔐 OAuth status: ${oauthAvailable ? "authenticated" : "not authenticated"}`,
+        );
       }
     } catch (error) {
       console.warn("⚠️ OAuth check failed:", error);
@@ -84,10 +89,15 @@ export default async function handler(
     try {
       // Test with a dummy userId to see if the system responds
       // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
-      const baseUrl = process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
-      const memoryResponse = await fetch(`${baseUrl}/api/auth/get-user-memory?userId=test-connection`);
+      const baseUrl =
+        process.env.BASE_URL || "https://kovaldeepai-main.vercel.app";
+      const memoryResponse = await fetch(
+        `${baseUrl}/api/auth/get-user-memory?userId=test-connection`,
+      );
       userMemoryAvailable = memoryResponse.status !== 500; // Any response except 500 means it's working
-      console.log(`📊 UserMemory access: ${userMemoryAvailable ? 'available' : 'unavailable'}`);
+      console.log(
+        `📊 UserMemory access: ${userMemoryAvailable ? "available" : "unavailable"}`,
+      );
     } catch (error) {
       console.warn("⚠️ UserMemory test failed:", error);
     }
@@ -95,34 +105,33 @@ export default async function handler(
     // Determine overall status
     if (wixConnectionAvailable || (oauthAvailable && userMemoryAvailable)) {
       return res.status(200).json({
-        status: 'connected',
+        status: "connected",
         timestamp: new Date().toISOString(),
-        details: 'Backend fully operational',
-        wixConnectionAvailable
+        details: "Backend fully operational",
+        wixConnectionAvailable,
       });
     } else if (oauthAvailable || userMemoryAvailable) {
       return res.status(200).json({
-        status: 'fallback',
+        status: "fallback",
         timestamp: new Date().toISOString(),
-        details: 'Limited backend functionality available',
-        wixConnectionAvailable
+        details: "Limited backend functionality available",
+        wixConnectionAvailable,
       });
     } else {
       return res.status(503).json({
-        status: 'offline',
+        status: "offline",
         timestamp: new Date().toISOString(),
-        details: 'Backend services unavailable',
-        wixConnectionAvailable
+        details: "Backend services unavailable",
+        wixConnectionAvailable,
       });
     }
-
   } catch (error: any) {
     console.error("❌ Backend connection test error:", error);
     return res.status(500).json({
-      status: 'offline',
+      status: "offline",
       timestamp: new Date().toISOString(),
       details: error.message,
-      wixConnectionAvailable: false
+      wixConnectionAvailable: false,
     });
   }
 }

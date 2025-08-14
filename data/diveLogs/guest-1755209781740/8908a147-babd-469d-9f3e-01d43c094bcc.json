@@ -1,0 +1,23 @@
+{
+  "id": "dive_guest-1755209781740_1755209802671",
+  "timestamp": "2025-08-14T22:16:42.673Z",
+  "userId": "guest-1755209781740",
+  "date": "2025-08-14",
+  "disciplineType": "depth",
+  "discipline": "cwt monofin",
+  "location": "Ocean",
+  "targetDepth": 110,
+  "reachedDepth": 112,
+  "mouthfillDepth": 0,
+  "issueDepth": 112,
+  "squeeze": false,
+  "exit": "LMC",
+  "durationOrDistance": "",
+  "attemptType": "personal best ",
+  "notes": "",
+  "totalDiveTime": "3:12",
+  "issueComment": "",
+  "surfaceProtocol": "",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}

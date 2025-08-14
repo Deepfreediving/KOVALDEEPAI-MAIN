@@ -1,5 +1,5 @@
-export * from './journal';
-export * from './profile';
+export * from "./journal";
+export * from "./profile";
 
 declare global {
   interface Status {

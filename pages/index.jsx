@@ -43,8 +43,10 @@ export default function Index() {
     },
   ]);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => 
-    typeof window !== 'undefined' ? localStorage.getItem("kovalDarkMode") === "true" : false
+  const [darkMode, setDarkMode] = useState(() =>
+    typeof window !== "undefined"
+      ? localStorage.getItem("kovalDarkMode") === "true"
+      : false,
   );
   const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState(null);
@@ -60,7 +62,7 @@ export default function Index() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
-  
+
   // ✅ NEW: Authentication state to prevent early interactions
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
@@ -71,67 +73,80 @@ export default function Index() {
   const storageKey = (uid) => `diveLogs-${uid}`;
   const safeParse = (key, fallback) => {
     try {
-      return typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(key)) || fallback : fallback;
+      return typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem(key)) || fallback
+        : fallback;
     } catch {
       return fallback;
     }
   };
 
   const getDisplayName = useCallback(() => {
-    console.log('🔍 getDisplayName called, profile:', profile, 'userId:', userId, 'isAuthenticating:', isAuthenticating);
-    
+    console.log(
+      "🔍 getDisplayName called, profile:",
+      profile,
+      "userId:",
+      userId,
+      "isAuthenticating:",
+      isAuthenticating,
+    );
+
     // ✅ Show loading state while authenticating
     if (isAuthenticating) {
       return "Loading...";
     }
-    
+
     // ✅ PRIORITY: Use member ID format for consistent, fast recognition
-    if (userId && !userId.startsWith('guest-')) {
+    if (userId && !userId.startsWith("guest-")) {
       console.log(`✅ Using member ID format: User-${userId}`);
       return `User-${userId}`;
     }
-    
+
     // Fallback for guest users (only after timeout)
-    if (userId?.startsWith('guest-') && authTimeoutReached) {
-      console.log('🔄 Using guest fallback after timeout');
+    if (userId?.startsWith("guest-") && authTimeoutReached) {
+      console.log("🔄 Using guest fallback after timeout");
       return "Guest User";
     }
-    
+
     // Still waiting for authentication
-    if (userId?.startsWith('guest-') && !authTimeoutReached) {
+    if (userId?.startsWith("guest-") && !authTimeoutReached) {
       return "Loading...";
     }
-    
+
     // Final fallback
-    console.log('🔄 Using final fallback: User');
+    console.log("🔄 Using final fallback: User");
     return "User";
   }, [profile, userId, isAuthenticating, authTimeoutReached]);
 
   // ✅ INITIALIZATION - Enhanced with authentication gating
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       setSessionsList(safeParse("kovalSessionsList", []));
       setThreadId(localStorage.getItem("kovalThreadId") || null);
       setProfile(safeParse("kovalProfile", { nickname: "Loading..." }));
-      
+
       // ✅ Check if we have a valid stored userId first
       const storedUserId = localStorage.getItem("kovalUser");
-      if (storedUserId && !storedUserId.startsWith('guest-')) {
-        console.log('✅ Found valid stored userId:', storedUserId);
+      if (storedUserId && !storedUserId.startsWith("guest-")) {
+        console.log("✅ Found valid stored userId:", storedUserId);
         setUserId(storedUserId);
         setIsAuthenticating(false); // We have a valid user, stop waiting
       } else {
-        console.log('⏳ No valid stored userId, waiting for authentication...');
+        console.log("⏳ No valid stored userId, waiting for authentication...");
         // Start authentication timeout (15 seconds for better Wix loading)
         const timeout = setTimeout(() => {
-          console.warn('⚠️ Authentication timeout reached, allowing limited access');
-          console.warn('⚠️ This usually means Wix authentication failed or is slow');
-          console.warn('⚠️ User will be assigned a guest ID for this session');
+          console.warn(
+            "⚠️ Authentication timeout reached, allowing limited access",
+          );
+          console.warn(
+            "⚠️ This usually means Wix authentication failed or is slow",
+          );
+          console.warn("⚠️ User will be assigned a guest ID for this session");
           setAuthTimeoutReached(true);
           setIsAuthenticating(false);
           setUserId(`guest-${Date.now()}`); // Fallback after timeout
         }, 15000);
-        
+
         return () => clearTimeout(timeout);
       }
     }
@@ -141,57 +156,70 @@ export default function Index() {
   useEffect(() => {
     if (router.isReady) {
       const { theme, userId: urlUserId, userName, embedded } = router.query;
-      
+
       // Check if we're embedded
-      if (embedded === 'true' || window.parent !== window) {
+      if (embedded === "true" || window.parent !== window) {
         setIsEmbedded(true);
-        console.log('🎯 Running in embedded mode');
-        
+        console.log("🎯 Running in embedded mode");
+
         // Notify parent that we're ready
-        window.parent?.postMessage({ 
-          type: 'EMBED_READY', 
-          source: 'koval-ai-embed',
-          timestamp: Date.now()
-        }, "*");
+        window.parent?.postMessage(
+          {
+            type: "EMBED_READY",
+            source: "koval-ai-embed",
+            timestamp: Date.now(),
+          },
+          "*",
+        );
       }
-      
+
       // Apply theme from URL
-      if (theme === 'dark') {
+      if (theme === "dark") {
         setDarkMode(true);
-      } else if (theme === 'light') {
+      } else if (theme === "light") {
         setDarkMode(false);
       }
-      
+
       // Set user data from URL parameters
-      if (urlUserId && !urlUserId.startsWith('guest-')) {
-        console.log('✅ Valid userId from URL:', urlUserId);
+      if (urlUserId && !urlUserId.startsWith("guest-")) {
+        console.log("✅ Valid userId from URL:", urlUserId);
         setUserId(String(urlUserId));
         localStorage.setItem("kovalUser", String(urlUserId));
         setIsAuthenticating(false); // We have a valid user from URL
       } else if (urlUserId) {
-        console.log('⚠️ Guest userId in URL, continuing to wait for authentication');
+        console.log(
+          "⚠️ Guest userId in URL, continuing to wait for authentication",
+        );
       }
-      
+
       if (userName) {
         const decodedUserName = decodeURIComponent(String(userName));
-        setProfile(prev => ({ 
-          ...prev, 
+        setProfile((prev) => ({
+          ...prev,
           nickname: decodedUserName,
-          displayName: decodedUserName 
+          displayName: decodedUserName,
         }));
-        localStorage.setItem("kovalProfile", JSON.stringify({ 
-          nickname: decodedUserName,
-          displayName: decodedUserName 
-        }));
+        localStorage.setItem(
+          "kovalProfile",
+          JSON.stringify({
+            nickname: decodedUserName,
+            displayName: decodedUserName,
+          }),
+        );
       }
-      
-      console.log('✅ URL parameters processed:', { theme, userId: urlUserId, userName, embedded });
+
+      console.log("✅ URL parameters processed:", {
+        theme,
+        userId: urlUserId,
+        userName,
+        embedded,
+      });
     }
   }, [router.isReady, router.query]);
 
   // ✅ THEME SYNC
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       document.documentElement.classList.toggle("dark", darkMode);
       localStorage.setItem("kovalDarkMode", darkMode);
     }
@@ -212,8 +240,8 @@ export default function Index() {
         // Simple connection check
         const checks = {
           openai: "✅ Connected",
-          pinecone: "✅ Connected", 
-          wix: "✅ Connected"
+          pinecone: "✅ Connected",
+          wix: "✅ Connected",
         };
         if (isMounted) setConnectionStatus(checks);
       } catch (error) {
@@ -222,125 +250,153 @@ export default function Index() {
         if (isMounted) setLoadingConnections(false);
       }
     })();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // ✅ WORKING CHAT SUBMISSION - Enhanced with authentication gating
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!input.trim() || loading) return;
 
-    // ✅ PREVENT CHAT UNTIL AUTHENTICATED (unless timeout reached)
-    if (isAuthenticating) {
-      console.log('⏳ Still authenticating, chat disabled');
-      return;
-    }
-
-    // ✅ WARN IF USING GUEST ID
-    if (userId.startsWith('guest-') && !authTimeoutReached) {
-      console.warn('⚠️ Attempting to chat with guest ID, this should not happen');
-      const errorMessage = {
-        role: "assistant", 
-        content: "⏳ Please wait while we verify your authentication. You'll be able to chat in just a moment."
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      return;
-    }
-
-    const userMessage = { role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    setLoading(true);
-
-    try {
-      console.log("🚀 Sending message to enhanced chat bridge API with userId:", userId);
-      console.log("📊 Chat context:", {
-        userId,
-        profileSource: profile?.source,
-        diveLogsCount: diveLogs?.length || 0,
-        embedMode: false
-      });
-
-      // ✅ Use enhanced chat bridge with dive logs context
-      const response = await fetch(API_ROUTES.CHAT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userMessage: input,
-          userId,
-          profile,
-          embedMode: false,
-          diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
-          conversationHistory: messages.slice(-6), // Last 3 conversation pairs
-        }),
-      });
-
-      if (!response.ok) {
-        console.warn(`⚠️ Chat bridge failed (${response.status}), trying fallback...`);
-        
-        // ✅ Fallback to direct chat API
-        const fallbackResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: input,
-            userId,
-            profile,
-            embedMode: false,
-            diveLogs: diveLogs.slice(0, 5),
-          }),
-        });
-
-        if (!fallbackResponse.ok) {
-          throw new Error(`Both chat APIs failed: Bridge ${response.status}, Fallback ${fallbackResponse.status}`);
-        }
-
-        const fallbackData = await fallbackResponse.json();
-        console.log("✅ Fallback chat response received:", fallbackData);
-
-        const assistantMessage = fallbackData.assistantMessage || {
-          role: "assistant",
-          content: fallbackData.answer || fallbackData.aiResponse || "I received your message!",
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
+      // ✅ PREVENT CHAT UNTIL AUTHENTICATED (unless timeout reached)
+      if (isAuthenticating) {
+        console.log("⏳ Still authenticating, chat disabled");
         return;
       }
 
-      const data = await response.json();
-      console.log("✅ Enhanced chat bridge response received:", data);
-
-      const assistantMessage = {
-        role: "assistant",
-        content: data.aiResponse || data.assistantMessage?.content || data.answer || "I received your message!",
-      };
-
-      // Add metadata if available
-      if (data.metadata) {
-        assistantMessage.metadata = data.metadata;
-        console.log(`📊 Chat metadata: ${data.metadata.processingTime}ms, source: ${data.source}`);
+      // ✅ WARN IF USING GUEST ID
+      if (userId.startsWith("guest-") && !authTimeoutReached) {
+        console.warn(
+          "⚠️ Attempting to chat with guest ID, this should not happen",
+        );
+        const errorMessage = {
+          role: "assistant",
+          content:
+            "⏳ Please wait while we verify your authentication. You'll be able to chat in just a moment.",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        return;
       }
 
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error("❌ Chat error:", error);
+      const userMessage = { role: "user", content: input };
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      setLoading(true);
 
-      const errorMessage = {
-        role: "assistant",
-        content: "I'm having trouble responding right now. Please try again in a moment.",
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
-    }
-  }, [input, loading, userId, profile, isAuthenticating, authTimeoutReached]);
+      try {
+        console.log(
+          "🚀 Sending message to enhanced chat bridge API with userId:",
+          userId,
+        );
+        console.log("📊 Chat context:", {
+          userId,
+          profileSource: profile?.source,
+          diveLogsCount: diveLogs?.length || 0,
+          embedMode: false,
+        });
 
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  }, [handleSubmit]);
+        // ✅ Use enhanced chat bridge with dive logs context
+        const response = await fetch(API_ROUTES.CHAT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userMessage: input,
+            userId,
+            profile,
+            embedMode: false,
+            diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
+            conversationHistory: messages.slice(-6), // Last 3 conversation pairs
+          }),
+        });
+
+        if (!response.ok) {
+          console.warn(
+            `⚠️ Chat bridge failed (${response.status}), trying fallback...`,
+          );
+
+          // ✅ Fallback to direct chat API
+          const fallbackResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: input,
+              userId,
+              profile,
+              embedMode: false,
+              diveLogs: diveLogs.slice(0, 5),
+            }),
+          });
+
+          if (!fallbackResponse.ok) {
+            throw new Error(
+              `Both chat APIs failed: Bridge ${response.status}, Fallback ${fallbackResponse.status}`,
+            );
+          }
+
+          const fallbackData = await fallbackResponse.json();
+          console.log("✅ Fallback chat response received:", fallbackData);
+
+          const assistantMessage = fallbackData.assistantMessage || {
+            role: "assistant",
+            content:
+              fallbackData.answer ||
+              fallbackData.aiResponse ||
+              "I received your message!",
+          };
+
+          setMessages((prev) => [...prev, assistantMessage]);
+          return;
+        }
+
+        const data = await response.json();
+        console.log("✅ Enhanced chat bridge response received:", data);
+
+        const assistantMessage = {
+          role: "assistant",
+          content:
+            data.aiResponse ||
+            data.assistantMessage?.content ||
+            data.answer ||
+            "I received your message!",
+        };
+
+        // Add metadata if available
+        if (data.metadata) {
+          assistantMessage.metadata = data.metadata;
+          console.log(
+            `📊 Chat metadata: ${data.metadata.processingTime}ms, source: ${data.source}`,
+          );
+        }
+
+        setMessages((prev) => [...prev, assistantMessage]);
+      } catch (error) {
+        console.error("❌ Chat error:", error);
+
+        const errorMessage = {
+          role: "assistant",
+          content:
+            "I'm having trouble responding right now. Please try again in a moment.",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [input, loading, userId, profile, isAuthenticating, authTimeoutReached],
+  );
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit(e);
+      }
+    },
+    [handleSubmit],
+  );
 
   const handleFileChange = useCallback((e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -350,10 +406,10 @@ export default function Index() {
   // ✅ LOAD DIVE LOGS (Enhanced from both versions)
   const loadDiveLogs = useCallback(async () => {
     if (!userId) {
-      console.log('⚠️ loadDiveLogs: No userId provided');
+      console.log("⚠️ loadDiveLogs: No userId provided");
       return;
     }
-    
+
     console.log(`🔄 Loading dive logs for userId: ${userId}`);
     setLoadingDiveLogs(true);
     try {
@@ -364,32 +420,42 @@ export default function Index() {
       setDiveLogs(localLogs);
 
       // Then try to load from API
-      console.log(`🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
-      const response = await fetch(`${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`);
+      console.log(
+        `🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`,
+      );
+      const response = await fetch(
+        `${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`,
+      );
       if (response.ok) {
         const data = await response.json();
         const remoteLogs = data.logs || [];
         console.log(`🌐 Remote logs found: ${remoteLogs.length}`);
-        
+
         // Merge local and remote logs (remove duplicates)
         const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
-          const key = log.localId || log._id || log.id || `${log.date}-${log.reachedDepth}`;
+          const key =
+            log.localId ||
+            log._id ||
+            log.id ||
+            `${log.date}-${log.reachedDepth}`;
           return { ...map, [key]: log };
         }, {});
-        
-        const combined = Object.values(merged).sort((a, b) => 
-          new Date(b.date) - new Date(a.date)
+
+        const combined = Object.values(merged).sort(
+          (a, b) => new Date(b.date) - new Date(a.date),
         );
-        
+
         console.log(`✅ Combined total logs: ${combined.length}`);
         setDiveLogs(combined);
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           localStorage.setItem(storageKey(userId), JSON.stringify(combined));
         }
-        
+
         console.log(`✅ Loaded ${combined.length} dive logs`);
       } else {
-        console.warn(`⚠️ API request failed: ${response.status} ${response.statusText}`);
+        console.warn(
+          `⚠️ API request failed: ${response.status} ${response.statusText}`,
+        );
       }
     } catch (error) {
       console.error("❌ Failed to load dive logs:", error);
@@ -399,64 +465,82 @@ export default function Index() {
   }, [userId]);
 
   // ✅ DIVE JOURNAL SUBMIT
-  const handleJournalSubmit = useCallback(async (diveData) => {
-    try {
-      const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...diveData, userId }),
-      });
+  const handleJournalSubmit = useCallback(
+    async (diveData) => {
+      try {
+        const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...diveData, userId }),
+        });
 
-      if (response.ok) {
-        console.log("✅ Dive log saved successfully");
-        await loadDiveLogs(); // Refresh the list
-        setIsDiveJournalOpen(false);
-        setEditLogIndex(null);
-        
-        // Add confirmation message
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || 'your location'}.`
-        }]);
-      } else {
-        console.error("❌ Failed to save dive log");
+        if (response.ok) {
+          console.log("✅ Dive log saved successfully");
+          await loadDiveLogs(); // Refresh the list
+          setIsDiveJournalOpen(false);
+          setEditLogIndex(null);
+
+          // Add confirmation message
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || "your location"}.`,
+            },
+          ]);
+        } else {
+          console.error("❌ Failed to save dive log");
+        }
+      } catch (error) {
+        console.error("❌ Error saving dive log:", error);
       }
-    } catch (error) {
-      console.error("❌ Error saving dive log:", error);
-    }
-  }, [userId, loadDiveLogs]);
+    },
+    [userId, loadDiveLogs],
+  );
 
   // ✅ DELETE DIVE LOG
-  const handleDelete = useCallback(async (logId) => {
-    try {
-      const response = await fetch(`${API_ROUTES.DELETE_DIVE_LOG}?id=${logId}`, {
-        method: "DELETE",
-      });
+  const handleDelete = useCallback(
+    async (logId) => {
+      try {
+        const response = await fetch(
+          `${API_ROUTES.DELETE_DIVE_LOG}?id=${logId}`,
+          {
+            method: "DELETE",
+          },
+        );
 
-      if (response.ok) {
-        console.log("✅ Dive log deleted");
-        await loadDiveLogs(); // Refresh the list
+        if (response.ok) {
+          console.log("✅ Dive log deleted");
+          await loadDiveLogs(); // Refresh the list
+        }
+      } catch (error) {
+        console.error("❌ Error deleting dive log:", error);
       }
-    } catch (error) {
-      console.error("❌ Error deleting dive log:", error);
-    }
-  }, [loadDiveLogs]);
+    },
+    [loadDiveLogs],
+  );
 
   // ✅ V5.0: ADD EDIT DIVE LOG FUNCTION
   const handleEditDiveLog = useCallback((log) => {
-    console.log('✏️ Main: Starting edit for dive log:', log.id);
+    console.log("✏️ Main: Starting edit for dive log:", log.id);
     setEditingLog(log);
     setIsDiveJournalOpen(true); // Open the popup journal
   }, []);
 
   // ✅ WRAPPER FUNCTIONS FOR DIVE JOURNAL COMPONENT
-  const handleDiveLogSubmit = useCallback(async (diveData) => {
-    await handleJournalSubmit(diveData);
-  }, [handleJournalSubmit]);
+  const handleDiveLogSubmit = useCallback(
+    async (diveData) => {
+      await handleJournalSubmit(diveData);
+    },
+    [handleJournalSubmit],
+  );
 
-  const handleDiveLogDelete = useCallback(async (logId) => {
-    await handleDelete(logId);
-  }, [handleDelete]);
+  const handleDiveLogDelete = useCallback(
+    async (logId) => {
+      await handleDelete(logId);
+    },
+    [handleDelete],
+  );
 
   // ✅ SESSION MANAGEMENT
   const handleSaveSession = useCallback(() => {
@@ -466,9 +550,12 @@ export default function Index() {
       messages,
       timestamp: Date.now(),
     };
-    const updated = [newSession, ...sessionsList.filter(s => s.sessionName !== sessionName)];
+    const updated = [
+      newSession,
+      ...sessionsList.filter((s) => s.sessionName !== sessionName),
+    ];
     setSessionsList(updated);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
     }
     console.log("✅ Session saved");
@@ -488,15 +575,18 @@ export default function Index() {
     console.log("✅ New session started");
   }, [BOT_NAME]);
 
-  const handleSelectSession = useCallback((name) => {
-    const found = sessionsList.find(s => s.sessionName === name);
-    if (found) {
-      setSessionName(found.sessionName);
-      setMessages(found.messages || []);
-      setInput("");
-      console.log("✅ Session loaded:", name);
-    }
-  }, [sessionsList]);
+  const handleSelectSession = useCallback(
+    (name) => {
+      const found = sessionsList.find((s) => s.sessionName === name);
+      if (found) {
+        setSessionName(found.sessionName);
+        setMessages(found.messages || []);
+        setInput("");
+        console.log("✅ Session loaded:", name);
+      }
+    },
+    [sessionsList],
+  );
 
   // ✅ Load dive logs on mount
   useEffect(() => {
@@ -506,156 +596,205 @@ export default function Index() {
   }, [userId, loadDiveLogs]);
 
   // ✅ MEMOIZED PROPS FOR PERFORMANCE
-  const sidebarProps = useMemo(() => ({
-    BOT_NAME,
-    sessionName,
-    setSessionName,
-    sessionsList,
-    messages,
-    setMessages,
-    userId,
-    profile,
-    setProfile,
-    diveLogs,
-    setDiveLogs,
-    darkMode,
-    setDarkMode,
-    startNewSession,
-    handleSaveSession,
-    handleSelectSession,
-    toggleDiveJournal: () => setIsDiveJournalOpen(prev => !prev),
-    handleJournalSubmit,
-    handleDelete,
-    refreshDiveLogs: loadDiveLogs,
-    loadingDiveLogs,
-    syncStatus: "✅ Ready",
-    editingSessionName,
-    setEditingSessionName
-  }), [
-    sessionName, sessionsList, messages, userId, profile, diveLogs, darkMode,
-    startNewSession, handleSaveSession, handleSelectSession, handleJournalSubmit,
-    handleDelete, loadDiveLogs, loadingDiveLogs, editingSessionName
-  ]);
+  const sidebarProps = useMemo(
+    () => ({
+      BOT_NAME,
+      sessionName,
+      setSessionName,
+      sessionsList,
+      messages,
+      setMessages,
+      userId,
+      profile,
+      setProfile,
+      diveLogs,
+      setDiveLogs,
+      darkMode,
+      setDarkMode,
+      startNewSession,
+      handleSaveSession,
+      handleSelectSession,
+      toggleDiveJournal: () => setIsDiveJournalOpen((prev) => !prev),
+      handleJournalSubmit,
+      handleDelete,
+      refreshDiveLogs: loadDiveLogs,
+      loadingDiveLogs,
+      syncStatus: "✅ Ready",
+      editingSessionName,
+      setEditingSessionName,
+    }),
+    [
+      sessionName,
+      sessionsList,
+      messages,
+      userId,
+      profile,
+      diveLogs,
+      darkMode,
+      startNewSession,
+      handleSaveSession,
+      handleSelectSession,
+      handleJournalSubmit,
+      handleDelete,
+      loadDiveLogs,
+      loadingDiveLogs,
+      editingSessionName,
+    ],
+  );
 
   // ✅ MESSAGE LISTENER FOR USER AUTH FROM PARENT PAGE
   useEffect(() => {
     const handleMessage = (event) => {
       // Security check for trusted origins
-      if (!(
-        event.origin === 'https://www.deepfreediving.com' ||
-        event.origin === 'https://deepfreediving.com' ||
-        event.origin.includes('wix.com') ||
-        event.origin.includes('wixsite.com') ||
-        event.origin.includes('editorx.com') ||
-        event.origin === 'https://kovaldeepai-main.vercel.app' ||
-        event.origin === 'http://localhost:3000'
-      )) {
-        console.log('🚫 Ignoring message from untrusted origin:', event.origin);
+      if (
+        !(
+          event.origin === "https://www.deepfreediving.com" ||
+          event.origin === "https://deepfreediving.com" ||
+          event.origin.includes("wix.com") ||
+          event.origin.includes("wixsite.com") ||
+          event.origin.includes("editorx.com") ||
+          event.origin === "https://kovaldeepai-main.vercel.app" ||
+          event.origin === "http://localhost:3000"
+        )
+      ) {
+        console.log("🚫 Ignoring message from untrusted origin:", event.origin);
         return;
       }
-      
+
       switch (event.data?.type) {
-        case 'USER_AUTH':
-          console.log('👤 Index: User auth received from parent:', event.data.data);
-          
-          if (event.data.data?.userId && !event.data.data.userId.startsWith('guest-')) {
-            console.log('✅ Index: Setting authenticated userId:', event.data.data.userId);
+        case "USER_AUTH":
+          console.log(
+            "👤 Index: User auth received from parent:",
+            event.data.data,
+          );
+
+          if (
+            event.data.data?.userId &&
+            !event.data.data.userId.startsWith("guest-")
+          ) {
+            console.log(
+              "✅ Index: Setting authenticated userId:",
+              event.data.data.userId,
+            );
             const newUserId = String(event.data.data.userId);
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
-            
+
             // ✅ AUTHENTICATION COMPLETE - Enable interactions
             setIsAuthenticating(false);
             setAuthTimeoutReached(false); // Reset timeout flag
-            
-            console.log('🎉 Authentication complete! Chat and AI features now enabled.');
+
+            console.log(
+              "🎉 Authentication complete! Chat and AI features now enabled.",
+            );
           } else {
-            console.warn('⚠️ Received invalid or guest userId, continuing to wait for authentication');
+            console.warn(
+              "⚠️ Received invalid or guest userId, continuing to wait for authentication",
+            );
           }
-          
+
           // Update profile with rich data
           if (event.data.data?.userName || event.data.data?.userEmail) {
             const richProfile = {
-              nickname: event.data.data.userName || event.data.data.userEmail || 'User',
-              displayName: event.data.data.userName || event.data.data.userEmail || 'User',
-              loginEmail: event.data.data.userEmail || '',
-              firstName: event.data.data.firstName || '',
-              lastName: event.data.data.lastName || '',
-              profilePicture: event.data.data.profilePicture || '',
-              phone: event.data.data.phone || '',
-              bio: event.data.data.bio || '',
-              location: event.data.data.location || '',
-              source: event.data.data.source || 'wix-parent-auth',
+              nickname:
+                event.data.data.userName || event.data.data.userEmail || "User",
+              displayName:
+                event.data.data.userName || event.data.data.userEmail || "User",
+              loginEmail: event.data.data.userEmail || "",
+              firstName: event.data.data.firstName || "",
+              lastName: event.data.data.lastName || "",
+              profilePicture: event.data.data.profilePicture || "",
+              phone: event.data.data.phone || "",
+              bio: event.data.data.bio || "",
+              location: event.data.data.location || "",
+              source: event.data.data.source || "wix-parent-auth",
               customFields: event.data.data.customFields || {},
-              isGuest: event.data.data.isGuest || false
+              isGuest: event.data.data.isGuest || false,
             };
-            
-            console.log('✅ Index: Setting rich profile to:', richProfile);
+
+            console.log("✅ Index: Setting rich profile to:", richProfile);
             setProfile(richProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(richProfile));
-          } else if (!event.data.data?.userId?.startsWith('guest-')) {
+          } else if (!event.data.data?.userId?.startsWith("guest-")) {
             // Set a basic profile if we have a valid userId but no profile data
             const basicProfile = {
               nickname: `User-${event.data.data.userId}`,
               displayName: `User-${event.data.data.userId}`,
-              source: 'wix-parent-auth-basic'
+              source: "wix-parent-auth-basic",
             };
             setProfile(basicProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(basicProfile));
           }
           break;
-          
-        case 'THEME_CHANGE':
-          console.log('🎨 Index: Theme change received:', event.data.data);
+
+        case "THEME_CHANGE":
+          console.log("🎨 Index: Theme change received:", event.data.data);
           setDarkMode(Boolean(event.data.data?.dark));
           break;
-          
+
         default:
-          console.log('❓ Index: Unknown message type:', event.data?.type);
+          console.log("❓ Index: Unknown message type:", event.data?.type);
       }
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('message', handleMessage);
-      console.log('👂 Index: Message listener for user auth set up');
-      
+    if (typeof window !== "undefined") {
+      window.addEventListener("message", handleMessage);
+      console.log("👂 Index: Message listener for user auth set up");
+
       return () => {
-        window.removeEventListener('message', handleMessage);
+        window.removeEventListener("message", handleMessage);
       };
     }
   }, []);
 
   return (
-    <main className={`${isEmbedded ? 'h-full' : 'h-screen'} flex ${
-      darkMode ? "bg-black text-white" : "bg-white text-gray-900"
-    }`}>
-      
+    <main
+      className={`${isEmbedded ? "h-full" : "h-screen"} flex ${
+        darkMode ? "bg-black text-white" : "bg-white text-gray-900"
+      }`}
+    >
       {/* ✅ SIDEBAR - Hidden in embedded mode on mobile, smaller on desktop */}
-      <div className={`${isEmbedded ? 'w-[250px] hidden sm:flex' : 'w-[320px]'} h-full overflow-y-auto border-r flex flex-col justify-between ${
-        darkMode ? "border-gray-700" : "border-gray-300"
-      }`}>
+      <div
+        className={`${isEmbedded ? "w-[250px] hidden sm:flex" : "w-[320px]"} h-full overflow-y-auto border-r flex flex-col justify-between ${
+          darkMode ? "border-gray-700" : "border-gray-300"
+        }`}
+      >
         <Sidebar {...sidebarProps} />
 
         {/* ✅ CONNECTION STATUS - Simplified in embedded mode */}
         {!isEmbedded && (
-          <div className={`mt-4 mb-4 mx-4 flex space-x-4 text-xl px-3 py-2 rounded-lg ${
-            darkMode ? "bg-gray-800" : "bg-gray-100"
-          }`}>
-            {!loadingConnections && connectionStatus.openai?.includes("✅") && <span title="AI Connected">🤖</span>}
-            {!loadingConnections && connectionStatus.pinecone?.includes("✅") && <span title="Data Connected">🌲</span>}
-            {!loadingConnections && connectionStatus.wix?.includes("✅") && <span title="Site Data Connected">🌀</span>}
+          <div
+            className={`mt-4 mb-4 mx-4 flex space-x-4 text-xl px-3 py-2 rounded-lg ${
+              darkMode ? "bg-gray-800" : "bg-gray-100"
+            }`}
+          >
+            {!loadingConnections && connectionStatus.openai?.includes("✅") && (
+              <span title="AI Connected">🤖</span>
+            )}
+            {!loadingConnections &&
+              connectionStatus.pinecone?.includes("✅") && (
+                <span title="Data Connected">🌲</span>
+              )}
+            {!loadingConnections && connectionStatus.wix?.includes("✅") && (
+              <span title="Site Data Connected">🌀</span>
+            )}
           </div>
         )}
       </div>
 
       {/* ✅ MAIN CHAT AREA */}
-      <div className={`flex-1 flex flex-col ${isEmbedded ? 'h-full' : 'h-screen'}`}>
-        
+      <div
+        className={`flex-1 flex flex-col ${isEmbedded ? "h-full" : "h-screen"}`}
+      >
         {/* Top Bar - Simplified in embedded mode */}
-        <div className={`sticky top-0 z-10 border-b ${isEmbedded ? 'p-2' : 'p-3'} flex justify-between items-center text-sm ${
-          darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
-        }`}>
-          <div className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+        <div
+          className={`sticky top-0 z-10 border-b ${isEmbedded ? "p-2" : "p-3"} flex justify-between items-center text-sm ${
+            darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
+          }`}
+        >
+          <div
+            className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+          >
             👤 {getDisplayName()}
           </div>
           {!isEmbedded && (
@@ -687,7 +826,9 @@ export default function Index() {
         </div>
 
         {/* Chat Input */}
-        <div className={`px-4 py-3 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}>
+        <div
+          className={`px-4 py-3 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}
+        >
           <ChatInput
             input={input}
             setInput={setInput}
@@ -704,7 +845,9 @@ export default function Index() {
         </div>
 
         {/* Dive Journal Button & Quick Access */}
-        <div className={`px-4 py-2 border-t ${darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}>
+        <div
+          className={`px-4 py-2 border-t ${darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}
+        >
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => setIsDiveJournalOpen(true)}
@@ -713,15 +856,17 @@ export default function Index() {
                 isAuthenticating
                   ? "opacity-50 cursor-not-allowed bg-gray-400"
                   : darkMode
-                  ? "bg-blue-600 hover:bg-blue-500 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
+                    ? "bg-blue-600 hover:bg-blue-500 text-white"
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
             >
               📝 {isAuthenticating ? "Loading..." : "Add Dive Log"}
             </button>
-            
+
             <div className="flex items-center gap-3 text-sm">
-              <span className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+              <span
+                className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}
+              >
                 📊 {diveLogs.length} logs recorded
               </span>
               {diveLogs.length > 0 && (
@@ -741,8 +886,12 @@ export default function Index() {
 
           {/* Quick Recent Dive Logs Preview */}
           {diveLogs.length > 0 && (
-            <div className={`mt-3 pt-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-              <div className={`text-xs font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+            <div
+              className={`mt-3 pt-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+            >
+              <div
+                className={`text-xs font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+              >
                 🏊‍♂️ Recent Dives
               </div>
               <div className="space-y-1">
@@ -758,14 +907,19 @@ export default function Index() {
                   >
                     <div className="flex justify-between items-center">
                       <span className="font-medium">
-                        {log.reachedDepth || log.targetDepth}m - {log.discipline || 'Freedive'}
+                        {log.reachedDepth || log.targetDepth}m -{" "}
+                        {log.discipline || "Freedive"}
                       </span>
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        {log.date || 'Recent'}
+                      <span
+                        className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                      >
+                        {log.date || "Recent"}
                       </span>
                     </div>
                     {log.location && (
-                      <div className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      <div
+                        className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                      >
                         📍 {log.location}
                       </div>
                     )}
@@ -774,7 +928,9 @@ export default function Index() {
                 {diveLogs.length > 2 && (
                   <div
                     className={`text-xs text-center py-1 cursor-pointer ${
-                      darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700"
+                      darkMode
+                        ? "text-blue-400 hover:text-blue-300"
+                        : "text-blue-600 hover:text-blue-700"
                     }`}
                     onClick={() => setIsDiveJournalOpen(true)}
                   >
@@ -787,25 +943,29 @@ export default function Index() {
         </div>
       </div>
 
-
-
       {/* ✅ DIVE JOURNAL SIDEBAR - Now includes both form and display */}
       {isDiveJournalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
-            darkMode ? "bg-gray-900" : "bg-white"
-          }`}>
-            <div className={`flex justify-between items-center p-4 border-b ${
-              darkMode ? "border-gray-700" : "border-gray-200"
-            }`}>
-              <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+          <div
+            className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
+              darkMode ? "bg-gray-900" : "bg-white"
+            }`}
+          >
+            <div
+              className={`flex justify-between items-center p-4 border-b ${
+                darkMode ? "border-gray-700" : "border-gray-200"
+              }`}
+            >
+              <h2
+                className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}
+              >
                 🤿 Dive Journal
               </h2>
-              <button 
+              <button
                 onClick={() => setIsDiveJournalOpen(false)}
                 className={`text-2xl transition-colors ${
-                  darkMode 
-                    ? "text-gray-400 hover:text-white" 
+                  darkMode
+                    ? "text-gray-400 hover:text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -813,8 +973,8 @@ export default function Index() {
               </button>
             </div>
             <div className="h-[calc(95vh-80px)]">
-              <DiveJournalSidebarCard 
-                userId={userId} 
+              <DiveJournalSidebarCard
+                userId={userId}
                 darkMode={darkMode}
                 onSubmit={handleDiveLogSubmit}
                 onDelete={handleDiveLogDelete}
@@ -841,9 +1001,9 @@ export default function Index() {
 async function queryPinecone(query) {
   if (!query?.trim()) return [];
   try {
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000';
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000";
 
     // ✅ Use the chat-embed endpoint for Pinecone queries
     const response = await fetch(`${baseUrl}/api/chat-embed`, {
@@ -851,9 +1011,9 @@ async function queryPinecone(query) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: query,
-        userId: 'frontend-user',
-        profile: { pb: 50 } // Default profile
-      })
+        userId: "frontend-user",
+        profile: { pb: 50 }, // Default profile
+      }),
     });
 
     if (!response.ok) {
@@ -863,9 +1023,11 @@ async function queryPinecone(query) {
 
     const result = await response.json();
     // Extract the AI response content
-    return result.assistantMessage?.content ? [result.assistantMessage.content] : [];
+    return result.assistantMessage?.content
+      ? [result.assistantMessage.content]
+      : [];
   } catch (error) {
-    console.error('❌ Chat API error:', error.message);
+    console.error("❌ Chat API error:", error.message);
     return [];
   }
 }

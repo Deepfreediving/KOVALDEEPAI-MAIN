@@ -13,7 +13,11 @@ interface AnalysisResult {
  */
 export function analyzeLog(entry: LogEntry): AnalysisResult {
   // ✅ Validate input
-  if (!entry || typeof entry.maxDepth !== "number" || !Array.isArray(entry.issueTags)) {
+  if (
+    !entry ||
+    typeof entry.maxDepth !== "number" ||
+    !Array.isArray(entry.issueTags)
+  ) {
     return {
       priority: "invalid",
       notes: "Invalid log entry format provided.",

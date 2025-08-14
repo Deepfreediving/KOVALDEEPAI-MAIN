@@ -1,29 +1,29 @@
-import fs from 'fs';
-import path from 'path';
-import { Pinecone } from '@pinecone-database/pinecone';
-import OpenAI from 'openai';
-import dotenv from 'dotenv';
+import fs from "fs";
+import path from "path";
+import { Pinecone } from "@pinecone-database/pinecone";
+import OpenAI from "openai";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || '' });
-const index = pinecone.index(process.env.PINECONE_INDEX || '');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
+const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || "" });
+const index = pinecone.index(process.env.PINECONE_INDEX || "");
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'koval-lessons');
+const DATA_DIR = path.join(process.cwd(), "data", "koval-lessons");
 
 // Helper: Split text into chunks
 function chunkText(text: string, maxLength = 500): string[] {
   const sentences = text.split(/(?<=[.?!])\s+/);
   const chunks: string[] = [];
-  let current = '';
+  let current = "";
 
   for (const sentence of sentences) {
     if ((current + sentence).length > maxLength && current.length > 0) {
       chunks.push(current.trim());
       current = sentence;
     } else {
-      current += ' ' + sentence;
+      current += " " + sentence;
     }
   }
   if (current.trim()) chunks.push(current.trim());
@@ -32,7 +32,7 @@ function chunkText(text: string, maxLength = 500): string[] {
 
 async function embedText(text: string): Promise<number[]> {
   const res = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
+    model: "text-embedding-3-small",
     input: text,
   });
   return res.data[0].embedding;
@@ -40,7 +40,7 @@ async function embedText(text: string): Promise<number[]> {
 
 async function processFile(filePath: string) {
   const fileName = path.basename(filePath);
-  const rawText = fs.readFileSync(filePath, 'utf-8');
+  const rawText = fs.readFileSync(filePath, "utf-8");
   const chunks = chunkText(rawText);
 
   console.log(`📂 Processing: ${fileName} (${chunks.length} chunks)`);
@@ -57,8 +57,8 @@ async function processFile(filePath: string) {
           source: fileName,
           chunkIndex: i,
           text: chunk,
-          approvedBy: 'Koval',
-          depthRange: 'all',
+          approvedBy: "Koval",
+          depthRange: "all",
         },
       },
     ]);
@@ -67,14 +67,14 @@ async function processFile(filePath: string) {
 
 async function main() {
   if (!fs.existsSync(DATA_DIR)) {
-    console.error('❌ No koval-lessons directory found.');
+    console.error("❌ No koval-lessons directory found.");
     return;
   }
 
-  const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.txt'));
+  const files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".txt"));
 
   if (files.length === 0) {
-    console.log('⚠️ No .txt files found in koval-lessons folder.');
+    console.log("⚠️ No .txt files found in koval-lessons folder.");
     return;
   }
 
@@ -82,7 +82,7 @@ async function main() {
     await processFile(path.join(DATA_DIR, file));
   }
 
-  console.log('✅ Pinecone seeding completed.');
+  console.log("✅ Pinecone seeding completed.");
 }
 
-main().catch(err => console.error('❌ Error seeding Pinecone:', err));
+main().catch((err) => console.error("❌ Error seeding Pinecone:", err));

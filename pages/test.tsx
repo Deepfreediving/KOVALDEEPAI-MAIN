@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 interface DiveLog {
   id: string;
@@ -18,7 +18,7 @@ export default function TestPage() {
   const runTests = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/test/wix-backend');
+      const response = await fetch("/api/test/wix-backend");
       const results = await response.json();
       setTestResults(results);
     } catch (error) {
@@ -29,39 +29,41 @@ export default function TestPage() {
   };
 
   const loadLocalStorage = () => {
-    const saved = JSON.parse(localStorage.getItem('savedDiveLogs') || '[]');
+    const saved = JSON.parse(localStorage.getItem("savedDiveLogs") || "[]");
     setSavedLogs(saved);
   };
 
   const clearLocalStorage = () => {
-    localStorage.removeItem('savedDiveLogs');
-    localStorage.removeItem('diveJournalDraft');
+    localStorage.removeItem("savedDiveLogs");
+    localStorage.removeItem("diveJournalDraft");
     setSavedLogs([]);
-    alert('Local storage cleared!');
+    alert("Local storage cleared!");
   };
 
   const testDiveLogSave = async () => {
     try {
       const testData = {
-        userId: 'test-user-' + Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        disciplineType: 'depth',
-        discipline: 'Test Dive',
-        location: 'Test Location',
-        targetDepth: '30',
-        reachedDepth: '28',
-        notes: 'This is a test dive log entry'
+        userId: "test-user-" + Date.now(),
+        date: new Date().toISOString().split("T")[0],
+        disciplineType: "depth",
+        discipline: "Test Dive",
+        location: "Test Location",
+        targetDepth: "30",
+        reachedDepth: "28",
+        notes: "This is a test dive log entry",
       };
 
-      const response = await fetch('/api/analyze/save-dive-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testData)
+      const response = await fetch("/api/analyze/save-dive-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(testData),
       });
 
       const result = await response.json();
-      alert(`Save test: ${response.ok ? 'SUCCESS' : 'FAILED'}\n${JSON.stringify(result, null, 2)}`);
-      
+      alert(
+        `Save test: ${response.ok ? "SUCCESS" : "FAILED"}\n${JSON.stringify(result, null, 2)}`,
+      );
+
       if (response.ok) {
         loadLocalStorage(); // Refresh local storage view
       }
@@ -72,8 +74,10 @@ export default function TestPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">🔧 Koval AI Diagnostic Test Page</h1>
-      
+      <h1 className="text-2xl font-bold mb-6">
+        🔧 Koval AI Diagnostic Test Page
+      </h1>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Test Controls */}
         <div className="space-y-4">
@@ -85,9 +89,9 @@ export default function TestPage() {
                 disabled={loading}
                 className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
               >
-                {loading ? 'Running Tests...' : 'Run Backend Tests'}
+                {loading ? "Running Tests..." : "Run Backend Tests"}
               </button>
-              
+
               <button
                 onClick={testDiveLogSave}
                 className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
@@ -106,7 +110,7 @@ export default function TestPage() {
               >
                 Load Saved Dive Logs ({savedLogs.length})
               </button>
-              
+
               <button
                 onClick={clearLocalStorage}
                 className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
@@ -136,12 +140,15 @@ export default function TestPage() {
               <div className="space-y-2 max-h-64 overflow-auto">
                 {savedLogs.map((log, index) => (
                   <div key={index} className="bg-white p-2 rounded border">
-                    <div className="font-medium">{log.date} - {log.discipline}</div>
+                    <div className="font-medium">
+                      {log.date} - {log.discipline}
+                    </div>
                     <div className="text-sm text-gray-600">
-                      📍 {log.location} | 🎯 {log.targetDepth}m → {log.reachedDepth}m
+                      📍 {log.location} | 🎯 {log.targetDepth}m →{" "}
+                      {log.reachedDepth}m
                     </div>
                     <div className="text-xs text-gray-500">
-                      Synced: {log.syncedToWix ? '✅' : '❌'} | ID: {log.id}
+                      Synced: {log.syncedToWix ? "✅" : "❌"} | ID: {log.id}
                     </div>
                   </div>
                 ))}

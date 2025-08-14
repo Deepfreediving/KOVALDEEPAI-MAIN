@@ -45,8 +45,10 @@ if (unused.length === 0) {
   console.log("✅ No unused API files detected.");
 } else {
   console.log("⚠️ Potentially unused files (review before deleting):\n");
-  unused.forEach((file) => console.log("   - " + path.relative(projectPath, file)));
+  unused.forEach((file) =>
+    console.log("   - " + path.relative(projectPath, file)),
+  );
   console.log(
-    "\n💡 Tip: Search for these filenames in VS Code (Cmd+Shift+F) to confirm they are not imported anywhere."
+    "\n💡 Tip: Search for these filenames in VS Code (Cmd+Shift+F) to confirm they are not imported anywhere.",
   );
 }

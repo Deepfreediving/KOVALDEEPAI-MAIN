@@ -40,7 +40,8 @@ export function useWixAuthStatus(autoRedirect = true): WixAuthState {
           setState({
             loading: false,
             authenticated: false,
-            error: err.response?.data?.message || "Failed to check authentication",
+            error:
+              err.response?.data?.message || "Failed to check authentication",
           });
 
           if (autoRedirect) {

@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST instead." });
+    return res
+      .status(405)
+      .json({ error: "Method not allowed. Use POST instead." });
   }
 
   try {
@@ -8,7 +10,9 @@ export default async function handler(req, res) {
 
     // Validate input
     if (!collectionId || typeof collectionId !== "string") {
-      return res.status(400).json({ error: "Invalid or missing 'collectionId'." });
+      return res
+        .status(400)
+        .json({ error: "Invalid or missing 'collectionId'." });
     }
 
     if (!item || typeof item !== "object" || Array.isArray(item)) {
@@ -29,7 +33,7 @@ export default async function handler(req, res) {
     const response = await fetch(url, {
       method,
       headers: {
-        "Authorization": `Bearer ${process.env.WIX_API_KEY}`,
+        Authorization: `Bearer ${process.env.WIX_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -46,7 +50,9 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      message: isUpdate ? "Item updated successfully" : "Item created successfully",
+      message: isUpdate
+        ? "Item updated successfully"
+        : "Item created successfully",
       data,
     });
   } catch (error) {
