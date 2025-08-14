@@ -10,8 +10,11 @@ export default function DiveJournalSidebarCard({
   loadingDiveLogs, 
   editLogIndex, 
   setEditLogIndex,
+  editingLog,        // ✅ V5.0: Log being edited
+  setEditingLog,     // ✅ V5.0: Set editing log state
   setMessages,       // For analysis integration
-  onRefreshDiveLogs  // 🚀 NEW: To refresh dive logs in parent
+  onRefreshDiveLogs, // 🚀 NEW: To refresh dive logs in parent
+  onEditDiveLog      // ✅ V5.0: Edit callback
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -23,6 +26,11 @@ export default function DiveJournalSidebarCard({
         success: result.success,
         userId: userId
       });
+      
+      // Clear editing state after save
+      if (setEditingLog) {
+        setEditingLog(null);
+      }
       
       // Call parent onSubmit callback if provided
       if (onSubmit) {
@@ -74,6 +82,8 @@ export default function DiveJournalSidebarCard({
           onDiveLogSaved={handleDiveLogSaved}
           onDiveLogDeleted={onDelete}
           onRefreshDiveLogs={onRefreshDiveLogs}
+          editingLog={editingLog} // ✅ V5.0: Pass editing log
+          onEditDiveLog={onEditDiveLog} // ✅ V5.0: Pass edit callback for SavedDiveLogsViewer
         />
       </div>
     </div>

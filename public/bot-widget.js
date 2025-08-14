@@ -211,29 +211,34 @@
         
         if (validOrigin && event.data.type === 'USER_DATA_RESPONSE' && event.data.userData) {
           const wixUserData = event.data.userData;
-          console.log('✅ Received authentic user data from Wix page:', wixUserData);
+          console.log('✅ V5.0: Received authentic user data from Wix page:', wixUserData);
           
-          // Update userData with real Wix user data
+          // Update userData with real Wix user data using V5.0 standards
           userData = {
             ...userData,
-            userId: wixUserData.userId,
-            userName: wixUserData.userId,  // ✅ Show user ID directly
-            userEmail: wixUserData.profile?.loginEmail || '',
+            userId: wixUserData.userId || wixUserData.id,  // ✅ V5.0: Support both field names
+            memberId: wixUserData.userId || wixUserData.id,  // ✅ V5.0: Explicit member ID
+            userName: wixUserData.userId || wixUserData.id,  // ✅ V5.0: Use raw member ID
+            userEmail: wixUserData.profile?.loginEmail || wixUserData.email || '',
             profilePhoto: wixUserData.profile?.profilePhoto || '',
-            nickname: wixUserData.profile?.nickname || wixUserData.profile?.displayName,
+            nickname: wixUserData.profile?.nickname || wixUserData.profile?.displayName || wixUserData.nickname || `Member-${wixUserData.userId || wixUserData.id}`,
             isGuest: false,
-            source: 'wix-page-authenticated',
+            source: 'wix-page-authenticated-v5.0',
+            memberDetectionMethod: 'wix-frontend-bridge',
+            version: '5.0.0',
             theme: theme,
             diveLogs: wixUserData.userDiveLogs || [],
             memories: wixUserData.userMemories || []
           };
           
-          console.log('🔄 Updated widget userData:', {
+          console.log('🔄 V5.0: Updated widget userData:', {
             userId: userData.userId,
+            memberId: userData.memberId,
             userName: userData.userName,
             nickname: userData.nickname,
             hasProfilePhoto: !!userData.profilePhoto,
-            source: userData.source
+            source: userData.source,
+            detectionMethod: userData.memberDetectionMethod
           });
           
           // If iframe is ready, send updated user data
@@ -247,13 +252,15 @@
       // Add message listener
       window.addEventListener('message', handleParentMessage);
 
-      // ✅ ENHANCED USER DATA with better defaults
+      // ✅ V5.0 ENHANCED USER DATA with improved member detection
       let userData = {
         userId: 'guest-' + Date.now(),  // ✅ Use consistent guest format
         userName: 'guest-' + Date.now(),  // ✅ Show ID format directly
-        source: 'wix-widget-enhanced',
+        source: 'wix-widget-v5.0-enhanced',
+        version: '5.0.0',
         theme: theme,  // ✅ Pass theme to embed
-        parentUrl: window.location.href
+        parentUrl: window.location.href,
+        memberDetectionMethod: null
       };
 
       // ✅ REQUEST USER DATA FROM PARENT WIX PAGE
@@ -288,21 +295,25 @@
             if (currentUser.loggedIn === true && currentUser.id) {
               userData = {
                 ...userData,
-                userId: currentUser.id,  // ✅ Use the actual Wix member ID (no prefix)
-                userName: `User-${currentUser.id}`,  // ✅ Use member ID format
+                userId: currentUser.id,  // ✅ V5.0: Use actual Wix member ID (no prefix)
+                userName: currentUser.id,  // ✅ V5.0: Use raw member ID for consistency
                 userEmail: currentUser.loginEmail || '',
-                nickname: `User-${currentUser.id}`,  // ✅ Use member ID format
+                nickname: currentUser.nickname || currentUser.displayName || `Member-${currentUser.id}`,
                 profilePhoto: currentUser.picture || '',
                 wixId: currentUser.id,
+                memberId: currentUser.id,  // ✅ V5.0: Explicit member ID field
                 isGuest: false,
-                source: 'wix-authenticated',
+                source: 'wix-authenticated-v5.0',
+                memberDetectionMethod: 'wixUsers.currentUser',
                 theme: theme  // ✅ Keep theme
               };
-              console.log('✅ Wix user authenticated with real member ID:', {
+              console.log('✅ V5.0: Wix user authenticated with real member ID:', {
                 userId: userData.userId,
+                memberId: userData.memberId,
                 userName: userData.userName,
                 nickname: userData.nickname,
-                hasPhoto: !!userData.profilePhoto
+                hasPhoto: !!userData.profilePhoto,
+                detectionMethod: userData.memberDetectionMethod
               });
               return true;
             } else {
@@ -317,11 +328,15 @@
               if (user && user.loggedIn && user.id) {
                 userData = {
                   ...userData,
-                  userId: 'wix-' + user.id,
-                  userName: user.nickname || user.displayName || user.loginEmail || 'Wix User',
+                  userId: user.id,  // ✅ V5.0: Use actual member ID
+                  memberId: user.id,  // ✅ V5.0: Explicit member ID field
+                  userName: user.id,  // ✅ V5.0: Use raw member ID for consistency
                   userEmail: user.loginEmail || '',
+                  nickname: user.nickname || user.displayName || user.loginEmail || `Member-${user.id}`,
                   wixId: user.id,
-                  source: 'wix-blocks-authenticated',
+                  source: 'wix-blocks-authenticated-v5.0',
+                  memberDetectionMethod: '$w.user',
+                  version: '5.0.0',
                   theme: theme
                 };
                 
@@ -1030,10 +1045,12 @@
   };
 
   const loadTime = new Date().toLocaleTimeString();
-  console.log('🚀 Koval AI Widget v4.0-OPENAI-ENHANCED loaded safely - Cache: ' + Date.now());
+  console.log('🚀 Koval AI Widget v5.0-DIVELOGS-ENHANCED loaded safely - Cache: ' + Date.now());
   console.log('🎯 Widget loaded at: ' + loadTime);
-  console.log('🔄 ENHANCED ERROR HANDLING AND OPENAI RELIABILITY APPLIED!');
+  console.log('🔄 V5.0: REAL MEMBER ID DETECTION AND DIVELOGS COLLECTION FIXES APPLIED!');
   console.log('✅ Message types supported: EMBED_READY, CHAT_MESSAGE, SAVE_DIVE_LOG, USER_AUTH, THEME_CHANGE');
   console.log('🛡️ Enhanced error monitoring and timeout handling active');
   console.log('🤖 OpenAI reliability improvements with retry logic and fallbacks');
+  console.log('🆔 V5.0: Real Wix Member ID detection (no session-based prefixes)');
+  console.log('💾 V5.0: DiveLogs collection save fixes with correct field mapping');
 })();

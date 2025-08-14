@@ -11,7 +11,8 @@ export default function DiveJournalDisplay({
   onDiveLogSaved,     // 🚀 NEW: Callback when dive log is saved
   onDiveLogDeleted,   // 🚀 NEW: Callback when dive log is deleted
   onRefreshDiveLogs,  // 🚀 NEW: Callback to refresh dive logs in parent
-  editingLog = null   // 🚀 NEW: Log to edit (pre-fills form)
+  editingLog = null,  // 🚀 NEW: Log to edit (pre-fills form)
+  onEditDiveLog       // ✅ V5.0: Edit callback to pass to SavedDiveLogsViewer
 }) {
   const [logs, setLogs] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -130,19 +131,54 @@ export default function DiveJournalDisplay({
         const result = await response.json();
         console.log('✅ DiveJournalDisplay: Save successful:', result);
         
-        // 🚀 STEP 2: Update local state
+        // 🚀 STEP 2: Update local state with proper deduplication
         let updatedLogs;
         if (isEditMode) {
           updatedLogs = logs.map(log => log.id === newLog.id ? newLog : log);
+          console.log('✅ DiveJournalDisplay: Updated existing log in local state');
         } else {
-          updatedLogs = [...logs, newLog];
+          // Check for duplicates before adding
+          const existingLog = logs.find(log => 
+            log.id === newLog.id || 
+            (log.date === newLog.date && 
+             log.reachedDepth === newLog.reachedDepth && 
+             log.location === newLog.location)
+          );
+          
+          if (existingLog) {
+            console.log('⚠️ DiveJournalDisplay: Duplicate log detected, updating instead of adding');
+            updatedLogs = logs.map(log => 
+              (log.id === newLog.id || 
+               (log.date === newLog.date && 
+                log.reachedDepth === newLog.reachedDepth && 
+                log.location === newLog.location)) ? newLog : log
+            );
+          } else {
+            updatedLogs = [...logs, newLog];
+            console.log('✅ DiveJournalDisplay: Added new log to local state');
+          }
         }
         setLogs(updatedLogs);
         
-        // 🚀 STEP 3: Update localStorage
+        // 🚀 STEP 3: Update localStorage with deduplication
         try {
-          localStorage.setItem(`diveLogs-${userId}`, JSON.stringify(updatedLogs));
-          console.log('💾 DiveJournalDisplay: Updated localStorage');
+          const storageKey = `diveLogs-${userId}`;
+          const existingLogs = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          
+          // Deduplicate logs in localStorage too
+          const filteredExisting = existingLogs.filter(log => 
+            log.id !== newLog.id && 
+            !(log.date === newLog.date && 
+              log.reachedDepth === newLog.reachedDepth && 
+              log.location === newLog.location)
+          );
+          
+          const finalLogs = [...filteredExisting, newLog].sort((a, b) => 
+            new Date(b.date) - new Date(a.date)
+          );
+          
+          localStorage.setItem(storageKey, JSON.stringify(finalLogs));
+          console.log('💾 DiveJournalDisplay: Updated localStorage with deduplication');
         } catch (error) {
           console.warn("⚠️ DiveJournalDisplay: Failed to update localStorage:", error);
         }

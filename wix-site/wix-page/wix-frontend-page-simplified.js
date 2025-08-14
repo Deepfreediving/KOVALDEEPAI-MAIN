@@ -886,7 +886,7 @@ function initializeWidgetRobust(widget) {
         })
         .catch(function(error) {
             console.warn("⚠️ User data failed, using fallback:", error);
-            var fallbackData = createFallbackUserData();
+            var fallbackData = createV5FallbackUserData();
             sendUserDataToWidget(widget, fallbackData);
             setupMessageHandlers(widget);
         });
@@ -947,105 +947,134 @@ function createWidgetIframe(widget, sessionData) {
     }
 }
 
-// ===== GET USER DATA WITH ROBUST FALLBACK =====
+// ===== V5.0: GET USER DATA WITH REAL MEMBER ID DETECTION =====
 function getUserDataWithFallback() {
     return new Promise(function(resolve) {
-        console.log("🔍 Attempting to get user data...");
+        console.log("🔍 V5.0: Attempting to get user data with real member ID detection...");
         
         // Try to get member data, but don't fail if it doesn't work
         try {
             currentMember.getMember()
                 .then(function(member) {
-                    console.log("📋 Member API response:", member);
+                    console.log("📋 V5.0: Member API response:", member);
                     
                     if (member && member.loggedIn && member._id) {
-                        // SUCCESS: Create authenticated user data
+                        // SUCCESS: Create authenticated user data with V5.0 standards
                         var profile = member.profile || {};
                         var authenticatedData = {
-                            userId: member._id,
+                            userId: member._id,  // ✅ V5.0: Use raw Wix member ID
+                            memberId: member._id,  // ✅ V5.0: Explicit member ID field
                             userEmail: member.loginEmail || '',
-                            userName: profile.nickname || member.loginEmail || 'User',
+                            userName: member._id,  // ✅ V5.0: Use member ID for consistency
+                            nickname: profile.nickname || profile.displayName || `Member-${member._id}`,
                             firstName: profile.firstName || '',
                             lastName: profile.lastName || '',
                             profilePicture: profile.photo || '',
                             isGuest: false,
-                            source: 'wix-authenticated'
+                            source: 'wix-authenticated-v5.0',
+                            memberDetectionMethod: 'currentMember.getMember',
+                            version: '5.0.0'
                         };
                         
-                        console.log("✅ Authenticated user data created:", {
+                        console.log("✅ V5.0: Authenticated user data created:", {
                             userId: authenticatedData.userId,
+                            memberId: authenticatedData.memberId,
                             userName: authenticatedData.userName,
-                            source: authenticatedData.source
+                            nickname: authenticatedData.nickname,
+                            source: authenticatedData.source,
+                            detectionMethod: authenticatedData.memberDetectionMethod
                         });
                         
                         resolve(authenticatedData);
                     } else {
-                        // NO AUTHENTICATED USER: Use fallback
-                        console.log("ℹ️ No authenticated user, using fallback");
-                        resolve(createFallbackUserData());
+                        // NO AUTHENTICATED USER: Use V5.0 fallback
+                        console.log("ℹ️ V5.0: No authenticated user, using fallback");
+                        resolve(createV5FallbackUserData());
                     }
                 })
                 .catch(function(memberError) {
-                    console.log("ℹ️ Member API error, using fallback:", memberError.message);
-                    resolve(createFallbackUserData());
+                    console.log("ℹ️ V5.0: Member API error, using fallback:", memberError.message);
+                    resolve(createV5FallbackUserData());
                 });
         } catch (apiError) {
-            console.log("ℹ️ Member API not available, using fallback:", apiError.message);
-            resolve(createFallbackUserData());
+            console.log("ℹ️ V5.0: Member API not available, using fallback:", apiError.message);
+            resolve(createV5FallbackUserData());
         }
     });
 }
 
-// ===== CREATE FALLBACK USER DATA =====
-function createFallbackUserData() {
-    var fallbackId = 'session-' + Date.now();
+// ===== V5.0: CREATE FALLBACK USER DATA =====
+function createV5FallbackUserData() {
+    var fallbackId = 'guest-' + Date.now();
     return {
         userId: fallbackId,
+        memberId: null,  // ✅ V5.0: Explicit null for guest users
         userEmail: '',
-        userName: 'Freediver',
+        userName: fallbackId,  // ✅ V5.0: Use guest ID format for consistency
+        nickname: 'Freediver Guest',
         firstName: '',
         lastName: '',
         profilePicture: '',
         isGuest: true,
-        source: 'fallback-session'
+        source: 'fallback-session-v5.0',
+        memberDetectionMethod: 'guest-fallback',
+        version: '5.0.0'
     };
 }
 
-// ===== SEND USER DATA TO WIDGET =====
+// ===== V5.0: SEND USER DATA TO WIDGET =====
 function sendUserDataToWidget(widget, userData) {
-    console.log("📤 Sending user data to widget...");
+    console.log("📤 V5.0: Sending user data to widget...");
     
+    // V5.0: Send as USER_DATA_RESPONSE to match bot-widget.js expectations
     var messageData = {
-        type: 'USER_AUTH',
-        source: 'wix-page',
+        type: 'USER_DATA_RESPONSE',
+        source: 'wix-page-v5.0',
         timestamp: Date.now(),
-        data: userData
+        userData: userData  // ✅ V5.0: Use userData field to match bot-widget.js
     };
+    
+    console.log("📤 V5.0: Message data:", {
+        type: messageData.type,
+        userId: userData.userId,
+        memberId: userData.memberId,
+        source: userData.source,
+        version: userData.version
+    });
     
     // Method 1: Direct widget postMessage
     try {
         if (widget && typeof widget.postMessage === 'function') {
             widget.postMessage(messageData, '*');
-            console.log("✅ Sent data via widget.postMessage");
+            console.log("✅ V5.0: Sent data via widget.postMessage");
         }
     } catch (e) {
-        console.log("ℹ️ Widget postMessage not available");
+        console.log("ℹ️ V5.0: Widget postMessage not available");
     }
     
-    // Method 2: Set global variables for widget detection
+    // Method 2: Set global variables for widget detection (V5.0 compatible)
     try {
         if (typeof $w !== 'undefined' && $w && $w.window) {
             $w.window.wixUserId = userData.userId;
+            $w.window.wixMemberId = userData.memberId;  // ✅ V5.0: Add member ID
             $w.window.wixUserName = userData.userName;
             $w.window.wixUserEmail = userData.userEmail;
-            $w.window.KOVAL_USER_DATA = userData;
-            console.log("✅ Set global variables");
+            $w.window.KOVAL_USER_DATA_V5 = userData;  // ✅ V5.0: Updated global var
+            console.log("✅ V5.0: Set global variables");
         }
     } catch (e) {
-        console.log("ℹ️ Global variables not available");
+        console.log("ℹ️ V5.0: Global variables not available");
     }
     
-    // Method 3: Retry sending data multiple times
+    // Method 3: Use window.postMessage for broader compatibility
+    try {
+        window.postMessage(messageData, '*');
+        console.log("✅ V5.0: Sent via window.postMessage");
+    } catch (e) {
+        console.log("ℹ️ V5.0: Window postMessage not available");
+    }
+    
+    // Method 4: Retry sending data multiple times
     setTimeout(function() { sendDataRetry(widget, messageData); }, 1000);
     setTimeout(function() { sendDataRetry(widget, messageData); }, 3000);
     setTimeout(function() { sendDataRetry(widget, messageData); }, 5000);
@@ -1093,8 +1122,10 @@ function handleWidgetMessage(event, widget) {
                 break;
                 
             case 'SAVE_DIVE_LOG':
-                console.log('💾 Saving dive log from widget');
-                saveDiveLogToWix(event.data.data);
+                // ✅ V5.0: DISABLED - Main app now handles all dive log saves
+                console.log('ℹ️ V5.0: SAVE_DIVE_LOG received but disabled (main app handles saves)');
+                console.log('   • Data:', event.data.data);
+                console.log('   • Main app DiveJournalDisplay now handles all saves to prevent duplicates');
                 break;
                 
             case 'WIDGET_READY':

@@ -53,6 +53,7 @@ export default function Index() {
   const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
   const [editLogIndex, setEditLogIndex] = useState(null);
+  const [editingLog, setEditingLog] = useState(null); // ✅ V5.0: Add editing log state
   const [loadingConnections, setLoadingConnections] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState({
     wix: "⏳ Checking...",
@@ -441,6 +442,13 @@ export default function Index() {
     }
   }, [loadDiveLogs]);
 
+  // ✅ V5.0: ADD EDIT DIVE LOG FUNCTION
+  const handleEditDiveLog = useCallback((log) => {
+    console.log('✏️ Main: Starting edit for dive log:', log.id);
+    setEditingLog(log);
+    setIsDiveJournalOpen(true); // Open the popup journal
+  }, []);
+
   // ✅ WRAPPER FUNCTIONS FOR DIVE JOURNAL COMPONENT
   const handleDiveLogSubmit = useCallback(async (diveData) => {
     await handleJournalSubmit(diveData);
@@ -814,8 +822,11 @@ export default function Index() {
                 loadingDiveLogs={loadingDiveLogs}
                 editLogIndex={editLogIndex}
                 setEditLogIndex={setEditLogIndex}
+                editingLog={editingLog} // ✅ V5.0: Pass editing log
+                setEditingLog={setEditingLog} // ✅ V5.0: Pass state setter
                 setMessages={setMessages} // ✅ Pass setMessages for analysis integration
                 onRefreshDiveLogs={loadDiveLogs} // 🚀 Pass refresh function to update parent state
+                onEditDiveLog={handleEditDiveLog} // ✅ V5.0: Pass edit callback
               />
             </div>
           </div>

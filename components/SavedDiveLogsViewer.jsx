@@ -10,21 +10,32 @@ export default function SavedDiveLogsViewer({
   const [savedLogs, setSavedLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
 
+  // ✅ V5.0: Load logs when component mounts or userId changes
   useEffect(() => {
-    loadSavedLogs();
-  }, []);
+    if (userId) {
+      loadSavedLogs();
+    }
+  }, [userId]); // Load when userId changes
 
   const loadSavedLogs = () => {
-    if (typeof window !== 'undefined') {
-      const saved = JSON.parse(localStorage.getItem('savedDiveLogs') || '[]');
+    if (typeof window !== 'undefined' && userId) {
+      // ✅ V5.0: Use the correct localStorage key format
+      const storageKey = `diveLogs-${userId}`;
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
       setSavedLogs(saved.slice(-10)); // Show last 10 logs
+      console.log('📱 SavedDiveLogsViewer: Loaded', saved.length, 'logs from', storageKey);
     }
   };
 
   const clearSavedLogs = () => {
     if (confirm('Are you sure you want to clear all saved dive logs from local storage?')) {
-      localStorage.removeItem('savedDiveLogs');
+      const storageKey = `diveLogs-${userId}`;
+      localStorage.removeItem(storageKey);
       setSavedLogs([]);
+      // Notify parent to refresh
+      if (onRefreshDiveLogs) {
+        onRefreshDiveLogs();
+      }
     }
   };
 
@@ -114,8 +125,11 @@ export default function SavedDiveLogsViewer({
         const updatedLogs = savedLogs.filter(log => log.id !== logToDelete.id);
         setSavedLogs(updatedLogs);
         
-        // Update localStorage
-        localStorage.setItem('savedDiveLogs', JSON.stringify(updatedLogs));
+        // Update localStorage with correct key
+        const storageKey = `diveLogs-${userId}`;
+        const allLogs = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const filteredLogs = allLogs.filter(log => log.id !== logToDelete.id);
+        localStorage.setItem(storageKey, JSON.stringify(filteredLogs));
         
         // Notify parent
         if (onRefreshDiveLogs) {
@@ -144,6 +158,7 @@ export default function SavedDiveLogsViewer({
   // ✅ Add edit functionality
   const handleEditDiveLog = (log) => {
     if (onEditDiveLog) {
+      console.log('✏️ SavedDiveLogsViewer: Triggering edit for log:', log.id);
       onEditDiveLog(log);
     }
   };
