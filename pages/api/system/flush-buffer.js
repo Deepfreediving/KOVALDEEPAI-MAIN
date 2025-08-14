@@ -143,21 +143,14 @@ async function processDiveLogOperation(diveLogData, userId) {
     processedAt: new Date().toISOString(),
   };
 
-  // Internal API call to save dive log
-  const response = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/analyze/save-dive-log`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updatedData),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Dive log save failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
-  }
-
-  return await response.json();
+  // ✅ TEMPORARY: Skip buffered dive log saves to prevent duplicates  
+  // The main app now handles all dive log saves directly
+  console.log('⏭️ Skipping buffered dive log save to prevent duplicates');
+  return { 
+    success: true, 
+    message: 'Buffered save skipped - handled by main app',
+    logId: diveLogData.id || 'unknown'
+  };
 }
 
 /**

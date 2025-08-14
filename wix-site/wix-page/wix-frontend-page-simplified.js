@@ -1267,8 +1267,9 @@ function saveDiveLogToWix(diveLogData) {
                         hasData: !!logToSave.diveData
                     });
                     
-                    // If connected to Vercel, try to save via API first
-                    if (globalSessionData.connectionStatus === 'connected') {
+                    // ✅ TEMPORARY: Disable Vercel API save to prevent duplicates
+                    // The main app (DiveJournalDisplay) now handles saving to Vercel
+                    if (false && globalSessionData.connectionStatus === 'connected') {
                         console.log('🌐 Saving dive log via Vercel API...');
                         
                         fetch(SESSION_CONFIG.VERCEL_URL + '/api/analyze/save-dive-log', {

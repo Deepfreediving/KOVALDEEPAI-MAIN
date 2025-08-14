@@ -183,11 +183,12 @@ export default function Sidebar({
                             <AIAnalyzeButton
                               diveLog={log}
                               userId={userId}
-                              onAnalysisComplete={(analysis) => {
+                              onAnalysisComplete={(analysisPrompt) => {
+                                // ✅ Send analysis request directly to chatbox
                                 if (setMessages) {
                                   setMessages(prev => [...prev, {
-                                    role: 'assistant',
-                                    content: `🎯 **Analysis of your ${log.discipline || 'freediving'} dive:**\n\n${analysis}`
+                                    role: 'user',
+                                    content: analysisPrompt
                                   }]);
                                 }
                               }}
@@ -236,32 +237,13 @@ export default function Sidebar({
       </div>
             
       {/* Sticky Bottom Save Button */}
-      <div className="p-4 border-t border-gray-300 dark:border-gray-700 space-y-3">
+      <div className="p-4 border-t border-gray-300 dark:border-gray-700">
         <button
           onClick={handleSaveSession}
           className="w-full bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700"
         >
           💾 Save Session
         </button>
-
-        {/* ✅ Connection Status Dock */}
-        <div className="flex space-x-4 text-xl justify-center bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          {loadingConnections ? (
-            <span className="text-sm italic text-gray-500">Checking connections...</span>
-          ) : (
-            <>
-              {connectionStatus.pinecone?.includes("✅") && (
-                <span title="Data Connected">🌲</span>
-              )}
-              {connectionStatus.openai?.includes("✅") && (
-                <span title="AI Connected">🤖</span>
-              )}
-              {connectionStatus.wix?.includes("✅") && (
-                <span title="Site Data Connected">🌀</span>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </aside>
   );
