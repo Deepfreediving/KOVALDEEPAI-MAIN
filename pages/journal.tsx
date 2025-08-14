@@ -361,6 +361,13 @@ export default function Journal({ userId: propUserId, onSave }: JournalProps) {
             ) : (
               <SavedDiveLogsViewer 
                 darkMode={false}
+                userId={userId}
+                setMessages={undefined} // No chat integration in standalone journal
+                onEditDiveLog={(log: any) => {
+                  console.log('📝 Edit dive log requested:', log.id);
+                  // Could open modal or navigate to edit page
+                }}
+                onRefreshDiveLogs={refreshDiveLogs}
               />
             )}
           </div>

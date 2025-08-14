@@ -8,6 +8,10 @@ export const WIX_APP_CONFIG = {
   SITE_URL: 'https://www.deepfreediving.com',
   FUNCTIONS_BASE_URL: 'https://www.deepfreediving.com/_functions',
   
+  // ✅ Add missing properties for API compatibility
+  baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
+  apiKey: process.env.WIX_API_KEY || 'dev-mode',
+  
   // Available Backend Functions
   ENDPOINTS: {
     USER_MEMORY: 'userMemory',

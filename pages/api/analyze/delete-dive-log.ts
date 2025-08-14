@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import handleCors from '@/utils/handleCors';
+import { deleteLogEntry } from '@/utils/diveLogHelpers';
 
 interface DeleteDiveLogRequest {
   userId: string;
   logId: string;
+  wixId?: string; // Wix _id for DiveLogs collection
   source?: string;
 }
 
@@ -19,27 +20,31 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DeleteDiveLogResponse>
 ) {
-  if (req.method !== 'DELETE') {
-    return res.status(405).json({
-      success: false,
-      message: 'Method not allowed',
-      error: 'Only DELETE requests are supported'
-    });
-  }
-
   try {
-    const { userId, logId, source = 'unknown' }: DeleteDiveLogRequest = req.body;
+    // ✅ Handle CORS
+    if (handleCors(req, res)) return;
 
-    console.log(`🗑️ DELETE DIVE LOG API: Starting delete process`, {
+    if (req.method !== 'DELETE') {
+      return res.status(405).json({
+        success: false,
+        message: 'Method not allowed',
+        error: 'Only DELETE requests are supported'
+      });
+    }
+
+    const { userId, logId, wixId, source = 'dive-journal' }: DeleteDiveLogRequest = req.body;
+
+    console.log(`🗑️ DELETE DIVE LOG: Starting delete process`, {
       userId,
       logId,
+      wixId,
       source,
       timestamp: new Date().toISOString()
     });
 
     // Validate required fields
     if (!userId || !logId) {
-      console.error('❌ DELETE DIVE LOG API: Missing required fields');
+      console.error('❌ DELETE DIVE LOG: Missing required fields');
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: userId and logId are required',
@@ -47,66 +52,34 @@ export default async function handler(
       });
     }
 
-    // Step 1: Delete from local file system
-    const userDir = path.join(process.cwd(), 'uploads', 'user-data', userId);
-    const diveLogsFile = path.join(userDir, 'dive-logs.json');
-
-    let deleted = false;
-    
+    // 📁 Delete from both local files and Wix using helper function
     try {
-      if (fs.existsSync(diveLogsFile)) {
-        const existingData = JSON.parse(fs.readFileSync(diveLogsFile, 'utf8'));
-        const originalLength = existingData.length;
-        
-        // Filter out the log to delete
-        const updatedLogs = existingData.filter((log: any) => log.id !== logId);
-        
-        if (updatedLogs.length < originalLength) {
-          // Write updated logs back to file
-          fs.writeFileSync(diveLogsFile, JSON.stringify(updatedLogs, null, 2));
-          deleted = true;
-          console.log(`✅ DELETE DIVE LOG API: Deleted from local file system`);
-        } else {
-          console.log(`⚠️ DELETE DIVE LOG API: Log with ID ${logId} not found in local file`);
-        }
-      } else {
-        console.log(`⚠️ DELETE DIVE LOG API: No dive logs file found for user ${userId}`);
-      }
-    } catch (fileError) {
-      console.error('❌ DELETE DIVE LOG API: Error deleting from local file:', fileError);
-    }
-
-    // Step 2: Try to delete from Wix (optional - may fail if Wix is not configured)
-    try {
-      // TODO: Add Wix deletion logic here when Wix integration is available
-      console.log('📝 DELETE DIVE LOG API: Wix deletion skipped (not implemented yet)');
-    } catch (wixError) {
-      console.warn('⚠️ DELETE DIVE LOG API: Wix deletion failed:', wixError);
-      // Don't fail the whole operation if Wix fails
-    }
-
-    if (deleted) {
-      console.log(`✅ DELETE DIVE LOG API: Successfully deleted dive log ${logId}`);
+      const deleteResult = await deleteLogEntry(userId, logId);
+      
+      console.log(`✅ DELETE DIVE LOG: Delete operation completed`, deleteResult);
+      
       return res.status(200).json({
-        success: true,
-        message: 'Dive log deleted successfully',
+        success: deleteResult.success,
+        message: deleteResult.success ? 'Dive log deleted successfully' : 'Failed to delete dive log',
         deletedId: logId
       });
-    } else {
-      console.log(`❌ DELETE DIVE LOG API: Failed to delete dive log ${logId}`);
-      return res.status(404).json({
+    } catch (deleteError) {
+      console.error(`❌ DELETE DIVE LOG: Delete operation failed:`, deleteError);
+      
+      return res.status(500).json({
         success: false,
-        message: 'Dive log not found',
-        error: 'LOG_NOT_FOUND'
+        message: 'Failed to delete dive log',
+        error: deleteError instanceof Error ? deleteError.message : 'Unknown error'
       });
     }
 
   } catch (error) {
-    console.error('❌ DELETE DIVE LOG API: Unexpected error:', error);
+    console.error('❌ DELETE DIVE LOG: Unexpected error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: 'Failed to delete dive log',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }
+

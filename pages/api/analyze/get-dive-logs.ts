@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs/promises";
 import path from "path";
-import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
+import handleCors from "@/utils/handleCors";
+import WIX_APP_CONFIG from '@/lib/wixAppConfig';
+import { decompressDiveLogFromWix } from '@/utils/diveLogCompression';
 
 const LOG_DIR = path.resolve("./data/diveLogs");
 const TMP_LOG_DIR = "/tmp/diveLogs"; // Check both locations for serverless
@@ -39,9 +41,51 @@ export default async function handler(
 
     console.log(`🔍 Loading dive logs for user: ${userId}`);
     
-    const allLogs: DiveLog[] = [];
+    let allLogs: DiveLog[] = [];
 
-    // ✅ METHOD 1: Check for direct user file (your actual logs)
+    // 🌐 METHOD 1: Try to fetch from Wix DiveLogs collection first
+    try {
+      console.log('🌐 Fetching dive logs from Wix DiveLogs collection...');
+      
+      const wixResponse = await fetch(`${WIX_APP_CONFIG.FUNCTIONS_BASE_URL}/dive-journal-repeater`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${WIX_APP_CONFIG.apiKey || 'dev-mode'}`
+        },
+        body: JSON.stringify({
+          action: 'query',
+          collection: 'DiveLogs',
+          userId: userId
+        })
+      });
+
+      if (wixResponse.ok) {
+        const wixData = await wixResponse.json();
+        console.log(`✅ Found ${wixData.data?.items?.length || 0} logs in Wix DiveLogs collection`);
+        
+        if (wixData.data?.items?.length > 0) {
+          // Decompress logs from Wix DiveLogs format
+          const decompressedLogs = wixData.data.items.map((item: any) => {
+            try {
+              return decompressDiveLogFromWix(item);
+            } catch (error) {
+              console.warn('Failed to decompress dive log:', item.diveLogId, error);
+              return null;
+            }
+          }).filter(Boolean);
+          
+          allLogs.push(...decompressedLogs);
+          console.log(`✅ Decompressed ${decompressedLogs.length} logs from Wix`);
+        }
+      } else {
+        console.warn('⚠️ Wix DiveLogs query failed, falling back to local files:', wixResponse.status);
+      }
+    } catch (wixError) {
+      console.warn('⚠️ Wix DiveLogs error, falling back to local files:', wixError);
+    }
+
+    // 📁 METHOD 2: Local file fallback (if no Wix data or for development)
     const userFilePath = path.join(LOG_DIR, `${userId}.json`);
     try {
       await fs.access(userFilePath);

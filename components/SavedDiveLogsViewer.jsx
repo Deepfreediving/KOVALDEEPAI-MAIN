@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 
-export default function SavedDiveLogsViewer({ darkMode }) {
+export default function SavedDiveLogsViewer({ 
+  darkMode, 
+  userId,
+  setMessages,
+  onEditDiveLog,     // Callback to open popup journal for editing
+  onRefreshDiveLogs  // Callback to refresh dive logs in parent
+}) {
   const [savedLogs, setSavedLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
 
@@ -27,6 +33,118 @@ export default function SavedDiveLogsViewer({ darkMode }) {
       return new Date(dateString).toLocaleDateString();
     } catch {
       return dateString;
+    }
+  };
+
+  // ✅ Add analyze functionality
+  const handleAnalyzeDiveLog = async (log) => {
+    if (!log || !userId) {
+      console.warn('⚠️ Missing log or userId for analysis');
+      return;
+    }
+    
+    try {
+      console.log('🔍 Analyzing dive log:', log.id);
+      
+      // Show analyzing message in chat
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `🔄 Analyzing your ${log.discipline || 'freediving'} dive to ${log.reachedDepth || log.targetDepth}m at ${log.location || 'location'}...`
+        }]);
+      }
+      
+      const response = await fetch('/api/analyze/single-dive-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          diveLogData: log
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.analysis) {
+          // Post analysis to chat
+          if (setMessages) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `📊 **Dive Analysis Complete** \n\n${result.analysis}`
+            }]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Analysis error:', error);
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `❌ Failed to analyze dive log: ${error.message}`
+        }]);
+      }
+    }
+  };
+
+  // ✅ Add delete functionality
+  const handleDeleteDiveLog = async (logToDelete) => {
+    if (!logToDelete || !logToDelete.id) {
+      console.warn('⚠️ No log to delete');
+      return;
+    }
+    
+    if (!confirm(`Delete dive log from ${logToDelete.date} at ${logToDelete.location || 'unknown location'}?`)) {
+      return;
+    }
+    
+    try {
+      // Delete from API/Wix
+      const response = await fetch('/api/analyze/delete-dive-log', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          logId: logToDelete.id,
+          source: 'saved-dive-logs-viewer'
+        })
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        const updatedLogs = savedLogs.filter(log => log.id !== logToDelete.id);
+        setSavedLogs(updatedLogs);
+        
+        // Update localStorage
+        localStorage.setItem('savedDiveLogs', JSON.stringify(updatedLogs));
+        
+        // Notify parent
+        if (onRefreshDiveLogs) {
+          onRefreshDiveLogs();
+        }
+        
+        // Show success message
+        if (setMessages) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `🗑️ **Dive Log Deleted** \n\nRemoved dive from ${logToDelete.date} at ${logToDelete.location || 'unknown location'}.`
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Delete error:', error);
+      if (setMessages) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `❌ Failed to delete dive log: ${error.message}`
+        }]);
+      }
+    }
+  };
+
+  // ✅ Add edit functionality
+  const handleEditDiveLog = (log) => {
+    if (onEditDiveLog) {
+      onEditDiveLog(log);
     }
   };
 
@@ -109,6 +227,43 @@ export default function SavedDiveLogsViewer({ darkMode }) {
                   <span className="text-xs opacity-50">
                     {formatDate(log.savedAt)}
                   </span>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-1 mt-2">
+                    <button
+                      onClick={() => handleAnalyzeDiveLog(log)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        darkMode
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                      title="Analyze with AI"
+                    >
+                      🤖 Analyze
+                    </button>
+                    <button
+                      onClick={() => handleEditDiveLog(log)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        darkMode
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                      title="Edit dive log"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDiveLog(log)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        darkMode
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
+                      }`}
+                      title="Delete dive log"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

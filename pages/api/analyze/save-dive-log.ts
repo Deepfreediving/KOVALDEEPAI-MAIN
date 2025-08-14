@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import handleCors from '@/utils/handleCors';
 import { saveLogEntry } from '@/utils/diveLogHelpers'; // KEEP this import!
 import WIX_APP_CONFIG from '@/lib/wixAppConfig';
+import { compressDiveLogForWix, validateDiveLogData } from '@/utils/diveLogCompression';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -37,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('💾 Starting dual save process for dive log...');
 
     // 🚀 STEP 1: Save to LOCAL FILES first (super fast for AI)
-    const localLogData = {
+    const localLogData: any = {
       id: `dive_${userId}_${Date.now()}`,
       timestamp: new Date().toISOString(),
       userId,
@@ -72,165 +73,84 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       syncStatus: 'processing' // Indicates Wix sync is in progress
     });
 
-    // 🌐 STEP 2: Sync to Wix UserMemory Collection (Background processing)
+    // 🌐 STEP 2: Sync to Wix DiveLogs Collection (Background processing)
     (async () => {
       try {
-        console.log('🌐 Syncing dive log to Wix UserMemory collection...');
+        console.log('🌐 Syncing dive log to Wix DiveLogs collection...');
         
-        // ✅ Format for Wix UserMemory Repeater - Optimized for Pattern Analysis
-        const userMemoryData = {
-          userId,
-          dataset: 'UserMemory-@deepfreediving/kovaldeepai-app/Import1', // ✅ Target specific dataset
-          title: `${localLogData.discipline} - ${localLogData.location} (${localLogData.reachedDepth}m)`,
-          date: localLogData.date,
-          discipline: localLogData.discipline,
-          disciplineType: localLogData.disciplineType,
-          location: localLogData.location,
-          targetDepth: localLogData.targetDepth,
-          reachedDepth: localLogData.reachedDepth,
-          mouthfillDepth: localLogData.mouthfillDepth || 0,
-          issueDepth: localLogData.issueDepth || 0,
-          issueComment: localLogData.issueComment || '',
-          exit: localLogData.exit,
-          durationOrDistance: localLogData.durationOrDistance,
-          attemptType: localLogData.attemptType,
-          notes: localLogData.notes,
-          totalDiveTime: localLogData.totalDiveTime || '',
-          surfaceProtocol: localLogData.surfaceProtocol || '',
+        // ✅ Validate and compress data for Wix DiveLogs repeater
+        validateDiveLogData(localLogData);
+        const compressedData = compressDiveLogForWix(localLogData);
+        
+        // Check if compression was successful
+        if (compressedData.error) {
+          console.error('❌ Data compression failed:', compressedData.error);
+          return;
+        }
+        
+        console.log('📦 Compression stats:', {
+          originalSize: 'originalSize' in compressedData ? compressedData.originalSize : 0,
+          compressedSize: 'compressedSize' in compressedData ? compressedData.compressedSize : 0,
+          ratio: ('originalSize' in compressedData && 'compressedSize' in compressedData && compressedData.originalSize) ? 
+            `${(((compressedData.originalSize - compressedData.compressedSize) / compressedData.originalSize) * 100).toFixed(1)}%` : 
+            'N/A'
+        });
+        
+        // ✅ Format for Wix DiveLogs Repeater - Required fields: diveTime, watchedPhoto, diveDate, logEntry, diveLogId, userId
+        const diveLogData = {
+          diveLogId: ('diveLogId' in compressedData ? compressedData.diveLogId : null) || localLogData.id,
+          userId: ('userId' in compressedData ? compressedData.userId : null) || localLogData.userId,
+          diveDate: ('diveDate' in compressedData ? compressedData.diveDate : null) || localLogData.date,
+          diveTime: ('diveTime' in compressedData ? compressedData.diveTime : null) || localLogData.totalDiveTime,
+          watchedPhoto: ('watchedPhoto' in compressedData ? compressedData.watchedPhoto : null) || null,
+          logEntry: ('logEntry' in compressedData ? compressedData.logEntry : null) || JSON.stringify(localLogData),
           squeeze: localLogData.squeeze || false,
-          timestamp: localLogData.timestamp,
-          // ✅ Analysis fields for AI pattern recognition
-          progressionScore: calculateProgressionScore(localLogData),
-          riskFactors: identifyRiskFactors(localLogData),
-          technicalNotes: extractTechnicalNotes(localLogData),
-          // ✅ Metadata for systematic analysis
-          metadata: {
-            type: 'dive-journal-entry',
-            analysisStatus: 'pending',
-            patternAnalysisNeeded: true,
-            source: 'koval-ai-widget',
-            version: '2.0'
-          }
+          compressed: true,
+          syncedAt: new Date().toISOString()
         };
 
-        // ✅ Helper functions for AI analysis preparation
-        function calculateProgressionScore(log: any): number {
-          // Simple progression scoring (0-100)
-          const depthRatio = (log.reachedDepth / log.targetDepth) * 100;
-          const comfortBonus = log.exit === 'Good' ? 10 : 0;
-          const issuesPenalty = log.issueDepth > 0 ? -20 : 0;
-          return Math.max(0, Math.min(100, depthRatio + comfortBonus + issuesPenalty));
-        }
-
-        function identifyRiskFactors(log: any): string[] {
-          const risks = [];
-          if (log.squeeze) risks.push('squeeze-reported');
-          if (log.issueDepth > 0) risks.push('depth-issue');
-          if (log.exit !== 'Good') risks.push('difficult-exit');
-          if (log.reachedDepth > log.targetDepth * 1.1) risks.push('depth-exceeded');
-          return risks;
-        }
-
-        function extractTechnicalNotes(log: any): string {
-          const notes = [];
-          if (log.mouthfillDepth > 0) notes.push(`Mouthfill at ${log.mouthfillDepth}m`);
-          if (log.issueComment) notes.push(`Issue: ${log.issueComment}`);
-          if (log.surfaceProtocol) notes.push(`Surface: ${log.surfaceProtocol}`);
-          return notes.join(' | ');
-        }
-
-        // ✅ Save to UserMemory collection via your Wix App backend using new config
-        const wixResponse = await WIX_APP_CONFIG.userMemory.save(userId, userMemoryData);
-
-        if (wixResponse?.success) {
-          console.log('✅ Wix backend sync completed successfully');
-          
-          // Mark as synced in local file with Wix ID
-          const updatedLogData = { 
-            ...localLogData, 
-            syncedToWix: true, 
-            wixSyncedAt: new Date().toISOString(),
-            wixId: wixResponse._id
-          };
-          await saveLogEntry(userId, updatedLogData);
-        } else {
-          console.warn('⚠️ Wix backend sync failed but local saved:', wixResponse);
-        }
-      } catch (wixError: any) {
-        // ✅ Enhanced error handling for Wix sync
-        const errorMessage = wixError.message || 'Unknown error';
-        
-        console.error(`❌ Wix backend sync error (but local saved): ${errorMessage}`);
-        
-        // ✅ Don't fail the entire request - local save succeeded
-        // Mark the log as needing sync retry
-        try {
-          const retryLogData = { 
-            ...localLogData, 
-            syncedToWix: false,
-            wixSyncError: errorMessage,
-            wixSyncErrorAt: new Date().toISOString(),
-            needsWixSync: true
-          };
-          await saveLogEntry(userId, retryLogData);
-          console.log('✅ Marked dive log for Wix sync retry');
-        } catch (markError) {
-          console.warn('⚠️ Could not mark log for sync retry:', markError);
-        }
-      }
-    })(); // Self-executing async function for background processing
-
-    // 🧠 STEP 3: Record to Memory System for AI Analysis (Background processing)
-    (async () => {
-      try {
-        console.log('🧠 Recording dive log to memory system for AI analysis...');
-        
-        // Call our own record-memory API
-        const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analyze/record-memory`, {
+        // 🚀 STEP 3: Save to Wix DiveLogs Collection via API
+        const wixResponse = await fetch(`${WIX_APP_CONFIG.FUNCTIONS_BASE_URL}/dive-journal-repeater`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${WIX_APP_CONFIG.apiKey || 'dev-mode'}`
+          },
           body: JSON.stringify({
-            log: {
-              date: localLogData.date,
-              disciplineType: localLogData.disciplineType,
-              discipline: localLogData.discipline,
-              location: localLogData.location,
-              targetDepth: localLogData.targetDepth,
-              reachedDepth: localLogData.reachedDepth,
-              mouthfillDepth: localLogData.mouthfillDepth,
-              issueDepth: localLogData.issueDepth,
-              issueComment: localLogData.issueComment,
-              durationOrDistance: localLogData.durationOrDistance,
-              totalDiveTime: localLogData.totalDiveTime,
-              attemptType: localLogData.attemptType,
-              exit: localLogData.exit,
-              surfaceProtocol: localLogData.surfaceProtocol,
-              squeeze: localLogData.squeeze,
-              notes: localLogData.notes
-            },
-            threadId: null, // Let record-memory generate a proper thread ID
-            userId: userId || 'anonymous-user'
+            action: 'insert',
+            collection: 'DiveLogs',
+            data: diveLogData
           })
         });
 
-        if (memoryResponse.ok) {
-          const memoryData = await memoryResponse.json();
-          console.log('✅ Dive log recorded to memory with AI analysis:', memoryData.coachingReport ? 'Analysis generated' : 'No analysis');
+        if (wixResponse.ok) {
+          const wixResult = await wixResponse.json();
+          console.log('✅ Dive log synced to Wix DiveLogs collection:', wixResult.data?._id);
+          
+          // Update local log to mark as synced
+          const updatedLogData = {
+            ...localLogData,
+            syncedToWix: true,
+            wixId: wixResult.data?._id
+          };
+          await saveLogEntry(userId, updatedLogData); // Update local copy
+          
         } else {
-          console.warn('⚠️ Memory recording failed but dive log saved');
+          console.error('❌ Failed to sync to Wix DiveLogs:', wixResponse.status, await wixResponse.text());
         }
-      } catch (memoryError) {
-        console.error('❌ Memory recording error (but dive log saved):', (memoryError as any).message);
-      }
-    })(); // Self-executing async function for background processing
 
-  } catch (error: any) {
-    console.error('❌ Error in save-dive-log:', error);
-    
+      } catch (wixError) {
+        console.error('❌ Wix DiveLogs sync error:', wixError);
+        // Don't fail the entire operation - log is still saved locally
+      }
+    })(); // End background sync
+
+  } catch (error) {
+    console.error('❌ Save dive log error:', error);
     return res.status(500).json({
-      error: 'Save failed',
-      message: error.message || 'Unknown error',
-      details: error.response?.data || null
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to save dive log'
     });
   }
 }

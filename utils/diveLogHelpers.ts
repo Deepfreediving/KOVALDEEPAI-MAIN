@@ -116,3 +116,65 @@ export async function saveLogEntry(userId: string, logData: Record<string, any>)
     }
   }
 }
+
+export async function deleteLogEntry(userId: string, logId: string) {
+  console.log(`🗑️ Deleting dive log ${logId} for user ${userId}`);
+  
+  try {
+    // ✅ PRIMARY: Delete from Wix DiveLogs collection
+    const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    
+    const response = await fetch(`${baseUrl}/api/wix/dive-journal-repeater`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete',
+        collection: 'DiveLogs',
+        userId: userId,
+        diveLogId: logId
+      })
+    });
+
+    let wixDeleted = false;
+    if (response.ok) {
+      const result = await response.json();
+      wixDeleted = result.success;
+      console.log(wixDeleted ? '✅ Deleted from Wix DiveLogs collection' : '⚠️ Wix deletion failed');
+    } else {
+      console.warn('⚠️ Wix delete request failed:', response.status);
+    }
+
+    // ✅ SECONDARY: Delete from local files
+    let fileDeleted = false;
+    try {
+      const userDir = getUserLogDir(userId);
+      const filePath = path.join(userDir, `${logId}.json`);
+      
+      if (fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath);
+        fileDeleted = true;
+        console.log('✅ Deleted local file:', filePath);
+      } else {
+        console.log('📁 Local file not found:', filePath);
+      }
+    } catch (fileError) {
+      console.warn('⚠️ Local file deletion failed:', fileError);
+    }
+
+    return {
+      success: wixDeleted || fileDeleted,
+      wixDeleted,
+      fileDeleted,
+      logId
+    };
+  } catch (error) {
+    console.error('❌ Delete log entry error:', error);
+    return {
+      success: false,
+      wixDeleted: false,
+      fileDeleted: false,
+      logId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}

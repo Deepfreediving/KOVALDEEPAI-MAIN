@@ -228,7 +228,7 @@ export default function Sidebar({
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm italic text-gray-500 mb-2">No dive logs yet. Add your first dive above!</p>
-                  <p className="text-xs text-gray-400">Each log will be saved to your UserMemory database for AI pattern analysis</p>
+                  <p className="text-xs text-gray-400">Each log will be saved to your DiveLogs database for AI pattern analysis</p>
                 </div>
               )}
             </div>
