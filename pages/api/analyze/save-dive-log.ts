@@ -109,29 +109,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           syncedAt: new Date().toISOString()
         };
 
-        // 🚀 STEP 3: Save to Wix DiveLogs Collection via API
-        const wixResponse = await fetch(`${WIX_APP_CONFIG.FUNCTIONS_BASE_URL}/dive-journal-repeater`, {
+        // 🚀 STEP 3: Save to Wix DiveLogs Collection via proper save API
+        const wixResponse = await fetch(`${process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app'}/api/wix/save-wix-data`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${WIX_APP_CONFIG.apiKey || 'dev-mode'}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            action: 'insert',
-            collection: 'DiveLogs',
-            data: diveLogData
+            collectionId: 'DiveLogs',
+            item: diveLogData
           })
         });
 
         if (wixResponse.ok) {
           const wixResult = await wixResponse.json();
-          console.log('✅ Dive log synced to Wix DiveLogs collection:', wixResult.data?._id);
+          console.log('✅ Dive log synced to Wix DiveLogs collection:', wixResult.data?.data?._id || wixResult.data?._id);
           
           // Update local log to mark as synced
           const updatedLogData = {
             ...localLogData,
             syncedToWix: true,
-            wixId: wixResult.data?._id
+            wixId: wixResult.data?.data?._id || wixResult.data?._id
           };
           await saveLogEntry(userId, updatedLogData); // Update local copy
           

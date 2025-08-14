@@ -62,13 +62,12 @@ export async function saveLogEntry(userId: string, logData: Record<string, any>)
       diveLogWatch: logData.discipline || 'freediving'
     };
 
-    const response = await fetch(`${baseUrl}/api/wix/query-wix-data`, {
+    const response = await fetch(`${baseUrl}/api/wix/save-wix-data`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'insert',
-        collection: 'DiveLogs',
-        data: wixLogData
+        collectionId: 'DiveLogs',
+        item: wixLogData
       })
     });
 
