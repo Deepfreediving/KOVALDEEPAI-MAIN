@@ -815,6 +815,7 @@ export default function Index() {
                 editLogIndex={editLogIndex}
                 setEditLogIndex={setEditLogIndex}
                 setMessages={setMessages} // ✅ Pass setMessages for analysis integration
+                onRefreshDiveLogs={loadDiveLogs} // 🚀 Pass refresh function to update parent state
               />
             </div>
           </div>

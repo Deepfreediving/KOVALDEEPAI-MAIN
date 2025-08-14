@@ -1310,6 +1310,14 @@ function saveDiveLogToWix(diveLogData) {
                         tryWixCollectionSave(logToSave)
                             .then(function(result) {
                                 console.log('✅ Dive log saved via Wix collection');
+                                
+                                // 🚀 STEP 4: Also save to localStorage for immediate UI updates
+                                try {
+                                    saveDiveLogToLocalStorage(diveLogData, userData.userId);
+                                } catch (localStorageError) {
+                                    console.warn('⚠️ localStorage save failed:', localStorageError);
+                                }
+                                
                                 resolve(result);
                             })
                             .catch(function(error) {
@@ -1361,6 +1369,98 @@ function tryWixCollectionSave(logToSave) {
             reject(error);
         }
     });
+}
+
+// ===== SAVE DIVE LOG TO LOCAL STORAGE =====
+/**
+ * Save dive log to localStorage for immediate UI updates
+ * Uses the same key format as the main app: diveLogs-${userId}
+ */
+function saveDiveLogToLocalStorage(diveLogData, userId) {
+    try {
+        console.log('💾 Saving dive log to localStorage...', {
+            userId: userId,
+            diveLogId: diveLogData.id || 'new-log',
+            location: diveLogData.location
+        });
+        
+        // Use the same localStorage key format as the main app
+        var storageKey = 'diveLogs-' + userId;
+        
+        // Get existing logs
+        var existingLogs = [];
+        try {
+            var stored = localStorage.getItem(storageKey);
+            if (stored) {
+                existingLogs = JSON.parse(stored);
+            }
+        } catch (parseError) {
+            console.warn('⚠️ Could not parse existing logs, starting fresh:', parseError);
+            existingLogs = [];
+        }
+        
+        // Create formatted log entry for localStorage
+        var logForStorage = {
+            id: diveLogData.id || 'dive_' + userId + '_' + Date.now(),
+            timestamp: new Date().toISOString(),
+            userId: userId,
+            date: diveLogData.date || new Date().toISOString().split('T')[0],
+            disciplineType: diveLogData.disciplineType || 'depth',
+            discipline: diveLogData.discipline || '',
+            location: diveLogData.location || '',
+            targetDepth: parseFloat(diveLogData.targetDepth) || 0,
+            reachedDepth: parseFloat(diveLogData.reachedDepth) || 0,
+            mouthfillDepth: parseFloat(diveLogData.mouthfillDepth) || 0,
+            issueDepth: parseFloat(diveLogData.issueDepth) || 0,
+            squeeze: diveLogData.squeeze || false,
+            exit: diveLogData.exit || '',
+            durationOrDistance: diveLogData.durationOrDistance || '',
+            attemptType: diveLogData.attemptType || '',
+            notes: diveLogData.notes || '',
+            totalDiveTime: diveLogData.totalDiveTime || '',
+            issueComment: diveLogData.issueComment || '',
+            surfaceProtocol: diveLogData.surfaceProtocol || '',
+            source: 'wix-frontend'
+        };
+        
+        // Check if log already exists (avoid duplicates)
+        var existingIndex = existingLogs.findIndex(function(log) {
+            return log.id === logForStorage.id || 
+                   (log.date === logForStorage.date && 
+                    log.reachedDepth === logForStorage.reachedDepth && 
+                    log.location === logForStorage.location);
+        });
+        
+        if (existingIndex >= 0) {
+            // Update existing log
+            existingLogs[existingIndex] = logForStorage;
+            console.log('✅ Updated existing log in localStorage');
+        } else {
+            // Add new log
+            existingLogs.push(logForStorage);
+            console.log('✅ Added new log to localStorage');
+        }
+        
+        // Sort by date (newest first)
+        existingLogs.sort(function(a, b) {
+            return new Date(b.date) - new Date(a.date);
+        });
+        
+        // Save back to localStorage
+        localStorage.setItem(storageKey, JSON.stringify(existingLogs));
+        
+        console.log('✅ Dive log saved to localStorage successfully:', {
+            storageKey: storageKey,
+            totalLogs: existingLogs.length,
+            savedLogId: logForStorage.id
+        });
+        
+        return logForStorage;
+        
+    } catch (error) {
+        console.error('❌ Failed to save dive log to localStorage:', error);
+        throw error;
+    }
 }
 
 // ===== INITIALIZATION COMPLETE =====
