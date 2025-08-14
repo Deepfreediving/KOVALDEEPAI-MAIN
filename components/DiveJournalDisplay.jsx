@@ -120,10 +120,50 @@ export default function DiveJournalDisplay({
       depth: newLog.reachedDepth || newLog.targetDepth,
       date: newLog.date,
       isEditMode,
+      hasImage: !!newEntry.imageFile,
     });
 
     try {
-      // 🚀 STEP 1: Save to Wix via API (backend handles both Wix and localStorage)
+      // 🚀 STEP 1: Handle image upload if present
+      let imageAnalysis = null;
+      if (newEntry.imageFile && !isEditMode) {
+        console.log("📸 DiveJournalDisplay: Uploading and analyzing image...");
+        try {
+          const formData = new FormData();
+          formData.append('image', newEntry.imageFile);
+          formData.append('diveLogId', newLog.id);
+          
+          const imageResponse = await fetch('/api/openai/upload-dive-image', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (imageResponse.ok) {
+            const imageResult = await imageResponse.json();
+            console.log("✅ DiveJournalDisplay: Image analyzed successfully:", imageResult);
+            imageAnalysis = imageResult.data;
+            newLog.imageUrl = imageResult.data?.imageUrl;
+            newLog.imageAnalysis = imageAnalysis;
+            
+            // Show image analysis in chat
+            if (setMessages && imageAnalysis) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `📸 **Image Analysis Complete**\n\n${imageResult.message || 'Dive profile image has been analyzed and will be included in your coaching feedback.'}`,
+                },
+              ]);
+            }
+          } else {
+            console.warn("⚠️ DiveJournalDisplay: Image upload failed:", imageResponse.status);
+          }
+        } catch (imageError) {
+          console.error("❌ DiveJournalDisplay: Image processing error:", imageError);
+        }
+      }
+
+      // 🚀 STEP 2: Save to Wix via API (backend handles both Wix and localStorage)
       console.log("🌐 DiveJournalDisplay: Saving to Wix via API...");
       const response = await fetch("/api/analyze/save-dive-log", {
         method: "POST",
@@ -188,7 +228,7 @@ export default function DiveJournalDisplay({
             storageKey,
           );
 
-          // Get existing logs
+          // Get existing logs from localStorage (not just component state)
           const existingLogs = JSON.parse(
             localStorage.getItem(storageKey) || "[]",
           );
@@ -232,6 +272,10 @@ export default function DiveJournalDisplay({
               verifyLogs.length,
               "logs found",
             );
+            
+            // 🚀 FORCE REFRESH: Update component state with verified data
+            setLogs(verifyLogs);
+            console.log("🔄 DiveJournalDisplay: Component state synchronized with localStorage");
           } else {
             console.error(
               "❌ DiveJournalDisplay: localStorage verification failed - no data found",
@@ -265,6 +309,18 @@ export default function DiveJournalDisplay({
           onRefreshDiveLogs();
         }
 
+        // 🚀 ADDITIONAL: Force sidebar refresh by dispatching storage event
+        try {
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: `diveLogs-${userId}`,
+            newValue: localStorage.getItem(`diveLogs-${userId}`),
+            storageArea: localStorage
+          }));
+          console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");
+        } catch (eventError) {
+          console.warn("⚠️ DiveJournalDisplay: Could not dispatch storage event:", eventError);
+        }
+
         // 🚀 STEP 5: Show success message in chat
         if (setMessages) {
           setMessages((prev) => [
@@ -274,6 +330,49 @@ export default function DiveJournalDisplay({
               content: `✅ **Dive Log ${isEditMode ? "Updated" : "Saved"}** \n\n${newLog.discipline || "Freediving"} dive to ${newLog.reachedDepth || newLog.targetDepth}m at ${newLog.location || "location"} has been ${isEditMode ? "updated" : "saved"} successfully.`,
             },
           ]);
+        }
+
+        // 🚀 STEP 6: Automatically trigger AI analysis for new logs
+        if (!isEditMode && setMessages) {
+          console.log("🤖 DiveJournalDisplay: Triggering automatic AI analysis...");
+          setTimeout(async () => {
+            try {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `🔄 **Analyzing Your Dive**\n\nI'm now analyzing your ${newLog.discipline || "freediving"} dive to ${newLog.reachedDepth || newLog.targetDepth}m for coaching feedback...`,
+                },
+              ]);
+
+              const analysisResponse = await fetch("/api/analyze/single-dive-log", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: userId,
+                  diveLogData: newLog,
+                }),
+              });
+
+              if (analysisResponse.ok) {
+                const analysisResult = await analysisResponse.json();
+                if (analysisResult.success && analysisResult.analysis) {
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      role: "assistant",
+                      content: `📊 **Dive Analysis Complete**\n\n${analysisResult.analysis}`,
+                    },
+                  ]);
+                  console.log("✅ DiveJournalDisplay: Auto-analysis completed");
+                } else {
+                  console.warn("⚠️ DiveJournalDisplay: Analysis failed:", analysisResult);
+                }
+              }
+            } catch (autoAnalysisError) {
+              console.error("❌ DiveJournalDisplay: Auto-analysis error:", autoAnalysisError);
+            }
+          }, 1500); // Small delay to let save message show first
         }
 
         // Reset form and close popup after successful save

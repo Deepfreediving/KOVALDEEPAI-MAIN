@@ -213,12 +213,24 @@ export default function Embed() {
         }
       } else {
         console.log(
-          "ℹ️ Embed: No valid stored userId, will wait for parent data",
+          "ℹ️ Embed: No valid stored userId, setting temporary state and waiting for Wix data...",
         );
-        // Create a session user for now
-        const sessionId = `session-${Date.now()}`;
-        setUserId(sessionId);
-        console.log("✅ Created session user:", sessionId);
+        // 🚀 DON'T create a session user immediately - wait for Wix data first
+        setUserId(""); // Empty state to indicate we're waiting
+        console.log("⏳ Waiting for Wix parent to provide real member data...");
+        
+        // 🚀 Add timeout fallback - if no Wix data arrives in 5 seconds, create session
+        setTimeout(() => {
+          setUserId((currentUserId) => {
+            if (!currentUserId || currentUserId === "") {
+              const sessionId = `session-${Date.now()}`;
+              console.log("⏰ Timeout reached - creating session fallback:", sessionId);
+              localStorage.setItem("kovalUser", sessionId);
+              return sessionId;
+            }
+            return currentUserId; // Don't change if already set
+          });
+        }, 5000); // 5 second timeout
       }
     }
   }, []);
@@ -296,6 +308,93 @@ export default function Embed() {
       }
 
       switch (event.data?.type) {
+        case "USER_DATA_RESPONSE":
+          console.log("👤 USER_DATA_RESPONSE received from Wix:", event.data);
+          
+          if (event.data.userData && event.data.userData.userId) {
+            const userData = event.data.userData;
+            console.log("✅ Processing Wix member data:", {
+              userId: userData.userId,
+              memberId: userData.memberId,
+              isGuest: userData.isGuest,
+              source: userData.source,
+              memberDetectionMethod: userData.memberDetectionMethod
+            });
+            
+            // 🚀 ONLY USE REAL WIX MEMBER IDs - REJECT GUEST/SESSION FALLBACKS
+            if (!userData.isGuest && 
+                userData.memberId && 
+                userData.memberId !== null &&
+                !userData.userId.startsWith("guest-") &&
+                !userData.userId.startsWith("session-")) {
+              
+              console.log("✅ Valid Wix member detected - upgrading from session to real member");
+              
+              // Upgrade from temporary session to real member
+              const previousUserId = userId;
+              const newUserId = userData.userId; // Use the real Wix member ID
+              
+              console.log("🔄 Upgrading user:", {
+                from: previousUserId,
+                to: newUserId,
+                memberDetection: userData.memberDetectionMethod
+              });
+              
+              // Migrate data if we had a temporary session
+              if (previousUserId && previousUserId.startsWith("session-")) {
+                console.log("📦 Migrating data from temporary session to real member");
+                const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
+                if (migrationSuccess) {
+                  console.log("✅ Successfully migrated temporary session data");
+                }
+              }
+              
+              migrateLegacyDiveLogKeys(newUserId);
+              setUserId(newUserId);
+              localStorage.setItem("kovalUser", newUserId);
+              
+              // Set profile data from Wix
+              const wixProfile = {
+                nickname: userData.nickname || userData.userName || "Member",
+                displayName: userData.userName || userData.nickname || "Member",
+                loginEmail: userData.userEmail || "",
+                firstName: userData.firstName || "",
+                lastName: userData.lastName || "",
+                profilePicture: userData.profilePicture || "",
+                source: userData.source || "wix-member",
+                memberDetectionMethod: userData.memberDetectionMethod || "unknown",
+                wixMemberId: userData.memberId,
+                isAuthenticated: true,
+                version: userData.version || "5.0.0"
+              };
+              
+              setProfile(wixProfile);
+              localStorage.setItem("kovalProfile", JSON.stringify(wixProfile));
+              
+              console.log("✅ Wix member setup complete:", {
+                userId: newUserId,
+                memberId: userData.memberId,
+                displayName: wixProfile.displayName,
+                source: wixProfile.source
+              });
+              
+            } else {
+              console.log("⚠️ Received guest/fallback data from Wix - member authentication failed");
+              console.log("   • isGuest:", userData.isGuest);
+              console.log("   • memberId:", userData.memberId);
+              console.log("   • userId pattern:", userData.userId.substring(0, 10) + "...");
+              console.log("   • source:", userData.source);
+              
+              // Create a fallback session ONLY if we don't have any user yet
+              if (!userId || userId === "") {
+                const sessionId = `session-${Date.now()}`;
+                setUserId(sessionId);
+                console.log("⚠️ Created fallback session due to failed member detection:", sessionId);
+              }
+            }
+          }
+          break;
+
         case "initialized":
           console.log("🚀 Widget initialized with data:", event.data.data);
 

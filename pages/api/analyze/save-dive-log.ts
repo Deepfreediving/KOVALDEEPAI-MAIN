@@ -133,47 +133,97 @@ export default async function handler(
           syncedAt: new Date().toISOString(),
         };
 
-        // 🚀 STEP 3: Save to Wix DiveLogs Collection via proper save API
+        // 🚀 STEP 3: Save to Wix DiveLogs Collection via HTTP functions
+        console.log("🌐 Calling Wix HTTP function for dive log save...");
+        
+        // 🚀 SIMPLIFIED: Format data for Wix HTTP function - keep it simple and efficient
+        const wixDiveLogData = {
+          // Required fields (matching DIVELOG_SCHEMA)
+          userId: localLogData.userId,
+          diveDate: localLogData.date,
+          
+          // Core dive data
+          discipline: localLogData.discipline || localLogData.disciplineType || 'freediving',
+          reachedDepth: parseFloat(localLogData.reachedDepth) || 0,
+          targetDepth: parseFloat(localLogData.targetDepth) || 0,
+          diveTime: localLogData.totalDiveTime || '',
+          location: localLogData.location || '',
+          notes: localLogData.notes || '',
+          
+          // Additional dive metrics
+          mouthfillDepth: parseFloat(localLogData.mouthfillDepth) || 0,
+          issueDepth: parseFloat(localLogData.issueDepth) || 0,
+          squeeze: Boolean(localLogData.squeeze),
+          exit: localLogData.exit || '',
+          attemptType: localLogData.attemptType || '',
+          issueComment: localLogData.issueComment || '',
+          surfaceProtocol: localLogData.surfaceProtocol || '',
+          
+          // Metadata for tracking
+          submissionTimestamp: new Date().toISOString(),
+          dataSource: 'vercel-dive-journal',
+          syncVersion: '5.0'
+        };
+
+        console.log("📤 Sending to Wix HTTP function:", {
+          userId: wixDiveLogData.userId,
+          diveDate: wixDiveLogData.diveDate,
+          discipline: wixDiveLogData.discipline,
+          reachedDepth: wixDiveLogData.reachedDepth,
+          location: wixDiveLogData.location
+        });
+
+        // Call Wix HTTP function for dive logs
         const wixResponse = await fetch(
-          `${process.env.BASE_URL || "https://kovaldeepai-main.vercel.app"}/api/wix/save-wix-data`,
+          `https://www.deepfreediving.com/_functions/diveLogs`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "X-API-Version": "master", // Use the master API version
             },
-            body: JSON.stringify({
-              collectionId: "DiveLogs",
-              item: diveLogData,
-            }),
+            body: JSON.stringify(wixDiveLogData),
           },
         );
 
+        console.log("📥 Wix HTTP function response status:", wixResponse.status);
+
         if (wixResponse.ok) {
           const wixResult = await wixResponse.json();
-          console.log(
-            "✅ Dive log synced to Wix DiveLogs collection:",
-            wixResult.data?.data?._id || wixResult.data?._id,
-          );
+          console.log("✅ Dive log synced to Wix DiveLogs collection successfully");
+          console.log("   • Wix Item ID:", wixResult.data?._id || wixResult._id);
+          console.log("   • Performance:", wixResult.performance?.duration || "N/A");
 
           // Update local log to mark as synced
           const updatedLogData = {
             ...localLogData,
             syncedToWix: true,
-            wixId: wixResult.data?.data?._id || wixResult.data?._id,
+            wixId: wixResult.data?._id || wixResult._id,
+            wixSyncTimestamp: new Date().toISOString(),
           };
           await saveLogEntry(userId, updatedLogData); // Update local copy
+          
+          console.log("✅ Complete dive log sync process finished successfully");
         } else {
-          console.error(
-            "❌ Failed to sync to Wix DiveLogs:",
-            wixResponse.status,
-            await wixResponse.text(),
-          );
+          const errorText = await wixResponse.text();
+          console.error("❌ Failed to sync to Wix DiveLogs via HTTP function:");
+          console.error("   • Status:", wixResponse.status);
+          console.error("   • Error:", errorText);
+          
+          // Try to parse error for more details
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error("   • Details:", errorJson.details || errorJson.error);
+            console.error("   • Validation:", errorJson.validation || "N/A");
+          } catch (parseError) {
+            console.error("   • Raw error:", errorText);
+          }
         }
-      } catch (wixError) {
-        console.error("❌ Wix DiveLogs sync error:", wixError);
-        // Don't fail the entire operation - log is still saved locally
+      } catch (wixSyncError) {
+        console.error("❌ Wix sync process failed:", wixSyncError);
       }
-    })(); // End background sync
+    })(); // End of background Wix sync
+
   } catch (error) {
     console.error("❌ Save dive log error:", error);
     return res.status(500).json({

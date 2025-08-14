@@ -12,14 +12,12 @@ import { WixUtilsMaster, MASTER_CONFIG } from '../wix-utils.jsw';
 // 🎯 MASTER CONFIGURATION
 const DIVELOGS_CONFIG = {
   API_VERSIONS: {
-    BASIC: 'basic',           // Legacy support only
-    EXPERT: 'expert',         // Legacy support only  
-    OPTIMIZED: 'optimized',   // Legacy support only
     MASTER: 'master'          // Current standard level
   },
   
   COLLECTION_NAME: 'DiveLogs',
-  SEMANTIC_SEARCH_API: 'https://kovaldeepai-main.vercel.app/api/pinecone',
+  // 🚀 REMOVED: Pinecone dependency - using Wix collections only
+  // SEMANTIC_SEARCH_API: 'https://kovaldeepai-main.vercel.app/api/pinecone',
   
   VALIDATION: {
     REQUIRED_FIELDS: ['userId', 'diveDate'],
@@ -237,7 +235,7 @@ export async function get_diveLogs(request) {
   const version = getApiVersion(request);
   
   try {
-    const { userId, limit = 50, search, discipline, dateFrom, dateTo, semantic } = request.query;
+    const { userId, limit = 50, search, discipline, dateFrom, dateTo } = request.query;
     
     if (!userId) {
       trackMetrics(version, 'query', Date.now() - startTime, true);
@@ -250,7 +248,8 @@ export async function get_diveLogs(request) {
     // Build query based on version
     let query = wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME)
       .eq('userId', userId)
-      .limit(Math.min(parseInt(limit), 100)); // Cap at 100
+      .limit(Math.min(parseInt(limit), 100)) // Cap at 100
+      .descending('diveDate'); // Always sort by date
     
     // Add filters
     if (discipline) {
@@ -265,42 +264,16 @@ export async function get_diveLogs(request) {
       query = query.le('diveDate', dateTo);
     }
     
-    // Basic text search
-    if (search && !semantic) {
-      query = query.contains('notes', search);
-    }
-    
-    // Expert/Optimized: Enhanced ordering
-    if (version !== 'basic') {
-      query = query.descending('diveDate');
+    // Simple text search in notes and location
+    if (search) {
+      query = query.or(
+        wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME).contains('notes', search),
+        wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME).contains('location', search)
+      );
     }
     
     // Execute query
     const results = await query.find();
-    
-    // Master level: Semantic search capability (always enabled)
-    let semanticResults = null;
-    if (semantic && search) {
-      try {
-        const semanticResponse = await fetch(DIVELOGS_CONFIG.SEMANTIC_SEARCH_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: search,
-            userId: userId,
-            type: 'diveLogs',
-            limit: 10
-          })
-        });
-        
-        if (semanticResponse.ok) {
-          semanticResults = await semanticResponse.json();
-          trackMetrics(version, 'semanticSearch', Date.now() - startTime);
-        }
-      } catch (semanticError) {
-        console.warn('⚠️ Semantic search failed:', semanticError.message);
-      }
-    }
     
     const duration = Date.now() - startTime;
     trackMetrics(version, 'query', duration);
@@ -310,18 +283,12 @@ export async function get_diveLogs(request) {
       data: results.items,
       totalCount: results.totalCount,
       hasNext: results.hasNext(),
-      version: version
+      version: version,
+      performance: {
+        duration: `${duration}ms`,
+        queryOptimization: results.items.length > 0 ? 'indexed' : 'scan'
+      }
     };
-    
-    // Master level: Add enhanced data (always enabled)
-    response.performance = {
-      duration: `${duration}ms`,
-      queryOptimization: results.items.length > 0 ? 'indexed' : 'scan'
-    };
-    
-    if (semanticResults) {
-      response.semanticMatches = semanticResults;
-    }
     
     return createResponse(200, response, request);
     

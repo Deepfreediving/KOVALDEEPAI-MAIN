@@ -341,11 +341,23 @@ function performVercelHandshake(userId, wixMemberId, sessionId) {
 function getWixMemberData() {
     return new Promise(function(resolve, reject) {
         try {
+            console.log("🔍 Attempting to get Wix member data...");
+            
             // First, get the current member to get their ID
             currentMember.getMember()
                 .then(function(member) {
-                    if (member && member._id) {
-                        console.log("✅ Current member found:", member.loginEmail);
+                    console.log("📋 Member API response:", {
+                        hasId: !!member?._id,
+                        loggedIn: !!member?.loggedIn,
+                        hasEmail: !!member?.loginEmail,
+                        memberObject: member ? "✅ Available" : "❌ Null"
+                    });
+                    
+                    if (member && member._id && member.loggedIn) {
+                        console.log("✅ Current member found - authenticated user detected");
+                        console.log("   • Member ID:", member._id);
+                        console.log("   • Login Email:", member.loginEmail);
+                        console.log("   • Profile available:", !!member.profile);
                         
                         // Now query the Members/FullData collection for full member data
                         wixData.query('Members/FullData')
@@ -370,36 +382,39 @@ function getWixMemberData() {
                                     resolve({
                                         id: member._id,
                                         email: member.loginEmail,
-                                        nickname: member.profile?.nickname,
-                                        firstName: member.contactDetails?.firstName,
-                                        lastName: member.contactDetails?.lastName,
+                                        nickname: member.profile?.nickname || member.profile?.displayName,
+                                        firstName: member.contactDetails?.firstName || member.profile?.firstName,
+                                        lastName: member.contactDetails?.lastName || member.profile?.lastName,
                                         source: 'currentmember-fallback'
                                     });
                                 }
                             })
                             .catch(function(error) {
-                                console.log("⚠️ Error querying Members/FullData collection:", error);
+                                console.log("⚠️ Error querying Members/FullData collection:", error.message);
                                 // Fallback to basic member data
                                 resolve({
                                     id: member._id,
                                     email: member.loginEmail,
-                                    nickname: member.profile?.nickname,
-                                    firstName: member.contactDetails?.firstName,
-                                    lastName: member.contactDetails?.lastName,
+                                    nickname: member.profile?.nickname || member.profile?.displayName,
+                                    firstName: member.contactDetails?.firstName || member.profile?.firstName,
+                                    lastName: member.contactDetails?.lastName || member.profile?.lastName,
                                     source: 'currentmember-error-fallback'
                                 });
                             });
                     } else {
-                        console.log("ℹ️ No current member (guest user)");
+                        console.log("ℹ️ No authenticated member found");
+                        console.log("   • Member object:", !!member);
+                        console.log("   • Has ID:", !!member?._id);
+                        console.log("   • Logged in:", !!member?.loggedIn);
                         resolve(null);
                     }
                 })
                 .catch(function(error) {
-                    console.log("ℹ️ Member API error (guest mode):", error);
+                    console.log("ℹ️ Member API error (user not logged in):", error.message);
                     resolve(null);
                 });
         } catch (error) {
-            console.log("ℹ️ Member check failed (guest mode):", error);
+            console.log("ℹ️ Member check failed (Wix APIs not available):", error.message);
             resolve(null);
         }
     });
@@ -717,14 +732,56 @@ function setupWidgetMessageHandling(sessionData) {
 function handleEmbedReady(data) {
     console.log("✅ Widget is ready, sending initial data...");
     
-    // Send user data to widget
-    sendMessageToWidget('USER_DATA_INIT', {
+    // 🚀 V5.0: Send USER_DATA_RESPONSE to match embed page expectations
+    var userData = {
         userId: globalSessionData.userId,
-        wixMemberId: globalSessionData.wixMemberId,
-        sessionId: globalSessionData.sessionId,
-        isAuthenticated: globalSessionData.isAuthenticated,
-        connectionStatus: globalSessionData.connectionStatus
-    });
+        memberId: globalSessionData.wixMemberId, // Use memberId field name
+        userEmail: '', // Will be populated from member data if available
+        userName: 'Wix User', // Will be populated from member data if available
+        nickname: 'Freediver',
+        firstName: '',
+        lastName: '',
+        profilePicture: '',
+        isGuest: !globalSessionData.isAuthenticated,
+        source: globalSessionData.isAuthenticated ? 'wix-authenticated-v5.0' : 'wix-fallback-v5.0',
+        memberDetectionMethod: globalSessionData.isAuthenticated ? 'currentMember.getMember' : 'no-member-detected',
+        version: '5.0.0'
+    };
+    
+    // If we have member data, get fresh details
+    if (globalSessionData.isAuthenticated && globalSessionData.wixMemberId) {
+        getWixMemberData()
+            .then(function(memberData) {
+                if (memberData) {
+                    userData.userEmail = memberData.email || '';
+                    userData.userName = memberData.nickname || memberData.firstName || 'Wix Member';
+                    userData.nickname = memberData.nickname || memberData.firstName || 'Freediver';
+                    userData.firstName = memberData.firstName || '';
+                    userData.lastName = memberData.lastName || '';
+                    userData.source = memberData.source || 'wix-authenticated-v5.0';
+                }
+                
+                console.log("📤 Sending USER_DATA_RESPONSE with member details:", {
+                    userId: userData.userId,
+                    memberId: userData.memberId,
+                    isGuest: userData.isGuest,
+                    source: userData.source
+                });
+                
+                sendMessageToWidget('USER_DATA_RESPONSE', { userData: userData });
+            })
+            .catch(function(error) {
+                console.log("⚠️ Error getting fresh member data, sending basic data:", error);
+                sendMessageToWidget('USER_DATA_RESPONSE', { userData: userData });
+            });
+    } else {
+        console.log("📤 Sending USER_DATA_RESPONSE (no member authentication):", {
+            userId: userData.userId,
+            isGuest: userData.isGuest,
+            source: userData.source
+        });
+        sendMessageToWidget('USER_DATA_RESPONSE', { userData: userData });
+    }
 }
 
 /**
@@ -766,64 +823,45 @@ function handleUserAuthRequest(data) {
 
 /**
  * Handle dive log save request
+ * ✅ V5.0 UPDATE: Re-enabled as backup with deduplication to ensure Wix collection saves
  */
 function handleSaveDiveLog(data) {
-    console.log("💾 Widget requesting dive log save...", data);
+    console.log("💾 Widget requesting dive log save - PROCESSING as backup...", data);
     
-    // Validate dive log data
-    if (!data || !data.data) {
-        console.error("❌ Invalid dive log data received:", data);
+    // ✅ V5.0: Re-enable Wix save as backup to ensure data reaches DiveLogs collection
+    if (data && data.data) {
+        console.log("📝 Processing backup dive log save to Wix collection...");
+        
+        // Add a small delay to avoid race conditions with main app save
+        setTimeout(function() {
+            saveDiveLogToWix(data.data)
+                .then(function(result) {
+                    console.log("✅ Backup dive log save to Wix successful:", result._id);
+                    sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
+                        success: true,
+                        backup: true,
+                        wixId: result._id,
+                        message: 'Backup save to Wix DiveLogs collection successful'
+                    });
+                })
+                .catch(function(error) {
+                    console.log("⚠️ Backup dive log save failed, but main app should handle it:", error.message);
+                    sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
+                        success: true,
+                        backup: false,
+                        delegated: true,
+                        message: 'Main app handling save - backup failed but primary should succeed'
+                    });
+                });
+        }, 1000); // 1 second delay to let main app save first
+    } else {
         sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
             success: false,
-            error: 'Invalid dive log data',
-            message: 'Dive log data is missing or invalid'
+            error: 'No dive log data provided'
         });
-        return;
     }
     
-    var diveLogData = data.data;
-    console.log("📝 Processing dive log with data:", {
-        hasUserId: !!diveLogData.userId,
-        hasDate: !!diveLogData.date,
-        hasDepth: !!(diveLogData.reachedDepth || diveLogData.targetDepth),
-        hasLocation: !!diveLogData.location
-    });
-    
-    if (globalSessionData.connectionStatus !== 'connected') {
-        // Buffer the data for later sync
-        console.log("📦 No connection - buffering dive log data");
-        bufferData('saveDiveLog', diveLogData);
-        
-        sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
-            success: true,
-            buffered: true,
-            message: 'Dive log buffered for sync when online'
-        });
-    } else {
-        // Try to save directly to Wix collections
-        console.log("🌐 Connection available - attempting direct save");
-        saveDiveLogToWix(diveLogData)
-            .then(function(result) {
-                console.log("✅ Dive log save successful:", result);
-                sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
-                    success: true,
-                    buffered: false,
-                    data: result,
-                    message: 'Dive log saved to Wix successfully'
-                });
-            })
-            .catch(function(error) {
-                console.error("❌ Wix save failed, buffering:", error);
-                bufferData('saveDiveLog', diveLogData);
-                
-                sendMessageToWidget('SAVE_DIVE_LOG_RESPONSE', {
-                    success: true,
-                    buffered: true,
-                    error: error.message,
-                    message: 'Saved locally, will sync to Wix when possible'
-                });
-            });
-    }
+    console.log("🔄 Dive log save processing initiated - both main app and Wix backup active");
 }
 
 /**
@@ -1326,9 +1364,8 @@ function saveDiveLogToWix(diveLogData) {
                         hasData: !!logToSave.diveData
                     });
                     
-                    // ✅ TEMPORARY: Disable Vercel API save to prevent duplicates
-                    // The main app (DiveJournalDisplay) now handles saving to Vercel
-                    if (false && globalSessionData.connectionStatus === 'connected') {
+                    // ✅ V5.0: Enable Wix save as backup to ensure data reaches DiveLogs collection
+                    if (globalSessionData.connectionStatus === 'connected') {
                         console.log('🌐 Saving dive log via Vercel API...');
                         
                         fetch(SESSION_CONFIG.VERCEL_URL + '/api/analyze/save-dive-log', {
@@ -1405,18 +1442,50 @@ function tryWixCollectionSave(logToSave) {
             console.log('💾 Attempting Wix collection save...', {
                 hasWixData: typeof wixData !== 'undefined',
                 hasSaveMethod: typeof wixData !== 'undefined' && typeof wixData.save === 'function',
-                userId: logToSave.userId
+                userId: logToSave["User ID"],
+                diveLogId: logToSave["Dive Log ID"]
             });
             
             if (typeof wixData !== 'undefined' && wixData.save) {
-                wixData.save('DiveLogs', logToSave)
-                    .then(function(result) {
-                        console.log('✅ Dive log saved to Wix collection:', result._id);
-                        resolve(result);
+                // ✅ Check for existing log first to prevent duplicates
+                wixData.query('DiveLogs')
+                    .eq('User ID', logToSave["User ID"])
+                    .eq('Dive Log ID', logToSave["Dive Log ID"])
+                    .find()
+                    .then(function(existingResults) {
+                        if (existingResults.items && existingResults.items.length > 0) {
+                            console.log('⚠️ Dive log already exists in Wix collection, skipping duplicate save:', existingResults.items[0]._id);
+                            resolve({
+                                _id: existingResults.items[0]._id,
+                                duplicate: true,
+                                message: 'Log already exists - no duplicate created'
+                            });
+                        } else {
+                            // Safe to save - no duplicate found
+                            console.log('✅ No duplicate found, proceeding with Wix save...');
+                            wixData.save('DiveLogs', logToSave)
+                                .then(function(result) {
+                                    console.log('✅ Dive log saved to Wix collection:', result._id);
+                                    resolve(result);
+                                })
+                                .catch(function(saveError) {
+                                    console.error('❌ Wix collection save failed:', saveError);
+                                    reject(saveError);
+                                });
+                        }
                     })
-                    .catch(function(error) {
-                        console.error('❌ Wix collection save failed:', error);
-                        reject(error);
+                    .catch(function(queryError) {
+                        console.log('⚠️ Could not check for duplicates, proceeding with save:', queryError.message);
+                        // If we can't check for duplicates, still try to save
+                        wixData.save('DiveLogs', logToSave)
+                            .then(function(result) {
+                                console.log('✅ Dive log saved to Wix collection (no duplicate check):', result._id);
+                                resolve(result);
+                            })
+                            .catch(function(saveError) {
+                                console.error('❌ Wix collection save failed:', saveError);
+                                reject(saveError);
+                            });
                     });
             } else {
                 var error = new Error('Wix data API not available');
