@@ -200,6 +200,26 @@ export default function Embed() {
       setSessionsList(safeParse("kovalSessionsList", []));
       // setThreadId(localStorage.getItem("kovalThreadId") || null); // threadId currently unused
 
+      // ✅ DEBUG: Check what's in Wix member details
+      const wixMemberKey = Object.keys(localStorage).find(key => key.includes('__wix.memberDetails'));
+      if (wixMemberKey) {
+        const wixMemberData = localStorage.getItem(wixMemberKey);
+        console.log("🔍 Found Wix member data:", wixMemberKey, wixMemberData);
+        try {
+          const parsed = JSON.parse(wixMemberData);
+          console.log("🔍 Parsed Wix member data:", parsed);
+          if (parsed?.id) {
+            console.log("🔍 Found Wix member ID:", parsed.id);
+            // Try to use Wix member ID as userId
+            setUserId(parsed.id);
+            localStorage.setItem("kovalUser", parsed.id);
+            console.log("✅ Set userId from Wix member data:", parsed.id);
+          }
+        } catch (e) {
+          console.warn("⚠️ Failed to parse Wix member data:", e);
+        }
+      }
+
       // Check if we have a stored userId
       const storedUserId = localStorage.getItem("kovalUser");
       if (
@@ -212,7 +232,24 @@ export default function Embed() {
         migrateLegacyDiveLogKeys(storedUserId);
 
         // ✅ Load dive logs immediately like sessions
-        const localDiveLogs = safeParse(storageKey(storedUserId), []);
+        let localDiveLogs = safeParse(storageKey(storedUserId), []);
+        
+        // ✅ If no logs found with new key, check legacy keys
+        if (localDiveLogs.length === 0) {
+          const legacyKeys = [`diveLogs-${storedUserId}`, "koval_ai_logs"];
+          for (const legacyKey of legacyKeys) {
+            const legacyLogs = safeParse(legacyKey, []);
+            if (legacyLogs.length > 0) {
+              localDiveLogs = legacyLogs;
+              console.log(`📱 Found ${legacyLogs.length} dive logs under legacy key: ${legacyKey}`);
+              // Migrate to new key
+              localStorage.setItem(storageKey(storedUserId), JSON.stringify(legacyLogs));
+              console.log(`🔄 Migrated dive logs to new key: ${storageKey(storedUserId)}`);
+              break;
+            }
+          }
+        }
+        
         setDiveLogs(localDiveLogs);
         console.log(`📱 Loaded ${localDiveLogs.length} local dive logs during initialization`);
         console.log(`🔧 Storage key used: ${storageKey(storedUserId)}`);
