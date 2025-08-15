@@ -54,7 +54,7 @@ export default function Embed() {
   const [diveLogs, setDiveLogs] = useState([]);
   const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-  const [editLogIndex, setEditLogIndex] = useState(null);
+  const [editingLog, setEditingLog] = useState(null);
   const [loadingConnections, setLoadingConnections] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState({
     wix: "⏳ Checking...",
@@ -1293,34 +1293,42 @@ export default function Embed() {
           // Generate a unique dive log ID
           const diveLogId = `dive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-          // ✅ FIXED: Format data to match DiveLogs collection with nickname reference
+          // ✅ FIXED: Format data to match DiveLogs collection with individual fields
           const wixDiveLogRecord = {
+            // User identification
             nickname: profile?.nickname || profile?.displayName || 'Unknown User', // Maps to "nickname" field (connected to Members)
             firstName: profile?.firstName || '', // Maps to "firstName" field
             lastName: profile?.lastName || '', // Maps to "lastName" field
             diveLogId: diveLogId, // Maps to "Dive Log ID" field
+            
+            // ✅ Individual dive fields (instead of JSON blob)
+            diveDate: new Date(diveLogWithUser.date || new Date()).toISOString(), // Maps to "Dive Date" field
+            diveTime: diveLogWithUser.totalDiveTime || '', // Maps to "Dive Time" field
+            discipline: diveLogWithUser.discipline || 'Freediving', // Maps to "discipline" field
+            location: diveLogWithUser.location || '', // Maps to "location" field
+            targetDepth: parseFloat(diveLogWithUser.targetDepth) || 0, // Maps to "targetDepth" field
+            reachedDepth: parseFloat(diveLogWithUser.reachedDepth) || 0, // Maps to "reachedDepth" field
+            mouthfillDepth: parseFloat(diveLogWithUser.mouthfillDepth) || 0, // Maps to "mouthfillDepth" field
+            issueDepth: parseFloat(diveLogWithUser.issueDepth) || 0, // Maps to "issueDepth" field
+            issueComment: diveLogWithUser.issueComment || '', // Maps to "issueComment" field
+            squeeze: Boolean(diveLogWithUser.squeeze), // Maps to "squeeze" field
+            exit: diveLogWithUser.exit || '', // Maps to "exit" field
+            attemptType: diveLogWithUser.attemptType || '', // Maps to "attemptType" field
+            surfaceProtocol: diveLogWithUser.surfaceProtocol || '', // Maps to "surfaceProtocol" field
+            notes: diveLogWithUser.notes || '', // Maps to "notes" field
+            watchedPhoto: diveLogWithUser.imageUrl || null, // Maps to "watchedPhoto" field
+            
+            // ✅ Keep logEntry as backup/reference only (for complex data)
             logEntry: JSON.stringify({
-              // Store all dive data as JSON in the "Log Entry" field
-              dive: diveLogWithUser,
-              analysis: {
-                discipline: diveLogWithUser.discipline || "Unknown",
-                reachedDepth: diveLogWithUser.reachedDepth || 0,
-                targetDepth: diveLogWithUser.targetDepth || 0,
-                location: diveLogWithUser.location || "Unknown",
-                notes: diveLogWithUser.notes || "",
-              },
               metadata: {
                 type: "dive_log",
                 source: "dive-journal-widget",
                 timestamp: new Date().toISOString(),
                 version: "5.0",
-                userId: userId, // Keep userId for localStorage operations
+                userId: userId,
+                originalData: diveLogWithUser // Full backup
               },
             }),
-            diveDate: new Date(diveLogWithUser.date || new Date()), // Maps to "Dive Date" field
-            diveTime:
-              diveLogWithUser.totalDiveTime || new Date().toLocaleTimeString(), // Maps to "Dive Time" field
-            watchedPhoto: diveLogWithUser.imageFile || null, // Maps to "watchedPhoto" field
             dataType: "dive_log", // Additional field for filtering
           };
 
@@ -1426,7 +1434,7 @@ export default function Embed() {
 
         // ✅ STEP 3: Close dive journal and show success message
         setIsDiveJournalOpen(false);
-        setEditLogIndex(null);
+        setEditingLog(null);
 
         // Add confirmation message
         setMessages((prev) => [
@@ -1564,8 +1572,8 @@ export default function Embed() {
       handleSaveSession,
       startNewSession,
       handleJournalSubmit,
-      editLogIndex,
-      handleEdit: () => {}, // Add if needed
+      editingLog,
+      handleEdit: (log) => setEditingLog(log), // Set the log to edit
       handleDelete,
       refreshDiveLogs: loadDiveLogs, // ✅ Pass loadDiveLogs function
       loadingDiveLogs,
@@ -1599,7 +1607,7 @@ export default function Embed() {
     loadingConnections,
     sessionStatus,
     isAuthenticating,
-    editLogIndex,
+    editingLog,
   ]);
 
   return (
@@ -1743,14 +1751,14 @@ export default function Embed() {
             </div>
             <div className="h-[calc(95vh-80px)]">
               <DiveJournalSidebarCard
-                userId={userId}
+                nickname={getDisplayName()}
                 darkMode={darkMode}
                 onSubmit={handleJournalSubmit}
                 onDelete={handleDelete}
                 diveLogs={diveLogs}
                 loadingDiveLogs={loadingDiveLogs}
-                editLogIndex={editLogIndex}
-                setEditLogIndex={setEditLogIndex}
+                editingLog={editingLog}
+                setEditingLog={setEditingLog}
                 setMessages={setMessages}
                 onRefreshDiveLogs={loadDiveLogs}
               />
