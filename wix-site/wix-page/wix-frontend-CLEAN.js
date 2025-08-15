@@ -64,25 +64,33 @@ async function initializeSession() {
   try {
     console.log('🔍 Initializing user session...');
     
-    // Try to get current member
+    // Try to get current member using Wix API
     const member = await currentMember.getMember();
     
+    console.log('🔍 Member object received:', member);
+    console.log('🔍 Member keys:', Object.keys(member || {}));
+    
     if (member && member.loggedIn && member._id) {
-      // Authenticated user
+      // ✅ FIXED: Use member._id as the unique identifier and capture all profile fields
       sessionData = {
-        userId: member._id,
+        userId: member._id,  // This is the real Wix member ID
         memberId: member._id,
         userEmail: member.loginEmail,
-        userName: member.profile?.nickname || member.loginEmail,
+        userName: member.profile?.nickname || member.profile?.firstName || member.loginEmail,
+        firstName: member.profile?.firstName || '',
+        lastName: member.profile?.lastName || '',
+        nickname: member.profile?.nickname || '',
         isAuthenticated: true,
-        source: 'wix-authenticated'
+        source: 'wix-authenticated',
+        memberObject: member  // Keep full member object for debugging
       };
       
       console.log('✅ Authenticated user session created');
+      console.log('📋 Session data:', sessionData);
     } else {
       // Guest user
       sessionData = createGuestSession();
-      console.log('ℹ️ Guest session created');
+      console.log('ℹ️ Guest session created - user not logged in');
     }
     
     return sessionData;
@@ -239,14 +247,19 @@ async function handleSaveDiveLog(diveLogData) {
   try {
     console.log('💾 Saving dive log via Wix backend...');
     
-    // Prepare data for Wix backend
+    // ✅ FIXED: Use nickname for Wix collection, userId for localStorage
     const saveData = {
-      userId: sessionData.userId,
+      // Use nickname for Wix DiveLogs collection (connected to Members/FullData)
+      nickname: sessionData.userName || sessionData.userEmail || 'Unknown User',
+      firstName: sessionData.memberObject?.profile?.firstName || '',
+      lastName: sessionData.memberObject?.profile?.lastName || '',
+      
+      // Keep userId for dive log ID generation and localStorage
       diveLogId: diveLogData.id || `dive_${sessionData.userId}_${Date.now()}`,
       logEntry: JSON.stringify(diveLogData),
       diveDate: diveLogData.date || new Date().toISOString(),
       diveTime: diveLogData.totalDiveTime || new Date().toLocaleTimeString(),
-      watchedPhoto: diveLogData.watchPhoto || null
+      watchedPhoto: diveLogData.imageFile || diveLogData.watchedPhoto || null // ✅ FIXED: Use correct field name
     };
     
     console.log('📝 Prepared data for Wix:', saveData);

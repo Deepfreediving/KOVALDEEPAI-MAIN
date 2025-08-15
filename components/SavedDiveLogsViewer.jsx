@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export default function SavedDiveLogsViewer({
   darkMode,
@@ -11,10 +11,10 @@ export default function SavedDiveLogsViewer({
   const [showLogs, setShowLogs] = useState(false);
 
   // ✅ V5.0: Load logs when component mounts or userId changes
-  useEffect(() => {
-    if (userId && typeof window !== "undefined") {
-      // ✅ FIXED: Use the correct localStorage key format
-      const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
+  const loadSavedLogs = useCallback(() => {
+    if (typeof window !== "undefined" && userId) {
+      // ✅ V5.0: Use the correct localStorage key format
+      const storageKey = `diveLogs_${userId}`;
       const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
       setSavedLogs(saved.slice(-10)); // Show last 10 logs
       console.log(
@@ -24,7 +24,13 @@ export default function SavedDiveLogsViewer({
         storageKey,
       );
     }
-  }, [userId]); // Load when userId changes
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      loadSavedLogs();
+    }
+  }, [userId, loadSavedLogs]); // Load when userId changes
 
   const clearSavedLogs = () => {
     if (
@@ -32,7 +38,7 @@ export default function SavedDiveLogsViewer({
         "Are you sure you want to clear all saved dive logs from local storage?",
       )
     ) {
-      const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
+      const storageKey = `diveLogs_${userId}`;
       localStorage.removeItem(storageKey);
       setSavedLogs([]);
       // Notify parent to refresh
@@ -144,7 +150,7 @@ export default function SavedDiveLogsViewer({
         setSavedLogs(updatedLogs);
 
         // Update localStorage with correct key
-        const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
+        const storageKey = `diveLogs_${userId}`;
         const allLogs = JSON.parse(localStorage.getItem(storageKey) || "[]");
         const filteredLogs = allLogs.filter((log) => log.id !== logToDelete.id);
         localStorage.setItem(storageKey, JSON.stringify(filteredLogs));

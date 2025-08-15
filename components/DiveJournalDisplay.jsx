@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 
 export default function DiveJournalDisplay({
-  userId,
+  nickname,
   darkMode,
   isOpen,
   onClose,
@@ -62,11 +62,11 @@ export default function DiveJournalDisplay({
 
   useEffect(() => {
     console.log("🔄 DiveJournalDisplay: Refreshing logs from localStorage...", {
-      userId,
+      nickname,
       refreshKey,
     });
     try {
-      const stored = localStorage.getItem(`diveLogs_${userId}`); // ✅ Fixed: Use underscore to match embed.jsx
+      const stored = localStorage.getItem(`diveLogs_${nickname}`); // ✅ Updated: Use nickname instead of userId
       if (stored) {
         const parsedLogs = JSON.parse(stored);
         setLogs(parsedLogs);
@@ -81,7 +81,7 @@ export default function DiveJournalDisplay({
       console.error("❌ DiveJournalDisplay: Failed to load logs:", error);
       setLogs([]);
     }
-  }, [userId, refreshKey]);
+  }, [nickname, refreshKey]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -135,14 +135,14 @@ export default function DiveJournalDisplay({
       ...newEntry,
       id: isEditMode ? editingLog.id : Date.now().toString(),
       timestamp: new Date().toISOString(),
-      userId: userId, // Ensure userId is included
+      nickname: nickname, // ✅ Updated: Use nickname instead of userId
       imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
       imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
     };
 
     console.log("📝 DiveJournalDisplay: Prepared dive log data:", {
       id: newLog.id,
-      userId: newLog.userId,
+      nickname: newLog.nickname,
       location: newLog.location,
       depth: newLog.reachedDepth || newLog.targetDepth,
       date: newLog.date,
@@ -171,14 +171,14 @@ export default function DiveJournalDisplay({
           const formData = new FormData();
           formData.append('image', newEntry.imageFile);
           formData.append('diveLogId', newLog.id);
-          formData.append('userId', userId);
+          formData.append('nickname', nickname);
           
           console.log("📤 Uploading image file:", {
             name: newEntry.imageFile.name,
             size: newEntry.imageFile.size,
             type: newEntry.imageFile.type,
             diveLogId: newLog.id,
-            userId: userId
+            nickname: nickname
           });
           
           // Log FormData contents for debugging
@@ -300,7 +300,7 @@ export default function DiveJournalDisplay({
 
         // 🚀 STEP 3: Update localStorage IMMEDIATELY with deduplication
         try {
-          const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
+          const storageKey = `diveLogs_${nickname}`; // ✅ Updated: Use nickname instead of userId
           console.log(
             "💾 DiveJournalDisplay: Updating localStorage with key:",
             storageKey,
@@ -364,8 +364,8 @@ export default function DiveJournalDisplay({
             "❌ DiveJournalDisplay: Failed to update localStorage:",
             storageError,
           );
-          console.log("   • Storage key attempted:", `diveLogs_${userId}`); // ✅ Fixed: Use underscore
-          console.log("   • UserId:", userId);
+          console.log("   • Storage key attempted:", `diveLogs_${nickname}`); // ✅ Fixed: Use nickname
+          console.log("   • Nickname:", nickname);
           console.log(
             "   • Browser storage available:",
             typeof localStorage !== "undefined",
@@ -390,8 +390,8 @@ export default function DiveJournalDisplay({
         // 🚀 ADDITIONAL: Force sidebar refresh by dispatching storage event
         try {
           window.dispatchEvent(new StorageEvent('storage', {
-            key: `diveLogs_${userId}`, // ✅ FIXED: Use underscore consistently
-            newValue: localStorage.getItem(`diveLogs_${userId}`), // ✅ FIXED: Use underscore consistently
+            key: `diveLogs_${nickname}`, // ✅ FIXED: Use nickname consistently
+            newValue: localStorage.getItem(`diveLogs_${nickname}`), // ✅ FIXED: Use nickname consistently
             storageArea: localStorage
           }));
           console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");
@@ -427,7 +427,7 @@ export default function DiveJournalDisplay({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  userId: userId,
+                  nickname: nickname,
                   diveLogData: newLog,
                 }),
               });
@@ -522,8 +522,8 @@ export default function DiveJournalDisplay({
 
   // ✅ Add analyze functionality for individual dive logs
   const handleAnalyzeDiveLog = async (log) => {
-    if (!log || !userId) {
-      console.warn("⚠️ Missing log or userId for analysis");
+    if (!log || !nickname) {
+      console.warn("⚠️ Missing log or nickname for analysis");
       return;
     }
 
@@ -547,7 +547,7 @@ export default function DiveJournalDisplay({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
+          nickname,
           diveLogData: log,
         }),
       });
@@ -569,7 +569,7 @@ export default function DiveJournalDisplay({
 
           // Save to localStorage
           localStorage.setItem(
-            `diveLogs_${userId}`, // ✅ Fixed: Use underscore
+            `diveLogs_${nickname}`, // ✅ Fixed: Use nickname
             JSON.stringify(updatedLogs),
           );
 
@@ -652,7 +652,7 @@ export default function DiveJournalDisplay({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: userId,
+          nickname: nickname,
           logId: logToDelete.id,
           source: "dive-journal-display",
         }),
@@ -674,7 +674,7 @@ export default function DiveJournalDisplay({
         // 🚀 STEP 3: Update localStorage
         try {
           localStorage.setItem(
-            `diveLogs_${userId}`, // ✅ Fixed: Use underscore
+            `diveLogs_${nickname}`, // ✅ Fixed: Use nickname
             JSON.stringify(updatedLogs),
           );
           console.log(

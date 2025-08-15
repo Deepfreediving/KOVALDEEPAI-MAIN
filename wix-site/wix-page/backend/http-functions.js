@@ -41,25 +41,28 @@ export async function post_saveDiveLog(request) {
     const body = await request.body.json();
     console.log('💾 Saving dive log:', body);
 
-    // Validate required fields
-    if (!body.userId || !body.diveLogId) {
+    // ✅ FIXED: Validate required fields for DiveLogs collection structure
+    if (!body.nickname || !body.diveLogId) {
       return badRequest({
         headers: CORS_HEADERS,
         body: { 
-          error: 'Missing required fields: userId and diveLogId',
-          received: Object.keys(body)
+          error: 'Missing required fields: nickname and diveLogId',
+          received: Object.keys(body),
+          note: 'DiveLogs collection now uses nickname instead of userId'
         }
       });
     }
 
-    // Prepare dive log data for Wix collection
+    // ✅ FIXED: Prepare dive log data using DiveLogs collection fields
     const diveLogData = {
-      userId: body.userId,
+      nickname: body.nickname,
+      firstName: body.firstName || '',
+      lastName: body.lastName || '',
       diveLogId: body.diveLogId,
       logEntry: body.logEntry || JSON.stringify({}),
       diveDate: body.diveDate ? new Date(body.diveDate) : new Date(),
       diveTime: body.diveTime || new Date().toLocaleTimeString(),
-      watchPhoto: body.watchPhoto || null,
+      watchedPhoto: body.watchedPhoto || null, // ✅ FIXED: Use correct field name
       createdAt: new Date(),
       source: 'koval-ai-app'
     };
@@ -96,23 +99,27 @@ export async function post_saveDiveLog(request) {
 // ===== GET DIVE LOGS =====
 export async function get_diveLogs(request) {
   try {
-    const userId = request.query.userId;
+    // ✅ FIXED: Use nickname parameter instead of userId
+    const nickname = request.query.nickname;
     
-    if (!userId) {
+    if (!nickname) {
       return badRequest({
         headers: CORS_HEADERS,
-        body: { error: 'userId parameter is required' }
+        body: { 
+          error: 'nickname parameter is required',
+          note: 'DiveLogs collection now filters by nickname instead of userId'
+        }
       });
     }
 
-    // Query DiveLogs collection
+    // ✅ FIXED: Query DiveLogs collection using nickname
     const results = await wixData.query(COLLECTIONS.DIVE_LOGS)
-      .eq('userId', userId)
+      .eq('nickname', nickname)
       .descending('_createdDate')
       .limit(50)
       .find();
 
-    console.log(`📚 Retrieved ${results.items.length} dive logs for user:`, userId);
+    console.log(`📚 Retrieved ${results.items.length} dive logs for nickname:`, nickname);
 
     return ok({
       headers: CORS_HEADERS,

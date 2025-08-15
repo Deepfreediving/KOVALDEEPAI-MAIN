@@ -1293,9 +1293,11 @@ export default function Embed() {
           // Generate a unique dive log ID
           const diveLogId = `dive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-          // Format data to match your Wix collection fields exactly
+          // ✅ FIXED: Format data to match DiveLogs collection with nickname reference
           const wixDiveLogRecord = {
-            userId: userId, // Maps to "User ID" field
+            nickname: profile?.nickname || profile?.displayName || 'Unknown User', // Maps to "nickname" field (connected to Members)
+            firstName: profile?.firstName || '', // Maps to "firstName" field
+            lastName: profile?.lastName || '', // Maps to "lastName" field
             diveLogId: diveLogId, // Maps to "Dive Log ID" field
             logEntry: JSON.stringify({
               // Store all dive data as JSON in the "Log Entry" field
@@ -1312,12 +1314,13 @@ export default function Embed() {
                 source: "dive-journal-widget",
                 timestamp: new Date().toISOString(),
                 version: "5.0",
+                userId: userId, // Keep userId for localStorage operations
               },
             }),
             diveDate: new Date(diveLogWithUser.date || new Date()), // Maps to "Dive Date" field
             diveTime:
               diveLogWithUser.totalDiveTime || new Date().toLocaleTimeString(), // Maps to "Dive Time" field
-            diveLogWatch: diveLogWithUser.imageFile || null, // Maps to "Dive Log Watch" field
+            watchedPhoto: diveLogWithUser.imageFile || null, // Maps to "watchedPhoto" field
             dataType: "dive_log", // Additional field for filtering
           };
 
@@ -1327,16 +1330,11 @@ export default function Embed() {
           );
 
           const wixResponse = await fetch(
-            "https://www.deepfreediving.com/_functions/userMemory",
+            "https://www.deepfreediving.com/_functions/saveDiveLog",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "saveDiveLog",
-                collection: "DiveLogs",
-                record: wixDiveLogRecord,
-                userId: userId,
-              }),
+              body: JSON.stringify(wixDiveLogRecord),
             },
           );
 

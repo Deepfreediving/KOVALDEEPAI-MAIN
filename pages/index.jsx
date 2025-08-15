@@ -4,8 +4,7 @@ import ChatMessages from "../components/ChatMessages";
 import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
 import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
-import apiClient from "../utils/apiClient";
-import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
+// Removed unused imports: apiClient, upgradeTemporaryUserToAuthenticated
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
@@ -49,7 +48,7 @@ export default function Index() {
       : false,
   );
   const [userId, setUserId] = useState("");
-  const [threadId, setThreadId] = useState(null);
+  // const [threadId, setThreadId] = useState(null); // Unused - removed
   const [profile, setProfile] = useState({});
   const [diveLogs, setDiveLogs] = useState([]);
   const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
@@ -70,7 +69,8 @@ export default function Index() {
   const bottomRef = useRef(null);
 
   // ✅ HELPERS
-  const storageKey = (uid) => `diveLogs-${uid}`;
+  // ✅ STORAGE KEY: Use nickname for consistent storage across sessions
+  const storageKey = (userIdentifier) => `diveLogs_${userIdentifier}`;
   const safeParse = (key, fallback) => {
     try {
       return typeof window !== "undefined"
@@ -96,10 +96,32 @@ export default function Index() {
       return "Loading...";
     }
 
-    // ✅ PRIORITY: Use member ID format for consistent, fast recognition
+    // ✅ PRIORITY: Use friendly profile fields for personalized experience
     if (userId && !userId.startsWith("guest-")) {
-      console.log(`✅ Using member ID format: User-${userId}`);
-      return `User-${userId}`;
+      // Try nickname first (most personal)
+      if (profile?.nickname && profile.nickname !== "Loading...") {
+        console.log(`✅ Using nickname: ${profile.nickname}`);
+        return profile.nickname;
+      }
+      
+      // Try first name
+      if (profile?.firstName) {
+        const displayName = profile.lastName 
+          ? `${profile.firstName} ${profile.lastName}`
+          : profile.firstName;
+        console.log(`✅ Using name: ${displayName}`);
+        return displayName;
+      }
+      
+      // Try email as fallback
+      if (profile?.loginEmail) {
+        console.log(`✅ Using email: ${profile.loginEmail}`);
+        return profile.loginEmail;
+      }
+      
+      // Last resort: Member ID (but friendlier format)
+      console.log(`✅ Using member ID: Member ${userId.slice(-6)}`);
+      return `Member ${userId.slice(-6)}`;
     }
 
     // Fallback for guest users (only after timeout)
@@ -118,12 +140,29 @@ export default function Index() {
     return "User";
   }, [profile, userId, isAuthenticating, authTimeoutReached]);
 
+  // ✅ HELPER: Get user identifier for data storage (use nickname, not userId)
+  const getUserIdentifier = useCallback(() => {
+    // For data storage, always prefer nickname > firstName > fallback
+    if (profile?.nickname && profile.nickname !== "Loading...") {
+      return profile.nickname;
+    }
+    if (profile?.firstName) {
+      return profile.firstName;
+    }
+    // Fallback for guests (temporary)
+    return `Guest-${Date.now()}`;
+  }, [profile]);
+
   // ✅ INITIALIZATION - Enhanced with authentication gating
   useEffect(() => {
     if (typeof window !== "undefined") {
       setSessionsList(safeParse("kovalSessionsList", []));
-      setThreadId(localStorage.getItem("kovalThreadId") || null);
+      // setThreadId(localStorage.getItem("kovalThreadId") || null); // Unused - removed
       setProfile(safeParse("kovalProfile", { nickname: "Loading..." }));
+
+      // ✅ IMMEDIATE DIVE LOG LOADING (like sessions)
+      // Load dive logs immediately from localStorage, don't wait for userId
+      loadDiveLogs();
 
       // ✅ Check if we have a valid stored userId first
       const storedUserId = localStorage.getItem("kovalUser");
@@ -150,7 +189,7 @@ export default function Index() {
         return () => clearTimeout(timeout);
       }
     }
-  }, []);
+  }, [loadDiveLogs]);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
   useEffect(() => {
@@ -385,7 +424,7 @@ export default function Index() {
         setLoading(false);
       }
     },
-    [input, loading, userId, profile, isAuthenticating, authTimeoutReached],
+    [input, loading, userId, profile, isAuthenticating, authTimeoutReached, diveLogs, messages],
   );
 
   const handleKeyDown = useCallback(
@@ -403,28 +442,31 @@ export default function Index() {
     setFiles(selectedFiles);
   }, []);
 
-  // ✅ LOAD DIVE LOGS (Enhanced from both versions)
+  // ✅ LOAD DIVE LOGS (Enhanced with session-like reliability)
   const loadDiveLogs = useCallback(async () => {
-    if (!userId) {
-      console.log("⚠️ loadDiveLogs: No userId provided");
+    // ✅ IMMEDIATE LOCAL LOADING using nickname-based storage
+    const currentUserId = getUserIdentifier();
+    const key = storageKey(currentUserId);
+    const localLogs = safeParse(key, []);
+    console.log(`� Local storage logs found: ${localLogs.length} for user: ${currentUserId}`);
+    setDiveLogs(localLogs);
+
+    // ✅ SKIP API IF NO REAL USER (guest users stay local-only)
+    if (!profile?.nickname && !profile?.firstName) {
+      console.log("📱 Using localStorage-only mode (guest user)");
+      setLoadingDiveLogs(false);
       return;
     }
 
-    console.log(`🔄 Loading dive logs for userId: ${userId}`);
+    // ✅ OPTIONAL API SYNC (only if we have a real userId)
+    console.log(`� Loading dive logs for user: ${currentUserId}`);
     setLoadingDiveLogs(true);
     try {
-      // Load from localStorage first
-      const key = storageKey(userId);
-      const localLogs = safeParse(key, []);
-      console.log(`📱 Local storage logs found: ${localLogs.length}`);
-      setDiveLogs(localLogs);
-
-      // Then try to load from API
       console.log(
-        `🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`,
+        `🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?nickname=${currentUserId}`,
       );
       const response = await fetch(
-        `${API_ROUTES.GET_DIVE_LOGS}?userId=${userId}`,
+        `${API_ROUTES.GET_DIVE_LOGS}?nickname=${encodeURIComponent(currentUserId)}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -448,54 +490,109 @@ export default function Index() {
         console.log(`✅ Combined total logs: ${combined.length}`);
         setDiveLogs(combined);
         if (typeof window !== "undefined") {
-          localStorage.setItem(storageKey(userId), JSON.stringify(combined));
+          localStorage.setItem(storageKey(getUserIdentifier()), JSON.stringify(combined));
         }
 
         console.log(`✅ Loaded ${combined.length} dive logs`);
       } else {
         console.warn(
-          `⚠️ API request failed: ${response.status} ${response.statusText}`,
+          `⚠️ API request failed: ${response.status} ${response.statusText}, using localStorage only`,
         );
       }
     } catch (error) {
-      console.error("❌ Failed to load dive logs:", error);
+      console.error("❌ Failed to load dive logs from API, using localStorage:", error);
     } finally {
       setLoadingDiveLogs(false);
     }
-  }, [userId]);
+  }, [profile, getUserIdentifier]);
 
-  // ✅ DIVE JOURNAL SUBMIT
+  // ✅ DIVE JOURNAL SUBMIT (Session-like: Immediate localStorage, optional API sync)
   const handleJournalSubmit = useCallback(
     async (diveData) => {
       try {
-        const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...diveData, userId }),
-        });
+        // ✅ STEP 1: IMMEDIATE LOCALSTORAGE SAVE (like sessions)
+        // Generate unique diveLogId immediately
+        const diveLogId = `dive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Create dive log with all required fields
+        const completeDiveLog = {
+          ...diveData,
+          id: diveLogId,
+          diveLogId: diveLogId, // Required by DiveLogs collection
+          timestamp: new Date().toISOString(),
+          source: 'dive-journal-main-app',
+          // User identification fields for localStorage
+          userIdentifier: getUserIdentifier(), // For localStorage key consistency
+          // User fields for Wix collection (when API sync happens)
+          nickname: profile?.nickname || profile?.displayName || 'Unknown User',
+          firstName: profile?.firstName || '',
+          lastName: profile?.lastName || '',
+        };
 
-        if (response.ok) {
-          console.log("✅ Dive log saved successfully");
-          await loadDiveLogs(); // Refresh the list
-          setIsDiveJournalOpen(false);
-          setEditLogIndex(null);
-
-          // Add confirmation message
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `📝 Dive log saved! ${diveData.reachedDepth}m dive at ${diveData.location || "your location"}.`,
-            },
-          ]);
-        } else {
-          console.error("❌ Failed to save dive log");
+        // ✅ IMMEDIATE SAVE TO LOCALSTORAGE using nickname-based storage
+        const currentUserId = getUserIdentifier();
+        const key = storageKey(currentUserId);
+        const existingLogs = safeParse(key, []);
+        const updatedLogs = [completeDiveLog, ...existingLogs];
+        
+        if (typeof window !== "undefined") {
+          localStorage.setItem(key, JSON.stringify(updatedLogs));
+          console.log("✅ Dive log saved to localStorage immediately");
         }
+
+        // ✅ UPDATE UI IMMEDIATELY (like sessions)
+        setDiveLogs(updatedLogs);
+        setIsDiveJournalOpen(false);
+        setEditLogIndex(null);
+
+        // ✅ IMMEDIATE USER FEEDBACK
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `📝 Dive log saved! ${completeDiveLog.reachedDepth}m dive at ${completeDiveLog.location || "your location"}.`,
+          },
+        ]);
+
+        // ✅ STEP 2: OPTIONAL API SYNC (don't block UI)
+        // Only try API if we have real user data (not guest)
+        if (profile?.nickname || profile?.firstName) {
+          try {
+            console.log("🌐 Attempting background sync to API...");
+            const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(completeDiveLog),
+            });
+
+            if (response.ok) {
+              console.log("✅ Background API sync successful");
+            } else {
+              console.warn("⚠️ Background API sync failed, but localStorage save succeeded");
+            }
+          } catch (apiError) {
+            console.warn("⚠️ Background API sync error, but localStorage save succeeded:", apiError);
+          }
+        } else {
+          console.log("📱 Skipping API sync - using localStorage-only mode");
+        }
+
       } catch (error) {
         console.error("❌ Error saving dive log:", error);
+        // Even if everything fails, try basic localStorage save
+        try {
+          const basicLog = { ...diveData, id: Date.now(), timestamp: new Date().toISOString() };
+          const key = storageKey(getUserIdentifier());
+          const existing = safeParse(key, []);
+          localStorage.setItem(key, JSON.stringify([basicLog, ...existing]));
+          setDiveLogs([basicLog, ...diveLogs]);
+          console.log("✅ Emergency localStorage save successful");
+        } catch (emergencyError) {
+          console.error("❌ Even emergency save failed:", emergencyError);
+        }
       }
     },
-    [userId, loadDiveLogs],
+    [profile, diveLogs, getUserIdentifier],
   );
 
   // ✅ DELETE DIVE LOG
@@ -996,38 +1093,4 @@ export default function Index() {
   );
 }
 
-// REPLACE the queryPinecone function in pages/api/openai/chat.ts:
-
-async function queryPinecone(query) {
-  if (!query?.trim()) return [];
-  try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-
-    // ✅ Use the chat-embed endpoint for Pinecone queries
-    const response = await fetch(`${baseUrl}/api/chat-embed`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: query,
-        userId: "frontend-user",
-        profile: { pb: 50 }, // Default profile
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn(`⚠️ Chat API query failed with status ${response.status}`);
-      return [];
-    }
-
-    const result = await response.json();
-    // Extract the AI response content
-    return result.assistantMessage?.content
-      ? [result.assistantMessage.content]
-      : [];
-  } catch (error) {
-    console.error("❌ Chat API error:", error.message);
-    return [];
-  }
-}
+// Removed unused queryPinecone function

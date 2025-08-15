@@ -2,14 +2,14 @@ import { useState } from "react";
 import DiveJournalDisplay from "./DiveJournalDisplay";
 
 export default function DiveJournalSidebarCard({
-  userId,
+  nickname,
   darkMode,
   onSubmit, // Called when dive log is saved
   onDelete, // Called when dive log is deleted
   diveLogs,
-  loadingDiveLogs,
-  editLogIndex,
-  setEditLogIndex,
+  // loadingDiveLogs, // Unused - removed to fix eslint warning
+  // editLogIndex, // Unused - removed to fix eslint warning  
+  // setEditLogIndex, // Unused - removed to fix eslint warning
   editingLog, // ✅ V5.0: Log being edited
   setEditingLog, // ✅ V5.0: Set editing log state
   setMessages, // For analysis integration
@@ -26,7 +26,7 @@ export default function DiveJournalSidebarCard({
         {
           diveLogId: diveLog.id,
           success: result.success,
-          userId: userId,
+          nickname: nickname,
         },
       );
 
@@ -90,7 +90,7 @@ export default function DiveJournalSidebarCard({
         <DiveJournalDisplay
           key={refreshKey}
           refreshKey={refreshKey}
-          userId={userId}
+          nickname={nickname}
           darkMode={darkMode}
           isEmbedded={true}
           setMessages={setMessages}

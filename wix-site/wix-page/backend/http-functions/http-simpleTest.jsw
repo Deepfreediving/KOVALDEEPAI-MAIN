@@ -1,0 +1,13 @@
+// 🔥 SIMPLEST POSSIBLE TEST FUNCTION
+// No imports, no complex syntax, basic JavaScript only
+
+export function post_simpleTest(request) {
+  return {
+    status: 200,
+    body: '{"message": "Simple test working"}'
+  };
+}
+
+export function get_simpleTest(request) {
+  return post_simpleTest(request);
+}
