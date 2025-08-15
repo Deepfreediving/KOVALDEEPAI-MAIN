@@ -1,40 +1,34 @@
-// ===== 🔥 WIX MASTER PAGE - KOVAL AI INTEGRATION V5.0 =====
+/* eslint-env browser, es6 */
+/* global $w, wixData, wixStorage, currentMember */
+
+// ===== 🔥 WIX SIMPLIFIED PAGE - KOVAL AI INTEGRATION V5.0 =====
 // 
 // ✨ VERSION INFO:
-// • Version: 5.0.0
-// • Last Updated: August 2025
-// • Architecture: Enhanced session-managed with Vercel integration
-// • Status: Production Ready ✅ - DiveLogs Collection Fixed
+// • Version: 5.0.0 - Simplified for Paid Members
+// • Last Updated: August 14, 2025
+// • Architecture: Simplified session management with unified backend
+// • Status: Production Ready ✅ - All members are paid members
 //
-// 🎯 V5.0 MAJOR UPDATES:
-// ✅ Fixed 3-week DiveLogs collection save issue
-// ✅ Corrected field mapping for Wix collection structure
-// ✅ Enhanced error handling and debugging capabilities
-// ✅ Improved localStorage integration for immediate UI updates
-// ✅ Optimized session management and data flow
+// 🎯 V5.0 SIMPLIFICATIONS:
+// ✅ Removed tiered access (all users are paid members)
+// ✅ Simplified field mapping aligned with DiveLogs collection
+// ✅ Unified backend HTTP functions (no basic/expert/optimized tiers)
+// ✅ Streamlined configuration and reduced complexity
+// ✅ Consistent Members/FullData and DiveLogs collection usage
 //
-// �📋 SYSTEM OVERVIEW:
-// ✅ Production-ready Koval AI widget integration for Wix sites
-// ✅ Complete session management with Vercel backend handshake
-// ✅ Offline buffering system for reliable data persistence
-// ✅ Robust error handling and fallback mechanisms
-// ✅ Duplicate prevention and widget initialization protection
-// ✅ CORS/COEP compliance for iframe embedding
+// 📋 SYSTEM OVERVIEW:
+// ✅ Single-tier Koval AI widget for all paid members
+// ✅ Simplified session management with Vercel backend
+// ✅ Direct DiveLogs collection integration
+// ✅ Consistent field mapping across all components
+// ✅ Streamlined error handling and logging
 //
 // 🔧 CONFIGURATION STATUS:
 // ✅ Vercel URL: https://kovaldeepai-main.vercel.app
-// ✅ Session Management: Enabled with handshake & upgrade support
-// ✅ Offline Buffering: Enabled with automatic flush on reconnection
-// ✅ Member Integration: Members/FullData and PrivateMembersData support
-// ✅ Guest Support: Full functionality for non-authenticated users
-// ✅ CORS Setup: Configured with proper headers for cross-origin requests
-// ✅ COEP Headers: Added for iframe embedding compatibility
-//
-// 🚀 DEPLOYMENT NOTES:
-// • Backend configured with CORS headers for https://www.deepfreediving.com
-// • COEP and related headers added to middleware.ts and next.config.js
-// • API endpoints include proper CORS and COEP headers
-// • Tested and validated on live production site
+// ✅ Collections: Members/FullData and DiveLogs (simplified schema)
+// ✅ Field Mapping: Aligned with Wix database structure
+// ✅ Member Integration: Full access for all users (paid members)
+// ✅ Backend APIs: Simplified and unified
 //
 // 📝 USAGE INSTRUCTIONS:
 // 1. Add this code to your Wix page's code panel
@@ -43,111 +37,97 @@
 // 4. Monitor console for any errors or warnings
 // 5. Use runDiagnostics() for troubleshooting
 
-// Required Wix imports
-import wixData from 'wix-data';
-import wixStorage from 'wix-storage-frontend';
-import { currentMember } from 'wix-members-frontend';
+// Required Wix imports - using Wix syntax (these are automatically available in Wix code panel)
+// import wixData from 'wix-data';
+// import wixStorage from 'wix-storage-frontend';
+// import { currentMember } from 'wix-members-frontend';
+
+// ===== SIMPLIFIED CONFIGURATION =====
+const WIX_CONFIG = {
+    COLLECTIONS: {
+        MEMBERS: 'Members/FullData',
+        DIVE_LOGS: 'DiveLogs'
+    },
+    
+    // DiveLogs field mapping - aligned with Wix database
+    DIVE_LOG_FIELDS: {
+        USER_ID: 'userId',           // User ID field
+        DIVE_LOG_ID: 'diveLogId',    // Dive Log ID field  
+        LOG_ENTRY: 'logEntry',       // Log Entry field (JSON string)
+        DIVE_DATE: 'diveDate',       // Dive Date field
+        DIVE_TIME: 'diveTime',       // Dive Time field
+        WATCH_PHOTO: 'watchedPhoto'  // Dive Log Watch Photo field
+    }
+};
 
 /*
-===== 📚 USAGE INSTRUCTIONS =====
+===== 📚 SIMPLIFIED USAGE INSTRUCTIONS =====
 
 🔧 SETUP STEPS:
 1. Add an HTML element to your Wix page
-2. Set the HTML element ID to match WIDGET_CONFIG.WIDGET_ID (default: 'aiWidget')
-3. Copy this entire code into your page's code panel
-4. Update WIDGET_CONFIG.WIDGET_ID if using a different element ID
-5. Save and publish your page
+2. Set the HTML element ID to 'aiWidget'
+3. Copy this code into your page's code panel
+4. Save and publish your page
 
-⚙️ CONFIGURATION OPTIONS:
-- WIDGET_CONFIG.WIDGET_ID: Change to match your HTML element ID
-- WIDGET_CONFIG.WIDGET_HEIGHT: Adjust widget height (default: '600px')
-- SESSION_CONFIG.VERCEL_URL: Update if using different backend URL
+⚙️ SIMPLIFIED CONFIGURATION:
+- All users are paid members (no tiers)
+- Direct DiveLogs collection integration
+- Aligned field mapping with Wix database
+- Unified backend API endpoints
 
-🔐 SECURITY FEATURES:
-- Automatic CORS error detection and handling
-- Secure iframe sandboxing with minimal required permissions
-- Session management with timeout protection
-- Offline data buffering for reliability
+🔐 SIMPLIFIED FEATURES:
+- Member authentication and profile access
+- Direct dive log saving to DiveLogs collection
+- Consistent field mapping across all components
+- Streamlined error handling
 
-🔄 DATA FLOW:
-1. User identification (guest or member)
-2. Vercel backend handshake for session establishment
-3. Widget iframe creation with session parameters
-4. Bi-directional messaging for data exchange
-5. Automatic offline buffering if connection fails
+🔄 SIMPLIFIED DATA FLOW:
+1. Member identification via Wix authentication
+2. Direct backend API calls (no complex session management)
+3. Widget iframe with member context
+4. Direct data saving to DiveLogs collection
 
-✅ SUPPORTED FEATURES:
-- Guest user support (no login required)
-- Wix member integration with full profile data
-- Dive log saving to DiveLogs collection
+✅ WHAT'S INCLUDED:
+- Full member profile integration
+- DiveLogs collection access with correct field mapping
 - Image upload and processing
-- Offline data persistence and sync
 - Real-time chat functionality
-
-⚠️ REQUIREMENTS:
-- Wix Premium plan (for custom code)
-- HTML element on page with matching ID
-- Vercel backend deployment with CORS configured
-- Wix collections: Members/FullData, PrivateMembersData, DiveLogs
 */
 
-// ===== SYSTEM CONFIGURATION =====
+// ===== SIMPLIFIED SYSTEM CONFIGURATION =====
 const SESSION_CONFIG = {
     VERCEL_URL: 'https://kovaldeepai-main.vercel.app',
-    HANDSHAKE_TIMEOUT: 10000,        // 10 seconds for initial handshake
-    RETRY_MAX_ATTEMPTS: 3,           // Maximum retry attempts for failed requests
-    SESSION_UPGRADE_TIMEOUT: 15000,  // 15 seconds for session upgrade operations
-    BUFFER_FLUSH_TIMEOUT: 8000,      // 8 seconds for buffer flush operations
-    WIDGET_LOAD_TIMEOUT: 30000       // 30 seconds for widget iframe loading
+    TIMEOUT: 10000,        // 10 seconds for requests
+    HANDSHAKE_TIMEOUT: 10000  // 10 seconds for handshake timeout
 };
 
-// ===== WIDGET CONFIGURATION =====
+// ===== SIMPLIFIED WIDGET CONFIGURATION =====
 const WIDGET_CONFIG = {
-    // Widget container selector - update this if your widget has a different ID
     WIDGET_ID: 'aiWidget',
-    
-    // Iframe source URL for the widget
     IFRAME_SRC: 'https://kovaldeepai-main.vercel.app/embed',
-    
-    // Widget dimensions and styling
     WIDGET_WIDTH: '100%',
-    WIDGET_HEIGHT: '600px',
-    WIDGET_BORDER: 'none',
-    
-    // Security and embedding settings
-    SANDBOX_PERMISSIONS: 'allow-scripts allow-same-origin allow-forms allow-popups allow-storage-access-by-user-activation',
-    LOADING_STRATEGY: 'lazy'
+    WIDGET_HEIGHT: '1200px',
+    WIDGET_BORDER: 'none'
 };
 
-// ===== GLOBAL SESSION STATE =====
+// ===== SIMPLIFIED SESSION STATE =====
 let globalSessionData = {
-    // User identification
-    userId: null,                    // Generated user ID for tracking
-    wixMemberId: null,              // Wix member ID if authenticated
-    sessionId: null,                // Current session identifier
-    
-    // Authentication state
-    isAuthenticated: false,         // Whether user is logged into Wix
-    memberData: null,               // Full member data from Wix collections
-    
-    // Connection state
-    connectionStatus: 'disconnected', // 'connected', 'offline', 'error'
-    lastHandshake: null,            // Timestamp of last successful handshake
-    
-    // Buffering system
-    bufferData: [],                 // Offline data buffer for failed requests
-    bufferSize: 0,                  // Current buffer size for monitoring
-    
-    // Widget state
-    widgetReady: false,             // Whether widget iframe is fully loaded
-    widgetInitialized: false        // Whether widget has been initialized
+    userId: null,              // User ID for tracking
+    wixMemberId: null,         // Wix member ID
+    sessionId: null,           // Session identifier
+    isAuthenticated: false,    // Authentication status
+    memberData: null,          // Member profile data
+    widgetReady: false,        // Widget initialization status
+    bufferData: []             // Buffered data for offline mode
 };
 
-// ===== MAIN PAGE INITIALIZATION =====
+// ===== SIMPLIFIED PAGE INITIALIZATION =====
 $w.onReady(function () {
-    console.log("🚀 Koval AI Widget V5.0 initialization starting...");
+    console.log("🚀 Koval AI Widget V5.0 (Simplified) initialization starting...");
     console.log("📊 System Status Check:");
     console.log("   • Wix APIs:", typeof wixData !== 'undefined' ? '✅ Available' : '❌ Not Available');
+    console.log("   • Collections:", WIX_CONFIG.COLLECTIONS);
+    console.log("   • Field Mapping:", WIX_CONFIG.DIVE_LOG_FIELDS);
     console.log("   • Storage:", typeof wixStorage !== 'undefined' ? '✅ Available' : '❌ Not Available');
     console.log("   • Members:", typeof currentMember !== 'undefined' ? '✅ Available' : '❌ Not Available');
 
@@ -347,9 +327,9 @@ function getWixMemberData() {
             currentMember.getMember()
                 .then(function(member) {
                     console.log("📋 Member API response:", {
-                        hasId: !!member?._id,
-                        loggedIn: !!member?.loggedIn,
-                        hasEmail: !!member?.loginEmail,
+                        hasId: !!(member && member._id),
+                        loggedIn: !!(member && member.loggedIn),
+                        hasEmail: !!(member && member.loginEmail),
                         memberObject: member ? "✅ Available" : "❌ Null"
                     });
                     
@@ -371,9 +351,9 @@ function getWixMemberData() {
                                     resolve({
                                         id: fullMemberData._id,
                                         email: fullMemberData.loginEmail || member.loginEmail,
-                                        nickname: fullMemberData.nickname || fullMemberData.profile?.nickname,
-                                        firstName: fullMemberData.firstName || fullMemberData.contactDetails?.firstName,
-                                        lastName: fullMemberData.lastName || fullMemberData.contactDetails?.lastName,
+                                        nickname: fullMemberData.nickname || (fullMemberData.profile && fullMemberData.profile.nickname),
+                                        firstName: fullMemberData.firstName || (fullMemberData.contactDetails && fullMemberData.contactDetails.firstName),
+                                        lastName: fullMemberData.lastName || (fullMemberData.contactDetails && fullMemberData.contactDetails.lastName),
                                         source: 'members-fulldata-collection'
                                     });
                                 } else {
@@ -382,9 +362,9 @@ function getWixMemberData() {
                                     resolve({
                                         id: member._id,
                                         email: member.loginEmail,
-                                        nickname: member.profile?.nickname || member.profile?.displayName,
-                                        firstName: member.contactDetails?.firstName || member.profile?.firstName,
-                                        lastName: member.contactDetails?.lastName || member.profile?.lastName,
+                                        nickname: (member.profile && member.profile.nickname) || (member.profile && member.profile.displayName),
+                                        firstName: (member.contactDetails && member.contactDetails.firstName) || (member.profile && member.profile.firstName),
+                                        lastName: (member.contactDetails && member.contactDetails.lastName) || (member.profile && member.profile.lastName),
                                         source: 'currentmember-fallback'
                                     });
                                 }
@@ -395,17 +375,17 @@ function getWixMemberData() {
                                 resolve({
                                     id: member._id,
                                     email: member.loginEmail,
-                                    nickname: member.profile?.nickname || member.profile?.displayName,
-                                    firstName: member.contactDetails?.firstName || member.profile?.firstName,
-                                    lastName: member.contactDetails?.lastName || member.profile?.lastName,
+                                    nickname: (member.profile && member.profile.nickname) || (member.profile && member.profile.displayName),
+                                    firstName: (member.contactDetails && member.contactDetails.firstName) || (member.profile && member.profile.firstName),
+                                    lastName: (member.contactDetails && member.contactDetails.lastName) || (member.profile && member.profile.lastName),
                                     source: 'currentmember-error-fallback'
                                 });
                             });
                     } else {
                         console.log("ℹ️ No authenticated member found");
                         console.log("   • Member object:", !!member);
-                        console.log("   • Has ID:", !!member?._id);
-                        console.log("   • Logged in:", !!member?.loggedIn);
+                        console.log("   • Has ID:", !!(member && member._id));
+                        console.log("   • Logged in:", !!(member && member.loggedIn));
                         resolve(null);
                     }
                 })
@@ -1313,11 +1293,11 @@ if (typeof window !== 'undefined') {
     window.globalSessionData = globalSessionData; // For debugging
 }
 
-// ===== SAVE DIVE LOG TO WIX COLLECTION WITH BUFFERING =====
+// ===== SIMPLIFIED DIVE LOG SAVE TO WIX COLLECTION =====
 function saveDiveLogToWix(diveLogData) {
     return new Promise(function(resolve, reject) {
         try {
-            console.log('💾 Processing dive log save for Wix:', diveLogData);
+            console.log('💾 Saving dive log to DiveLogs collection:', diveLogData);
             
             if (!diveLogData) {
                 var error = new Error('No dive log data provided');
@@ -1343,36 +1323,30 @@ function saveDiveLogToWix(diveLogData) {
                         source: userData.source
                     });
                     
-                    var logToSave = {
-                        "User ID": userData.userId,
-                        "Dive Log ID": diveLogData.id || 'dive_' + userData.userId + '_' + Date.now(),
-                        "Log Entry": JSON.stringify(diveLogData),
-                        "Dive Date": diveLogData.date || new Date().toISOString().split('T')[0],
-                        "Dive Time": diveLogData.totalDiveTime || '',
-                        timestamp: new Date(),
-                        source: 'koval-ai-widget',
-                        // Additional fields for easier querying (optional)
-                        depth: diveLogData.reachedDepth || diveLogData.targetDepth || 0,
-                        location: diveLogData.location || 'Unknown',
-                        discipline: diveLogData.discipline || 'freediving'
-                    };
+                    // Create dive log record using correct field mapping
+                    var logToSave = {};
+                    logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.USER_ID] = userData.userId;
+                    logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.DIVE_LOG_ID] = diveLogData.id || 'dive_' + userData.userId + '_' + Date.now();
+                    logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.LOG_ENTRY] = JSON.stringify(diveLogData);
+                    logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.DIVE_DATE] = new Date(diveLogData.date || new Date());
+                    logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.DIVE_TIME] = diveLogData.totalDiveTime || new Date().toLocaleTimeString();
+                    logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.WATCH_PHOTO] = diveLogData.watchPhoto || null;
                     
-                    console.log('📝 Prepared log for save:', {
-                        userId: logToSave.userId,
-                        depth: logToSave.depth,
-                        location: logToSave.location,
-                        hasData: !!logToSave.diveData
+                    console.log('📝 Prepared log for DiveLogs collection:', {
+                        userId: logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.USER_ID],
+                        diveLogId: logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.DIVE_LOG_ID],
+                        hasLogEntry: !!logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.LOG_ENTRY],
+                        diveDate: logToSave[WIX_CONFIG.DIVE_LOG_FIELDS.DIVE_DATE]
                     });
                     
-                    // ✅ V5.0: Enable Wix save as backup to ensure data reaches DiveLogs collection
-                    if (globalSessionData.connectionStatus === 'connected') {
-                        console.log('🌐 Saving dive log via Vercel API...');
-                        
-                        fetch(SESSION_CONFIG.VERCEL_URL + '/api/analyze/save-dive-log', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
+                    // Save via Vercel API (primary method)
+                    console.log('🌐 Saving dive log via Vercel API...');
+                    
+                    fetch(SESSION_CONFIG.VERCEL_URL + '/api/analyze/save-dive-log', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
                             body: JSON.stringify(logToSave)
                         })
                         .then(function(response) {
@@ -1388,40 +1362,27 @@ function saveDiveLogToWix(diveLogData) {
                             resolve(result);
                         })
                         .catch(function(error) {
-                            console.log('⚠️ Vercel API save failed, trying Wix fallback:', error.message);
+                            console.warn('⚠️ Vercel save failed, trying Wix collection directly:', error.message);
                             
-                            // Fallback to local Wix save
-                            tryWixCollectionSave(logToSave)
-                                .then(resolve)
+                            // Fallback to direct Wix collection save
+                            wixData.insert(WIX_CONFIG.COLLECTIONS.DIVE_LOGS, logToSave)
+                                .then(function(wixResult) {
+                                    console.log('✅ Dive log saved via Wix collection fallback:', wixResult);
+                                    
+                                    // Also save to localStorage for immediate UI updates
+                                    try {
+                                        saveDiveLogToLocalStorage(diveLogData, userData.userId);
+                                    } catch (localStorageError) {
+                                        console.warn('⚠️ localStorage save failed:', localStorageError);
+                                    }
+                                    
+                                    resolve(wixResult);
+                                })
                                 .catch(function(wixError) {
-                                    console.error('❌ Both Vercel and Wix saves failed');
-                                    addToBuffer('saveDiveLog', logToSave);
-                                    reject(new Error('Save failed: ' + error.message + '; Wix: ' + wixError.message));
+                                    console.error('❌ Both Vercel and Wix saves failed:', wixError);
+                                    reject(new Error('All save methods failed: ' + error.message + '; Wix: ' + wixError.message));
                                 });
                         });
-                    } else {
-                        console.log('📦 No Vercel connection, trying Wix save directly...');
-                        
-                        // Try Wix collection save directly
-                        tryWixCollectionSave(logToSave)
-                            .then(function(result) {
-                                console.log('✅ Dive log saved via Wix collection');
-                                
-                                // 🚀 STEP 4: Also save to localStorage for immediate UI updates
-                                try {
-                                    saveDiveLogToLocalStorage(diveLogData, userData.userId);
-                                } catch (localStorageError) {
-                                    console.warn('⚠️ localStorage save failed:', localStorageError);
-                                }
-                                
-                                resolve(result);
-                            })
-                            .catch(function(error) {
-                                console.log('⚠️ Wix collection save failed, buffering:', error.message);
-                                addToBuffer('saveDiveLog', logToSave);
-                                reject(new Error('Wix save failed, data buffered: ' + error.message));
-                            });
-                    }
                 })
                 .catch(function(userError) {
                     console.error('❌ Failed to get user data for dive log save:', userError);
@@ -1435,69 +1396,9 @@ function saveDiveLogToWix(diveLogData) {
     });
 }
 
-// ===== TRY WIX COLLECTION SAVE AS FALLBACK =====
-function tryWixCollectionSave(logToSave) {
-    return new Promise(function(resolve, reject) {
-        try {
-            console.log('💾 Attempting Wix collection save...', {
-                hasWixData: typeof wixData !== 'undefined',
-                hasSaveMethod: typeof wixData !== 'undefined' && typeof wixData.save === 'function',
-                userId: logToSave["User ID"],
-                diveLogId: logToSave["Dive Log ID"]
-            });
-            
-            if (typeof wixData !== 'undefined' && wixData.save) {
-                // ✅ Check for existing log first to prevent duplicates
-                wixData.query('DiveLogs')
-                    .eq('User ID', logToSave["User ID"])
-                    .eq('Dive Log ID', logToSave["Dive Log ID"])
-                    .find()
-                    .then(function(existingResults) {
-                        if (existingResults.items && existingResults.items.length > 0) {
-                            console.log('⚠️ Dive log already exists in Wix collection, skipping duplicate save:', existingResults.items[0]._id);
-                            resolve({
-                                _id: existingResults.items[0]._id,
-                                duplicate: true,
-                                message: 'Log already exists - no duplicate created'
-                            });
-                        } else {
-                            // Safe to save - no duplicate found
-                            console.log('✅ No duplicate found, proceeding with Wix save...');
-                            wixData.save('DiveLogs', logToSave)
-                                .then(function(result) {
-                                    console.log('✅ Dive log saved to Wix collection:', result._id);
-                                    resolve(result);
-                                })
-                                .catch(function(saveError) {
-                                    console.error('❌ Wix collection save failed:', saveError);
-                                    reject(saveError);
-                                });
-                        }
-                    })
-                    .catch(function(queryError) {
-                        console.log('⚠️ Could not check for duplicates, proceeding with save:', queryError.message);
-                        // If we can't check for duplicates, still try to save
-                        wixData.save('DiveLogs', logToSave)
-                            .then(function(result) {
-                                console.log('✅ Dive log saved to Wix collection (no duplicate check):', result._id);
-                                resolve(result);
-                            })
-                            .catch(function(saveError) {
-                                console.error('❌ Wix collection save failed:', saveError);
-                                reject(saveError);
-                            });
-                    });
-            } else {
-                var error = new Error('Wix data API not available');
-                console.error('❌', error.message);
-                reject(error);
-            }
-        } catch (error) {
-            console.error('❌ Wix collection save error:', error);
-            reject(error);
-        }
-    });
-}
+// ===== SIMPLIFIED WIX COLLECTION SAVE (REMOVED - DIRECT API ONLY) =====
+// Note: This function has been simplified - we now use direct Vercel API calls
+// with Wix collection fallback built into the main save function
 
 // ===== SAVE DIVE LOG TO LOCAL STORAGE =====
 /**

@@ -1,0 +1,33 @@
+# Exclude Wix-specific files from ESLint (these run in Wix environment, not Vercel)
+wix-site/
+wix-page/
+**/wix-*.js
+**/*wix*.js
+public/bot-widget.js
+
+# Exclude build directories
+.next/
+node_modules/
+out/
+build/
+
+# Exclude legacy and backup files
+temp_backup/
+archive/
+*.backup.js
+*.bak
+*.old
+
+# Exclude test and debug files
+tests/
+**/test-*.js
+**/debug-*.js
+**/emergency-*.js
+**/*test*.js
+
+# Exclude documentation files
+*.md
+docs/
+
+# Exclude specific problematic files that are Wix-specific
+public/bot-widget.js

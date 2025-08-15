@@ -6,7 +6,6 @@
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
 import wixUsersBackend from 'wix-users-backend';
-import { fetch } from 'wix-fetch';
 import { WixUtilsMaster, MASTER_CONFIG } from '../wix-utils.jsw';
 
 // 🎯 MASTER CONFIGURATION
@@ -33,18 +32,15 @@ const DIVELOGS_CONFIG = {
   }
 };
 
-// 🔥 PERFORMANCE METRICS (Expert/Optimized levels)
+// 🔥 PERFORMANCE METRICS - SIMPLIFIED FOR WIX COLLECTIONS ONLY
 let diveLogsMetrics = {
   saves: 0,
   queries: 0,
-  semanticSearches: 0,
   totalDuration: 0,
   errors: 0,
   slowQueries: 0,
   byVersion: {
-    basic: { requests: 0, duration: 0 },
-    expert: { requests: 0, duration: 0 },
-    optimized: { requests: 0, duration: 0 }
+    master: { requests: 0, duration: 0 }
   }
 };
 
@@ -121,8 +117,9 @@ function getApiVersion(request) {
          DIVELOGS_CONFIG.API_VERSIONS.MASTER; // Default to master
 }
 
-// 🔥 PERFORMANCE TRACKING
+// 🔥 PERFORMANCE TRACKING - SIMPLIFIED
 function trackMetrics(version, operation, duration, error = false) {
+  diveLogsMetrics.byVersion[version] = diveLogsMetrics.byVersion[version] || { requests: 0, duration: 0 };
   diveLogsMetrics.byVersion[version].requests++;
   diveLogsMetrics.byVersion[version].duration += duration;
   diveLogsMetrics.totalDuration += duration;
@@ -133,9 +130,6 @@ function trackMetrics(version, operation, duration, error = false) {
       break;
     case 'query':
       diveLogsMetrics.queries++;
-      break;
-    case 'semanticSearch':
-      diveLogsMetrics.semanticSearches++;
       break;
   }
   
@@ -156,19 +150,29 @@ export function options_diveLogs(request) {
 }
 
 /**
- * POST: Save dive log data 
- * Supports all API versions with appropriate feature sets
+ * POST: Save dive log data directly to Wix DiveLogs collection
+ * 🚀 SIMPLIFIED: No external APIs, just Wix collections
  */
 export async function post_diveLogs(request) {
   const startTime = Date.now();
   const version = getApiVersion(request);
   
   try {
+    console.log("💾 Wix HTTP Function: Saving dive log to DiveLogs collection...");
     const requestData = await request.body.json();
+    
+    console.log("📋 Received dive log data:", {
+      userId: requestData.userId,
+      diveDate: requestData.diveDate,
+      discipline: requestData.discipline,
+      reachedDepth: requestData.reachedDepth,
+      location: requestData.location
+    });
     
     // Validation
     const validationErrors = validateDiveLog(requestData, version);
     if (validationErrors.length > 0) {
+      console.error("❌ Validation failed:", validationErrors);
       trackMetrics(version, 'save', Date.now() - startTime, true);
       return createResponse(400, {
         error: 'Validation failed',
@@ -177,29 +181,29 @@ export async function post_diveLogs(request) {
       }, request);
     }
     
-    // Add metadata based on version
+    // 🚀 SIMPLIFIED: Prepare data for Wix DiveLogs collection
     const diveLogData = {
       ...requestData,
       _createdDate: new Date(),
       _updatedDate: new Date(),
-      apiVersion: version
+      apiVersion: version,
+      submissionTimestamp: new Date().toISOString(),
+      dataSource: 'wix-http-function'
     };
     
-    // Master level: Add additional tracking (always enabled)
-    diveLogData.submissionTimestamp = new Date().toISOString();
-    diveLogData.dataSource = 'wix-api';
+    console.log("💾 Saving to Wix DiveLogs collection...");
     
-    // Master level: Add performance hints
-    diveLogData.indexHints = {
-      primaryQuery: ['userId', 'diveDate'],
-      searchable: ['discipline', 'location', 'notes']
-    };
-    
-    // Save to Wix Data
+    // Save directly to Wix DiveLogs collection
     const result = await wixData.save(DIVELOGS_CONFIG.COLLECTION_NAME, diveLogData);
     
     const duration = Date.now() - startTime;
     trackMetrics(version, 'save', duration);
+    
+    console.log("✅ Dive log saved successfully:", {
+      _id: result._id,
+      userId: result.userId,
+      duration: `${duration}ms`
+    });
     
     return createResponse(200, {
       success: true,
@@ -216,7 +220,7 @@ export async function post_diveLogs(request) {
     const duration = Date.now() - startTime;
     trackMetrics(version, 'save', duration, true);
     
-    console.error('❌ Error saving dive log:', error);
+    console.error('❌ Error saving dive log to Wix collection:', error);
     return createResponse(500, {
       error: 'Failed to save dive log',
       details: error.message,
@@ -227,8 +231,8 @@ export async function post_diveLogs(request) {
 }
 
 /**
- * GET: Retrieve dive logs with advanced filtering
- * Supports semantic search in expert/optimized modes
+ * GET: Retrieve dive logs from Wix DiveLogs collection
+ * 🚀 SIMPLIFIED: No semantic search, just efficient Wix queries
  */
 export async function get_diveLogs(request) {
   const startTime = Date.now();
@@ -236,6 +240,13 @@ export async function get_diveLogs(request) {
   
   try {
     const { userId, limit = 50, search, discipline, dateFrom, dateTo } = request.query;
+    
+    console.log("🔍 Wix HTTP Function: Querying DiveLogs collection...", {
+      userId: userId ? "***" + userId.slice(-4) : "missing",
+      limit,
+      search: search || "none",
+      discipline: discipline || "any"
+    });
     
     if (!userId) {
       trackMetrics(version, 'query', Date.now() - startTime, true);
@@ -245,11 +256,11 @@ export async function get_diveLogs(request) {
       }, request);
     }
     
-    // Build query based on version
+    // 🚀 SIMPLIFIED: Build efficient Wix query - no external APIs
     let query = wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME)
       .eq('userId', userId)
       .limit(Math.min(parseInt(limit), 100)) // Cap at 100
-      .descending('diveDate'); // Always sort by date
+      .descending('_createdDate'); // Sort by creation date for consistency
     
     // Add filters
     if (discipline) {
@@ -264,19 +275,27 @@ export async function get_diveLogs(request) {
       query = query.le('diveDate', dateTo);
     }
     
-    // Simple text search in notes and location
+    // 🚀 SIMPLIFIED: Basic text search in Wix collection fields
     if (search) {
       query = query.or(
         wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME).contains('notes', search),
-        wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME).contains('location', search)
+        wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME).contains('location', search),
+        wixData.query(DIVELOGS_CONFIG.COLLECTION_NAME).contains('discipline', search)
       );
     }
     
     // Execute query
+    console.log("📊 Executing Wix collection query...");
     const results = await query.find();
     
     const duration = Date.now() - startTime;
     trackMetrics(version, 'query', duration);
+    
+    console.log("✅ Query completed:", {
+      itemsFound: results.items.length,
+      totalCount: results.totalCount,
+      duration: `${duration}ms`
+    });
     
     const response = {
       success: true,
@@ -286,7 +305,8 @@ export async function get_diveLogs(request) {
       version: version,
       performance: {
         duration: `${duration}ms`,
-        queryOptimization: results.items.length > 0 ? 'indexed' : 'scan'
+        queryOptimization: results.items.length > 0 ? 'indexed' : 'scan',
+        source: 'wix-collection-direct'
       }
     };
     
@@ -296,7 +316,7 @@ export async function get_diveLogs(request) {
     const duration = Date.now() - startTime;
     trackMetrics(version, 'query', duration, true);
     
-    console.error('❌ Error retrieving dive logs:', error);
+    console.error('❌ Error retrieving dive logs from Wix collection:', error);
     return createResponse(500, {
       error: 'Failed to retrieve dive logs',
       details: error.message,
@@ -415,23 +435,18 @@ export async function delete_diveLogs(request) {
 }
 
 /**
- * Expert/Optimized: Get performance metrics
+ * GET: Performance metrics for Wix DiveLogs collection operations
+ * 🚀 SIMPLIFIED: Only collection-based metrics
  */
 export async function get_diveLogsMetrics(request) {
   const version = getApiVersion(request);
-  
-  if (version === 'basic') {
-    return createResponse(403, {
-      error: 'Metrics available in expert/optimized versions only',
-      success: false
-    }, request);
-  }
   
   return createResponse(200, {
     success: true,
     metrics: diveLogsMetrics,
     config: DIVELOGS_CONFIG,
-    version: version
+    version: version,
+    note: "Simplified metrics for Wix collections only - no external APIs"
   }, request);
 }
 
@@ -442,4 +457,4 @@ export const getDiveLogs = get_diveLogs;
 export const updateDiveLog = put_diveLogs;
 export const deleteDiveLog = delete_diveLogs;
 
-console.log("🔥 Dive Logs Master API initialized - All versions supported");
+console.log("🔥 Wix DiveLogs HTTP Function initialized - Simplified for direct collection storage");

@@ -1,159 +1,59 @@
-// 🔥 HTTP-GETUSERPROFILE.JSW - ALL-IN-ONE USER PROFILE API
-// Consolidates: http-getUserProfile + http-getUserProfile-master + http-getUserProfile-expert
-// Version: 4.0.0 - Master Consolidated Edition
-// Date: August 8, 2025
+// 🔥 HTTP-GETUSERPROFILE.JSW - SIMPLIFIED USER PROFILE API
+// Version: 5.0.0 - Simplified Edition (All Paid Members)
+// Date: August 14, 2025
 
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
-import { WixUtilsMaster, MASTER_CONFIG } from '../wix-utils.jsw';
 
-// 🎯 MASTER CONFIGURATION
+// 🎯 SIMPLIFIED CONFIGURATION
 const PROFILE_CONFIG = {
-  API_VERSIONS: {
-    BASIC: 'basic',           // Simple profile retrieval
-    EXPERT: 'expert',         // Enhanced features + analytics
-    OPTIMIZED: 'optimized'    // Index-aware + performance tracking
-  },
-  
   COLLECTIONS: {
     MEMBERS: 'Members/FullData',
     USER_DATA: 'DiveLogs'
   },
   
-  FIELD_MAPPING: {
-    // Wix member fields → standardized output
-    id: '_id',
-    email: 'loginEmail',
-    displayName: 'nickname',
-    firstName: 'firstName',
-    lastName: 'lastName',
-    profilePicture: 'profilePhoto',
-    phone: 'phones',
-    bio: 'about',
-    location: 'addresses'
-  },
-  
   PERFORMANCE: {
     SLOW_QUERY_THRESHOLD: 1500,
-    ENABLE_ANALYTICS: true,
-    CACHE_TTL: 300000 // 5 minutes
+    ENABLE_ANALYTICS: true
   }
 };
 
-// 🔥 PERFORMANCE METRICS (Expert/Optimized levels)
+// 🔥 SIMPLIFIED PERFORMANCE METRICS
 let profileMetrics = {
   requests: 0,
   totalDuration: 0,
-  errors: 0,
-  cacheHits: 0,
-  slowQueries: 0,
-  byVersion: {
-    basic: { requests: 0, duration: 0 },
-    expert: { requests: 0, duration: 0 },
-    optimized: { requests: 0, duration: 0 }
-  }
+  errors: 0
 };
 
-// 🔄 SIMPLE CACHE for profile data (optimized level)
-const profileCache = new Map();
+// 🔥 CORS Headers
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
 
 /**
- * 🚀 MASTER USER PROFILE HTTP FUNCTION
- * Handles all profile operations with version-based optimization levels
+ * 🚀 SIMPLIFIED USER PROFILE HTTP FUNCTION
+ * Single implementation for all paid members
  */
 export async function get_getUserProfile(request) {
   const startTime = Date.now();
   
   try {
-    // Detect API version from headers or query
-    const apiVersion = request.headers['x-api-version'] || 
-                      request.query?.apiVersion || 
-                      PROFILE_CONFIG.API_VERSIONS.EXPERT;
+    const { userId, includeStats = 'false', includeData = 'false' } = request.query;
     
-    // Route to appropriate implementation
-    let result;
-    switch (apiVersion) {
-      case PROFILE_CONFIG.API_VERSIONS.BASIC:
-        result = await handleBasicProfileRequest(request);
-        break;
-      case PROFILE_CONFIG.API_VERSIONS.EXPERT:
-        result = await handleExpertProfileRequest(request);
-        break;
-      case PROFILE_CONFIG.API_VERSIONS.OPTIMIZED:
-        result = await handleOptimizedProfileRequest(request);
-        break;
-      default:
-        result = await handleExpertProfileRequest(request); // Default to expert
-    }
-    
-    // Track performance metrics
-    const duration = Date.now() - startTime;
-    if (PROFILE_CONFIG.PERFORMANCE.ENABLE_ANALYTICS) {
-      updateProfileMetrics(apiVersion, duration, 'success');
-    }
-    
-    return result;
-    
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const apiVersion = request.headers['x-api-version'] || PROFILE_CONFIG.API_VERSIONS.EXPERT;
-    
-    if (PROFILE_CONFIG.PERFORMANCE.ENABLE_ANALYTICS) {
-      updateProfileMetrics(apiVersion, duration, 'error');
-    }
-    
-    console.error('❌ User Profile API Error:', {
-      error: error.message,
-      apiVersion,
-      duration,
-      userId: request.query?.userId,
-      path: request.path
-    });
-    
-    return serverError({
-      error: 'Failed to retrieve user profile',
-      message: error.message,
-      apiVersion,
-      duration
-    });
-  }
-}
-
-/**
- * OPTIONS: Handle preflight requests
- */
-export function options_getUserProfile(request) {
-    return {
-        status: 200,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-version'
+    if (!userId) {
+      return badRequest({
+        headers: CORS_HEADERS,
+        body: { 
+          success: false,
+          error: 'userId is required' 
         }
-    };
-}
-
-/**
- * 📍 BASIC IMPLEMENTATION - Simple profile retrieval
- */
-async function handleBasicProfileRequest(request) {
-  const { userId } = request.query;
-  
-  if (!userId) {
-    return badRequest({
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: { 
-        success: false,
-        error: 'userId is required' 
-      }
-    });
-  }
-  
-  try {
-    // Simple member profile lookup
+      });
+    }
+    
+    // Get member profile
     const memberResult = await wixData.query(PROFILE_CONFIG.COLLECTIONS.MEMBERS)
       .eq('_id', userId)
       .limit(1)
@@ -161,10 +61,7 @@ async function handleBasicProfileRequest(request) {
     
     if (memberResult.items.length === 0) {
       return notFound({
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
+        headers: CORS_HEADERS,
         body: { 
           success: false,
           error: 'User profile not found', 
@@ -174,62 +71,9 @@ async function handleBasicProfileRequest(request) {
     }
     
     const member = memberResult.items[0];
-    const profile = mapMemberFields(member, 'basic');
+    const profile = mapMemberFields(member);
     
-    return ok({
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: {
-        success: true,
-        profile,
-        apiVersion: 'basic'
-      }
-    });
-  } catch (error) {
-    console.error('Basic profile lookup error:', error);
-    return serverError({
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: { 
-        success: false,
-        error: 'Failed to retrieve profile',
-        details: error.message 
-      }
-    });
-  }
-}
-
-/**
- * ⭐ EXPERT IMPLEMENTATION - Enhanced features + analytics
- */
-async function handleExpertProfileRequest(request) {
-  const { userId, includeStats = 'false', includeData = 'false' } = request.query;
-  
-  if (!userId) {
-    return badRequest({ error: 'userId is required' });
-  }
-  
-  try {
-    // Get member profile with retry logic
-    const memberResult = await resilientQuery(async () => {
-      return await wixData.query(PROFILE_CONFIG.COLLECTIONS.MEMBERS)
-        .eq('_id', userId)
-        .limit(1)
-        .find();
-    });
-    
-    if (memberResult.items.length === 0) {
-      return notFound({ error: 'User profile not found', userId });
-    }
-    
-    const member = memberResult.items[0];
-    const profile = mapMemberFields(member, 'expert');
-    
-    // Enhanced response with additional data
+    // Build response
     const response = {
       success: true,
       profile,
@@ -237,8 +81,7 @@ async function handleExpertProfileRequest(request) {
         lastUpdated: member._updatedDate || member._createdDate,
         source: 'wix-members',
         fields: Object.keys(profile)
-      },
-      apiVersion: 'expert'
+      }
     };
     
     // Include user statistics if requested
@@ -251,111 +94,46 @@ async function handleExpertProfileRequest(request) {
       response.dataSummary = await getUserDataSummary(userId);
     }
     
-    return ok(response);
+    // Track performance
+    const duration = Date.now() - startTime;
+    updateProfileMetrics(duration, 'success');
+    
+    return ok({
+      headers: CORS_HEADERS,
+      body: response
+    });
+    
   } catch (error) {
-    console.error('Expert profile lookup error:', error);
-    // Fallback to basic version
-    return await handleBasicProfileRequest(request);
+    const duration = Date.now() - startTime;
+    updateProfileMetrics(duration, 'error');
+    
+    console.error('❌ User Profile API Error:', {
+      error: error.message,
+      duration,
+      userId: request.query?.userId,
+      path: request.path
+    });
+    
+    return serverError({
+      headers: CORS_HEADERS,
+      body: {
+        success: false,
+        error: 'Failed to retrieve user profile',
+        message: error.message,
+        duration
+      }
+    });
   }
 }
 
 /**
- * 🔥 OPTIMIZED IMPLEMENTATION - Index-aware + caching + performance tracking
+ * OPTIONS: Handle preflight requests
  */
-async function handleOptimizedProfileRequest(request) {
-  const { 
-    userId, 
-    includeStats = 'false', 
-    includeData = 'false',
-    useCache = 'true',
-    consistentRead = 'false'
-  } = request.query;
-  
-  if (!userId) {
-    return badRequest({ error: 'userId is required' });
-  }
-  
-  try {
-    // Check cache first (if enabled)
-    const cacheKey = `profile_${userId}_${includeStats}_${includeData}`;
-    if (useCache === 'true' && profileCache.has(cacheKey)) {
-      const cached = profileCache.get(cacheKey);
-      if (Date.now() - cached.timestamp < PROFILE_CONFIG.PERFORMANCE.CACHE_TTL) {
-        profileMetrics.cacheHits++;
-        return ok({
-          ...cached.data,
-          cached: true,
-          cacheAge: Date.now() - cached.timestamp
-        });
-      } else {
-        profileCache.delete(cacheKey); // Expired
-      }
-    }
-    
-    const startTime = Date.now();
-    
-    // Optimized member profile lookup with consistent read option
-    const memberResult = await wixData.query(PROFILE_CONFIG.COLLECTIONS.MEMBERS)
-      .eq('_id', userId)
-      .limit(1)
-      .options({ consistentRead: consistentRead === 'true' })
-      .find();
-    
-    if (memberResult.items.length === 0) {
-      return notFound({ error: 'User profile not found', userId });
-    }
-    
-    const member = memberResult.items[0];
-    const profile = mapMemberFields(member, 'optimized');
-    
-    const queryDuration = Date.now() - startTime;
-    
-    // Enhanced response with performance metrics
-    const response = {
-      success: true,
-      profile,
-      metadata: {
-        lastUpdated: member._updatedDate || member._createdDate,
-        source: 'wix-members',
-        fields: Object.keys(profile),
-        optimized: true
-      },
-      performance: {
-        queryDuration,
-        indexOptimized: true,
-        consistentRead: consistentRead === 'true',
-        cached: false
-      },
-      apiVersion: 'optimized'
-    };
-    
-    // Include optimized user statistics if requested
-    if (includeStats === 'true') {
-      const statsStartTime = Date.now();
-      response.stats = await getUserStatsOptimized(userId);
-      response.performance.statsQueryDuration = Date.now() - statsStartTime;
-    }
-    
-    // Include optimized user data summary if requested
-    if (includeData === 'true') {
-      const dataStartTime = Date.now();
-      response.dataSummary = await getUserDataSummaryOptimized(userId);
-      response.performance.dataQueryDuration = Date.now() - dataStartTime;
-    }
-    
-    // Cache the result (if caching enabled)
-    if (useCache === 'true') {
-      profileCache.set(cacheKey, {
-        data: response,
-        timestamp: Date.now()
-      });
-    }
-    
-    return ok(response);
-  } catch (error) {
-    console.error('Optimized profile lookup error, falling back to expert:', error);
-    return await handleExpertProfileRequest(request);
-  }
+export function options_getUserProfile(request) {
+  return ok({
+    headers: CORS_HEADERS,
+    body: {}
+  });
 }
 
 // ===== 🛠️ UTILITY FUNCTIONS =====
@@ -363,61 +141,41 @@ async function handleOptimizedProfileRequest(request) {
 /**
  * Map Wix member fields to standardized profile format
  */
-function mapMemberFields(member, level = 'basic') {
-  const profile = {
+function mapMemberFields(member) {
+  return {
     userId: member._id,
     email: member.loginEmail || '',
     displayName: member.nickname || member.firstName || 'User',
     firstName: member.firstName || '',
     lastName: member.lastName || '',
+    profilePicture: member.profilePhoto?.url || '',
+    phone: Array.isArray(member.phones) && member.phones.length > 0 ? 
+           member.phones[0].phone : '',
+    bio: member.about || '',
+    location: Array.isArray(member.addresses) && member.addresses.length > 0 ? 
+              `${member.addresses[0].city || ''}, ${member.addresses[0].country || ''}`.trim() : '',
+    lastLoginDate: member.lastLoginDate,
+    registrationDate: member._createdDate,
     source: 'wix-members'
   };
-  
-  // Add additional fields for expert/optimized levels
-  if (level !== 'basic') {
-    profile.profilePicture = member.profilePhoto?.url || '';
-    profile.phone = Array.isArray(member.phones) && member.phones.length > 0 ? 
-                   member.phones[0].phone : '';
-    profile.bio = member.about || '';
-    profile.location = Array.isArray(member.addresses) && member.addresses.length > 0 ? 
-                      `${member.addresses[0].city || ''}, ${member.addresses[0].country || ''}`.trim() : '';
-    
-    // Optimized level includes full member data
-    if (level === 'optimized') {
-      profile.fullMemberData = member;
-      profile.customFields = member.customFields || {};
-      profile.lastLoginDate = member.lastLoginDate;
-      profile.registrationDate = member._createdDate;
-    }
-  }
-  
-  return profile;
 }
 
 /**
- * Get user statistics (expert level)
+ * Get user statistics
  */
 async function getUserStats(userId) {
   try {
-    const memoryResult = await wixData.query(PROFILE_CONFIG.COLLECTIONS.USER_DATA)
-      .eq('userId', userId)
-      .eq('type', 'memory')
-      .count();
-    
     const diveLogResult = await wixData.query(PROFILE_CONFIG.COLLECTIONS.USER_DATA)
       .eq('userId', userId)
-      .eq('type', 'dive-log')
       .count();
     
     return {
-      totalMemories: memoryResult,
       totalDiveLogs: diveLogResult,
-      totalEntries: memoryResult + diveLogResult
+      totalEntries: diveLogResult
     };
   } catch (error) {
     console.warn('Failed to get user stats:', error);
     return {
-      totalMemories: 0,
       totalDiveLogs: 0,
       totalEntries: 0,
       error: 'Stats unavailable'
@@ -426,38 +184,7 @@ async function getUserStats(userId) {
 }
 
 /**
- * Get user statistics (optimized with index-aware queries)
- */
-async function getUserStatsOptimized(userId) {
-  try {
-    const [memoryResult, diveLogResult] = await Promise.all([
-      new WixUtilsMaster(PROFILE_CONFIG.COLLECTIONS.USER_DATA, 'optimized')
-        .forUser(userId)
-        .ofType('memory')
-        .execute()
-        .then(r => r.totalCount || r.items.length),
-      
-      new WixUtilsMaster(PROFILE_CONFIG.COLLECTIONS.USER_DATA, 'optimized')
-        .forUser(userId)
-        .ofType('dive-log')
-        .execute()
-        .then(r => r.totalCount || r.items.length)
-    ]);
-    
-    return {
-      totalMemories: memoryResult,
-      totalDiveLogs: diveLogResult,
-      totalEntries: memoryResult + diveLogResult,
-      optimized: true
-    };
-  } catch (error) {
-    console.warn('Failed to get optimized user stats, falling back:', error);
-    return await getUserStats(userId);
-  }
-}
-
-/**
- * Get user data summary (expert level)
+ * Get user data summary
  */
 async function getUserDataSummary(userId) {
   try {
@@ -470,109 +197,50 @@ async function getUserDataSummary(userId) {
     return {
       recentEntries: recentData.items.length,
       lastActivity: recentData.items.length > 0 ? recentData.items[0]._createdDate : null,
-      types: [...new Set(recentData.items.map(item => item.type))]
+      disciplines: [...new Set(recentData.items.map(item => item.discipline).filter(Boolean))]
     };
   } catch (error) {
     console.warn('Failed to get user data summary:', error);
     return {
       recentEntries: 0,
       lastActivity: null,
-      types: [],
+      disciplines: [],
       error: 'Summary unavailable'
     };
   }
 }
 
 /**
- * Get user data summary (optimized with index-aware queries)
+ * Update performance metrics - SIMPLIFIED
  */
-async function getUserDataSummaryOptimized(userId) {
-  try {
-    const recentData = await new WixUtilsMaster(PROFILE_CONFIG.COLLECTIONS.USER_DATA, 'optimized')
-      .forUser(userId)
-      .sortBy('_createdDate', 'desc')
-      .paginate(10, 0)
-      .execute({ consistentRead: true });
-    
-    return {
-      recentEntries: recentData.items.length,
-      lastActivity: recentData.items.length > 0 ? recentData.items[0]._createdDate : null,
-      types: [...new Set(recentData.items.map(item => item.type))],
-      optimized: true,
-      performance: recentData._indexAnalysis
-    };
-  } catch (error) {
-    console.warn('Failed to get optimized user data summary, falling back:', error);
-    return await getUserDataSummary(userId);
-  }
-}
-
-/**
- * Resilient query with retry logic (expert/optimized levels)
- */
-async function resilientQuery(queryFn, retries = MASTER_CONFIG.TIMEOUTS.MAX_RETRIES) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await queryFn();
-    } catch (error) {
-      console.warn(`⚠️ Profile query attempt ${attempt} failed:`, error.message);
-      
-      if (attempt === retries) {
-        throw error;
-      }
-      
-      const delay = MASTER_CONFIG.TIMEOUTS.RETRY_DELAY * Math.pow(2, attempt - 1);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-}
-
-/**
- * Update performance metrics
- */
-function updateProfileMetrics(apiVersion, duration, status) {
+function updateProfileMetrics(duration, status) {
   profileMetrics.requests++;
   profileMetrics.totalDuration += duration;
   
   if (status === 'error') {
     profileMetrics.errors++;
   }
-  
-  if (duration > PROFILE_CONFIG.PERFORMANCE.SLOW_QUERY_THRESHOLD) {
-    profileMetrics.slowQueries++;
-  }
-  
-  profileMetrics.byVersion[apiVersion].requests++;
-  profileMetrics.byVersion[apiVersion].duration += duration;
 }
 
-// 🔄 GET METRICS ENDPOINT (Expert/Optimized only)
+// 🔄 GET METRICS ENDPOINT
 export async function get_userProfileMetrics(request) {
-  const apiVersion = request.headers['x-api-version'] || 'expert';
-  
-  if (apiVersion === 'basic') {
-    return badRequest({ error: 'Metrics not available for basic API version' });
-  }
-  
   const avgDuration = profileMetrics.requests > 0 ? 
     Math.round(profileMetrics.totalDuration / profileMetrics.requests) : 0;
   
   return ok({
-    metrics: {
-      ...profileMetrics,
-      averageDuration: avgDuration,
-      successRate: Math.round(((profileMetrics.requests - profileMetrics.errors) / profileMetrics.requests) * 100) || 100,
-      cacheHitRate: profileMetrics.requests > 0 ? 
-        Math.round((profileMetrics.cacheHits / profileMetrics.requests) * 100) : 0
-    },
-    cacheStats: {
-      size: profileCache.size,
-      ttl: PROFILE_CONFIG.PERFORMANCE.CACHE_TTL
-    },
-    timestamp: new Date().toISOString(),
-    apiVersion
+    headers: CORS_HEADERS,
+    body: {
+      metrics: {
+        ...profileMetrics,
+        averageDuration: avgDuration,
+        successRate: Math.round(((profileMetrics.requests - profileMetrics.errors) / profileMetrics.requests) * 100) || 100
+      },
+      timestamp: new Date().toISOString()
+    }
   });
 }
+
+console.log("🔥 Simplified User Profile API initialized");
 
 // Export main function
 export { get_getUserProfile as default };
