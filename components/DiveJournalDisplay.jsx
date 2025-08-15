@@ -300,7 +300,7 @@ export default function DiveJournalDisplay({
 
         // 🚀 STEP 3: Update localStorage IMMEDIATELY with deduplication
         try {
-          const storageKey = `diveLogs_${userId}`; // ✅ Fixed: Use underscore to match embed.jsx
+          const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
           console.log(
             "💾 DiveJournalDisplay: Updating localStorage with key:",
             storageKey,
@@ -390,8 +390,8 @@ export default function DiveJournalDisplay({
         // 🚀 ADDITIONAL: Force sidebar refresh by dispatching storage event
         try {
           window.dispatchEvent(new StorageEvent('storage', {
-            key: `diveLogs_${userId}`, // ✅ Fixed: Use underscore
-            newValue: localStorage.getItem(`diveLogs_${userId}`), // ✅ Fixed: Use underscore
+            key: `diveLogs_${userId}`, // ✅ FIXED: Use underscore consistently
+            newValue: localStorage.getItem(`diveLogs_${userId}`), // ✅ FIXED: Use underscore consistently
             storageArea: localStorage
           }));
           console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");

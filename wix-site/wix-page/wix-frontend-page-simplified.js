@@ -1402,7 +1402,7 @@ function saveDiveLogToLocalStorage(diveLogData, userId) {
         });
         
         // Use the same localStorage key format as the main app
-        var storageKey = 'diveLogs-' + userId;
+        var storageKey = 'diveLogs_' + userId; // ✅ FIXED: Use underscore consistently
         
         // Get existing logs
         var existingLogs = [];

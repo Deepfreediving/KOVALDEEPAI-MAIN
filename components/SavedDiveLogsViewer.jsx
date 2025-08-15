@@ -12,15 +12,9 @@ export default function SavedDiveLogsViewer({
 
   // ✅ V5.0: Load logs when component mounts or userId changes
   useEffect(() => {
-    if (userId) {
-      loadSavedLogs();
-    }
-  }, [userId]); // Load when userId changes
-
-  const loadSavedLogs = () => {
-    if (typeof window !== "undefined" && userId) {
-      // ✅ V5.0: Use the correct localStorage key format
-      const storageKey = `diveLogs-${userId}`;
+    if (userId && typeof window !== "undefined") {
+      // ✅ FIXED: Use the correct localStorage key format
+      const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
       const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
       setSavedLogs(saved.slice(-10)); // Show last 10 logs
       console.log(
@@ -30,7 +24,7 @@ export default function SavedDiveLogsViewer({
         storageKey,
       );
     }
-  };
+  }, [userId]); // Load when userId changes
 
   const clearSavedLogs = () => {
     if (
@@ -38,7 +32,7 @@ export default function SavedDiveLogsViewer({
         "Are you sure you want to clear all saved dive logs from local storage?",
       )
     ) {
-      const storageKey = `diveLogs-${userId}`;
+      const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
       localStorage.removeItem(storageKey);
       setSavedLogs([]);
       // Notify parent to refresh
@@ -150,7 +144,7 @@ export default function SavedDiveLogsViewer({
         setSavedLogs(updatedLogs);
 
         // Update localStorage with correct key
-        const storageKey = `diveLogs-${userId}`;
+        const storageKey = `diveLogs_${userId}`; // ✅ FIXED: Use underscore consistently
         const allLogs = JSON.parse(localStorage.getItem(storageKey) || "[]");
         const filteredLogs = allLogs.filter((log) => log.id !== logToDelete.id);
         localStorage.setItem(storageKey, JSON.stringify(filteredLogs));
