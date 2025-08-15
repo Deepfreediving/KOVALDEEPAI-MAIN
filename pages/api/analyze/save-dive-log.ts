@@ -2,7 +2,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import handleCors from "@/utils/handleCors";
 import { saveLogEntry } from "@/utils/diveLogHelpers"; // KEEP this import!
-import WIX_APP_CONFIG from "@/lib/wixAppConfig";
+// import WIX_APP_CONFIG from "@/lib/wixAppConfig"; // Currently unused
 import {
   compressDiveLogForWix,
   validateDiveLogData,
@@ -109,30 +109,6 @@ export default async function handler(
               : "N/A",
         });
 
-        // ✅ Format for Wix DiveLogs Collection - Field names must match exactly!
-        // Based on Wix collection structure: "User ID", "Dive Log ID", "Log Entry", "Dive Date", "Dive Time"
-        const diveLogData = {
-          "Dive Log ID":
-            ("diveLogId" in compressedData ? compressedData.diveLogId : null) ||
-            localLogData.id,
-          "User ID":
-            ("userId" in compressedData ? compressedData.userId : null) ||
-            localLogData.userId,
-          "Dive Date":
-            ("diveDate" in compressedData ? compressedData.diveDate : null) ||
-            localLogData.date,
-          "Dive Time":
-            ("diveTime" in compressedData ? compressedData.diveTime : null) ||
-            localLogData.totalDiveTime,
-          "Log Entry":
-            ("logEntry" in compressedData ? compressedData.logEntry : null) ||
-            JSON.stringify(localLogData),
-          // Optional fields for additional data
-          squeeze: localLogData.squeeze || false,
-          compressed: true,
-          syncedAt: new Date().toISOString(),
-        };
-
         // 🚀 STEP 3: Save to Wix DiveLogs Collection via HTTP functions
         console.log("🌐 Calling Wix HTTP function for dive log save...");
         
@@ -215,7 +191,7 @@ export default async function handler(
             const errorJson = JSON.parse(errorText);
             console.error("   • Details:", errorJson.details || errorJson.error);
             console.error("   • Validation:", errorJson.validation || "N/A");
-          } catch (parseError) {
+          } catch {
             console.error("   • Raw error:", errorText);
           }
         }

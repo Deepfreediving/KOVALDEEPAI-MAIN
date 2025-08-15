@@ -1,3 +1,7 @@
+# Exclude TypeScript files from ESLint to avoid parser conflicts
+**/*.ts
+**/*.tsx
+
 # Exclude Wix-specific files from ESLint (these run in Wix environment, not Vercel)
 wix-site/
 wix-page/

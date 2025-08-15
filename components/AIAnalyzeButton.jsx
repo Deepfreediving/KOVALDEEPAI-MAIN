@@ -5,7 +5,7 @@ export default function AIAnalyzeButton({
   userId,
   onAnalysisComplete,
   darkMode = false,
-  size = "md",
+  // size = "md", // Unused parameter, commenting out
 }) {
   const [analyzing, setAnalyzing] = useState(false);
 

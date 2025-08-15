@@ -1,0 +1,120 @@
+
+> koval-deep-ai@1.0.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+ ⚠ Port 3001 is in use, trying 3002 instead.
+ ⚠ Port 3002 is in use, trying 3003 instead.
+  ▲ Next.js 14.2.31
+  - Local:        http://localhost:3003
+  - Environments: .env.development, .env
+  - Experiments (use with caution):
+    · optimizeCss
+    · scrollRestoration
+
+ ✓ Starting...
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at new NodeError (node:internal/errors:405:5)
+    at validateString (node:internal/validators:162:11)
+    at Object.relative (node:path:1209:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}

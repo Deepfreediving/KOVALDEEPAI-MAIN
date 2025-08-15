@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
@@ -116,14 +116,6 @@ export default function ChatBox({
             embedMode: false, // This is for direct usage, not embedded
           }),
         });
-
-        const textResponse = await res.text();
-        let data = {};
-        try {
-          data = JSON.parse(textResponse);
-        } catch {
-          data = { error: textResponse || "Unexpected server error." };
-        }
 
         if (!res.ok) {
           console.warn(

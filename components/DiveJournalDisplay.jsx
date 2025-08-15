@@ -66,7 +66,7 @@ export default function DiveJournalDisplay({
       refreshKey,
     });
     try {
-      const stored = localStorage.getItem(`diveLogs-${userId}`);
+      const stored = localStorage.getItem(`diveLogs_${userId}`); // ✅ Fixed: Use underscore to match embed.jsx
       if (stored) {
         const parsedLogs = JSON.parse(stored);
         setLogs(parsedLogs);
@@ -94,11 +94,36 @@ export default function DiveJournalDisplay({
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.log("📸 Image file selected:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
+      // Validate file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        alert(`File too large! Maximum size is ${maxSize / 1024 / 1024}MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`);
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type! Allowed types: ${allowedTypes.join(', ')}`);
+        return;
+      }
+      
       setNewEntry((prev) => ({
         ...prev,
         imageFile: file,
         imagePreview: URL.createObjectURL(file),
       }));
+      
+      console.log("✅ Image file ready for upload");
+    } else {
+      console.log("❌ No file selected");
     }
   };
 
@@ -111,6 +136,8 @@ export default function DiveJournalDisplay({
       id: isEditMode ? editingLog.id : Date.now().toString(),
       timestamp: new Date().toISOString(),
       userId: userId, // Ensure userId is included
+      imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
+      imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
     };
 
     console.log("📝 DiveJournalDisplay: Prepared dive log data:", {
@@ -128,22 +155,55 @@ export default function DiveJournalDisplay({
       let imageAnalysis = null;
       if (newEntry.imageFile && !isEditMode) {
         console.log("📸 DiveJournalDisplay: Uploading and analyzing image...");
+        
+        // Show immediate feedback
+        if (setMessages) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: "📸 Analyzing your dive profile image...",
+            },
+          ]);
+        }
+        
         try {
           const formData = new FormData();
           formData.append('image', newEntry.imageFile);
           formData.append('diveLogId', newLog.id);
+          formData.append('userId', userId);
+          
+          console.log("📤 Uploading image file:", {
+            name: newEntry.imageFile.name,
+            size: newEntry.imageFile.size,
+            type: newEntry.imageFile.type,
+            diveLogId: newLog.id,
+            userId: userId
+          });
+          
+          // Log FormData contents for debugging
+          for (let [key, value] of formData.entries()) {
+            console.log(`📝 FormData ${key}:`, value instanceof File ? `File(${value.name}, ${value.size}bytes)` : value);
+          }
           
           const imageResponse = await fetch('/api/openai/upload-dive-image', {
             method: 'POST',
             body: formData,
           });
           
+          console.log("📡 Image upload response status:", imageResponse.status);
+          console.log("📡 Image upload response headers:", Object.fromEntries(imageResponse.headers.entries()));
+          
+          const responseText = await imageResponse.text();
+          console.log("📥 Image upload response body:", responseText);
+          
           if (imageResponse.ok) {
-            const imageResult = await imageResponse.json();
+            const imageResult = JSON.parse(responseText);
             console.log("✅ DiveJournalDisplay: Image analyzed successfully:", imageResult);
             imageAnalysis = imageResult.data;
             newLog.imageUrl = imageResult.data?.imageUrl;
             newLog.imageAnalysis = imageAnalysis;
+            newLog.extractedText = imageResult.data?.extractedText;
             
             // Show image analysis in chat
             if (setMessages && imageAnalysis) {
@@ -151,15 +211,33 @@ export default function DiveJournalDisplay({
                 ...prev,
                 {
                   role: "assistant",
-                  content: `📸 **Image Analysis Complete**\n\n${imageResult.message || 'Dive profile image has been analyzed and will be included in your coaching feedback.'}`,
+                  content: `📸 **Image Analysis Complete**\n\n${imageResult.message || 'Dive profile image has been analyzed and will be included in your coaching feedback.'}\n\n${imageResult.data?.extractedText ? `**Detected Text:** ${imageResult.data.extractedText}` : ''}`,
                 },
               ]);
             }
           } else {
-            console.warn("⚠️ DiveJournalDisplay: Image upload failed:", imageResponse.status);
+            console.warn("⚠️ DiveJournalDisplay: Image upload failed:", imageResponse.status, responseText);
+            if (setMessages) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: "⚠️ Image analysis failed, but your dive log will still be saved without the image.",
+                },
+              ]);
+            }
           }
         } catch (imageError) {
           console.error("❌ DiveJournalDisplay: Image processing error:", imageError);
+          if (setMessages) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: "❌ Image processing error occurred. Your dive log will be saved without the image.",
+              },
+            ]);
+          }
         }
       }
 
@@ -222,7 +300,7 @@ export default function DiveJournalDisplay({
 
         // 🚀 STEP 3: Update localStorage IMMEDIATELY with deduplication
         try {
-          const storageKey = `diveLogs-${userId}`;
+          const storageKey = `diveLogs_${userId}`; // ✅ Fixed: Use underscore to match embed.jsx
           console.log(
             "💾 DiveJournalDisplay: Updating localStorage with key:",
             storageKey,
@@ -286,7 +364,7 @@ export default function DiveJournalDisplay({
             "❌ DiveJournalDisplay: Failed to update localStorage:",
             storageError,
           );
-          console.log("   • Storage key attempted:", `diveLogs-${userId}`);
+          console.log("   • Storage key attempted:", `diveLogs_${userId}`); // ✅ Fixed: Use underscore
           console.log("   • UserId:", userId);
           console.log(
             "   • Browser storage available:",
@@ -312,8 +390,8 @@ export default function DiveJournalDisplay({
         // 🚀 ADDITIONAL: Force sidebar refresh by dispatching storage event
         try {
           window.dispatchEvent(new StorageEvent('storage', {
-            key: `diveLogs-${userId}`,
-            newValue: localStorage.getItem(`diveLogs-${userId}`),
+            key: `diveLogs_${userId}`, // ✅ Fixed: Use underscore
+            newValue: localStorage.getItem(`diveLogs_${userId}`), // ✅ Fixed: Use underscore
             storageArea: localStorage
           }));
           console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");
@@ -491,7 +569,7 @@ export default function DiveJournalDisplay({
 
           // Save to localStorage
           localStorage.setItem(
-            `diveLogs-${userId}`,
+            `diveLogs_${userId}`, // ✅ Fixed: Use underscore
             JSON.stringify(updatedLogs),
           );
 
@@ -596,7 +674,7 @@ export default function DiveJournalDisplay({
         // 🚀 STEP 3: Update localStorage
         try {
           localStorage.setItem(
-            `diveLogs-${userId}`,
+            `diveLogs_${userId}`, // ✅ Fixed: Use underscore
             JSON.stringify(updatedLogs),
           );
           console.log(

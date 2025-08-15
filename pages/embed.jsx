@@ -4,7 +4,7 @@ import ChatMessages from "../components/ChatMessages";
 import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
 import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
-import apiClient from "../utils/apiClient";
+// import apiClient from "../utils/apiClient"; // Currently unused
 import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
 
 const API_ROUTES = {
@@ -28,7 +28,7 @@ export default function Embed() {
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
   // Always assume we're in embedded mode for this page
-  const [isEmbedded, setIsEmbedded] = useState(true);
+  const [isEmbedded] = useState(true); // setIsEmbedded not needed
 
   // ===== CORE STATE (Simplified - No Authentication Blocking) =====
   const [sessionName, setSessionName] = useState(defaultSessionName);
@@ -49,7 +49,7 @@ export default function Embed() {
       : false,
   );
   const [userId, setUserId] = useState("");
-  const [threadId, setThreadId] = useState(null);
+  // const [threadId, setThreadId] = useState(null); // Currently unused
   const [profile, setProfile] = useState({});
   const [diveLogs, setDiveLogs] = useState([]);
   const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
@@ -61,9 +61,9 @@ export default function Embed() {
     openai: "⏳ Checking...",
     pinecone: "⏳ Checking...",
   });
-  const [sessionStatus, setSessionStatus] = useState("Ready");
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
+  const [sessionStatus] = useState("Ready"); // setSessionStatus not used currently
+  const [isAuthenticating] = useState(false); // setIsAuthenticating not used currently  
+  const [authTimeoutReached] = useState(false); // setAuthTimeoutReached not used currently
 
   const bottomRef = useRef(null);
 
@@ -101,7 +101,8 @@ export default function Embed() {
     });
     return out;
   };
-  const migrateLegacyDiveLogKeys = (uid) => {
+  
+  const migrateLegacyDiveLogKeys = useCallback((uid) => {
     if (typeof window === "undefined" || !uid) return [];
     const keys = legacyKeysFor(uid);
     let collected = [];
@@ -120,7 +121,10 @@ export default function Embed() {
             }
           }
         }
-      } catch {}
+      } catch (error) {
+        // Ignore parsing errors from legacy storage
+        console.warn('Legacy storage parsing error:', error);
+      }
     });
     if (collected.length) {
       localStorage.setItem(storageKey(uid), JSON.stringify(collected));
@@ -129,7 +133,7 @@ export default function Embed() {
       );
     }
     return collected;
-  };
+  }, []);
 
   const getDisplayName = useCallback(() => {
     console.log(
@@ -194,7 +198,7 @@ export default function Embed() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       setSessionsList(safeParse("kovalSessionsList", []));
-      setThreadId(localStorage.getItem("kovalThreadId") || null);
+      // setThreadId(localStorage.getItem("kovalThreadId") || null); // threadId currently unused
 
       // Check if we have a stored userId
       const storedUserId = localStorage.getItem("kovalUser");
@@ -233,7 +237,7 @@ export default function Embed() {
         }, 5000); // 5 second timeout
       }
     }
-  }, []);
+  }, [migrateLegacyDiveLogKeys]);
 
   // ===== URL PARAMETER HANDLING FOR EMBEDDED MODE =====
   useEffect(() => {
@@ -532,7 +536,7 @@ export default function Embed() {
     window.addEventListener("message", handleParentMessages);
 
     return () => window.removeEventListener("message", handleParentMessages);
-  }, []);
+  }, [migrateLegacyDiveLogKeys, userId]);
 
   // ✅ CHECK FOR GLOBAL USER DATA (Alternative method) - Simplified
   useEffect(() => {
@@ -616,7 +620,7 @@ export default function Embed() {
 
       return () => clearInterval(interval);
     }
-  }, []);
+  }, [migrateLegacyDiveLogKeys, userId]);
 
   // ✅ THEME SYNC
   useEffect(() => {
@@ -708,21 +712,114 @@ export default function Embed() {
           conversationHistory: messages.slice(-6), // Last 3 conversation pairs
         };
 
-        // Add files if present
+        // Add files if present - use fallback for file uploads
+        let response;
         if (currentFiles.length > 0) {
-          requestBody.files = currentFiles.map((file) => ({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-          }));
-          console.log("📎 Including files in chat request:", requestBody.files);
-        }
+          console.log("📎 Files present - using direct file upload fallback");
+          
+          // For now, use the fallback API which can handle files better
+          const fallbackBody = {
+            message: input,
+            userId,
+            profile,
+            embedMode: true,
+            diveLogs: diveLogs.slice(0, 5),
+            files: currentFiles.map((file) => ({
+              name: file.name,
+              size: file.size,
+              type: file.type,
+            })),
+          };
 
-        const response = await fetch(API_ROUTES.CHAT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        });
+          // First try to upload files and extract text
+          const uploadPromises = currentFiles.map(async (file) => {
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('diveLogId', `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`); // Generate ID for chat uploads
+            formData.append('userId', userId);
+            
+            console.log(`📤 Uploading chat file: ${file.name} (${file.size} bytes)`);
+            
+            try {
+              const uploadResponse = await fetch('/api/openai/upload-dive-image', {
+                method: 'POST',
+                body: formData,
+              });
+              
+              console.log(`📡 Upload response status for ${file.name}:`, uploadResponse.status);
+              
+              if (uploadResponse.ok) {
+                const result = await uploadResponse.json();
+                console.log(`✅ Upload successful for ${file.name}:`, result);
+                return {
+                  name: file.name,
+                  extractedText: result.data?.extractedText || '',
+                  analysis: result.data?.analysis || '',
+                  imageUrl: result.data?.imageUrl || ''
+                };
+              } else {
+                const errorText = await uploadResponse.text();
+                console.warn(`⚠️ Upload failed for ${file.name}:`, uploadResponse.status, errorText);
+                return { name: file.name, extractedText: '', analysis: '', error: errorText };
+              }
+            } catch (error) {
+              console.error(`❌ Upload error for ${file.name}:`, error);
+              return { name: file.name, extractedText: '', analysis: '', error: error.message };
+            }
+          });
+          
+          const uploadResults = await Promise.all(uploadPromises);
+          
+          console.log("📊 Upload results summary:", uploadResults);
+          
+          // Add extracted text to the message
+          const successfulUploads = uploadResults.filter(r => r.extractedText && !r.error);
+          const failedUploads = uploadResults.filter(r => r.error);
+          
+          if (successfulUploads.length > 0) {
+            const fileContext = successfulUploads
+              .map(r => `**${r.name}:** ${r.extractedText}`)
+              .join('\n\n');
+              
+            fallbackBody.message += `\n\n**Uploaded Images:**\n${fileContext}`;
+            
+            // Show upload success feedback
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `📸 Successfully analyzed ${successfulUploads.length} image(s)! Processing your dive data...`,
+              },
+            ]);
+          }
+          
+          if (failedUploads.length > 0) {
+            console.warn("⚠️ Some file uploads failed:", failedUploads);
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `⚠️ ${failedUploads.length} file(s) failed to upload: ${failedUploads.map(f => f.name).join(', ')}. Continuing with text analysis...`,
+              },
+            ]);
+          }
+
+          const chatResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fallbackBody),
+          });
+          
+          response = chatResponse; // Use chatResponse for files
+          
+        } else {
+          // No files - use normal bridge API
+          response = await fetch(API_ROUTES.CHAT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          });
+        }
 
         if (!response.ok) {
           console.warn(
@@ -967,7 +1064,7 @@ export default function Embed() {
     } finally {
       setLoadingDiveLogs(false);
     }
-  }, [userId]);
+  }, [userId, migrateLegacyDiveLogKeys]);
 
   // ✅ SEND INITIAL USER DATA TO PARENT WIDGET (when diveLogs are loaded)
   useEffect(() => {
@@ -1183,70 +1280,12 @@ export default function Embed() {
           }
         }
 
-        // ✅ STEP 2: Also save to local storage with proper counting
-        console.log("💾 Saving to localStorage...");
-        const key = storageKey(userId);
-        const existingLogs = safeParse(key, []);
-        console.log(
-          `📂 Found ${existingLogs.length} existing logs in localStorage`,
-        );
-
-        const localId = `local-${Date.now()}`;
-        const localLog = {
-          ...diveLogWithUser,
-          localId,
-          savedAt: new Date().toISOString(),
-          id: localId, // Ensure it has an ID for display
-        };
-        const updatedLogs = [localLog, ...existingLogs];
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem(key, JSON.stringify(updatedLogs));
-          console.log(
-            `✅ Dive log saved to localStorage. Total count: ${updatedLogs.length}`,
-          );
-        }
-        setDiveLogs(updatedLogs);
-        console.log(
-          "📋 Updated diveLogs state with",
-          updatedLogs.length,
-          "logs",
-        );
-
-        // ✅ STEP 3: Refresh dive logs from API to sync with server
+        // ✅ STEP 2: Refresh dive logs from API to sync with server
         console.log("🔄 Refreshing dive logs from API after save...");
         await loadDiveLogs();
 
-        // ✅ STEP 4: Update the profile data immediately for correct count display
-        setProfile((prev) => ({
-          ...prev,
-          diveLogsCount: updatedLogs.length,
-          lastDiveLogSaved: new Date().toISOString(),
-        }));
-
-        // ✅ STEP 4: Send user data update to parent widget
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage(
-            {
-              type: "USER_DATA_UPDATE",
-              userData: {
-                userId,
-                diveLogsCount: updatedLogs.length,
-                memoriesCount: profile?.memoriesCount || 0,
-                lastUpdated: new Date().toISOString(),
-              },
-            },
-            "*",
-          );
-          console.log(
-            `📤 Sent updated dive logs count (${updatedLogs.length}) to widget`,
-          );
-        }
-
-        // Refresh the list regardless of save method
-        console.log("🔄 Refreshing dive logs list...");
-        await loadDiveLogs();
-        setIsDiveJournalOpen(false); // ✅ Close the dive journal
+        // ✅ STEP 3: Close dive journal and show success message
+        setIsDiveJournalOpen(false);
         setEditLogIndex(null);
 
         // Add confirmation message
@@ -1277,7 +1316,7 @@ export default function Embed() {
         console.error("❌ Error stack:", error.stack);
       }
     },
-    [userId, loadDiveLogs],
+    [userId, loadDiveLogs, diveLogs.length, profile],
   );
 
   // ✅ DELETE DIVE LOG
@@ -1407,7 +1446,6 @@ export default function Embed() {
     profile,
     diveLogs,
     darkMode,
-    isDiveJournalOpen,
     startNewSession,
     handleSaveSession,
     handleSelectSession,
@@ -1420,6 +1458,7 @@ export default function Embed() {
     loadingConnections,
     sessionStatus,
     isAuthenticating,
+    editLogIndex,
   ]);
 
   return (
