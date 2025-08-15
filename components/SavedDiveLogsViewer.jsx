@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 export default function SavedDiveLogsViewer({
   darkMode,
-  userId,
+  userId, // Still using userId for component prop (backwards compatibility)
   setMessages,
   onEditDiveLog, // Callback to open popup journal for editing
   onRefreshDiveLogs, // Callback to refresh dive logs in parent
@@ -10,11 +10,28 @@ export default function SavedDiveLogsViewer({
   const [savedLogs, setSavedLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
 
+  // ✅ Helper to get user identifier (supports both old userId and new nickname pattern)
+  const getUserIdentifier = useCallback(() => {
+    // If userId looks like a nickname (no guest- prefix), use it directly
+    if (userId && !userId.startsWith('guest-')) {
+      return userId;
+    }
+    // Otherwise extract from localStorage if available
+    if (typeof window !== "undefined") {
+      const profile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
+      if (profile.nickname) return profile.nickname;
+      if (profile.firstName) return profile.firstName;
+    }
+    // Fallback to userId for guests
+    return userId || 'Guest';
+  }, [userId]);
+
   // ✅ V5.0: Load logs when component mounts or userId changes
   const loadSavedLogs = useCallback(() => {
     if (typeof window !== "undefined" && userId) {
-      // ✅ V5.0: Use the correct localStorage key format
-      const storageKey = `diveLogs_${userId}`;
+      // ✅ Use consistent storage key format
+      const userIdentifier = getUserIdentifier();
+      const storageKey = `diveLogs_${userIdentifier}`;
       const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
       setSavedLogs(saved.slice(-10)); // Show last 10 logs
       console.log(
@@ -24,7 +41,7 @@ export default function SavedDiveLogsViewer({
         storageKey,
       );
     }
-  }, [userId]);
+  }, [userId, getUserIdentifier]);
 
   useEffect(() => {
     if (userId) {
@@ -38,7 +55,8 @@ export default function SavedDiveLogsViewer({
         "Are you sure you want to clear all saved dive logs from local storage?",
       )
     ) {
-      const storageKey = `diveLogs_${userId}`;
+      const userIdentifier = getUserIdentifier();
+      const storageKey = `diveLogs_${userIdentifier}`;
       localStorage.removeItem(storageKey);
       setSavedLogs([]);
       // Notify parent to refresh
@@ -58,8 +76,9 @@ export default function SavedDiveLogsViewer({
 
   // ✅ Add analyze functionality
   const handleAnalyzeDiveLog = async (log) => {
-    if (!log || !userId) {
-      console.warn("⚠️ Missing log or userId for analysis");
+    const userIdentifier = getUserIdentifier();
+    if (!log || !userIdentifier) {
+      console.warn("⚠️ Missing log or user identifier for analysis");
       return;
     }
 
@@ -81,7 +100,7 @@ export default function SavedDiveLogsViewer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
+          nickname: userIdentifier, // ✅ Use nickname instead of userId
           diveLogData: log,
         }),
       });
@@ -131,12 +150,14 @@ export default function SavedDiveLogsViewer({
     }
 
     try {
+      const userIdentifier = getUserIdentifier();
+      
       // Delete from API/Wix
       const response = await fetch("/api/analyze/delete-dive-log", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId,
+          nickname: userIdentifier, // ✅ Use nickname instead of userId
           logId: logToDelete.id,
           source: "saved-dive-logs-viewer",
         }),
@@ -150,7 +171,7 @@ export default function SavedDiveLogsViewer({
         setSavedLogs(updatedLogs);
 
         // Update localStorage with correct key
-        const storageKey = `diveLogs_${userId}`;
+        const storageKey = `diveLogs_${userIdentifier}`;
         const allLogs = JSON.parse(localStorage.getItem(storageKey) || "[]");
         const filteredLogs = allLogs.filter((log) => log.id !== logToDelete.id);
         localStorage.setItem(storageKey, JSON.stringify(filteredLogs));

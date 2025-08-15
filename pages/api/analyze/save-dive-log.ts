@@ -22,7 +22,8 @@ export default async function handler(
     }
 
     const {
-      userId = "anonymous",
+      nickname = "",
+      userId = "", // For backward compatibility
       date = "",
       disciplineType = "",
       discipline = "",
@@ -41,13 +42,17 @@ export default async function handler(
       surfaceProtocol = "",
     } = req.body || {};
 
+    // ✅ Use nickname, fallback to userId for backward compatibility
+    const userIdentifier = nickname || userId || "anonymous";
+
     console.log("💾 Starting dual save process for dive log...");
 
     // 🚀 STEP 1: Save to LOCAL FILES first (super fast for AI)
     const localLogData: any = {
-      id: `dive_${userId}_${Date.now()}`,
+      id: `dive_${userIdentifier}_${Date.now()}`,
       timestamp: new Date().toISOString(),
-      userId,
+      nickname: userIdentifier,
+      userId: userIdentifier, // For backward compatibility in storage
       date,
       disciplineType,
       discipline,
@@ -68,7 +73,7 @@ export default async function handler(
       source: "dive-journal-form",
     };
 
-    const localResult = await saveLogEntry(userId, localLogData);
+    const localResult = await saveLogEntry(userIdentifier, localLogData);
     console.log("✅ Local save completed:", localResult.id);
 
     // ✅ Return success immediately - don't wait for Wix sync
@@ -115,8 +120,9 @@ export default async function handler(
         // 🚀 SIMPLIFIED: Format data for Wix HTTP function - keep it simple and efficient
         const wixDiveLogData = {
           // Required fields (matching DIVELOG_SCHEMA)
-          userId: localLogData.userId,
-          diveDate: localLogData.date,
+          userId: localLogData.nickname, // Use nickname for Wix backend
+          nickname: localLogData.nickname,
+          diveDate: localLogData.date ? new Date(localLogData.date).toISOString() : new Date().toISOString(),
           
           // Core dive data
           discipline: localLogData.discipline || localLogData.disciplineType || 'freediving',
@@ -142,7 +148,8 @@ export default async function handler(
         };
 
         console.log("📤 Sending to Wix HTTP function:", {
-          userId: wixDiveLogData.userId,
+          userId: wixDiveLogData.nickname, // Use nickname for Wix backend
+          nickname: wixDiveLogData.nickname,
           diveDate: wixDiveLogData.diveDate,
           discipline: wixDiveLogData.discipline,
           reachedDepth: wixDiveLogData.reachedDepth,
@@ -177,7 +184,7 @@ export default async function handler(
             wixId: wixResult.data?._id || wixResult._id,
             wixSyncTimestamp: new Date().toISOString(),
           };
-          await saveLogEntry(userId, updatedLogData); // Update local copy
+          await saveLogEntry(userIdentifier, updatedLogData); // Update local copy
           
           console.log("✅ Complete dive log sync process finished successfully");
         } else {

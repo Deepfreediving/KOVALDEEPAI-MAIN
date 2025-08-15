@@ -72,6 +72,8 @@ export default function ChatBox({
 
           const formData = new FormData();
           formData.append("image", compressed);
+          formData.append("nickname", effectiveUserId);
+          formData.append("diveLogId", `dive-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
           const res = await fetch("/api/openai/upload-dive-image", {
             method: "POST",

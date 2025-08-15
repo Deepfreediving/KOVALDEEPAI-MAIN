@@ -67,7 +67,7 @@ function validateFile(file: formidable.File): {
 // ✅ Save image to Wix Media collection
 async function saveImageToWix(
   diveLogId: string,
-  userId: string,
+  nickname: string,
   imageBase64: string,
   filename: string,
   mimetype: string
@@ -81,7 +81,7 @@ async function saveImageToWix(
       `${WIX_SITE_URL}/_functions/uploadDiveImage`,
       {
         diveLogId,
-        userId,
+        nickname,
         imageData: imageBase64,
         filename: filename || `dive-${diveLogId}.jpg`,
         mimetype: mimetype || 'image/jpeg',
@@ -119,7 +119,7 @@ async function saveImageToWix(
 // ✅ Save dive log to Wix DiveLogs collection
 async function saveDiveLogToWix(
   diveLogId: string,
-  userId: string,
+  nickname: string,
   diveLogData: any,
   imageUrl?: string
 ): Promise<{ success: boolean; recordId?: string }> {
@@ -131,10 +131,10 @@ async function saveDiveLogToWix(
     const response = await axios.post(
       `${WIX_SITE_URL}/_functions/saveDiveLog`,
       {
-        userId,
+        nickname,
         diveLogId,
         logEntry: JSON.stringify(diveLogData),
-        diveDate: diveLogData.date ? new Date(diveLogData.date) : new Date(),
+        diveDate: diveLogData.date ? new Date(diveLogData.date).toISOString() : new Date().toISOString(),
         diveTime: diveLogData.totalDiveTime || new Date().toLocaleTimeString(),
         watchedPhoto: imageUrl || null,
         metadata: {
@@ -169,7 +169,7 @@ async function saveDiveLogToWix(
 // ✅ Save analysis to Wix DiveAnalysis collection
 async function saveAnalysisToWix(
   diveLogId: string,
-  userId: string,
+  nickname: string,
   analysisData: any,
   imageUrl?: string
 ): Promise<{ success: boolean; recordId?: string }> {
@@ -182,7 +182,7 @@ async function saveAnalysisToWix(
       `${WIX_SITE_URL}/_functions/saveDiveAnalysis`,
       {
         diveLogId,
-        userId,
+        nickname,
         imageUrl,
         ocrText: analysisData.ocr?.text || "",
         ocrSuccess: analysisData.ocr?.success || false,
@@ -293,13 +293,22 @@ export default async function handler(
       });
     }
 
-    // ✅ Extract userId
-    let userId: string = "";
-    if (fields.userId) {
+    // ✅ Extract nickname (user identifier)
+    let nickname: string = "";
+    if (fields.nickname) {
+      const rawNickname = Array.isArray(fields.nickname)
+        ? fields.nickname[0]
+        : fields.nickname;
+      nickname = (rawNickname as string).trim();
+    }
+
+    // ✅ Backward compatibility: also check for userId field
+    if (!nickname && fields.userId) {
       const rawUserId = Array.isArray(fields.userId)
         ? fields.userId[0]
         : fields.userId;
-      userId = (rawUserId as string).trim();
+      nickname = (rawUserId as string).trim();
+      console.log("⚠️ Using legacy userId field as nickname for backward compatibility");
     }
 
     // ✅ Extract and validate image file
@@ -321,7 +330,7 @@ export default async function handler(
       });
     }
 
-    console.log(`🔍 Processing dive image for log: ${diveLogId} (user: ${userId})`);
+    console.log(`🔍 Processing dive image for log: ${diveLogId} (nickname: ${nickname})`);
 
     // ✅ STEP 1: Convert image to base64 for Wix storage
     const imageBase64 = await fileToBase64(imageFile);
@@ -330,7 +339,7 @@ export default async function handler(
     // ✅ STEP 2: Upload image to Wix Media collection
     const wixUpload = await saveImageToWix(
       diveLogId,
-      userId,
+      nickname,
       imageBase64,
       imageFile.originalFilename || `dive-${diveLogId}.jpg`,
       imageFile.mimetype || 'image/jpeg'
@@ -440,7 +449,7 @@ export default async function handler(
     try {
       analysisSave = await saveAnalysisToWix(
         diveLogId,
-        userId,
+        nickname,
         combinedAnalysis,
         wixUpload.imageUrl
       );
@@ -468,7 +477,7 @@ export default async function handler(
     try {
       diveLogSave = await saveDiveLogToWix(
         diveLogId,
-        userId,
+        nickname,
         diveLogData,
         wixUpload.imageUrl
       );

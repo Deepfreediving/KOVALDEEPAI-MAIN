@@ -208,7 +208,7 @@ export default async function handler(
               analyzedAt: new Date().toISOString(),
             },
           }),
-          diveDate: new Date(),
+          diveDate: new Date().toISOString(),
           diveTime: new Date().toLocaleTimeString(),
           diveLogWatch: null,
           dataType: "pattern_analysis",

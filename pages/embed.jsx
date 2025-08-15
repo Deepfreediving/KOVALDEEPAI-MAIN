@@ -878,7 +878,7 @@ export default function Embed() {
             const formData = new FormData();
             formData.append('image', file);
             formData.append('diveLogId', `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`); // Generate ID for chat uploads
-            formData.append('userId', userId);
+            formData.append('nickname', userId); // Use nickname field for new field mapping
             
             console.log(`📤 Uploading chat file: ${file.name} (${file.size} bytes)`);
             
