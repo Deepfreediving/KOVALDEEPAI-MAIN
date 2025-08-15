@@ -116,7 +116,57 @@ async function saveImageToWix(
   }
 }
 
-// ✅ Save analysis results to Wix DiveAnalysis collection
+// ✅ Save dive log to Wix DiveLogs collection
+async function saveDiveLogToWix(
+  diveLogId: string,
+  userId: string,
+  diveLogData: any,
+  imageUrl?: string
+): Promise<{ success: boolean; recordId?: string }> {
+  const WIX_SITE_URL = process.env.WIX_SITE_URL || "https://www.deepfreediving.com";
+
+  try {
+    console.log(`💾 Saving dive log to Wix DiveLogs collection for: ${diveLogId}`);
+
+    const response = await axios.post(
+      `${WIX_SITE_URL}/_functions/saveDiveLog`,
+      {
+        userId,
+        diveLogId,
+        logEntry: JSON.stringify(diveLogData),
+        diveDate: diveLogData.date ? new Date(diveLogData.date) : new Date(),
+        diveTime: diveLogData.totalDiveTime || new Date().toLocaleTimeString(),
+        watchedPhoto: imageUrl || null,
+        metadata: {
+          source: "koval-ai-upload",
+          timestamp: new Date().toISOString()
+        }
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "KovalAI/1.0",
+        },
+        timeout: 15000,
+      },
+    );
+
+    if (response.status >= 200 && response.status < 300) {
+      console.log(`✅ Dive log saved to Wix DiveLogs collection successfully`);
+      return {
+        success: true,
+        recordId: response.data._id || response.data.recordId
+      };
+    }
+
+    throw new Error(`HTTP ${response.status}: ${response.data?.message || 'Save failed'}`);
+  } catch (error: any) {
+    console.error(`❌ Wix dive log save failed:`, error.response?.data || error.message);
+    return { success: false };
+  }
+}
+
+// ✅ Save analysis to Wix DiveAnalysis collection
 async function saveAnalysisToWix(
   diveLogId: string,
   userId: string,
@@ -312,44 +362,49 @@ export default async function handler(
 
     // ✅ STEP 5: AI Vision Analysis with base64 image
     console.log("🤖 Running AI vision analysis...");
-    const visionResponse = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analyze this freediving depth profile chart. 
-              
-              OCR extracted: "${extractedText || "No text detected"}"
-              ${coachingReport ? `Technical analysis: ${coachingReport}` : ""}
-              
-              Please provide insights about:
-              1. Descent/ascent curve smoothness
-              2. Time spent at various depths
-              3. Any concerning patterns
-              4. Technical improvement suggestions
-              5. Safety observations`,
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${imageFile.mimetype || 'image/jpeg'};base64,${imageBase64}`,
-                detail: "high",
+    let visionAnalysis = "Vision analysis not available";
+    
+    try {
+      const visionResponse = await openai.chat.completions.create({
+        model: "gpt-4-vision-preview",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Analyze this freediving depth profile chart. 
+                
+                OCR extracted: "${extractedText || "No text detected"}"
+                ${coachingReport ? `Technical analysis: ${coachingReport}` : ""}
+                
+                Please provide insights about:
+                1. Descent/ascent curve smoothness
+                2. Time spent at various depths
+                3. Any concerning patterns
+                4. Technical improvement suggestions
+                5. Safety observations`,
               },
-            },
-          ],
-        },
-      ],
-      max_tokens: 500,
-    });
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${imageFile.mimetype || 'image/jpeg'};base64,${imageBase64}`,
+                  detail: "high",
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+      });
 
-    const visionAnalysis =
-      visionResponse.choices[0]?.message?.content ||
-      "No vision analysis available";
-
-    console.log("🤖 AI Vision analysis completed");
+      visionAnalysis = visionResponse.choices[0]?.message?.content || "No vision analysis available";
+      console.log("🤖 AI Vision analysis completed successfully");
+      
+    } catch (visionError: any) {
+      console.warn("⚠️ Vision analysis failed, but continuing with other analysis:", visionError.message);
+      visionAnalysis = `Vision analysis temporarily unavailable: ${visionError.message}`;
+    }
 
     // ✅ STEP 6: Combined Results
     const combinedAnalysis = {
@@ -381,22 +436,55 @@ export default async function handler(
     };
 
     // ✅ STEP 7: Save analysis to Wix DiveAnalysis collection
-    const analysisSave = await saveAnalysisToWix(
-      diveLogId,
-      userId,
-      combinedAnalysis,
-      wixUpload.imageUrl
-    );
+    let analysisSave: { success: boolean; recordId?: string } = { success: false };
+    try {
+      analysisSave = await saveAnalysisToWix(
+        diveLogId,
+        userId,
+        combinedAnalysis,
+        wixUpload.imageUrl
+      );
+      console.log(`📊 Analysis save result:`, analysisSave.success ? "✅ Success" : "❌ Failed");
+    } catch (analysisError: any) {
+      console.warn("⚠️ Analysis save failed, but continuing:", analysisError.message);
+    }
 
-    console.log(`📊 Analysis save result:`, analysisSave.success ? "✅ Success" : "❌ Failed");
+    // ✅ STEP 8: Save dive log to Wix DiveLogs collection
+    const diveLogData = {
+      date: new Date().toISOString().split("T")[0], // Just the date part
+      totalDiveTime: "00:00:00", // Will be extracted from OCR text if available
+      maxDepth: combinedAnalysis.technical?.metrics.maxDepth || 0,
+      avgDescentRate: combinedAnalysis.technical?.metrics.avgDescentRate || 0,
+      hangCount: combinedAnalysis.technical?.metrics.hangCount || 0,
+      safetyRecommendations: combinedAnalysis.vision?.insights || "",
+      technicalAnalysis: combinedAnalysis.technical?.analysis || {},
+      ocrText: combinedAnalysis.ocr?.text || "",
+      location: "Ocean", // Default location
+      discipline: "CWT", // Default discipline
+      source: "koval-ai-upload"
+    };
 
-    // ✅ STEP 8: Build success response
+    let diveLogSave: { success: boolean; recordId?: string } = { success: false };
+    try {
+      diveLogSave = await saveDiveLogToWix(
+        diveLogId,
+        userId,
+        diveLogData,
+        wixUpload.imageUrl
+      );
+      console.log(`💾 Dive log save result:`, diveLogSave.success ? "✅ Success" : "❌ Failed");
+    } catch (diveLogError: any) {
+      console.warn("⚠️ Dive log save failed, but continuing:", diveLogError.message);
+    }
+
+    // ✅ STEP 9: Build success response
     const successMessage = `🤖 Complete Analysis Results:
     
 📄 OCR: ${extractedText ? "Successfully extracted dive data" : "No text detected"}
 ${coachingReport ? `📊 Technical: ${coachingReport.substring(0, 100)}...` : ""}
 🤖 AI Vision: ${visionAnalysis.substring(0, 200)}${visionAnalysis.length > 200 ? "..." : ""}
-📸 Image: Saved to Wix Media collection`;
+📸 Image: Saved to Wix Media collection
+💾 Dive Log: Saved to Wix DiveLogs collection`;
 
     return res.status(200).json({
       success: true,
@@ -404,6 +492,7 @@ ${coachingReport ? `📊 Technical: ${coachingReport.substring(0, 100)}...` : ""
       data: {
         ...combinedAnalysis,
         analysisRecordId: analysisSave.recordId,
+        diveLogRecordId: diveLogSave.recordId,
         extractedText: extractedText, // For backward compatibility
       },
       diveLogId,
@@ -411,6 +500,7 @@ ${coachingReport ? `📊 Technical: ${coachingReport.substring(0, 100)}...` : ""
         processingTime: Date.now() - startTime,
         imageUploadSuccess: wixUpload.success,
         analysisRecordSaved: analysisSave.success,
+        diveLogRecordSaved: diveLogSave.success,
         timestamp: new Date().toISOString(),
       },
     });

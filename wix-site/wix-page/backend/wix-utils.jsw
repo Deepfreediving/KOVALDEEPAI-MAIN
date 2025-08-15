@@ -1,6 +1,6 @@
 // 🔥 WIX UTILITIES - SIMPLIFIED FOR PAID MEMBERS
-// Version: 5.0.0 - Simplified Edition
-// Date: August 14, 2025
+// Version: 5.0.1 - Updated for Fixed Wix API Imports
+// Date: August 15, 2025
 
 import wixData from 'wix-data';
 

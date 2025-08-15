@@ -1,0 +1,126 @@
+// 🔥 HTTP-SAVEDIVELOG.JSW - Save Dive Logs to DiveLogs Collection
+// Version: 5.0.1 - Created for Fixed Wix API Integration
+// Date: August 15, 2025
+
+import { ok, badRequest, serverError } from 'wix-http-functions';
+import wixData from 'wix-data';
+import { WIX_CONFIG, DIVE_LOG_FIELDS, CORS_HEADERS } from '../wix-utils.jsw';
+
+/**
+ * Save dive log to DiveLogs collection
+ * POST: Save new dive log entry
+ */
+export async function post_saveDiveLog(request) {
+  const startTime = Date.now();
+  
+  try {
+    console.log('💾 Received dive log save request');
+
+    // ✅ Parse request body
+    const body = await request.body.text();
+    const data = JSON.parse(body);
+    
+    console.log('📝 Dive log data:', {
+      userId: data.userId,
+      diveLogId: data.diveLogId,
+      hasLogEntry: !!data.logEntry,
+      diveDate: data.diveDate
+    });
+
+    // ✅ Validate required fields
+    if (!data.userId) {
+      return badRequest({
+        headers: CORS_HEADERS,
+        body: { error: 'userId is required' }
+      });
+    }
+
+    if (!data.diveLogId) {
+      return badRequest({
+        headers: CORS_HEADERS,
+        body: { error: 'diveLogId is required' }
+      });
+    }
+
+    // ✅ Create dive log record using correct field mapping
+    const diveLogRecord = {
+      [DIVE_LOG_FIELDS.USER_ID]: data.userId,
+      [DIVE_LOG_FIELDS.DIVE_LOG_ID]: data.diveLogId,
+      [DIVE_LOG_FIELDS.LOG_ENTRY]: data.logEntry || JSON.stringify({}),
+      [DIVE_LOG_FIELDS.DIVE_DATE]: data.diveDate ? new Date(data.diveDate) : new Date(),
+      [DIVE_LOG_FIELDS.DIVE_TIME]: data.diveTime || new Date().toLocaleTimeString(),
+      [DIVE_LOG_FIELDS.WATCH_PHOTO]: data.watchedPhoto || null
+    };
+
+    console.log('📊 Prepared dive log record:', {
+      userId: diveLogRecord[DIVE_LOG_FIELDS.USER_ID],
+      diveLogId: diveLogRecord[DIVE_LOG_FIELDS.DIVE_LOG_ID],
+      hasLogEntry: !!diveLogRecord[DIVE_LOG_FIELDS.LOG_ENTRY],
+      diveDate: diveLogRecord[DIVE_LOG_FIELDS.DIVE_DATE]
+    });
+
+    // ✅ Check if dive log already exists (prevent duplicates)
+    const existingLogs = await wixData.query(WIX_CONFIG.COLLECTIONS.DIVE_LOGS)
+      .eq(DIVE_LOG_FIELDS.DIVE_LOG_ID, data.diveLogId)
+      .find();
+
+    let result;
+    
+    if (existingLogs.items.length > 0) {
+      // Update existing log
+      const existingLog = existingLogs.items[0];
+      const updatedRecord = {
+        ...existingLog,
+        ...diveLogRecord
+      };
+      
+      result = await wixData.update(WIX_CONFIG.COLLECTIONS.DIVE_LOGS, updatedRecord);
+      console.log('✅ Updated existing dive log:', result._id);
+    } else {
+      // Insert new log
+      result = await wixData.insert(WIX_CONFIG.COLLECTIONS.DIVE_LOGS, diveLogRecord);
+      console.log('✅ Created new dive log:', result._id);
+    }
+
+    const processingTime = Date.now() - startTime;
+
+    return ok({
+      headers: CORS_HEADERS,
+      body: {
+        success: true,
+        _id: result._id,
+        diveLogId: data.diveLogId,
+        userId: data.userId,
+        action: existingLogs.items.length > 0 ? 'updated' : 'created',
+        processingTime: processingTime,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Dive log save error:', error);
+    
+    return serverError({
+      headers: CORS_HEADERS,
+      body: {
+        error: 'Failed to save dive log',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+}
+
+/**
+ * Handle OPTIONS requests for CORS
+ */
+export async function options_saveDiveLog(request) {
+  return ok({
+    headers: {
+      ...CORS_HEADERS,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Max-Age': '86400' // 24 hours
+    },
+    body: {}
+  });
+}

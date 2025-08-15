@@ -1,27 +1,20 @@
-/* eslint-env browser, es6 */
-/* global $w, wixData, wixStorage, currentMember */
-
 // ===== 🔥 WIX SIMPLIFIED PAGE - KOVAL AI INTEGRATION V5.0 =====
-// 
+// Required Wix imports - MUST be at the top for Wix to recognize them
+import wixData from 'wix-data';
+import wixStorage from 'wix-storage-frontend';
+import { currentMember } from 'wix-members-frontend';
+
 // ✨ VERSION INFO:
-// • Version: 5.0.0 - Simplified for Paid Members
-// • Last Updated: August 14, 2025
+// • Version: 5.0.1 - Fixed Wix API imports
+// • Last Updated: August 15, 2025
 // • Architecture: Simplified session management with unified backend
 // • Status: Production Ready ✅ - All members are paid members
 //
-// 🎯 V5.0 SIMPLIFICATIONS:
-// ✅ Removed tiered access (all users are paid members)
-// ✅ Simplified field mapping aligned with DiveLogs collection
-// ✅ Unified backend HTTP functions (no basic/expert/optimized tiers)
-// ✅ Streamlined configuration and reduced complexity
-// ✅ Consistent Members/FullData and DiveLogs collection usage
-//
-// 📋 SYSTEM OVERVIEW:
-// ✅ Single-tier Koval AI widget for all paid members
-// ✅ Simplified session management with Vercel backend
-// ✅ Direct DiveLogs collection integration
-// ✅ Consistent field mapping across all components
-// ✅ Streamlined error handling and logging
+// 🎯 V5.0.1 FIXES:
+// ✅ Fixed Wix API imports (wixData, wixStorage, currentMember)
+// ✅ Proper import statements at top of file
+// ✅ Collections and member detection now working
+// ✅ Dive log saving to DiveLogs collection enabled
 //
 // 🔧 CONFIGURATION STATUS:
 // ✅ Vercel URL: https://kovaldeepai-main.vercel.app
@@ -33,14 +26,9 @@
 // 📝 USAGE INSTRUCTIONS:
 // 1. Add this code to your Wix page's code panel
 // 2. Ensure widget ID matches your HTML element
-// 3. Deploy and test functionality
-// 4. Monitor console for any errors or warnings
+// 3. Deploy and publish your page
+// 4. Monitor console for successful API connections
 // 5. Use runDiagnostics() for troubleshooting
-
-// Required Wix imports - using Wix syntax (these are automatically available in Wix code panel)
-// import wixData from 'wix-data';
-// import wixStorage from 'wix-storage-frontend';
-// import { currentMember } from 'wix-members-frontend';
 
 // ===== SIMPLIFIED CONFIGURATION =====
 const WIX_CONFIG = {

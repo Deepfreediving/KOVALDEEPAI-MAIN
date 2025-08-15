@@ -35,3 +35,6 @@ docs/
 
 # Exclude specific problematic files that are Wix-specific
 public/bot-widget.js
+
+# Exclude JSON files from ESLint (these should be parsed as JSON, not JavaScript)
+**/*.json

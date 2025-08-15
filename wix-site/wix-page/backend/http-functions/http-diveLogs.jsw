@@ -1,7 +1,7 @@
 // 🔥 HTTP-DIVELOGS.JSW - ALL-IN-ONE DIVE LOGS API
 // Consolidates: http-diveLogs + http-diveLogs-expert (empty)
-// Version: 4.0.0 - Master Consolidated Edition
-// Date: August 8, 2025
+// Version: 5.0.1 - Updated for Fixed Wix API Imports
+// Date: August 15, 2025
 
 import { ok, badRequest, serverError, notFound } from 'wix-http-functions';
 import wixData from 'wix-data';
