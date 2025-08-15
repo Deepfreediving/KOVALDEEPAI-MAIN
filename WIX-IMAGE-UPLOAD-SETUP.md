@@ -1,13 +1,16 @@
 # Wix Backend Functions for Dive Image Analysis
 
 ## Overview
+
 This document describes the Wix backend functions needed to support dive image upload and analysis using Wix collections instead of Vercel's filesystem.
 
 ## Required Wix Collections
 
 ### 1. DiveImages Collection
+
 **Purpose**: Store uploaded dive profile images
 **Fields**:
+
 - `_id` (Auto-generated)
 - `diveLogId` (Text) - Links to dive log
 - `userId` (Text) - User who uploaded
@@ -18,8 +21,10 @@ This document describes the Wix backend functions needed to support dive image u
 - `metadata` (JSON) - Additional metadata
 
 ### 2. DiveAnalysis Collection
+
 **Purpose**: Store AI analysis results
 **Fields**:
+
 - `_id` (Auto-generated)
 - `diveLogId` (Text) - Links to dive log
 - `userId` (Text) - User who owns the analysis
@@ -35,69 +40,71 @@ This document describes the Wix backend functions needed to support dive image u
 ## Required Wix Backend Functions
 
 ### 1. uploadDiveImage.js
+
 **Endpoint**: `/_functions/uploadDiveImage`
 **Purpose**: Upload and store dive images in Wix Media
 
 ```javascript
-import { ok, badRequest, serverError } from 'wix-http-functions';
-import wixData from 'wix-data';
-import { mediaManager } from 'wix-media-backend';
+import { ok, badRequest, serverError } from "wix-http-functions";
+import wixData from "wix-data";
+import { mediaManager } from "wix-media-backend";
 
 export async function post_uploadDiveImage(request) {
   try {
-    const { diveLogId, userId, imageData, filename, mimetype, metadata } = await request.body.json();
-    
+    const { diveLogId, userId, imageData, filename, mimetype, metadata } =
+      await request.body.json();
+
     if (!diveLogId || !userId || !imageData) {
-      return badRequest({ error: 'Missing required fields' });
+      return badRequest({ error: "Missing required fields" });
     }
 
     // Convert base64 to buffer
-    const buffer = Buffer.from(imageData, 'base64');
-    
+    const buffer = Buffer.from(imageData, "base64");
+
     // Upload to Wix Media
     const uploadResult = await mediaManager.upload(
       `/dive-images/${filename}`,
       buffer,
       {
-        "mediaOptions": {
-          "mimeType": mimetype,
-          "mediaType": "image"
-        }
+        mediaOptions: {
+          mimeType: mimetype,
+          mediaType: "image",
+        },
       }
     );
 
     // Save record to DiveImages collection
-    const imageRecord = await wixData.save('DiveImages', {
+    const imageRecord = await wixData.save("DiveImages", {
       diveLogId,
       userId,
       imageUrl: uploadResult.fileUrl,
       filename,
       mimetype,
       uploadedAt: new Date(),
-      metadata: metadata || {}
+      metadata: metadata || {},
     });
 
     return ok({
       success: true,
       imageUrl: uploadResult.fileUrl,
       mediaId: imageRecord._id,
-      fileId: uploadResult.fileId
+      fileId: uploadResult.fileId,
     });
-
   } catch (error) {
-    console.error('Upload error:', error);
-    return serverError({ error: 'Upload failed', details: error.message });
+    console.error("Upload error:", error);
+    return serverError({ error: "Upload failed", details: error.message });
   }
 }
 ```
 
 ### 2. saveDiveAnalysis.js
+
 **Endpoint**: `/_functions/saveDiveAnalysis`
 **Purpose**: Save AI analysis results to DiveAnalysis collection
 
 ```javascript
-import { ok, badRequest, serverError } from 'wix-http-functions';
-import wixData from 'wix-data';
+import { ok, badRequest, serverError } from "wix-http-functions";
+import wixData from "wix-data";
 
 export async function post_saveDiveAnalysis(request) {
   try {
@@ -111,62 +118,64 @@ export async function post_saveDiveAnalysis(request) {
       visionInsights,
       visionModel,
       analysisTimestamp,
-      metadata
+      metadata,
     } = await request.body.json();
-    
+
     if (!diveLogId || !userId) {
-      return badRequest({ error: 'Missing required fields' });
+      return badRequest({ error: "Missing required fields" });
     }
 
     // Save analysis record
-    const analysisRecord = await wixData.save('DiveAnalysis', {
+    const analysisRecord = await wixData.save("DiveAnalysis", {
       diveLogId,
       userId,
-      imageUrl: imageUrl || '',
-      ocrText: ocrText || '',
+      imageUrl: imageUrl || "",
+      ocrText: ocrText || "",
       ocrSuccess: ocrSuccess || false,
       technicalAnalysis: technicalAnalysis || null,
-      visionInsights: visionInsights || '',
-      visionModel: visionModel || 'gpt-4-vision-preview',
+      visionInsights: visionInsights || "",
+      visionModel: visionModel || "gpt-4-vision-preview",
       analysisTimestamp: new Date(analysisTimestamp) || new Date(),
-      metadata: metadata || {}
+      metadata: metadata || {},
     });
 
     return ok({
       success: true,
       recordId: analysisRecord._id,
-      analysisId: analysisRecord._id
+      analysisId: analysisRecord._id,
     });
-
   } catch (error) {
-    console.error('Analysis save error:', error);
-    return serverError({ error: 'Analysis save failed', details: error.message });
+    console.error("Analysis save error:", error);
+    return serverError({
+      error: "Analysis save failed",
+      details: error.message,
+    });
   }
 }
 ```
 
 ### 3. getDiveAnalysis.js
+
 **Endpoint**: `/_functions/getDiveAnalysis`
 **Purpose**: Retrieve analysis results for a dive log
 
 ```javascript
-import { ok, badRequest, serverError } from 'wix-http-functions';
-import wixData from 'wix-data';
+import { ok, badRequest, serverError } from "wix-http-functions";
+import wixData from "wix-data";
 
 export async function get_getDiveAnalysis(request) {
   try {
     const { diveLogId, userId } = request.query;
-    
+
     if (!diveLogId) {
-      return badRequest({ error: 'Missing diveLogId' });
+      return badRequest({ error: "Missing diveLogId" });
     }
 
     // Query for analysis record
-    let query = wixData.query('DiveAnalysis')
-      .eq('diveLogId', diveLogId);
-    
+    let query = wixData.query("DiveAnalysis").eq("diveLogId", diveLogId);
+
     if (userId) {
-      query = query.eq('userId', userId);
+      query = query.eq("userId", userId);
     }
 
     const results = await query.find();
@@ -178,8 +187,9 @@ export async function get_getDiveAnalysis(request) {
     const analysis = results.items[0];
 
     // Also get image info if available
-    const imageQuery = await wixData.query('DiveImages')
-      .eq('diveLogId', diveLogId)
+    const imageQuery = await wixData
+      .query("DiveImages")
+      .eq("diveLogId", diveLogId)
       .find();
 
     const imageInfo = imageQuery.items.length > 0 ? imageQuery.items[0] : null;
@@ -187,12 +197,14 @@ export async function get_getDiveAnalysis(request) {
     return ok({
       analysis,
       imageInfo,
-      found: true
+      found: true,
     });
-
   } catch (error) {
-    console.error('Get analysis error:', error);
-    return serverError({ error: 'Get analysis failed', details: error.message });
+    console.error("Get analysis error:", error);
+    return serverError({
+      error: "Get analysis failed",
+      details: error.message,
+    });
   }
 }
 ```
@@ -207,6 +219,7 @@ export async function get_getDiveAnalysis(request) {
 ## Integration with Existing DiveLogs Collection
 
 The new analysis system integrates with your existing DiveLogs collection by:
+
 - Using the same `diveLogId` as a foreign key
 - Storing `userId` for user association
 - Providing rich analysis data that can be displayed alongside dive logs
@@ -214,6 +227,7 @@ The new analysis system integrates with your existing DiveLogs collection by:
 ## Frontend Integration
 
 Update your frontend to:
+
 1. Use the new `/api/openai/upload-dive-image` endpoint (already updated)
 2. Display analysis results from the Wix collections
 3. Handle loading states for image upload and analysis
