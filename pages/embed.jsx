@@ -211,6 +211,13 @@ export default function Embed() {
         setUserId(storedUserId);
         migrateLegacyDiveLogKeys(storedUserId);
 
+        // ✅ Load dive logs immediately like sessions
+        const localDiveLogs = safeParse(storageKey(storedUserId), []);
+        setDiveLogs(localDiveLogs);
+        console.log(`📱 Loaded ${localDiveLogs.length} local dive logs during initialization`);
+        console.log(`🔧 Storage key used: ${storageKey(storedUserId)}`);
+        console.log(`🔧 Raw localStorage value:`, localStorage.getItem(storageKey(storedUserId)));
+
         const storedProfile = safeParse("kovalProfile", {});
         if (storedProfile && storedProfile.source) {
           setProfile(storedProfile);
@@ -222,6 +229,21 @@ export default function Embed() {
         // 🚀 DON'T create a session user immediately - wait for Wix data first
         setUserId(""); // Empty state to indicate we're waiting
         console.log("⏳ Waiting for Wix parent to provide real member data...");
+        
+        // ✅ Still try to load any existing dive logs with fallback keys
+        const fallbackKeys = ["koval_ai_logs", "diveLogs_session", "diveLogs_Guest"];
+        let foundLogs = [];
+        fallbackKeys.forEach(key => {
+          const logs = safeParse(key, []);
+          if (logs.length > 0) {
+            foundLogs = [...foundLogs, ...logs];
+            console.log(`📱 Found ${logs.length} dive logs under fallback key: ${key}`);
+          }
+        });
+        if (foundLogs.length > 0) {
+          setDiveLogs(foundLogs);
+          console.log(`📱 Loaded ${foundLogs.length} total dive logs from fallback keys`);
+        }
         
         // 🚀 Add timeout fallback - if no Wix data arrives in 5 seconds, create session
         setTimeout(() => {
@@ -1401,6 +1423,7 @@ export default function Embed() {
       logs: diveLogs.slice(0, 2), // Show first 2 logs
       userId,
     });
+    console.log("🔧 EMBED: Full diveLogs array:", diveLogs);
 
     return {
       BOT_NAME,
