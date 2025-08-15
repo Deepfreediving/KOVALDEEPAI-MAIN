@@ -208,15 +208,77 @@ export default function Embed() {
         try {
           const parsed = JSON.parse(wixMemberData);
           console.log("🔍 Parsed Wix member data:", parsed);
-          if (parsed?.id) {
-            console.log("🔍 Found Wix member ID:", parsed.id);
+          
+          // Try multiple ways to extract member ID
+          const possibleId = parsed?.id || parsed?.memberId || parsed?.userId || parsed?.member?.id;
+          if (possibleId) {
+            console.log("🔍 Found Wix member ID:", possibleId);
             // Try to use Wix member ID as userId
-            setUserId(parsed.id);
-            localStorage.setItem("kovalUser", parsed.id);
-            console.log("✅ Set userId from Wix member data:", parsed.id);
+            setUserId(possibleId);
+            localStorage.setItem("kovalUser", possibleId);
+            console.log("✅ Set userId from Wix member data:", possibleId);
+            
+            // Also try to load dive logs immediately for this user
+            const memberDiveLogs = safeParse(storageKey(possibleId), []);
+            if (memberDiveLogs.length > 0) {
+              setDiveLogs(memberDiveLogs);
+              console.log(`📱 Found ${memberDiveLogs.length} existing dive logs for member`);
+            }
+          } else {
+            console.log("🔍 No valid member ID found in Wix data, checking all properties:", Object.keys(parsed));
           }
         } catch (e) {
           console.warn("⚠️ Failed to parse Wix member data:", e);
+        }
+      } else {
+        console.log("🔍 No Wix member details found in localStorage");
+        // Check all localStorage keys for debugging
+        const allKeys = Object.keys(localStorage);
+        console.log("🔍 All localStorage keys:", allKeys);
+        const wixKeys = allKeys.filter(key => key.includes('wix') || key.includes('Wix') || key.includes('member'));
+        console.log("🔍 Wix-related keys:", wixKeys);
+      }
+
+      // ✅ ENHANCED: Try to extract userId from any Wix-related localStorage entries
+      const allKeys = Object.keys(localStorage);
+      const wixKeys = allKeys.filter(key => 
+        key.includes('wix') || 
+        key.includes('Wix') || 
+        key.includes('member') || 
+        key.includes('platform_app')
+      );
+      
+      console.log("🔍 Searching for user ID in Wix-related keys:", wixKeys);
+      
+      for (const key of wixKeys) {
+        try {
+          const value = localStorage.getItem(key);
+          if (value) {
+            const parsed = JSON.parse(value);
+            // Look for any ID-like fields
+            const possibleIds = [
+              parsed?.id,
+              parsed?.memberId, 
+              parsed?.userId,
+              parsed?.user?.id,
+              parsed?.member?.id,
+              parsed?.contactId,
+              parsed?.memberDetails?.id
+            ].filter(Boolean);
+            
+            if (possibleIds.length > 0) {
+              const bestId = possibleIds[0];
+              console.log(`🔍 Found potential user ID in ${key}:`, bestId);
+              if (!localStorage.getItem("kovalUser")) {
+                setUserId(bestId);
+                localStorage.setItem("kovalUser", bestId);
+                console.log("✅ Set userId from Wix data:", bestId);
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          // Skip invalid JSON
         }
       }
 
@@ -282,10 +344,31 @@ export default function Embed() {
           console.log(`📱 Loaded ${foundLogs.length} total dive logs from fallback keys`);
         }
         
-        // 🚀 Add timeout fallback - if no Wix data arrives in 5 seconds, create session
+        // 🚀 Add timeout fallback - if no Wix data arrives in 10 seconds, create session
         setTimeout(() => {
           setUserId((currentUserId) => {
             if (!currentUserId || currentUserId === "") {
+              console.log("⏰ No user ID found after 10 seconds, checking one more time...");
+              
+              // Final attempt to extract from localStorage
+              const finalCheck = Object.keys(localStorage).find(key => 
+                key.includes('memberDetails') || key.includes('platform_app')
+              );
+              
+              if (finalCheck) {
+                try {
+                  const data = JSON.parse(localStorage.getItem(finalCheck));
+                  const finalId = data?.id || data?.memberId || data?.userId;
+                  if (finalId) {
+                    console.log("✅ Found user ID in final check:", finalId);
+                    localStorage.setItem("kovalUser", finalId);
+                    return finalId;
+                  }
+                } catch (e) {
+                  console.warn("Final check failed:", e);
+                }
+              }
+              
               const sessionId = `session-${Date.now()}`;
               console.log("⏰ Timeout reached - creating session fallback:", sessionId);
               localStorage.setItem("kovalUser", sessionId);
@@ -293,7 +376,7 @@ export default function Embed() {
             }
             return currentUserId; // Don't change if already set
           });
-        }, 5000); // 5 second timeout
+        }, 10000); // Increased to 10 seconds
       }
     }
   }, [migrateLegacyDiveLogKeys]);
