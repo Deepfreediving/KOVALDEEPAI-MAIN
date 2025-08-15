@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 export default function DiveJournalDisplay({
   userId,
@@ -12,10 +13,9 @@ export default function DiveJournalDisplay({
   onDiveLogDeleted, // 🚀 NEW: Callback when dive log is deleted
   onRefreshDiveLogs, // 🚀 NEW: Callback to refresh dive logs in parent
   editingLog = null, // 🚀 NEW: Log to edit (pre-fills form)
-  onEditDiveLog, // ✅ V5.0: Edit callback to pass to SavedDiveLogsViewer
+  // onEditDiveLog is available but not currently used in this component
 }) {
   const [logs, setLogs] = useState([]);
-  const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [activeTab, setActiveTab] = useState("saved-logs"); // Tab navigation: saved-logs, add-new
   const [newEntry, setNewEntry] = useState({
@@ -439,7 +439,6 @@ export default function DiveJournalDisplay({
       imageFile: null,
       imagePreview: null,
     });
-    setShowForm(false);
     setIsEditMode(false);
   };
 
@@ -1178,9 +1177,11 @@ export default function DiveJournalDisplay({
                         className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                       />
                       {newEntry.imagePreview && (
-                        <img
+                        <Image
                           src={newEntry.imagePreview}
                           alt="Preview"
+                          width={128}
+                          height={128}
                           className="mt-2 max-w-full h-32 object-cover rounded"
                         />
                       )}
@@ -1290,7 +1291,7 @@ export default function DiveJournalDisplay({
                       <p
                         className={`text-sm mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                       >
-                        Add your first dive using the "Create New Dive Log" tab!
+                        Add your first dive using the &quot;Create New Dive Log&quot; tab!
                       </p>
                     </div>
                   ) : (
