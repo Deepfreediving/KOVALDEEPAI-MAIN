@@ -133,13 +133,19 @@ async function saveDiveLogToWix(
       {
         nickname,
         diveLogId,
-        logEntry: JSON.stringify(diveLogData),
         diveDate: diveLogData.date ? new Date(diveLogData.date).toISOString() : new Date().toISOString(),
         diveTime: diveLogData.totalDiveTime || new Date().toLocaleTimeString(),
+        discipline: diveLogData.discipline || "CWT",
+        location: diveLogData.location || "Ocean",
+        targetDepth: diveLogData.maxDepth || 0,
+        reachedDepth: diveLogData.maxDepth || 0,
+        notes: diveLogData.safetyRecommendations || "",
         watchedPhoto: imageUrl || null,
         metadata: {
           source: "koval-ai-upload",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          ocrText: diveLogData.ocrText || "",
+          technicalAnalysis: JSON.stringify(diveLogData.technicalAnalysis || {})
         }
       },
       {

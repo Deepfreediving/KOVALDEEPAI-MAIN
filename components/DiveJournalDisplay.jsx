@@ -394,7 +394,13 @@ export default function DiveJournalDisplay({
             newValue: localStorage.getItem(`diveLogs_${nickname}`), // ✅ FIXED: Use nickname consistently
             storageArea: localStorage
           }));
-          console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");
+          
+          // Also dispatch custom event for same-window updates
+          window.dispatchEvent(new CustomEvent('localStorageUpdate', {
+            detail: { key: `diveLogs_${nickname}`, action: 'dive-log-saved' }
+          }));
+          
+          console.log("📡 DiveJournalDisplay: Dispatched storage events for sidebar refresh");
         } catch (eventError) {
           console.warn("⚠️ DiveJournalDisplay: Could not dispatch storage event:", eventError);
         }

@@ -49,6 +49,36 @@ export default function SavedDiveLogsViewer({
     }
   }, [userId, loadSavedLogs]); // Load when userId changes
 
+  // ✅ NEW: Listen for storage changes to refresh when dive logs are saved
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      const userIdentifier = getUserIdentifier();
+      const storageKey = `diveLogs_${userIdentifier}`;
+      
+      // Check if the changed key is our dive logs storage key
+      if (e.key === storageKey || e.key === null) {
+        console.log("📱 SavedDiveLogsViewer: Storage change detected, refreshing...");
+        loadSavedLogs();
+      }
+    };
+
+    // Listen for storage events from other windows/tabs
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events from the same window
+    const handleCustomStorageEvent = () => {
+      console.log("📱 SavedDiveLogsViewer: Custom storage event detected, refreshing...");
+      setTimeout(loadSavedLogs, 100); // Small delay to ensure storage is updated
+    };
+    
+    window.addEventListener('localStorageUpdate', handleCustomStorageEvent);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('localStorageUpdate', handleCustomStorageEvent);
+    };
+  }, [loadSavedLogs, getUserIdentifier]);
+
   const clearSavedLogs = () => {
     if (
       confirm(
