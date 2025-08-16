@@ -15,6 +15,8 @@ export default function DiveJournalSidebarCard({
   setMessages, // For analysis integration
   onRefreshDiveLogs, // 🚀 NEW: To refresh dive logs in parent
   onEditDiveLog, // ✅ V5.0: Edit callback
+  profile = {}, // ✅ NEW: Full member profile data
+  userId = "", // ✅ NEW: Wix Contact Id
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -99,6 +101,8 @@ export default function DiveJournalSidebarCard({
           onRefreshDiveLogs={onRefreshDiveLogs}
           editingLog={editingLog} // ✅ V5.0: Pass editing log
           onEditDiveLog={onEditDiveLog} // ✅ V5.0: Pass edit callback for SavedDiveLogsViewer
+          profile={profile} // ✅ NEW: Pass full member profile
+          userId={userId} // ✅ NEW: Pass Wix Contact Id
         />
       </div>
     </div>

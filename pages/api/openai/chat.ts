@@ -67,19 +67,19 @@ async function queryPinecone(query: string): Promise<string[]> {
   }
 }
 
-async function queryDiveLogs(userId: string): Promise<string[]> {
-  if (!userId || userId.startsWith("guest")) return [];
+async function queryDiveLogs(userIdentifier: string): Promise<string[]> {
+  if (!userIdentifier || userIdentifier.startsWith("guest")) return [];
   try {
     // ✅ FIX: Always use production URL for internal API calls to avoid auth issues
     const baseUrl =
       process.env.BASE_URL || "https://kovaldeepai-main.vercel.app";
 
     console.log(
-      `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
+      `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
     );
 
     const response = await fetch(
-      `${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
+      `${baseUrl}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
     );
     if (response.ok) {
       const data = await response.json();
@@ -348,19 +348,23 @@ export default async function handler(
     const {
       message,
       userId = "guest",
+      nickname,
       profile = {},
       embedMode = false,
       diveLogs = [],
     } = req.body;
 
+    // ✅ Use nickname or userId for user identification
+    const userIdentifier = nickname || userId;
+
     // ✅ Enhanced logging for authentication debugging
-    const isGuestUser = !userId || userId.startsWith("guest");
+    const isGuestUser = !userIdentifier || userIdentifier.startsWith("guest");
     const authStatus = isGuestUser
       ? "🚫 GUEST/UNAUTHENTICATED"
       : "✅ AUTHENTICATED";
 
     console.log(
-      `🚀 Chat request: ${authStatus} | userId=${userId} | embedMode=${embedMode}`,
+      `🚀 Chat request: ${authStatus} | userIdentifier=${userIdentifier} | nickname=${nickname} | userId=${userId} | embedMode=${embedMode}`,
     );
 
     if (isGuestUser) {
@@ -373,14 +377,14 @@ export default async function handler(
     }
 
     // ✅ Extract consistent user display name using member ID for fast recognition
-    const getUserNickname = (profile: any, userId: string): string => {
+    const getUserNickname = (profile: any, userIdentifier: string): string => {
       // ✅ PRIORITY: Use member ID format for consistent, fast recognition
-      if (userId && !userId.startsWith("guest")) {
-        return `User-${userId}`;
+      if (userIdentifier && !userIdentifier.startsWith("guest")) {
+        return `User-${userIdentifier}`;
       }
 
       // Fallback for guest users
-      if (userId?.startsWith("guest")) {
+      if (userIdentifier?.startsWith("guest")) {
         return "Guest User";
       }
 
@@ -388,7 +392,7 @@ export default async function handler(
       return "User";
     };
 
-    const nickname = getUserNickname(profile, userId);
+    const displayNickname = getUserNickname(profile, userIdentifier);
 
     // ✅ Enhanced validation
     if (!message || typeof message !== "string" || !message.trim()) {
@@ -402,7 +406,7 @@ export default async function handler(
     }
 
     console.log(
-      `🚀 Chat request received from ${nickname} (userId=${userId}, embedMode=${embedMode})`,
+      `🚀 Chat request received from ${displayNickname} (userIdentifier=${userIdentifier}, embedMode=${embedMode})`,
     );
     console.log(`📊 Profile data received:`, {
       nickname: profile?.nickname,
@@ -414,7 +418,7 @@ export default async function handler(
     // ✅ FIX: Type memory correctly
     let memory: any = {};
     try {
-      memory = (await fetchUserMemory(userId)) || {};
+      memory = (await fetchUserMemory(userIdentifier)) || {};
     } catch (memError) {
       console.warn("⚠️ Memory fetch failed:", memError);
     }
@@ -426,9 +430,9 @@ export default async function handler(
     );
 
     console.log(
-      `👤 Processing request for ${nickname} (level: ${userLevel}, depth range: ${depthRange})`,
+      `👤 Processing request for ${displayNickname} (level: ${userLevel}, depth range: ${depthRange})`,
     );
-    console.log(`� Merged profile data:`, {
+    console.log(`📋 Merged profile data:`, {
       pb: mergedProfile?.pb,
       currentDepth: mergedProfile?.currentDepth,
       isInstructor: mergedProfile?.isInstructor,
@@ -436,7 +440,7 @@ export default async function handler(
     });
 
     const contextChunks = await queryPinecone(message);
-    const diveContext = await queryDiveLogs(userId);
+    const diveContext = await queryDiveLogs(userIdentifier);
 
     // ✅ Load actual dive logs for detailed analysis
     let localDiveLogs = [];
@@ -446,11 +450,11 @@ export default async function handler(
         process.env.BASE_URL || "https://kovaldeepai-main.vercel.app";
 
       console.log(
-        `🗃️ Loading detailed dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
+        `🗃️ Loading detailed dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
       );
 
       const response = await fetch(
-        `${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
+        `${baseUrl}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -564,7 +568,7 @@ ${recentDiveLogs}
 
     // ✅ Save to memory if successful response
     try {
-      await saveUserMemory(userId, {
+      await saveUserMemory(userIdentifier, {
         logs: [
           {
             userMessage: message.slice(0, 500),
@@ -574,7 +578,7 @@ ${recentDiveLogs}
         ],
         profile: mergedProfile,
       });
-      console.log(`✅ Memory saved for ${userId}`);
+      console.log(`✅ Memory saved for ${userIdentifier}`);
     } catch (saveError) {
       console.warn("⚠️ Could not save memory:", saveError);
     }

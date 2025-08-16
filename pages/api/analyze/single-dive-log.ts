@@ -15,7 +15,7 @@ export default async function handler(
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { diveLogId, userId, diveLogData, diveLog: legacyDiveLog } = req.body;
+    const { diveLogId, userId, nickname, diveLogData, diveLog: legacyDiveLog } = req.body;
 
     if (!diveLogId && !diveLogData && !legacyDiveLog) {
       return res
@@ -23,11 +23,13 @@ export default async function handler(
         .json({ error: "diveLogId, diveLogData, or diveLog required" });
     }
 
-    if (!userId) {
-      return res.status(400).json({ error: "userId required" });
+    // ✅ Use nickname or userId for backwards compatibility
+    const userIdentifier = nickname || userId;
+    if (!userIdentifier) {
+      return res.status(400).json({ error: "nickname or userId required" });
     }
 
-    console.log(`🔍 Analyzing individual dive log for ${userId}`);
+    console.log(`🔍 Analyzing individual dive log for ${userIdentifier}`);
 
     let diveLog = diveLogData || legacyDiveLog;
 
@@ -39,11 +41,11 @@ export default async function handler(
           process.env.BASE_URL || "https://kovaldeepai-main.vercel.app";
 
         console.log(
-          `🗃️ Fetching dive log via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
+          `🗃️ Fetching dive log via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
         );
 
         const localResponse = await fetch(
-          `${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
+          `${baseUrl}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
         );
         if (localResponse.ok) {
           const localData = await localResponse.json();
@@ -171,9 +173,9 @@ Please provide specific, actionable coaching feedback based on this dive data.
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: analysisPrompt,
-          userId,
+          userId: userIdentifier, // ✅ Use userIdentifier for consistency
           embedMode: true,
-          profile: { nickname: "Member", source: "dive-log-analysis" },
+          profile: { nickname: userIdentifier, source: "dive-log-analysis" },
           diveLogs: [diveLog],
         }),
       });

@@ -24,6 +24,14 @@ export default async function handler(
     const {
       nickname = "",
       userId = "", // For backward compatibility
+      diveLogId = "", // ✅ Proper Wix member identifier (Contact Id)
+      firstName = "",
+      lastName = "",
+      loginEmail = "",
+      contactId = "",
+      profile = {}, // Member profile data
+      imageUrl = "", // Dive image URL
+      image = "", // Alternative image field
       date = "",
       disciplineType = "",
       discipline = "",
@@ -42,17 +50,67 @@ export default async function handler(
       surfaceProtocol = "",
     } = req.body || {};
 
-    // ✅ Use nickname, fallback to userId for backward compatibility
-    const userIdentifier = nickname || userId || "anonymous";
+    // ✅ Use proper Wix member identifier priority: diveLogId > contactId > nickname > userId
+    const userIdentifier = diveLogId || contactId || nickname || userId || "anonymous";
 
     console.log("💾 Starting dual save process for dive log...");
+    console.log("🔍 Member data received:", {
+      diveLogId,
+      contactId,
+      nickname,
+      firstName,
+      lastName,
+      loginEmail,
+      userIdentifier: userIdentifier
+    });
+
+    // ✅ Validate we have real member data, not session data
+    if (userIdentifier.startsWith("session-")) {
+      console.error("❌ CRITICAL: Received session ID instead of real member data!");
+      console.error("❌ Expected: Wix Contact Id (e.g., 0913c96a-0487-4b35-89a...)");
+      console.error("❌ Received:", userIdentifier);
+      return res.status(400).json({ 
+        error: "Invalid user identifier - expected Wix member Contact Id, received session ID",
+        details: "The embed page is not receiving proper Wix member authentication data"
+      });
+    }
+
+    // 🚀 STEP 0: Generate sequential dive entry ID for this member
+    let diveEntryId = "dive 001"; // Default fallback
+    
+    try {
+      // Get existing dive logs count for this user to generate next ID
+      const existingLogsResponse = await fetch(
+        `${process.env.BASE_URL || "https://kovaldeepai-main.vercel.app"}/api/analyze/get-dive-logs?userId=${userIdentifier}`,
+      );
+      
+      if (existingLogsResponse.ok) {
+        const existingData = await existingLogsResponse.json();
+        const existingCount = existingData.logs?.length || 0;
+        const nextNumber = existingCount + 1;
+        diveEntryId = `dive ${nextNumber.toString().padStart(3, '0')}`;
+        console.log(`📊 Generated dive entry ID: ${diveEntryId} (based on ${existingCount} existing logs)`);
+      } else {
+        console.warn("⚠️ Could not fetch existing logs count, using default ID");
+      }
+    } catch (idError) {
+      console.warn("⚠️ Error generating dive entry ID:", idError);
+    }
 
     // 🚀 STEP 1: Save to LOCAL FILES first (super fast for AI)
     const localLogData: any = {
       id: `dive_${userIdentifier}_${Date.now()}`,
+      diveEntryId: diveEntryId, // ✅ Human-readable reference ID for repeater
       timestamp: new Date().toISOString(),
-      nickname: userIdentifier,
+      // ✅ Real member identifiers from Wix
+      diveLogId: userIdentifier, // ✅ Primary Wix member identifier
+      contactId: contactId || userIdentifier,
+      nickname: nickname || `${firstName} ${lastName}`.trim() || userIdentifier,
       userId: userIdentifier, // For backward compatibility in storage
+      firstName: firstName || profile?.firstName || '',
+      lastName: lastName || profile?.lastName || '',
+      loginEmail: loginEmail || profile?.loginEmail || '',
+      imageUrl: imageUrl || image || '', // Store dive image URL
       date,
       disciplineType,
       discipline,
@@ -117,8 +175,14 @@ export default async function handler(
         // 🚀 STEP 3: Save to Wix DiveLogs Collection via HTTP functions
         console.log("🌐 Calling Wix HTTP function for dive log save...");
         
-        // 🚀 SIMPLIFIED: Format data for Wix HTTP function - keep it simple and efficient
+        // 🚀 SIMPLIFIED: Format data for Wix HTTP function - optimized for reference fields
         const wixDiveLogData = {
+          // ✅ Human-readable dive entry ID for repeater
+          diveEntryId: localLogData.diveEntryId,
+          
+          // ✅ REFERENCE FIELD: Link to Members/FullData collection
+          memberRef: localLogData.contactId || localLogData.diveLogId, // Contact ID as reference
+          
           // Required fields (matching DIVELOG_SCHEMA)
           userId: localLogData.nickname, // Use nickname for Wix backend
           nickname: localLogData.nickname,
@@ -131,6 +195,9 @@ export default async function handler(
           diveTime: localLogData.totalDiveTime || '',
           location: localLogData.location || '',
           notes: localLogData.notes || '',
+          
+          // ✅ FIXED: Add dive image
+          watchedPhoto: localLogData.imageUrl || null,
           
           // Additional dive metrics
           mouthfillDepth: parseFloat(localLogData.mouthfillDepth) || 0,
@@ -148,12 +215,15 @@ export default async function handler(
         };
 
         console.log("📤 Sending to Wix HTTP function:", {
-          userId: wixDiveLogData.nickname, // Use nickname for Wix backend
+          diveEntryId: wixDiveLogData.diveEntryId,
+          memberRef: wixDiveLogData.memberRef, // ✅ Reference to Members/FullData
+          userId: wixDiveLogData.nickname,
           nickname: wixDiveLogData.nickname,
           diveDate: wixDiveLogData.diveDate,
           discipline: wixDiveLogData.discipline,
           reachedDepth: wixDiveLogData.reachedDepth,
-          location: wixDiveLogData.location
+          location: wixDiveLogData.location,
+          watchedPhoto: wixDiveLogData.watchedPhoto ? 'Image attached' : 'No image'
         });
 
         // Call Wix HTTP function for dive logs

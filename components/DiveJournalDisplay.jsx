@@ -13,6 +13,8 @@ export default function DiveJournalDisplay({
   onDiveLogDeleted, // 🚀 NEW: Callback when dive log is deleted
   onRefreshDiveLogs, // 🚀 NEW: Callback to refresh dive logs in parent
   editingLog = null, // 🚀 NEW: Log to edit (pre-fills form)
+  profile = {}, // ✅ NEW: Full member profile data
+  userId = "", // ✅ NEW: Wix Contact Id
   // onEditDiveLog is available but not currently used in this component
 }) {
   const [logs, setLogs] = useState([]);
@@ -243,12 +245,41 @@ export default function DiveJournalDisplay({
 
       // 🚀 STEP 2: Save to Wix via API (backend handles both Wix and localStorage)
       console.log("🌐 DiveJournalDisplay: Saving to Wix via API...");
+      
+      // ✅ Add profile data and member identifiers to the request
+      const savePayload = {
+        ...newLog,
+        // ✅ Real member identifiers from Wix
+        diveLogId: userId || profile?.contactId || '', // Primary Wix Contact Id
+        contactId: userId || profile?.contactId || '',
+        nickname: nickname || `${profile?.firstName} ${profile?.lastName}`.trim() || '',
+        userId: userId || profile?.contactId || '', // For backward compatibility
+        firstName: profile?.firstName || '',
+        lastName: profile?.lastName || '',
+        loginEmail: profile?.loginEmail || '',
+        profile: profile || {},
+        imageUrl: newLog.imageUrl || '',
+      };
+      
+      console.log("📤 DiveJournalDisplay: Save payload:", {
+        diveLogId: savePayload.diveLogId,
+        contactId: savePayload.contactId,
+        nickname: savePayload.nickname,
+        firstName: savePayload.firstName,
+        lastName: savePayload.lastName,
+        loginEmail: savePayload.loginEmail,
+        hasProfile: !!savePayload.profile,
+        hasImageUrl: !!savePayload.imageUrl,
+        discipline: savePayload.discipline,
+        reachedDepth: savePayload.reachedDepth,
+      });
+      
       const response = await fetch("/api/analyze/save-dive-log", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newLog),
+        body: JSON.stringify(savePayload),
       });
 
       console.log(

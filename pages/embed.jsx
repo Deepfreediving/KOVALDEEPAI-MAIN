@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
 // import apiClient from "../utils/apiClient"; // Currently unused
 import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
+import { safeGetItem, safeSetItem, safeRemoveItem, safeParseJSON, safeLocalStorageKeys, isClient } from "../utils/safeLocalStorage";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
@@ -43,11 +44,7 @@ export default function Embed() {
     },
   ]);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(() =>
-    typeof window !== "undefined"
-      ? localStorage.getItem("kovalDarkMode") === "true"
-      : false,
-  );
+  const [darkMode, setDarkMode] = useState(false);
   const [userId, setUserId] = useState("");
   // const [threadId, setThreadId] = useState(null); // Currently unused
   const [profile, setProfile] = useState({});
@@ -69,14 +66,8 @@ export default function Embed() {
 
   // ✅ HELPERS
   const safeParse = (key, defaultValue) => {
-    try {
-      if (typeof window === "undefined") return defaultValue;
-      const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
-    } catch (error) {
-      console.warn(`⚠️ Failed to parse localStorage key "${key}":`, error);
-      return defaultValue;
-    }
+    const item = safeGetItem(key);
+    return safeParseJSON(item, defaultValue);
   };
 
   const storageKey = (uid) => `diveLogs_${uid}`; // ✅ Canonical key (underscore)
@@ -103,21 +94,21 @@ export default function Embed() {
   };
   
   const migrateLegacyDiveLogKeys = useCallback((uid) => {
-    if (typeof window === "undefined" || !uid) return [];
+    if (!isClient() || !uid) return [];
     const keys = legacyKeysFor(uid);
     let collected = [];
     keys.forEach((k) => {
       try {
-        const raw = localStorage.getItem(k);
+        const raw = safeGetItem(k);
         if (raw) {
-          const arr = JSON.parse(raw);
+          const arr = safeParseJSON(raw, []);
           if (Array.isArray(arr) && arr.length) {
             collected = mergeArraysUnique(collected, arr);
             if (k !== storageKey(uid)) {
               console.log(
                 `🔧 Migrating ${arr.length} logs from legacy key ${k}`,
               );
-              localStorage.removeItem(k);
+              safeRemoveItem(k);
             }
           }
         }
@@ -143,7 +134,24 @@ export default function Embed() {
       userId,
     );
 
-    // ✅ PRIORITY: Use member ID format for consistent, fast recognition
+    // ✅ PRIORITY: Use actual member name from profile if available
+    if (profile?.firstName && profile?.lastName) {
+      const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+      console.log(`✅ Using full name from profile: ${fullName}`);
+      return fullName;
+    }
+    
+    if (profile?.nickname && profile.nickname !== "Member" && profile.nickname !== "User") {
+      console.log(`✅ Using nickname from profile: ${profile.nickname}`);
+      return profile.nickname;
+    }
+    
+    if (profile?.displayName && profile.displayName !== "Member" && profile.displayName !== "User") {
+      console.log(`✅ Using display name from profile: ${profile.displayName}`);
+      return profile.displayName;
+    }
+
+    // ✅ If we have a real user ID (not session), use member format
     if (
       userId &&
       !userId.startsWith("guest") &&
@@ -153,12 +161,14 @@ export default function Embed() {
       return `User-${userId}`;
     }
 
-    // Use profile nickname if available
-    if (profile?.nickname) {
-      return profile.nickname;
+    // ✅ Warn if we're falling back to session
+    if (userId?.startsWith("session")) {
+      console.warn(`⚠️ Using session ID as display name: ${userId} - member authentication may have failed`);
+      return "Member";
     }
 
     // Fallback
+    console.log("⚠️ Using generic fallback: User");
     return "User";
   }, [profile, userId]);
 
@@ -462,6 +472,10 @@ export default function Embed() {
             console.log("✅ Processing Wix member data:", {
               userId: userData.userId,
               memberId: userData.memberId,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              nickname: userData.nickname,
+              userEmail: userData.userEmail,
               isGuest: userData.isGuest,
               source: userData.source,
               memberDetectionMethod: userData.memberDetectionMethod
@@ -475,6 +489,12 @@ export default function Embed() {
                 !userData.userId.startsWith("session-")) {
               
               console.log("✅ Valid Wix member detected - upgrading from session to real member");
+              console.log("📊 Member profile data:", {
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                nickname: userData.nickname,
+                email: userData.userEmail
+              });
               
               // Upgrade from temporary session to real member
               const previousUserId = userId;
@@ -520,6 +540,9 @@ export default function Embed() {
               console.log("✅ Wix member setup complete:", {
                 userId: newUserId,
                 memberId: userData.memberId,
+                firstName: wixProfile.firstName,
+                lastName: wixProfile.lastName,
+                nickname: wixProfile.nickname,
                 displayName: wixProfile.displayName,
                 source: wixProfile.source
               });
@@ -529,6 +552,10 @@ export default function Embed() {
               console.log("   • isGuest:", userData.isGuest);
               console.log("   • memberId:", userData.memberId);
               console.log("   • userId pattern:", userData.userId.substring(0, 10) + "...");
+              console.log("   • firstName:", userData.firstName);
+              console.log("   • lastName:", userData.lastName);
+              console.log("   • nickname:", userData.nickname);
+              console.log("   • email:", userData.userEmail);
               console.log("   • source:", userData.source);
               
               // Create a fallback session ONLY if we don't have any user yet
@@ -1761,6 +1788,8 @@ export default function Embed() {
                 setEditingLog={setEditingLog}
                 setMessages={setMessages}
                 onRefreshDiveLogs={loadDiveLogs}
+                profile={profile} // ✅ Pass full profile data
+                userId={userId} // ✅ Pass Wix Contact Id
               />
             </div>
           </div>
