@@ -1,18 +1,21 @@
 // Production-safe user ID utilities for Koval Deep AI
-// No guest/legacy logic, only supports authenticated/persistent users
+// AUTHENTICATED MEMBERS ONLY - No guest/temporary/session user logic
 
 /**
- * Returns a valid user ID. Creates a temporary local ID for localStorage operations
- * if no authenticated user ID is available yet.
+ * Returns a valid authenticated user ID. Only accepts real Wix member IDs.
+ * Returns null if no authenticated member is available.
  */
-export function getOrCreateUserId(userId?: string): string {
+export function getOrCreateUserId(userId?: string): string | null {
   // 1. Use provided authenticated user ID if valid
   if (
     userId &&
     typeof userId === "string" &&
     userId !== "undefined" &&
     userId !== "null" &&
-    userId.trim() !== ""
+    userId.trim() !== "" &&
+    !userId.startsWith("temp-") &&
+    !userId.startsWith("guest-") &&
+    !userId.startsWith("session-")
   ) {
     // Store authenticated user ID for future use
     if (typeof window !== "undefined") {
@@ -29,7 +32,9 @@ export function getOrCreateUserId(userId?: string): string {
       persistentId &&
       persistentId !== "undefined" &&
       persistentId !== "null" &&
-      !persistentId.startsWith("temp-")
+      !persistentId.startsWith("temp-") &&
+      !persistentId.startsWith("guest-") &&
+      !persistentId.startsWith("session-")
     ) {
       return persistentId;
     }
@@ -40,38 +45,36 @@ export function getOrCreateUserId(userId?: string): string {
       sessionId &&
       sessionId !== "undefined" &&
       sessionId !== "null" &&
-      !sessionId.startsWith("temp-")
+      !sessionId.startsWith("temp-") &&
+      !sessionId.startsWith("guest-") &&
+      !sessionId.startsWith("session-")
     ) {
       return sessionId;
     }
 
     // 4. Check URL for user ID
     const urlUserId = extractUserIdFromUrl();
-    if (urlUserId && !urlUserId.startsWith("temp-")) {
+    if (urlUserId && 
+        !urlUserId.startsWith("temp-") && 
+        !urlUserId.startsWith("guest-") && 
+        !urlUserId.startsWith("session-")) {
       localStorage.setItem("koval-ai-persistent-user-id", urlUserId);
       sessionStorage.setItem("koval-ai-user-id", urlUserId);
       return urlUserId;
     }
 
-    // 5. Create a temporary local user ID for localStorage operations
-    // This ensures dive journals can always be saved locally until authentication
-    let tempUserId = localStorage.getItem("koval-ai-temp-user-id");
-    if (!tempUserId) {
-      tempUserId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem("koval-ai-temp-user-id", tempUserId);
-      console.log(
-        "📝 Created temporary user ID for local storage:",
-        tempUserId,
-      );
+    // 5. Clean up any temporary/session data but preserve authenticated members
+    const tempUserId = localStorage.getItem("koval-ai-temp-user-id");
+    if (tempUserId?.startsWith("temp-")) {
+      localStorage.removeItem("koval-ai-temp-user-id");
+      console.log("🧹 Cleaned up temporary user ID:", tempUserId);
     }
-
-    // Use temp ID for session operations too
-    sessionStorage.setItem("koval-ai-user-id", tempUserId);
-    return tempUserId;
+    
+    console.log("⚠️ No authenticated member found - user must be logged into Wix");
   }
 
-  // 6. Fallback for server-side rendering
-  return `temp-ssr-${Date.now()}`;
+  // Return null - no fallback user creation
+  return null;
 }
 
 /**
@@ -81,163 +84,71 @@ export function debugUserIdSituation(): void {
   if (typeof window === "undefined") return;
   // Only log in dev
   if (process.env.NODE_ENV !== "production") {
-    console.log(
-      "[UserIdUtils] persistent:",
-      localStorage.getItem("koval-ai-persistent-user-id"),
+    const persistentId = localStorage.getItem("koval-ai-persistent-user-id");
+    const sessionId = sessionStorage.getItem("koval-ai-user-id");
+    
+    console.log("[UserIdUtils] persistent:", persistentId);
+    console.log("[UserIdUtils] session:", sessionId);
+    console.log("[UserIdUtils] authenticated member:", 
+      persistentId && !persistentId.startsWith("temp-") && 
+      !persistentId.startsWith("guest-") && !persistentId.startsWith("session-")
     );
-    console.log(
-      "[UserIdUtils] session:",
-      sessionStorage.getItem("koval-ai-user-id"),
-    );
-    console.log("[UserIdUtils] all localStorage:", { ...localStorage });
   }
 }
 
 /**
- * Migrates temporary user data to authenticated user ID when authentication occurs.
- * This moves dive journals and memories from temp-* storage to authenticated user storage.
+ * DEPRECATED: This function has been removed as the app now only supports 
+ * authenticated Wix members. No temporary user migration is needed.
+ * @deprecated Use direct member authentication instead
  */
 export function upgradeTemporaryUserToAuthenticated(
   authenticatedUserId: string,
 ): boolean {
+  console.warn("⚠️ upgradeTemporaryUserToAuthenticated is deprecated - app now requires authenticated members only");
+  
   if (typeof window === "undefined") return false;
-
+  
+  // Only clean up any legacy temporary data - no migration
   const tempUserId = localStorage.getItem("koval-ai-temp-user-id");
-  if (!tempUserId || !tempUserId.startsWith("temp-")) {
-    return false; // No temporary data to migrate
+  if (tempUserId?.startsWith("temp-")) {
+    console.log("🧹 Cleaning up legacy temporary user data:", tempUserId);
+    
+    // Remove temporary data completely
+    localStorage.removeItem("koval-ai-temp-user-id");
+    localStorage.removeItem(`diveLogs_${tempUserId}`);
+    localStorage.removeItem(`diveLogs-${tempUserId}`);
+    localStorage.removeItem(`savedDiveLogs_${tempUserId}`);
+    localStorage.removeItem(`memories_${tempUserId}`);
   }
-
-  console.log("🔄 Upgrading temporary user data to authenticated user:", {
-    from: tempUserId,
-    to: authenticatedUserId,
-  });
-
-  try {
-    // Helper to merge arrays uniquely by a key heuristic
-    const mergeLogs = (a: any[], b: any[]) => {
-      const map: Record<string, string> = {};
-      const out: any[] = [];
-      [...a, ...b].forEach((l) => {
-        const key =
-          l.id ||
-          l._id ||
-          l.localId ||
-          `${l.date || ""}-${l.reachedDepth || ""}-${l.timestamp || ""}`;
-        if (!map[key]) {
-          map[key] = "1";
-          out.push(l);
-        }
-      });
-      return out;
-    };
-
-    // Legacy key patterns
-    const legacyPatternsTemp = [
-      `diveLogs_${tempUserId}`, // original underscore
-      `diveLogs-${tempUserId}`, // hyphen variant
-      `savedDiveLogs_${tempUserId}`, // savedDiveLogs variant
-    ];
-    const legacyPatternsAuth = [
-      `diveLogs_${authenticatedUserId}`,
-      `diveLogs-${authenticatedUserId}`,
-      `savedDiveLogs_${authenticatedUserId}`,
-    ];
-
-    // Collect temp logs from all patterns
-    let collectedTemp: any[] = [];
-    legacyPatternsTemp.forEach((k) => {
-      const raw = localStorage.getItem(k);
-      if (raw) {
-        try {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr) && arr.length) {
-            console.log(`📦 Found ${arr.length} temp dive logs in key ${k}`);
-            collectedTemp = mergeLogs(collectedTemp, arr);
-          }
-        } catch {}
-        // Remove legacy key after processing
-        localStorage.removeItem(k);
-      }
-    });
-
-    if (collectedTemp.length) {
-      // Get existing authenticated logs from any legacy pattern
-      let existingAuth: any[] = [];
-      legacyPatternsAuth.forEach((k) => {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          try {
-            const arr = JSON.parse(raw);
-            if (Array.isArray(arr) && arr.length) {
-              console.log(
-                `📦 Found ${arr.length} existing auth dive logs in key ${k}`,
-              );
-              existingAuth = mergeLogs(existingAuth, arr);
-            }
-          } catch {}
-          // Clean up legacy key (we'll re-write canonical)
-          localStorage.removeItem(k);
-        }
-      });
-
-      const merged = mergeLogs(existingAuth, collectedTemp);
-      localStorage.setItem(
-        `diveLogs_${authenticatedUserId}`,
-        JSON.stringify(merged),
-      );
-      console.log(
-        `✅ Migrated ${collectedTemp.length} dive logs (total after merge: ${merged.length}) to canonical key diveLogs_${authenticatedUserId}`,
-      );
-    }
-
-    // Migrate memories (keep original logic) ---------------------------------
-    const tempMemories = localStorage.getItem(`memories_${tempUserId}`);
-    if (tempMemories) {
-      const existingMemories = localStorage.getItem(
-        `memories_${authenticatedUserId}`,
-      );
-      if (existingMemories) {
-        const tempMemoriesArray = JSON.parse(tempMemories);
-        const existingMemoriesArray = JSON.parse(existingMemories);
-        const mergedMemories = [...existingMemoriesArray, ...tempMemoriesArray];
-        localStorage.setItem(
-          `memories_${authenticatedUserId}`,
-          JSON.stringify(mergedMemories),
-        );
-      } else {
-        localStorage.setItem(`memories_${authenticatedUserId}`, tempMemories);
-      }
-      localStorage.removeItem(`memories_${tempUserId}`);
-      console.log("✅ Migrated memories from temporary to authenticated user");
-    }
-
-    // Update user ID storage
+  
+  // Set the authenticated user ID
+  if (authenticatedUserId && 
+      !authenticatedUserId.startsWith("temp-") &&
+      !authenticatedUserId.startsWith("guest-") &&
+      !authenticatedUserId.startsWith("session-")) {
     localStorage.setItem("koval-ai-persistent-user-id", authenticatedUserId);
     sessionStorage.setItem("koval-ai-user-id", authenticatedUserId);
-    localStorage.removeItem("koval-ai-temp-user-id");
-
-    console.log(
-      "✅ Successfully upgraded temporary user to authenticated user",
-    );
+    console.log("✅ Set authenticated member ID:", authenticatedUserId);
     return true;
-  } catch (error) {
-    console.error("❌ Failed to upgrade temporary user data:", error);
-    return false;
   }
+  
+  return false;
 }
 
 /**
- * Migrates guest/session data to persistent user ID if needed (no-op in production).
- * Returns true if migration occurred, false otherwise.
+ * DEPRECATED: Guest/session data migration is no longer supported.
+ * App now requires authenticated Wix members only.
+ * @deprecated Use authenticated member login instead
  */
 export function migrateGuestDataToPersistent(): boolean {
   if (typeof window === "undefined") return false;
-  // In production, do nothing (guests not supported)
+  console.warn("⚠️ migrateGuestDataToPersistent is deprecated - app requires authenticated members only");
   return false;
 }
 
 /**
  * Extracts a userId from the current URL (if present as ?userId=...)
+ * Only returns authenticated member IDs, not guest/session/temp IDs
  */
 export function extractUserIdFromUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -247,7 +158,10 @@ export function extractUserIdFromUrl(): string | null {
     userId &&
     userId !== "undefined" &&
     userId !== "null" &&
-    userId.trim() !== ""
+    userId.trim() !== "" &&
+    !userId.startsWith("temp-") &&
+    !userId.startsWith("guest-") &&
+    !userId.startsWith("session-")
   ) {
     return userId;
   }

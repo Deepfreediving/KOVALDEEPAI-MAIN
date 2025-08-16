@@ -10,27 +10,27 @@ export default function SavedDiveLogsViewer({
   const [savedLogs, setSavedLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
 
-  // ✅ Helper to get user identifier (supports both old userId and new nickname pattern)
+  // ✅ Helper to get user identifier - AUTHENTICATED MEMBERS ONLY
   const getUserIdentifier = useCallback(() => {
-    // If userId looks like a nickname (no guest- prefix), use it directly
-    if (userId && !userId.startsWith('guest-')) {
-      return userId;
+    // ✅ ONLY ALLOW AUTHENTICATED WIX MEMBERS
+    if (!userId || 
+        userId.startsWith("guest-") || 
+        userId.startsWith("session-") || 
+        userId.startsWith("temp-") ||
+        userId === "") {
+      console.warn("⚠️ SavedDiveLogsViewer: No authenticated member found:", userId);
+      return null;
     }
-    // Otherwise extract from localStorage if available
-    if (typeof window !== "undefined") {
-      const profile = JSON.parse(localStorage.getItem("kovalProfile") || "{}");
-      if (profile.nickname) return profile.nickname;
-      if (profile.firstName) return profile.firstName;
-    }
-    // Fallback to userId for guests
-    return userId || 'Guest';
+    
+    // Use the authenticated member's userId directly
+    return userId;
   }, [userId]);
 
-  // ✅ V5.0: Load logs when component mounts or userId changes
+  // ✅ V5.0: Load logs when component mounts or userId changes - AUTHENTICATED ONLY
   const loadSavedLogs = useCallback(() => {
-    if (typeof window !== "undefined" && userId) {
+    const userIdentifier = getUserIdentifier();
+    if (typeof window !== "undefined" && userIdentifier) {
       // ✅ Use consistent storage key format
-      const userIdentifier = getUserIdentifier();
       const storageKey = `diveLogs_${userIdentifier}`;
       const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
       setSavedLogs(saved.slice(-10)); // Show last 10 logs
@@ -40,14 +40,15 @@ export default function SavedDiveLogsViewer({
         "logs from",
         storageKey,
       );
+    } else {
+      console.log("📱 SavedDiveLogsViewer: No authenticated member, clearing logs");
+      setSavedLogs([]);
     }
-  }, [userId, getUserIdentifier]);
+  }, [getUserIdentifier]);
 
   useEffect(() => {
-    if (userId) {
-      loadSavedLogs();
-    }
-  }, [userId, loadSavedLogs]); // Load when userId changes
+    loadSavedLogs();
+  }, [loadSavedLogs]); // Load when getUserIdentifier changes (which depends on userId)
 
   // ✅ NEW: Listen for storage changes to refresh when dive logs are saved
   useEffect(() => {
@@ -80,12 +81,17 @@ export default function SavedDiveLogsViewer({
   }, [loadSavedLogs, getUserIdentifier]);
 
   const clearSavedLogs = () => {
+    const userIdentifier = getUserIdentifier();
+    if (!userIdentifier) {
+      console.warn("⚠️ No authenticated user for clearing logs");
+      return;
+    }
+
     if (
       confirm(
         "Are you sure you want to clear all saved dive logs from local storage?",
       )
     ) {
-      const userIdentifier = getUserIdentifier();
       const storageKey = `diveLogs_${userIdentifier}`;
       localStorage.removeItem(storageKey);
       setSavedLogs([]);
@@ -104,11 +110,22 @@ export default function SavedDiveLogsViewer({
     }
   };
 
-  // ✅ Add analyze functionality
+  // ✅ Add analyze functionality - AUTHENTICATED MEMBERS ONLY
   const handleAnalyzeDiveLog = async (log) => {
     const userIdentifier = getUserIdentifier();
     if (!log || !userIdentifier) {
-      console.warn("⚠️ Missing log or user identifier for analysis");
+      console.warn("⚠️ Missing log or authenticated user for analysis");
+      
+      // Show authentication required message
+      if (setMessages) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "❌ You must be logged into your Wix account to analyze dive logs. Please log in and try again.",
+          },
+        ]);
+      }
       return;
     }
 
@@ -130,7 +147,7 @@ export default function SavedDiveLogsViewer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nickname: userIdentifier, // ✅ Use nickname instead of userId
+          userId: userIdentifier, // Use authenticated user ID
           diveLogData: log,
         }),
       });
@@ -148,7 +165,21 @@ export default function SavedDiveLogsViewer({
               },
             ]);
           }
+        } else {
+          console.warn("⚠️ Analysis response missing expected data:", result);
+          if (setMessages) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `⚠️ Analysis completed but no insights were generated. Please try again.`,
+              },
+            ]);
+          }
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Analysis failed with status ${response.status}`);
       }
     } catch (error) {
       console.error("❌ Analysis error:", error);
@@ -164,10 +195,21 @@ export default function SavedDiveLogsViewer({
     }
   };
 
-  // ✅ Add delete functionality
+  // ✅ Add delete functionality - AUTHENTICATED MEMBERS ONLY
   const handleDeleteDiveLog = async (logToDelete) => {
-    if (!logToDelete || !logToDelete.id) {
-      console.warn("⚠️ No log to delete");
+    const userIdentifier = getUserIdentifier();
+    if (!logToDelete || !logToDelete.id || !userIdentifier) {
+      console.warn("⚠️ No log to delete or no authenticated user");
+      
+      if (!userIdentifier && setMessages) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "❌ You must be logged into your Wix account to delete dive logs. Please log in and try again.",
+          },
+        ]);
+      }
       return;
     }
 
@@ -180,14 +222,12 @@ export default function SavedDiveLogsViewer({
     }
 
     try {
-      const userIdentifier = getUserIdentifier();
-      
       // Delete from API/Wix
       const response = await fetch("/api/analyze/delete-dive-log", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nickname: userIdentifier, // ✅ Use nickname instead of userId
+          userId: userIdentifier, // Use authenticated user ID
           logId: logToDelete.id,
           source: "saved-dive-logs-viewer",
         }),
@@ -221,6 +261,9 @@ export default function SavedDiveLogsViewer({
             },
           ]);
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Delete failed with status ${response.status}`);
       }
     } catch (error) {
       console.error("❌ Delete error:", error);
@@ -246,6 +289,27 @@ export default function SavedDiveLogsViewer({
 
   if (savedLogs.length === 0) {
     return null;
+  }
+
+  // ✅ Show authentication required message for non-authenticated users
+  const userIdentifier = getUserIdentifier();
+  if (!userIdentifier) {
+    return (
+      <div
+        className={`mt-6 p-4 rounded-lg border ${
+          darkMode
+            ? "bg-gray-800 border-gray-600 text-white"
+            : "bg-gray-50 border-gray-200 text-gray-900"
+        }`}
+      >
+        <div className="text-center py-4">
+          <h3 className="text-lg font-medium mb-2">🔒 Authentication Required</h3>
+          <p className="text-sm text-gray-500 mb-2">
+            Please log into your Wix account to view and manage your dive logs.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

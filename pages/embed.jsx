@@ -5,8 +5,8 @@ import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
 import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
 // import apiClient from "../utils/apiClient"; // Currently unused
-import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
-import { safeGetItem, safeSetItem, safeRemoveItem, safeParseJSON, safeLocalStorageKeys, isClient } from "../utils/safeLocalStorage";
+// Removed: import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
+import { safeGetItem, safeRemoveItem, safeParseJSON, isClient } from "../utils/safeLocalStorage";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
@@ -59,8 +59,8 @@ export default function Embed() {
     pinecone: "⏳ Checking...",
   });
   const [sessionStatus] = useState("Ready"); // setSessionStatus not used currently
-  const [isAuthenticating] = useState(false); // setIsAuthenticating not used currently  
-  const [authTimeoutReached] = useState(false); // setAuthTimeoutReached not used currently
+  const [isAuthenticating, setIsAuthenticating] = useState(true); // Start as true until we know auth status  
+  const [authTimeoutReached, setAuthTimeoutReached] = useState(false); // Set to true if auth fails
 
   const bottomRef = useRef(null);
 
@@ -155,16 +155,17 @@ export default function Embed() {
     if (
       userId &&
       !userId.startsWith("guest") &&
-      !userId.startsWith("session")
+      !userId.startsWith("session") &&
+      !userId.startsWith("temp-")
     ) {
-      console.log(`✅ Using member ID format: User-${userId}`);
-      return `User-${userId}`;
+      console.log(`✅ Using member ID format for authenticated user`);
+      return "Member";
     }
 
-    // ✅ Warn if we're falling back to session
-    if (userId?.startsWith("session")) {
-      console.warn(`⚠️ Using session ID as display name: ${userId} - member authentication may have failed`);
-      return "Member";
+    // ✅ Warn if we're falling back to session - should not happen anymore
+    if (userId?.startsWith("session") || userId?.startsWith("temp-")) {
+      console.warn(`⚠️ Detected session/temp ID: ${userId} - member authentication has failed`);
+      return "Guest (Login Required)";
     }
 
     // Fallback
@@ -354,7 +355,7 @@ export default function Embed() {
           console.log(`📱 Loaded ${foundLogs.length} total dive logs from fallback keys`);
         }
         
-        // 🚀 Add timeout fallback - if no Wix data arrives in 10 seconds, create session
+        // 🚀 WAIT FOR REAL WIX MEMBER DATA - NO SESSION FALLBACKS
         setTimeout(() => {
           setUserId((currentUserId) => {
             if (!currentUserId || currentUserId === "") {
@@ -369,8 +370,8 @@ export default function Embed() {
                 try {
                   const data = JSON.parse(localStorage.getItem(finalCheck));
                   const finalId = data?.id || data?.memberId || data?.userId;
-                  if (finalId) {
-                    console.log("✅ Found user ID in final check:", finalId);
+                  if (finalId && !finalId.startsWith("guest-") && !finalId.startsWith("session-")) {
+                    console.log("✅ Found real user ID in final check:", finalId);
                     localStorage.setItem("kovalUser", finalId);
                     return finalId;
                   }
@@ -379,10 +380,9 @@ export default function Embed() {
                 }
               }
               
-              const sessionId = `session-${Date.now()}`;
-              console.log("⏰ Timeout reached - creating session fallback:", sessionId);
-              localStorage.setItem("kovalUser", sessionId);
-              return sessionId;
+              console.log("⏰ No authenticated member found - user must be logged into Wix to use this app");
+              // DO NOT create session fallback - wait for real authentication
+              return "";
             }
             return currentUserId; // Don't change if already set
           });
@@ -506,14 +506,13 @@ export default function Embed() {
                 memberDetection: userData.memberDetectionMethod
               });
               
-              // Migrate data if we had a temporary session
-              if (previousUserId && previousUserId.startsWith("session-")) {
-                console.log("📦 Migrating data from temporary session to real member");
-                const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
-                if (migrationSuccess) {
-                  console.log("✅ Successfully migrated temporary session data");
-                }
-              }
+              // ✅ FIXED: For real Wix members, just set the data directly - no migration needed
+              console.log("✅ Setting real Wix member data directly:", {
+                contactId: newUserId,
+                firstName: userData.profile?.firstName,
+                lastName: userData.profile?.lastName,
+                loginEmail: userData.profile?.loginEmail
+              });
               
               migrateLegacyDiveLogKeys(newUserId);
               setUserId(newUserId);
@@ -560,9 +559,16 @@ export default function Embed() {
               
               // Create a fallback session ONLY if we don't have any user yet
               if (!userId || userId === "") {
-                const sessionId = `session-${Date.now()}`;
-                setUserId(sessionId);
-                console.log("⚠️ Created fallback session due to failed member detection:", sessionId);
+                console.log("⚠️ Member authentication failed - cannot save dive logs without authenticated member");
+                // Send message to parent that authentication is required
+                window.parent?.postMessage(
+                  {
+                    type: "AUTHENTICATION_REQUIRED",
+                    message: "User must be logged into Wix to save dive logs",
+                    timestamp: Date.now(),
+                  },
+                  "*",
+                );
               }
             }
           }
@@ -578,40 +584,41 @@ export default function Embed() {
               newUserId,
             );
 
-            // Upgrade and migrate data
-            const migrationSuccess =
-              upgradeTemporaryUserToAuthenticated(newUserId);
-            if (migrationSuccess) {
-              console.log("🔄 Successfully migrated temporary user data");
-            }
-            migrateLegacyDiveLogKeys(newUserId);
+            // ✅ ONLY USE REAL MEMBER IDs - NO MIGRATION OF TEMP DATA
+            if (!newUserId.startsWith("guest-") && !newUserId.startsWith("session-") && !newUserId.startsWith("temp-")) {
+              console.log("✅ Valid member ID received, setting up user data");
+              migrateLegacyDiveLogKeys(newUserId);
 
-            setUserId(newUserId);
-            localStorage.setItem("kovalUser", newUserId);
+              setUserId(newUserId);
+              localStorage.setItem("kovalUser", newUserId);
 
-            // Extract profile data
-            if (event.data.data.user.profile) {
-              const profile = event.data.data.user.profile;
-              const initProfile = {
-                nickname: profile.displayName || profile.nickname || "User",
-                displayName: profile.displayName || profile.nickname || "User",
-                loginEmail: profile.loginEmail || "",
-                firstName: profile.firstName || "",
-                lastName: profile.lastName || "",
-                profilePicture:
-                  profile.profilePhoto &&
-                  profile.profilePhoto !== "unknown" &&
-                  profile.profilePhoto !== "" &&
-                  typeof profile.profilePhoto === "string" &&
-                  profile.profilePhoto.startsWith("http")
-                    ? profile.profilePhoto
-                    : "",
-                source: "wix-initialized",
-                ...profile,
-              };
+              // Extract profile data
+              if (event.data.data.user.profile) {
+                const profile = event.data.data.user.profile;
+                const initProfile = {
+                  nickname: profile.displayName || profile.nickname || "Member",
+                  displayName: profile.displayName || profile.nickname || "Member",
+                  loginEmail: profile.loginEmail || "",
+                  firstName: profile.firstName || "",
+                  lastName: profile.lastName || "",
+                  profilePicture:
+                    profile.profilePhoto &&
+                    profile.profilePhoto !== "unknown" &&
+                    profile.profilePhoto !== "" &&
+                    typeof profile.profilePhoto === "string" &&
+                    profile.profilePhoto.startsWith("http")
+                      ? profile.profilePhoto
+                      : "",
+                  source: "wix-initialized",
+                  isAuthenticated: true,
+                  ...profile,
+                };
 
-              setProfile(initProfile);
-              localStorage.setItem("kovalProfile", JSON.stringify(initProfile));
+                setProfile(initProfile);
+                localStorage.setItem("kovalProfile", JSON.stringify(initProfile));
+              }
+            } else {
+              console.log("⚠️ Received invalid user ID (guest/session/temp), ignoring:", newUserId);
             }
           }
           break;
@@ -628,16 +635,16 @@ export default function Embed() {
             const newUserId = String(event.data.data.userId);
             console.log("✅ Setting user ID from USER_AUTH:", newUserId);
 
-            // Upgrade and migrate data
-            const migrationSuccess =
-              upgradeTemporaryUserToAuthenticated(newUserId);
-            if (migrationSuccess) {
-              console.log("🔄 Successfully migrated temporary user data");
-            }
-            migrateLegacyDiveLogKeys(newUserId);
+            // ✅ ONLY USE REAL MEMBER IDs - NO MIGRATION OF TEMP DATA
+            if (!newUserId.startsWith("guest-") && !newUserId.startsWith("session-") && !newUserId.startsWith("temp-")) {
+              console.log("✅ Valid member ID received, setting up user data");
+              migrateLegacyDiveLogKeys(newUserId);
 
-            setUserId(newUserId);
-            localStorage.setItem("kovalUser", newUserId);
+              setUserId(newUserId);
+              localStorage.setItem("kovalUser", newUserId);
+            } else {
+              console.log("⚠️ Received invalid user ID (guest/session/temp), ignoring:", newUserId);
+            }
           }
 
           // Update profile with data from parent
@@ -679,23 +686,20 @@ export default function Embed() {
           // ✅ DIRECT USER AUTH FALLBACK (for communication issues)
           console.log("🔧 Direct user auth received:", event.data);
 
-          if (event.data.userId && !event.data.userId.startsWith("guest-")) {
+          if (event.data.userId && 
+              !event.data.userId.startsWith("guest-") &&
+              !event.data.userId.startsWith("session-") &&
+              !event.data.userId.startsWith("temp-")) {
             console.log("✅ Setting direct userId:", event.data.userId);
 
-            // ✅ UPGRADE TEMPORARY USER DATA TO AUTHENTICATED USER
-            const migrationSuccess = upgradeTemporaryUserToAuthenticated(
-              event.data.userId,
-            );
-            if (migrationSuccess) {
-              console.log(
-                "🔄 Successfully migrated temporary user data to authenticated user (direct)",
-              );
-            }
-            // ✅ Consolidate any legacy keys
+            // ✅ ONLY CONSOLIDATE LEGACY KEYS - NO TEMP DATA MIGRATION
             migrateLegacyDiveLogKeys(event.data.userId);
+            setUserId(event.data.userId);
+            localStorage.setItem("kovalUser", event.data.userId);
           } else {
             console.log(
-              "⚠️ Invalid userId in KOVAL_USER_AUTH - waiting for valid user data",
+              "⚠️ Invalid userId in KOVAL_USER_AUTH - waiting for valid member data:",
+              event.data.userId
             );
           }
           break;
@@ -716,57 +720,57 @@ export default function Embed() {
         if (globalUserData && globalUserData.userId) {
           console.log("🌍 Found global user data:", globalUserData);
 
-          // Upgrade and migrate data
-          const migrationSuccess = upgradeTemporaryUserToAuthenticated(
-            globalUserData.userId,
-          );
-          if (migrationSuccess) {
-            console.log(
-              "🔄 Successfully migrated temporary user data from global",
-            );
+          // ✅ ONLY USE REAL MEMBER IDs FROM GLOBAL DATA
+          if (!globalUserData.userId.startsWith("guest-") && 
+              !globalUserData.userId.startsWith("session-") && 
+              !globalUserData.userId.startsWith("temp-")) {
+            console.log("✅ Valid member ID from global data, setting up user");
+            migrateLegacyDiveLogKeys(globalUserData.userId);
+
+            setUserId(globalUserData.userId);
+            localStorage.setItem("kovalUser", globalUserData.userId);
+
+            if (globalUserData.profile) {
+              const globalProfile = {
+                nickname:
+                  globalUserData.profile.displayName ||
+                  globalUserData.profile.nickname ||
+                  "Member",
+                displayName:
+                  globalUserData.profile.displayName ||
+                  globalUserData.profile.nickname ||
+                  "Member",
+                loginEmail: globalUserData.profile.loginEmail || "",
+                source: "global-data",
+                isAuthenticated: true,
+                ...globalUserData.profile,
+                // Override profilePicture with safe value
+                profilePicture:
+                  globalUserData.profile.profilePicture &&
+                  globalUserData.profile.profilePicture !== "unknown" &&
+                  globalUserData.profile.profilePicture !== "" &&
+                  typeof globalUserData.profile.profilePicture === "string" &&
+                  globalUserData.profile.profilePicture.startsWith("http")
+                    ? globalUserData.profile.profilePicture
+                    : "",
+              };
+
+              setProfile(globalProfile);
+              localStorage.setItem("kovalProfile", JSON.stringify(globalProfile));
+            }
+
+            if (globalUserData.userDiveLogs) {
+              setDiveLogs(globalUserData.userDiveLogs);
+              localStorage.setItem(
+                "koval_ai_logs",
+                JSON.stringify(globalUserData.userDiveLogs),
+              );
+            }
+
+            return true; // User data found
+          } else {
+            console.log("⚠️ Invalid global user ID (guest/session/temp), ignoring:", globalUserData.userId);
           }
-          migrateLegacyDiveLogKeys(globalUserData.userId);
-
-          setUserId(globalUserData.userId);
-          localStorage.setItem("kovalUser", globalUserData.userId);
-
-          if (globalUserData.profile) {
-            const globalProfile = {
-              nickname:
-                globalUserData.profile.displayName ||
-                globalUserData.profile.nickname ||
-                "User",
-              displayName:
-                globalUserData.profile.displayName ||
-                globalUserData.profile.nickname ||
-                "User",
-              loginEmail: globalUserData.profile.loginEmail || "",
-              source: "global-data",
-              ...globalUserData.profile,
-              // Override profilePicture with safe value
-              profilePicture:
-                globalUserData.profile.profilePicture &&
-                globalUserData.profile.profilePicture !== "unknown" &&
-                globalUserData.profile.profilePicture !== "" &&
-                typeof globalUserData.profile.profilePicture === "string" &&
-                globalUserData.profile.profilePicture.startsWith("http")
-                  ? globalUserData.profile.profilePicture
-                  : "",
-            };
-
-            setProfile(globalProfile);
-            localStorage.setItem("kovalProfile", JSON.stringify(globalProfile));
-          }
-
-          if (globalUserData.userDiveLogs) {
-            setDiveLogs(globalUserData.userDiveLogs);
-            localStorage.setItem(
-              "koval_ai_logs",
-              JSON.stringify(globalUserData.userDiveLogs),
-            );
-          }
-
-          return true; // User data found
         }
       } catch (error) {
         console.log("ℹ️ Could not access global user data:", error.message);
@@ -846,6 +850,32 @@ export default function Embed() {
     async (e) => {
       e.preventDefault();
       if ((!input.trim() && files.length === 0) || loading) return;
+
+      // ✅ BLOCK UNAUTHENTICATED USERS FROM USING CHAT
+      if (!userId || 
+          userId.startsWith("guest-") || 
+          userId.startsWith("session-") || 
+          userId.startsWith("temp-")) {
+        console.warn("⚠️ Chat blocked for unauthenticated user:", userId);
+        
+        const authErrorMessage = {
+          role: "assistant",
+          content: "❌ You must be logged into your Wix account to use the AI coach. Please log in and try again.",
+        };
+        setMessages((prev) => [...prev, authErrorMessage]);
+        
+        // Notify parent that authentication is required
+        window.parent?.postMessage(
+          {
+            type: "AUTHENTICATION_REQUIRED",
+            message: "User must be logged into Wix to use AI chat",
+            feature: "ai_chat",
+            timestamp: Date.now(),
+          },
+          "*",
+        );
+        return;
+      }
 
       const userMessage = {
         role: "user",
@@ -1279,8 +1309,12 @@ export default function Embed() {
       console.log("📊 Dive data to save:", diveData);
       console.log("📊 Current profile:", profile);
 
-      if (!userId) {
-        console.error("❌ No userId available for dive log submission");
+      // ✅ ONLY ALLOW AUTHENTICATED WIX MEMBERS TO SAVE DIVE LOGS
+      if (!userId || 
+          userId.startsWith("guest-") || 
+          userId.startsWith("session-") || 
+          userId.startsWith("temp-")) {
+        console.error("❌ Cannot save dive log: User must be authenticated Wix member");
         console.error("❌ userId:", userId);
         console.error("❌ Profile source:", profile?.source);
 
@@ -1289,15 +1323,24 @@ export default function Embed() {
           ...prev,
           {
             role: "assistant",
-            content:
-              "❌ Cannot save dive log: No user ID available. Please refresh the page and try again.",
+            content: "❌ Cannot save dive log: You must be logged into your Wix account to save dive logs. Please log in and try again.",
           },
         ]);
+        
+        // Notify parent that authentication is required
+        window.parent?.postMessage(
+          {
+            type: "AUTHENTICATION_REQUIRED",
+            message: "User must be logged into Wix to save dive logs",
+            feature: "dive_log_save",
+            timestamp: Date.now(),
+          },
+          "*",
+        );
         return;
       }
 
-      // Allow both authenticated users and guest users to save dive logs
-      console.log("✅ Proceeding with dive log save for user:", userId);
+      console.log("✅ Proceeding with dive log save for authenticated member:", userId);
 
       // Show immediate feedback
       setMessages((prev) => [
@@ -1320,43 +1363,27 @@ export default function Embed() {
           // Generate a unique dive log ID
           const diveLogId = `dive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-          // ✅ FIXED: Format data to match DiveLogs collection with individual fields
+          // ✅ SIMPLIFIED: Send raw dive log format to Wix DiveLogs collection
           const wixDiveLogRecord = {
             // User identification
-            nickname: profile?.nickname || profile?.displayName || 'Unknown User', // Maps to "nickname" field (connected to Members)
-            firstName: profile?.firstName || '', // Maps to "firstName" field
-            lastName: profile?.lastName || '', // Maps to "lastName" field
-            diveLogId: diveLogId, // Maps to "Dive Log ID" field
+            nickname: profile?.nickname || profile?.displayName || 'Unknown User',
+            firstName: profile?.firstName || '',
+            lastName: profile?.lastName || '',
+            diveLogId: diveLogId,
             
-            // ✅ Individual dive fields (instead of JSON blob)
-            diveDate: new Date(diveLogWithUser.date || new Date()).toISOString(), // Maps to "Dive Date" field
-            diveTime: diveLogWithUser.totalDiveTime || '', // Maps to "Dive Time" field
-            discipline: diveLogWithUser.discipline || 'Freediving', // Maps to "discipline" field
-            location: diveLogWithUser.location || '', // Maps to "location" field
-            targetDepth: parseFloat(diveLogWithUser.targetDepth) || 0, // Maps to "targetDepth" field
-            reachedDepth: parseFloat(diveLogWithUser.reachedDepth) || 0, // Maps to "reachedDepth" field
-            mouthfillDepth: parseFloat(diveLogWithUser.mouthfillDepth) || 0, // Maps to "mouthfillDepth" field
-            issueDepth: parseFloat(diveLogWithUser.issueDepth) || 0, // Maps to "issueDepth" field
-            issueComment: diveLogWithUser.issueComment || '', // Maps to "issueComment" field
-            squeeze: Boolean(diveLogWithUser.squeeze), // Maps to "squeeze" field
-            exit: diveLogWithUser.exit || '', // Maps to "exit" field
-            attemptType: diveLogWithUser.attemptType || '', // Maps to "attemptType" field
-            surfaceProtocol: diveLogWithUser.surfaceProtocol || '', // Maps to "surfaceProtocol" field
-            notes: diveLogWithUser.notes || '', // Maps to "notes" field
-            watchedPhoto: diveLogWithUser.imageUrl || null, // Maps to "watchedPhoto" field
+            // ✅ RAW dive log data - let Wix Collection fields match this format
+            ...diveLogWithUser, // Include all original dive log fields as-is
             
-            // ✅ Keep logEntry as backup/reference only (for complex data)
-            logEntry: JSON.stringify({
-              metadata: {
-                type: "dive_log",
-                source: "dive-journal-widget",
-                timestamp: new Date().toISOString(),
-                version: "5.0",
-                userId: userId,
-                originalData: diveLogWithUser // Full backup
-              },
-            }),
-            dataType: "dive_log", // Additional field for filtering
+            // Override with any required Wix-specific fields
+            id: diveLogId, // Ensure consistent ID
+            userId: userId, // Ensure user ID is set
+            
+            // Metadata for versioning and debugging
+            metadata: {
+              source: "koval-ai-widget",
+              timestamp: new Date().toISOString(),
+              version: "5.0"
+            }
           };
 
           console.log(
@@ -1568,6 +1595,32 @@ export default function Embed() {
       loadDiveLogs();
     }
   }, [userId, loadDiveLogs]);
+
+  // ✅ UPDATE AUTHENTICATION STATUS BASED ON USER ID
+  useEffect(() => {
+    if (userId) {
+      // Check if we have a valid authenticated user
+      const isValidUser = userId && 
+                         !userId.startsWith("guest-") && 
+                         !userId.startsWith("session-") && 
+                         !userId.startsWith("temp-") &&
+                         userId !== "";
+
+      if (isValidUser) {
+        console.log("✅ User authenticated successfully:", userId);
+        setIsAuthenticating(false);
+        setAuthTimeoutReached(false);
+      } else {
+        console.log("⚠️ User authentication failed or invalid:", userId);
+        setIsAuthenticating(false);
+        setAuthTimeoutReached(true);
+      }
+    } else {
+      // Still waiting for user data
+      setIsAuthenticating(true);
+      setAuthTimeoutReached(false);
+    }
+  }, [userId]);
 
   // ✅ MEMOIZED PROPS FOR PERFORMANCE
   const sidebarProps = useMemo(() => {
@@ -1788,8 +1841,8 @@ export default function Embed() {
                 setEditingLog={setEditingLog}
                 setMessages={setMessages}
                 onRefreshDiveLogs={loadDiveLogs}
-                profile={profile} // ✅ Pass full profile data
-                userId={userId} // ✅ Pass Wix Contact Id
+                userId={userId}
+                profile={profile}
               />
             </div>
           </div>
