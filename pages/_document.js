@@ -22,7 +22,7 @@ export default function Document() {
         <link rel="dns-prefetch" href="//pinecone.io" />
         <link rel="dns-prefetch" href="//deepfreediving.com" />
 
-        {/* ✅ NO EARLY SCRIPTS - Let Next.js handle all initialization */}
+        {/* ⛔ Removed all debug/hotfix scripts that interfere with React initialization */}
 
         {/* ✅ Critical CSS inline for faster rendering */}
         <style
@@ -70,36 +70,7 @@ export default function Document() {
         {/* ✅ Scripts at the end for optimal loading */}
         <NextScript />
 
-        {/* ✅ NO DEBUG SCRIPTS - Remove all custom scripts that can interfere */}
-
-        {/* ✅ Performance monitoring script (deferred) */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // ✅ Performance optimization
-              if ('requestIdleCallback' in window) {
-                requestIdleCallback(() => {
-                  // Defer non-critical operations
-                  console.log('🚀 App loaded and idle');
-                });
-              }
-              
-              // ✅ Clean up any duplicate scripts
-              (function() {
-                const scripts = document.getElementsByTagName('script');
-                const seen = new Set();
-                Array.from(scripts).forEach(script => {
-                  const src = script.src || script.innerHTML;
-                  if (src && seen.has(src)) {
-                    script.remove();
-                  } else if (src) {
-                    seen.add(src);
-                  }
-                });
-              })();
-            `,
-          }}
-        />
+        {/* ⛔ Removed all debug scripts that were interfering with React initialization */}
       </body>
     </Html>
   );

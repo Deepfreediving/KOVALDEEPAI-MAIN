@@ -175,7 +175,7 @@ const nextConfig = {
         ],
       },
       {
-        // ✅ Headers for embed root page - Remove invalid X-Frame-Options
+        // ✅ Headers for embed root page - Remove invalid X-Frame-Options  
         source: '/embed',
         headers: [
           { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://*.wix.com https://*.wixsite.com https://www.deepfreediving.com https://deepfreediving.com" },
