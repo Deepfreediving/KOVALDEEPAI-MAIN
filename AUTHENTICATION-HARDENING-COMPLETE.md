@@ -53,6 +53,12 @@
 - [ ] 🔄 **API Rejection**: Confirm 401 responses for unauthenticated requests
 - [ ] 🔄 **Widget Communication**: Test postMessage handshake with real Wix site
 - [ ] 🔄 **Error Handling**: Verify graceful degradation when auth fails
+- [ ] 🚨 **Circular Dependency Fix**: "Cannot access 'em' before initialization" error STILL BLOCKING APP
+
+### Critical Issues Blocking Deployment
+
+- [ ] 🚨 **CRITICAL**: Circular dependency error prevents embed page from loading
+- [ ] 🚨 **CRITICAL**: React/Next.js module initialization failure in production build
 
 ### Monitoring Setup
 
