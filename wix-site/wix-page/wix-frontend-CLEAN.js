@@ -102,14 +102,17 @@ async function initializeSession() {
 }
 
 function createGuestSession() {
-  const guestId = 'guest_' + Date.now();
+  // ✅ V6.0 STRICT AUTH - NO GUEST SESSIONS
+  console.log('🔒 V6.0: No guest sessions allowed - authentication required');
   return {
-    userId: guestId,
+    userId: null,
     memberId: null,
     userEmail: '',
-    userName: guestId,
+    userName: 'Login Required',
     isAuthenticated: false,
-    source: 'guest'
+    authState: 'UNAUTHENTICATED',
+    source: 'authentication-required-v6.0',
+    requiresLogin: true
   };
 }
 

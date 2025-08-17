@@ -241,42 +241,75 @@
         ) {
           const wixUserData = event.data.userData;
           console.log(
-            "✅ V5.0: Received authentic user data from Wix page:",
+            "✅ V6.0: Received user data from Wix page:",
             wixUserData,
           );
 
-          // Update userData with real Wix user data using V5.0 standards
-          userData = {
-            ...userData,
-            userId: wixUserData.userId || wixUserData.id, // ✅ V5.0: Support both field names
-            memberId: wixUserData.userId || wixUserData.id, // ✅ V5.0: Explicit member ID
-            userName: wixUserData.userId || wixUserData.id, // ✅ V5.0: Use raw member ID
-            userEmail:
-              wixUserData.profile?.loginEmail || wixUserData.email || "",
-            profilePhoto: wixUserData.profile?.profilePhoto || "",
-            nickname:
-              wixUserData.profile?.nickname ||
-              wixUserData.profile?.displayName ||
-              wixUserData.nickname ||
-              `Member-${wixUserData.userId || wixUserData.id}`,
-            isGuest: false,
-            source: "wix-page-authenticated-v5.0",
-            memberDetectionMethod: "wix-frontend-bridge",
-            version: "5.0.0",
-            theme: theme,
-            diveLogs: wixUserData.userDiveLogs || [],
-            memories: wixUserData.userMemories || [],
+          // ✅ STRICT VALIDATION - Only accept real member IDs
+          const isRealMemberId = (id) => {
+            return !!id && 
+                   !String(id).startsWith('guest-') && 
+                   !String(id).startsWith('session-') && 
+                   !String(id).startsWith('temp-');
           };
 
-          console.log("🔄 V5.0: Updated widget userData:", {
-            userId: userData.userId,
-            memberId: userData.memberId,
-            userName: userData.userName,
-            nickname: userData.nickname,
-            hasProfilePhoto: !!userData.profilePhoto,
-            source: userData.source,
-            detectionMethod: userData.memberDetectionMethod,
-          });
+          if (wixUserData.isAuthenticated && 
+              wixUserData.memberId && 
+              isRealMemberId(wixUserData.userId)) {
+            
+            console.log("✅ V6.0: Valid Wix member detected - promoting to AUTHENTICATED");
+            
+            // Update userData with real Wix member data
+            userData = {
+              ...userData,
+              userId: wixUserData.userId,
+              memberId: wixUserData.memberId,
+              userName: wixUserData.userName || `User-${wixUserData.userId}`,
+              userEmail: wixUserData.userEmail || "",
+              nickname: wixUserData.nickname || wixUserData.userName || `User-${wixUserData.userId}`,
+              firstName: wixUserData.firstName || "",
+              lastName: wixUserData.lastName || "",
+              profilePhoto: wixUserData.profilePicture || "",
+              isGuest: false,
+              isAuthenticated: true,
+              authState: "AUTHENTICATED",
+              source: wixUserData.source || "wix-page-authenticated-v6.0",
+              memberDetectionMethod: wixUserData.memberDetectionMethod || "wix-frontend-v6.0",
+              version: "6.0.0",
+              theme: theme,
+              requiresLogin: false
+            };
+
+            console.log("🔄 V6.0: Updated widget userData:", {
+              userId: userData.userId,
+              memberId: userData.memberId,
+              userName: userData.userName,
+              nickname: userData.nickname,
+              authState: userData.authState,
+              source: userData.source,
+              detectionMethod: userData.memberDetectionMethod,
+            });
+            
+            // Send updated auth data to iframe
+            if (this.iframe && this.isReady) {
+              this.postMessage("USER_AUTH", userData);
+            }
+            
+          } else {
+            console.log("⚠️ V6.0: Invalid or guest user data received - setting UNAUTHENTICATED");
+            userData.authState = "UNAUTHENTICATED";
+            userData.userName = "Login Required";
+            userData.requiresLogin = true;
+            userData.isAuthenticated = false;
+            
+            // Send auth required message to iframe
+            if (this.iframe && this.isReady) {
+              this.postMessage("AUTH_REQUIRED", {
+                message: "Please log into your Wix account to use the AI coach",
+                requiresLogin: true
+              });
+            }
+          }
 
           // If iframe is ready, send updated user data
           if (this.iframe && this.isReady) {
@@ -289,25 +322,28 @@
       // Add message listener
       window.addEventListener("message", handleParentMessage);
 
-      // ✅ V5.0 ENHANCED USER DATA with improved member detection
+      // ✅ V6.0 STRICT AUTH STATE MACHINE - NO GUEST IDs
       let userData = {
-        userId: "guest-" + Date.now(), // ✅ Use consistent guest format
-        userName: "guest-" + Date.now(), // ✅ Show ID format directly
-        source: "wix-widget-v5.0-enhanced",
-        version: "5.0.0",
-        theme: theme, // ✅ Pass theme to embed
+        userId: null, // ✅ NO guest fallbacks - must be authenticated
+        userName: "Connecting...",
+        source: "wix-widget-v6.0-strict-auth",
+        version: "6.0.0",
+        theme: theme,
         parentUrl: window.location.href,
         memberDetectionMethod: null,
+        authState: "REQUESTING", // REQUESTING|AUTHENTICATED|UNAUTHENTICATED
+        isAuthenticated: false,
+        requiresLogin: true
       };
 
-      // ✅ REQUEST USER DATA FROM PARENT WIX PAGE
+      // ✅ STRICT HANDSHAKE - Request auth immediately, no fallbacks
       if (window.parent !== window) {
-        console.log("🔍 Requesting user data from parent Wix page...");
+        console.log("� Starting strict auth handshake - requesting real member data only");
         try {
           window.parent.postMessage(
             {
               type: "REQUEST_USER_DATA",
-              source: "koval-ai-widget",
+              source: "koval-ai-widget-v6.0",
               timestamp: Date.now(),
             },
             "*",
@@ -316,8 +352,27 @@
         } catch (error) {
           console.error("❌ Failed to send REQUEST_USER_DATA:", error);
         }
+        
+        // ✅ 10-second timeout for authentication
+        setTimeout(() => {
+          if (userData.authState === "REQUESTING") {
+            console.log("⏰ Auth timeout - setting to UNAUTHENTICATED");
+            userData.authState = "UNAUTHENTICATED";
+            userData.userName = "Login Required";
+            userData.requiresLogin = true;
+            // Update iframe if ready
+            if (this.iframe && this.isReady) {
+              this.postMessage("AUTH_TIMEOUT", { 
+                message: "Please log into your Wix account to use the AI coach",
+                requiresLogin: true 
+              });
+            }
+          }
+        }, 10000);
+        
       } else {
         console.log("🔍 Widget is not in an iframe, will use direct detection");
+        // Still try direct detection but no guest fallbacks
       }
 
       // ✅ Enhanced Wix user detection with retry logic
@@ -902,8 +957,8 @@
             // Extract rich profile data for UserMemory
             this.handleMemberData(currentUser);
           } else {
-            console.log("ℹ️ User not logged in - using guest mode");
-            this.handleGuestUser();
+            console.log("ℹ️ User not logged in - requires authentication");
+            this.handleUnauthenticatedUser();
           }
         }
 
@@ -914,17 +969,17 @@
               if (user && user.loggedIn && user.id) {
                 this.handleMemberData(user);
               } else {
-                this.handleGuestUser();
+                this.handleUnauthenticatedUser();
               }
             })
             .catch((error) => {
               console.warn("⚠️ $w.user API error:", error);
-              this.handleGuestUser();
+              this.handleUnauthenticatedUser();
             });
         }
       } catch (error) {
         console.warn("⚠️ Member data detection failed:", error);
-        this.handleGuestUser();
+        this.handleUnauthenticatedUser();
       }
     }
 
@@ -963,27 +1018,29 @@
       });
     }
 
-    // ✅ HANDLE GUEST USER (NO WIX LOGIN)
-    handleGuestUser() {
-      console.log("👤 No Wix login detected - using guest mode");
-
-      const guestId = "guest-" + Date.now();
-      const userData = {
-        userId: guestId,
-        userName: "Guest User",
-        nickname: "Guest User",
+    // ✅ V6.0 STRICT AUTH - NO GUEST USERS
+    handleUnauthenticatedUser() {
+      console.log("� No Wix authentication detected - app requires member login");
+      
+      const authRequiredData = {
+        userId: null,
+        userName: "Login Required",
+        nickname: "Login Required", 
         userEmail: "",
-        source: "guest-user",
-        isGuest: true,
+        source: "authentication-required-v6.0",
+        isAuthenticated: false,
+        authState: "UNAUTHENTICATED",
+        requiresLogin: true,
+        message: "Please log into your Wix account to use the AI coach",
         theme: this.currentTheme || "light",
       };
-
+      
       // Send to embed
       if (this.iframe && this.isReady) {
-        this.postMessage("USER_AUTH", userData);
+        this.postMessage("AUTH_REQUIRED", authRequiredData);
       }
-
-      console.log("📤 Sent guest user data to embed:", userData);
+      
+      console.log("📤 Sent authentication required message to embed:", authRequiredData);
     }
 
     // ✅ SIMPLE USER DATA BRIDGE FOR USERMEMORY INTEGRATION
