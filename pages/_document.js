@@ -22,6 +22,9 @@ export default function Document() {
         <link rel="dns-prefetch" href="//pinecone.io" />
         <link rel="dns-prefetch" href="//deepfreediving.com" />
 
+        {/* ✅ Circular dependency hotfix - Load synchronously and early */}
+        <script src="/circular-dependency-hotfix.js" />
+        
         {/* ✅ Debug runtime for error tracking */}
         <script src="/debug-runtime.js" async />
 
