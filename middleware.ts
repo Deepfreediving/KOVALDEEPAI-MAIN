@@ -59,7 +59,6 @@ export function middleware(request: NextRequest) {
     response.headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
     // Additional security headers for embedded content
-    response.headers.set("X-Frame-Options", "ALLOWALL");
     response.headers.set(
       "Content-Security-Policy",
       "frame-ancestors 'self' https://*.wix.com https://*.wixsite.com https://www.deepfreediving.com https://deepfreediving.com",

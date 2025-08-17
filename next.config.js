@@ -163,10 +163,9 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // ✅ Headers for embed pages (iframe-friendly)
+        // ✅ Headers for embed pages (iframe-friendly) - Remove invalid X-Frame-Options
         source: '/embed/:path*',
         headers: [
-          { key: 'X-Frame-Options', value: 'ALLOWALL' },
           { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://*.wix.com https://*.wixsite.com https://www.deepfreediving.com https://deepfreediving.com" },
           { key: 'Cross-Origin-Embedder-Policy', value: 'unsafe-none' },
           { key: 'Cross-Origin-Opener-Policy', value: 'unsafe-none' },
@@ -176,10 +175,9 @@ const nextConfig = {
         ],
       },
       {
-        // ✅ Headers for embed root page
+        // ✅ Headers for embed root page - Remove invalid X-Frame-Options
         source: '/embed',
         headers: [
-          { key: 'X-Frame-Options', value: 'ALLOWALL' },
           { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://*.wix.com https://*.wixsite.com https://www.deepfreediving.com https://deepfreediving.com" },
           { key: 'Cross-Origin-Embedder-Policy', value: 'unsafe-none' },
           { key: 'Cross-Origin-Opener-Policy', value: 'unsafe-none' },
@@ -189,12 +187,9 @@ const nextConfig = {
         ],
       },
       {
-        // ✅ Headers for API routes
+        // ✅ Headers for API routes (CORS handled by middleware.ts)
         source: '/api/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, X-Requested-With' },
           { key: 'Cross-Origin-Embedder-Policy', value: 'unsafe-none' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

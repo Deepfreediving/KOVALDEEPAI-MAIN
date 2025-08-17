@@ -22,11 +22,7 @@ export default function Document() {
         <link rel="dns-prefetch" href="//pinecone.io" />
         <link rel="dns-prefetch" href="//deepfreediving.com" />
 
-        {/* ⛔ Removed circular-dependency hotfix that could interfere with Next polyfills */}
-        {/* <script src="/circular-dependency-hotfix.js" /> */}
-        
-        {/* ⛔ Moved debug runtime to load after main scripts to avoid early conflicts */}
-        {/* <script src="/debug-runtime.js" async /> */}
+        {/* ✅ NO EARLY SCRIPTS - Let Next.js handle all initialization */}
 
         {/* ✅ Critical CSS inline for faster rendering */}
         <style
@@ -74,8 +70,7 @@ export default function Document() {
         {/* ✅ Scripts at the end for optimal loading */}
         <NextScript />
 
-        {/* ✅ Debug runtime for error tracking (load after Next scripts) */}
-        <script src="/debug-runtime.js" defer />
+        {/* ✅ NO DEBUG SCRIPTS - Remove all custom scripts that can interfere */}
 
         {/* ✅ Performance monitoring script (deferred) */}
         <script
