@@ -30,7 +30,10 @@ export default function Embed() {
   // Always assume we're in embedded mode for this page
   const [isEmbedded] = useState(true); // setIsEmbedded not needed
 
-  // ===== CORE STATE (Simplified - No Authentication Blocking) =====
+  // ===== AUTH STATE MACHINE - NO MORE GUEST DRIFT =====
+  const [authState, setAuthState] = useState('UNKNOWN'); // UNKNOWN|REQUESTING|AUTHENTICATED|UNAUTHENTICATED
+  
+  // ===== CORE STATE (Simplified - Authentication-Gated) =====
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
   const [editingSessionName, setEditingSessionName] = useState(false);
@@ -66,6 +69,25 @@ export default function Embed() {
   const [authTimeoutReached] = useState(false); // setAuthTimeoutReached not used currently
 
   const bottomRef = useRef(null);
+
+  // ===== AUTH STATE MACHINE HELPERS =====
+  const isRealMemberId = useCallback((id) => {
+    return !!id && !String(id).startsWith('guest-') && !String(id).startsWith('session-') && !String(id).startsWith('temp-');
+  }, []);
+
+  const ensureAuthOrTellParent = useCallback((feature) => {
+    if (authState !== 'AUTHENTICATED' || !isRealMemberId(userId)) {
+      console.log(`🚫 ${feature} blocked - authentication required. AuthState: ${authState}, UserId: ${userId}`);
+      window.parent?.postMessage({
+        type: 'AUTHENTICATION_REQUIRED',
+        message: 'User must be logged into Wix',
+        feature,
+        timestamp: Date.now(),
+      }, '*');
+      return false;
+    }
+    return true;
+  }, [authState, userId, isRealMemberId]);
 
   // ✅ HELPERS
   const safeParse = (key, defaultValue) => {
@@ -194,192 +216,36 @@ export default function Embed() {
     return null;
   }, [profile]);
 
-  // ===== SIMPLIFIED INITIALIZATION - ALWAYS WORKS =====
+  // ===== STRICT AUTH HANDSHAKE - NO TEMP IDs =====
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setSessionsList(safeParse("kovalSessionsList", []));
-      // setThreadId(localStorage.getItem("kovalThreadId") || null); // threadId currently unused
+    if (typeof window === "undefined") return;
 
-      // ✅ DEBUG: Check what's in Wix member details
-      const wixMemberKey = Object.keys(localStorage).find(key => key.includes('__wix.memberDetails'));
-      if (wixMemberKey) {
-        const wixMemberData = localStorage.getItem(wixMemberKey);
-        console.log("🔍 Found Wix member data:", wixMemberKey, wixMemberData);
-        try {
-          const parsed = JSON.parse(wixMemberData);
-          console.log("🔍 Parsed Wix member data:", parsed);
-          
-          // Try multiple ways to extract member ID
-          const possibleId = parsed?.id || parsed?.memberId || parsed?.userId || parsed?.member?.id;
-          if (possibleId) {
-            console.log("🔍 Found Wix member ID:", possibleId);
-            // Try to use Wix member ID as userId
-            setUserId(possibleId);
-            localStorage.setItem("kovalUser", possibleId);
-            console.log("✅ Set userId from Wix member data:", possibleId);
-            
-            // Also try to load dive logs immediately for this user
-            const memberDiveLogs = safeParse(storageKey(possibleId), []);
-            if (memberDiveLogs.length > 0) {
-              setDiveLogs(memberDiveLogs);
-              console.log(`📱 Found ${memberDiveLogs.length} existing dive logs for member`);
-            }
-          } else {
-            console.log("🔍 No valid member ID found in Wix data, checking all properties:", Object.keys(parsed));
-          }
-        } catch (e) {
-          console.warn("⚠️ Failed to parse Wix member data:", e);
-        }
-      } else {
-        console.log("🔍 No Wix member details found in localStorage");
-        // Check all localStorage keys for debugging
-        const allKeys = Object.keys(localStorage);
-        console.log("🔍 All localStorage keys:", allKeys);
-        const wixKeys = allKeys.filter(key => key.includes('wix') || key.includes('Wix') || key.includes('member'));
-        console.log("🔍 Wix-related keys:", wixKeys);
+    // Start the handshake only once
+    console.log('� Starting strict auth handshake - no temp IDs allowed');
+    setAuthState('REQUESTING');
+
+    // Initialize basic app state (sessions, dark mode)
+    setSessionsList(safeParse("kovalSessionsList", []));
+
+    // Tell parent we're ready and waiting for real member data
+    console.log("� Sending EMBED_READY message to parent...");
+    window.parent?.postMessage({ 
+      type: 'EMBED_READY', 
+      source: 'koval-ai-embed', 
+      timestamp: Date.now() 
+    }, '*');
+
+    // If no real member within 10s, show login CTA but keep listening
+    const timeout = setTimeout(() => {
+      if (authState === 'REQUESTING') {
+        console.log('⏰ Auth timeout reached - setting to UNAUTHENTICATED');
+        setAuthState('UNAUTHENTICATED');
       }
+    }, 10000);
 
-      // ✅ ENHANCED: Try to extract userId from any Wix-related localStorage entries
-      const allKeys = Object.keys(localStorage);
-      const wixKeys = allKeys.filter(key => 
-        key.includes('wix') || 
-        key.includes('Wix') || 
-        key.includes('member') || 
-        key.includes('platform_app')
-      );
-      
-      console.log("🔍 Searching for user ID in Wix-related keys:", wixKeys);
-      
-      for (const key of wixKeys) {
-        try {
-          const value = localStorage.getItem(key);
-          if (value) {
-            const parsed = JSON.parse(value);
-            // Look for any ID-like fields
-            const possibleIds = [
-              parsed?.id,
-              parsed?.memberId, 
-              parsed?.userId,
-              parsed?.user?.id,
-              parsed?.member?.id,
-              parsed?.contactId,
-              parsed?.memberDetails?.id
-            ].filter(Boolean);
-            
-            if (possibleIds.length > 0) {
-              const bestId = possibleIds[0];
-              console.log(`🔍 Found potential user ID in ${key}:`, bestId);
-              if (!localStorage.getItem("kovalUser")) {
-                setUserId(bestId);
-                localStorage.setItem("kovalUser", bestId);
-                console.log("✅ Set userId from Wix data:", bestId);
-                break;
-              }
-            }
-          }
-        } catch (e) {
-          // Skip invalid JSON
-        }
-      }
-
-      // Check if we have a stored userId
-      const storedUserId = localStorage.getItem("kovalUser");
-      if (
-        storedUserId &&
-        !storedUserId.startsWith("guest-") &&
-        !storedUserId.startsWith("session-")
-      ) {
-        console.log("✅ Embed: Found valid stored userId:", storedUserId);
-        setUserId(storedUserId);
-        migrateLegacyDiveLogKeys(storedUserId);
-
-        // ✅ Load dive logs immediately like sessions
-        let localDiveLogs = safeParse(storageKey(storedUserId), []);
-        
-        // ✅ If no logs found with new key, check legacy keys
-        if (localDiveLogs.length === 0) {
-          const legacyKeys = [`diveLogs-${storedUserId}`, "koval_ai_logs"];
-          for (const legacyKey of legacyKeys) {
-            const legacyLogs = safeParse(legacyKey, []);
-            if (legacyLogs.length > 0) {
-              localDiveLogs = legacyLogs;
-              console.log(`📱 Found ${legacyLogs.length} dive logs under legacy key: ${legacyKey}`);
-              // Migrate to new key
-              localStorage.setItem(storageKey(storedUserId), JSON.stringify(legacyLogs));
-              console.log(`🔄 Migrated dive logs to new key: ${storageKey(storedUserId)}`);
-              break;
-            }
-          }
-        }
-        
-        setDiveLogs(localDiveLogs);
-        console.log(`📱 Loaded ${localDiveLogs.length} local dive logs during initialization`);
-        console.log(`🔧 Storage key used: ${storageKey(storedUserId)}`);
-        console.log(`🔧 Raw localStorage value:`, localStorage.getItem(storageKey(storedUserId)));
-
-        const storedProfile = safeParse("kovalProfile", {});
-        if (storedProfile && storedProfile.source) {
-          setProfile(storedProfile);
-        }
-      } else {
-        console.log(
-          "ℹ️ Embed: No valid stored userId, setting temporary state and waiting for Wix data...",
-        );
-        // 🚀 DON'T create a session user immediately - wait for Wix data first
-        setUserId(""); // Empty state to indicate we're waiting
-        console.log("⏳ Waiting for Wix parent to provide real member data...");
-        
-        // ✅ Still try to load any existing dive logs with fallback keys
-        const fallbackKeys = ["koval_ai_logs", "diveLogs_session", "diveLogs_Guest"];
-        let foundLogs = [];
-        fallbackKeys.forEach(key => {
-          const logs = safeParse(key, []);
-          if (logs.length > 0) {
-            foundLogs = [...foundLogs, ...logs];
-            console.log(`📱 Found ${logs.length} dive logs under fallback key: ${key}`);
-          }
-        });
-        if (foundLogs.length > 0) {
-          setDiveLogs(foundLogs);
-          console.log(`📱 Loaded ${foundLogs.length} total dive logs from fallback keys`);
-        }
-        
-        // 🚀 Add timeout fallback - if no Wix data arrives in 10 seconds, create session
-        setTimeout(() => {
-          setUserId((currentUserId) => {
-            if (!currentUserId || currentUserId === "") {
-              console.log("⏰ No user ID found after 10 seconds, checking one more time...");
-              
-              // Final attempt to extract from localStorage
-              const finalCheck = Object.keys(localStorage).find(key => 
-                key.includes('memberDetails') || key.includes('platform_app')
-              );
-              
-              if (finalCheck) {
-                try {
-                  const data = JSON.parse(localStorage.getItem(finalCheck));
-                  const finalId = data?.id || data?.memberId || data?.userId;
-                  if (finalId) {
-                    console.log("✅ Found user ID in final check:", finalId);
-                    localStorage.setItem("kovalUser", finalId);
-                    return finalId;
-                  }
-                } catch (e) {
-                  console.warn("Final check failed:", e);
-                }
-              }
-              
-              const sessionId = `session-${Date.now()}`;
-              console.log("⏰ Timeout reached - creating session fallback:", sessionId);
-              localStorage.setItem("kovalUser", sessionId);
-              return sessionId;
-            }
-            return currentUserId; // Don't change if already set
-          });
-        }, 10000); // Increased to 10 seconds
-      }
-    }
-  }, [migrateLegacyDiveLogKeys]);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // ===== URL PARAMETER HANDLING FOR EMBEDDED MODE =====
   useEffect(() => {
@@ -454,92 +320,45 @@ export default function Embed() {
       }
 
       switch (event.data?.type) {
-        case "USER_DATA_RESPONSE":
+        case "USER_DATA_RESPONSE": {
           console.log("👤 USER_DATA_RESPONSE received from Wix:", event.data);
           
-          if (event.data.userData && event.data.userData.userId) {
-            const userData = event.data.userData;
-            console.log("✅ Processing Wix member data:", {
-              userId: userData.userId,
-              memberId: userData.memberId,
-              isGuest: userData.isGuest,
-              source: userData.source,
-              memberDetectionMethod: userData.memberDetectionMethod
-            });
+          const u = event.data?.userData;
+          if (u && isRealMemberId(u.userId) && u.memberId) {
+            const realId = String(u.userId);
+            console.log("✅ Valid Wix member detected - promoting to AUTHENTICATED:", realId);
             
-            // 🚀 ONLY USE REAL WIX MEMBER IDs - REJECT GUEST/SESSION FALLBACKS
-            if (!userData.isGuest && 
-                userData.memberId && 
-                userData.memberId !== null &&
-                !userData.userId.startsWith("guest-") &&
-                !userData.userId.startsWith("session-")) {
-              
-              console.log("✅ Valid Wix member detected - upgrading from session to real member");
-              
-              // Upgrade from temporary session to real member
-              const previousUserId = userId;
-              const newUserId = userData.userId; // Use the real Wix member ID
-              
-              console.log("🔄 Upgrading user:", {
-                from: previousUserId,
-                to: newUserId,
-                memberDetection: userData.memberDetectionMethod
-              });
-              
-              // Migrate data if we had a temporary session
-              if (previousUserId && previousUserId.startsWith("session-")) {
-                console.log("📦 Migrating data from temporary session to real member");
-                const migrationSuccess = upgradeTemporaryUserToAuthenticated(newUserId);
-                if (migrationSuccess) {
-                  console.log("✅ Successfully migrated temporary session data");
-                }
-              }
-              
-              migrateLegacyDiveLogKeys(newUserId);
-              setUserId(newUserId);
-              localStorage.setItem("kovalUser", newUserId);
-              
-              // Set profile data from Wix
-              const wixProfile = {
-                nickname: userData.nickname || userData.userName || "Member",
-                displayName: userData.userName || userData.nickname || "Member",
-                loginEmail: userData.userEmail || "",
-                firstName: userData.firstName || "",
-                lastName: userData.lastName || "",
-                profilePicture: userData.profilePicture || "",
-                source: userData.source || "wix-member",
-                memberDetectionMethod: userData.memberDetectionMethod || "unknown",
-                wixMemberId: userData.memberId,
-                isAuthenticated: true,
-                version: userData.version || "5.0.0"
-              };
-              
-              setProfile(wixProfile);
-              localStorage.setItem("kovalProfile", JSON.stringify(wixProfile));
-              
-              console.log("✅ Wix member setup complete:", {
-                userId: newUserId,
-                memberId: userData.memberId,
-                displayName: wixProfile.displayName,
-                source: wixProfile.source
-              });
-              
-            } else {
-              console.log("⚠️ Received guest/fallback data from Wix - member authentication failed");
-              console.log("   • isGuest:", userData.isGuest);
-              console.log("   • memberId:", userData.memberId);
-              console.log("   • userId pattern:", userData.userId.substring(0, 10) + "...");
-              console.log("   • source:", userData.source);
-              
-              // Create a fallback session ONLY if we don't have any user yet
-              if (!userId || userId === "") {
-                const sessionId = `session-${Date.now()}`;
-                setUserId(sessionId);
-                console.log("⚠️ Created fallback session due to failed member detection:", sessionId);
-              }
-            }
+            // Migrate any legacy dive log keys for the real ID
+            migrateLegacyDiveLogKeys(realId);
+            
+            // Set authenticated state
+            setUserId(realId);
+            setProfile({ 
+              nickname: u.nickname || u.userName || `User-${realId}`,
+              displayName: u.userName || `User-${realId}`,
+              loginEmail: u.userEmail || "",
+              firstName: u.firstName || "",
+              lastName: u.lastName || "",
+              profilePicture: u.profilePicture || "",
+              isAuthenticated: true, 
+              source: u.source || 'wix-members',
+              memberDetectionMethod: u.memberDetectionMethod || 'unknown'
+            });
+            setAuthState('AUTHENTICATED');
+            
+            // Save to localStorage
+            localStorage.setItem("kovalUser", realId);
+            
+            // NOW load dive logs only after authentication
+            loadDiveLogs();
+            
+            console.log("✅ User successfully authenticated and dive logs loading...");
+          } else {
+            console.log("⚠️ Invalid or guest user data received - setting UNAUTHENTICATED");
+            if (authState === 'REQUESTING') setAuthState('UNAUTHENTICATED');
           }
           break;
+        }
 
         case "initialized":
           console.log("🚀 Widget initialized with data:", event.data.data);
@@ -678,7 +497,7 @@ export default function Embed() {
     window.addEventListener("message", handleParentMessages);
 
     return () => window.removeEventListener("message", handleParentMessages);
-  }, [migrateLegacyDiveLogKeys, userId]);
+  }, [migrateLegacyDiveLogKeys, userId, authState, isRealMemberId, loadDiveLogs]);
 
   // ✅ CHECK FOR GLOBAL USER DATA (Alternative method) - Simplified
   useEffect(() => {
@@ -819,6 +638,9 @@ export default function Embed() {
     async (e) => {
       e.preventDefault();
       if ((!input.trim() && files.length === 0) || loading) return;
+
+      // ✅ AUTH GUARD - No temp IDs allowed for chat
+      if (!ensureAuthOrTellParent('ai_chat')) return;
 
       const userMessage = {
         role: "user",
@@ -1046,7 +868,7 @@ export default function Embed() {
         setLoading(false);
       }
     },
-    [input, loading, userId, profile, diveLogs, messages, files],
+    [input, loading, userId, profile, diveLogs, messages, files, ensureAuthOrTellParent],
   );
 
   const handleKeyDown = useCallback(
@@ -1243,14 +1065,9 @@ export default function Embed() {
   const handleJournalSubmit = useCallback(
     async (diveData) => {
       console.log("🚀 DIVE LOG SUBMISSION STARTED");
-      console.log("📊 Current userId:", userId);
-      console.log("📊 UserId type:", typeof userId);
-      console.log(
-        "📊 UserId starts with guest?:",
-        userId?.startsWith("guest-"),
-      );
-      console.log("📊 Dive data to save:", diveData);
-      console.log("📊 Current profile:", profile);
+      
+      // ✅ AUTH GUARD - No temp IDs allowed for dive log saves
+      if (!ensureAuthOrTellParent('dive_log_save')) return;
 
       if (!userId) {
         console.error("❌ No userId available for dive log submission");
@@ -1456,7 +1273,7 @@ export default function Embed() {
         console.error("❌ Error stack:", error.stack);
       }
     },
-    [userId, loadDiveLogs, diveLogs.length, profile],
+    [userId, loadDiveLogs, diveLogs.length, profile, ensureAuthOrTellParent],
   );
 
   // ✅ DELETE DIVE LOG
@@ -1676,6 +1493,27 @@ export default function Embed() {
               {darkMode ? "☀️" : "🌙"}
             </button>
           </div>
+
+          {/* ✅ AUTHENTICATION STATUS BANNER */}
+          {authState === 'UNAUTHENTICATED' && (
+            <div className={`flex-shrink-0 p-3 text-center border-b ${
+              darkMode ? "bg-yellow-900 border-yellow-700 text-yellow-200" : "bg-yellow-50 border-yellow-200 text-yellow-800"
+            }`}>
+              <div className="text-sm">
+                🔒 Please log into your Wix account to use the AI coach and save dive logs
+              </div>
+            </div>
+          )}
+          
+          {authState === 'REQUESTING' && (
+            <div className={`flex-shrink-0 p-3 text-center border-b ${
+              darkMode ? "bg-blue-900 border-blue-700 text-blue-200" : "bg-blue-50 border-blue-200 text-blue-800"
+            }`}>
+              <div className="text-sm">
+                🔄 Connecting to your Wix account... <span className="animate-pulse">⏳</span>
+              </div>
+            </div>
+          )}
 
           {/* Messages - Scrollable area only */}
           <div className="flex-1 overflow-y-auto flex justify-center">

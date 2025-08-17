@@ -179,9 +179,15 @@ function initializeWidget(widget, sessionData) {
 
 // ===== MESSAGE HANDLING =====
 function setupMessageHandling() {
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('message', handleWidgetMessage);
-    console.log('✅ Message handling setup complete');
+  try {
+    if (typeof window !== 'undefined' && window && window.addEventListener) {
+      window.addEventListener('message', handleWidgetMessage);
+      console.log('✅ Message handling setup complete');
+    } else {
+      console.warn('⚠️ Window not available for message handling');
+    }
+  } catch (error) {
+    console.error('❌ Failed to setup message handling:', error);
   }
 }
 
@@ -199,7 +205,8 @@ async function handleWidgetMessage(event) {
   console.log('📨 Received message from widget:', event.data.type);
   
   switch (event.data.type) {
-    case 'WIDGET_READY':
+    case 'EMBED_READY':
+      console.log('🚀 Widget ready - sending user data immediately');
       sendUserDataToWidget();
       break;
       
@@ -209,6 +216,11 @@ async function handleWidgetMessage(event) {
       
     case 'SAVE_DIVE_LOG':
       await handleSaveDiveLog(event.data.data);
+      break;
+      
+    case 'AUTHENTICATION_REQUIRED':
+      console.log('🔒 Widget requires authentication:', event.data.message);
+      // Could show a login prompt or redirect to login
       break;
       
     default:
@@ -222,8 +234,13 @@ function sendUserDataToWidget() {
     memberId: sessionData.memberId,
     userEmail: sessionData.userEmail,
     userName: sessionData.userName,
+    firstName: sessionData.firstName,
+    lastName: sessionData.lastName,
+    nickname: sessionData.nickname,
     isAuthenticated: sessionData.isAuthenticated,
+    isGuest: !sessionData.isAuthenticated,
     source: sessionData.source,
+    memberDetectionMethod: 'wix-frontend-v6.0',
     version: '6.0'
   };
   
@@ -235,10 +252,22 @@ function sendUserDataToWidget() {
   };
   
   // Send to iframe
-  const iframe = document.querySelector('iframe');
-  if (iframe && iframe.contentWindow) {
-    iframe.contentWindow.postMessage(message, CONFIG.VERCEL_URL);
-    console.log('📤 Sent user data to widget');
+  try {
+    if (typeof document !== 'undefined') {
+      const iframe = document.querySelector('iframe[src*="kovaldeepai-main.vercel.app"]');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(message, CONFIG.VERCEL_URL);
+        console.log('📤 Sent user data to widget:', {
+          userId: userData.userId,
+          isAuthenticated: userData.isAuthenticated,
+          source: userData.source
+        });
+      } else {
+        console.warn('⚠️ Iframe not found for messaging');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Failed to send user data to widget:', error);
   }
 }
 
@@ -394,10 +423,14 @@ function runDiagnostics() {
   console.log('================================================');
 }
 
-// Make diagnostics globally available
-if (typeof window !== 'undefined') {
-  window.runDiagnostics = runDiagnostics;
-  window.sessionData = sessionData;
+// Make diagnostics globally available - with proper window check
+try {
+  if (typeof window !== 'undefined' && window) {
+    window.runDiagnostics = runDiagnostics;
+    window.sessionData = sessionData;
+  }
+} catch (error) {
+  console.warn('⚠️ Could not attach diagnostics to window:', error.message);
 }
 
 console.log('✅ Koval AI Widget V6.0 - Clean Implementation Loaded Successfully!');
