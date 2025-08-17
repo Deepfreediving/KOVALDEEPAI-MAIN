@@ -50,12 +50,17 @@ $w.onReady(function () {
   // Initialize session and widget
   initializeSession()
     .then(sessionData => {
-      console.log('✅ Session initialized:', sessionData);
-      initializeWidget(widget, sessionData);
+      if (sessionData.isAuthenticated) {
+        console.log('✅ Session initialized:', sessionData);
+        initializeWidget(widget, sessionData);
+      } else {
+        console.log('🔒 Authentication required - not initializing widget');
+        showAuthenticationRequired(widget);
+      }
     })
     .catch(error => {
       console.error('❌ Session initialization failed:', error);
-      initializeWidget(widget, createGuestSession());
+      showAuthenticationRequired(widget);
     });
 });
 
@@ -88,16 +93,38 @@ async function initializeSession() {
       console.log('✅ Authenticated user session created');
       console.log('📋 Session data:', sessionData);
     } else {
-      // Guest user
-      sessionData = createGuestSession();
-      console.log('ℹ️ Guest session created - user not logged in');
+      console.log('🔒 User not authenticated - authentication required');
+      return {
+        userId: null,
+        memberId: null,
+        userEmail: '',
+        userName: '',
+        firstName: '',
+        lastName: '',
+        nickname: '',
+        isAuthenticated: false,
+        source: 'wix-unauthenticated',
+        requiresLogin: true
+      };
     }
     
     return sessionData;
     
   } catch (error) {
     console.error('❌ Session initialization error:', error);
-    return createGuestSession();
+    return {
+      userId: null,
+      memberId: null,
+      userEmail: '',
+      userName: '',
+      firstName: '',
+      lastName: '',
+      nickname: '',
+      isAuthenticated: false,
+      source: 'wix-error',
+      requiresLogin: true,
+      error: error.message
+    };
   }
 }
 
@@ -393,6 +420,59 @@ function sendMessageToWidget(type, data) {
   const iframe = document.querySelector('iframe');
   if (iframe && iframe.contentWindow) {
     iframe.contentWindow.postMessage(message, CONFIG.VERCEL_URL);
+  }
+}
+
+// ===== AUTHENTICATION REQUIRED HANDLER =====
+function showAuthenticationRequired(widget) {
+  console.log('🔒 Showing authentication required message');
+  
+  const authRequiredHtml = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      padding: 40px;
+      text-align: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    ">
+      <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
+      <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600;">Authentication Required</h2>
+      <p style="margin: 0 0 24px 0; font-size: 16px; opacity: 0.9; max-width: 400px; line-height: 1.5;">
+        Please log into your Wix account to access the AI coaching system and your personalized dive training.
+      </p>
+      <button 
+        onclick="window.location.reload()" 
+        style="
+          background: rgba(255,255,255,0.2);
+          border: 2px solid rgba(255,255,255,0.3);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.2)'"
+      >
+        Sign In to Continue
+      </button>
+    </div>
+  `;
+  
+  try {
+    widget.html = authRequiredHtml;
+    console.log('✅ Authentication required message displayed');
+  } catch (error) {
+    console.error('❌ Failed to show authentication required message:', error);
   }
 }
 

@@ -293,13 +293,35 @@ export default async function handler(
       });
     }
 
-    // ✅ Extract userId
+    // ✅ Extract and validate userId (nickname field is preferred)
     let userId: string = "";
-    if (fields.userId) {
+    let nickname: string = "";
+    
+    if (fields.nickname) {
+      const rawNickname = Array.isArray(fields.nickname)
+        ? fields.nickname[0]
+        : fields.nickname;
+      nickname = (rawNickname as string).trim();
+      userId = nickname; // Use nickname as primary identifier
+    } else if (fields.userId) {
       const rawUserId = Array.isArray(fields.userId)
         ? fields.userId[0]
         : fields.userId;
       userId = (rawUserId as string).trim();
+    }
+
+    // ✅ SECURITY: Enforce authentication - reject guest/session/temp users
+    if (!userId || 
+        userId === "guest" || 
+        userId.startsWith("guest-") || 
+        userId.startsWith("session-") || 
+        userId.startsWith("temp-")) {
+      console.warn("🚫 REJECTED: Unauthenticated upload request:", { userId, origin: req.headers.origin });
+      return res.status(401).json({
+        error: "Authentication required",
+        code: "AUTH_REQUIRED",
+        message: "🔒 Please log into your Wix account to upload dive images.",
+      });
     }
 
     // ✅ Extract and validate image file

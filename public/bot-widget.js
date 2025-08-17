@@ -6,6 +6,7 @@
 
   const ALLOWED_ORIGIN = "https://kovaldeepai-main.vercel.app";
   const LOCALHOST_ORIGIN = "http://localhost:3000";
+  const WIX_SITE_ORIGIN = "https://www.deepfreediving.com";
 
   // ✅ SAFE JSON PARSING UTILITY
   const safeJsonParse = async (response) => {
@@ -137,12 +138,18 @@
           );
         }
 
-        // Security check for Wix origins - be more permissive for debugging
+        // ✅ SECURITY: Tighten origin checking - only allow specific origins
+        const allowedWixOrigins = [
+          WIX_SITE_ORIGIN,
+          "https://www.deepfreediving.com",
+          "https://kovaldaniel7.wixsite.com",
+          "https://editor.wix.com",
+          "https://preview.wix.com"
+        ];
+        
         const validOrigin =
           !event.origin ||
-          event.origin.includes("wix.com") ||
-          event.origin.includes("wixsite.com") ||
-          event.origin.includes("deepfreediving.com") ||
+          allowedWixOrigins.some(origin => event.origin.includes(origin)) ||
           event.origin === "null" || // For local testing
           event.origin === window.location.origin;
 
@@ -745,8 +752,8 @@
 
       // ✅ MESSAGE LISTENER (same as before)
       window.addEventListener("message", (event) => {
-        // Allow messages from the correct origin (including localhost for development)
-        const allowedOrigins = [this.BASE_URL, "http://localhost:3000"];
+        // ✅ SECURITY: Strict origin checking for iframe messages
+        const allowedOrigins = [this.BASE_URL, LOCALHOST_ORIGIN, WIX_SITE_ORIGIN];
 
         if (allowedOrigins.includes(event.origin) && event.data) {
           this.handleMessage(event);

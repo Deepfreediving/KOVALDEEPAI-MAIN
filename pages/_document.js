@@ -14,13 +14,16 @@ export default function Document() {
         <meta name="description" content="Koval AI - Your freediving coach" />
         <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
 
-        {/* ✅ Preload critical resources */}
-        <link rel="preload" href="/deeplogo.jpg" as="image" />
+        {/* ✅ Preload critical resources with proper attributes */}
+        <link rel="preload" href="/deeplogo.jpg" as="image" type="image/jpeg" crossOrigin="anonymous" />
 
         {/* ✅ DNS prefetch for external APIs */}
         <link rel="dns-prefetch" href="//openai.com" />
         <link rel="dns-prefetch" href="//pinecone.io" />
         <link rel="dns-prefetch" href="//deepfreediving.com" />
+
+        {/* ✅ Debug runtime for error tracking */}
+        <script src="/debug-runtime.js" async />
 
         {/* ✅ Critical CSS inline for faster rendering */}
         <style

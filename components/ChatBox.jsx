@@ -2,10 +2,20 @@ import React, { useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
-import { getOrCreateUserId } from "@/utils/userIdUtils";
+
+// ✅ SECURITY: Helper to check if user ID is a real member ID
+function isRealMemberId(userId) {
+  return userId && 
+         typeof userId === 'string' && 
+         userId !== "Guest" && 
+         !userId.startsWith("guest-") && 
+         !userId.startsWith("session-") && 
+         !userId.startsWith("temp-") &&
+         userId.length > 8; // Real member IDs are longer
+}
 
 export default function ChatBox({
-  userId = "Guest",
+  userId,
   profile = {},
   eqState = {},
   setEqState,
@@ -24,12 +34,53 @@ export default function ChatBox({
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
-  // ✅ IMPROVED USER ID MANAGEMENT
-  const effectiveUserId = getOrCreateUserId(userId);
+  // ✅ SECURITY: Only accept real member IDs
+  const isAuthenticated = isRealMemberId(userId);
 
   useEffect(() => {
-    console.log("💬 ChatBox using effective user ID:", effectiveUserId);
-  }, [effectiveUserId]);
+    console.log("💬 ChatBox authentication status:", isAuthenticated ? "AUTHENTICATED" : "UNAUTHENTICATED");
+    console.log("💬 ChatBox userId:", userId);
+  }, [isAuthenticated, userId]);
+
+  // ✅ Show authentication required banner if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <main
+        className={`min-h-screen flex items-center justify-center px-4 ${
+          darkMode ? "bg-black text-white" : "bg-white text-gray-900"
+        }`}
+      >
+        <div
+          className={`w-full max-w-3xl p-8 rounded-xl shadow-lg border text-center ${
+            darkMode ? "border-gray-700 bg-[#121212]" : "border-gray-300 bg-white"
+          }`}
+        >
+          <div className="mb-6">
+            <img
+              src="/deeplogo.jpg"
+              alt="Logo"
+              className="w-16 h-16 rounded-full mx-auto mb-4"
+            />
+            <h1 className="text-2xl font-semibold mb-2">Authentication Required</h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              🔒 Please log into your Wix account to access the AI chat system.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              This AI coaching system requires authentication to provide personalized dive training advice.
+            </p>
+            <button
+              onClick={() => window.parent?.postMessage({ type: 'AUTHENTICATION_REQUIRED' }, '*')}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Sign In to Continue
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   // ✅ Smooth Auto-scroll
   useEffect(() => {
@@ -72,6 +123,8 @@ export default function ChatBox({
 
           const formData = new FormData();
           formData.append("image", compressed);
+          formData.append("nickname", userId);
+          formData.append("diveLogId", `dive-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
           const res = await fetch("/api/openai/upload-dive-image", {
             method: "POST",
@@ -112,7 +165,7 @@ export default function ChatBox({
             userMessage: trimmedInput,
             profile,
             eqState,
-            userId: effectiveUserId,
+            userId: userId,
             embedMode: false, // This is for direct usage, not embedded
           }),
         });
@@ -130,7 +183,7 @@ export default function ChatBox({
               message: trimmedInput,
               profile,
               eqState,
-              userId: effectiveUserId,
+              userId: userId,
             }),
           });
 
@@ -264,7 +317,7 @@ export default function ChatBox({
             <div>
               <h1 className="text-xl font-semibold">koval-ai Deep Chat</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {profile?.nickname || effectiveUserId}
+                {profile?.nickname || userId || "Member"}
               </p>
             </div>
           </div>

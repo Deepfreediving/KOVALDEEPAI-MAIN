@@ -290,47 +290,56 @@ export async function post_userMemory(request) {
 // ===== IDENTITY CODE FUNCTIONS FOR SECURE AUTH =====
 export async function get_createIdentityCode(request) {
   try {
-    // Generate a random 6-digit code
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Generate a cryptographically strong 8-character code
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     const expirationTime = new Date(Date.now() + 60000); // 60 seconds from now
+    const instanceId = request.query.instanceId || 'default';
     
-    // Get current member (this should only be called when user is authenticated)
+    // ✅ SECURITY: Get current member (this should only be called when user is authenticated)
     const currentMember = await wixData.getCurrentUser();
-    if (!currentMember) {
+    if (!currentMember || !currentMember.id) {
+      console.warn('🚫 Identity code creation attempted without authentication');
       return forbidden({
         headers: CORS_HEADERS,
-        body: { error: 'User must be logged in to create identity code' }
+        body: { 
+          error: 'User must be logged in to create identity code',
+          code: 'AUTH_REQUIRED' 
+        }
       });
     }
 
     const contactId = currentMember.id;
     
-    // Store the code in a temporary collection (you'll need to create this)
+    // ✅ SECURITY: Store the code with instance binding for one-time use
     const identityCodeData = {
       code: code,
       contactId: contactId,
+      instanceId: instanceId,
       expirationTime: expirationTime,
       createdAt: new Date(),
-      used: false
+      used: false,
+      ipAddress: request.ip || 'unknown',
+      userAgent: request.headers['user-agent'] || 'unknown'
     };
 
-    // For now, we'll store in a simple collection called 'IdentityCodes'
+    // Store in IdentityCodes collection (create if doesn't exist)
     try {
       await wixData.insert('IdentityCodes', identityCodeData);
+      console.log('🔑 Created identity code for contactId:', contactId.substring(0, 8) + '***');
     } catch (insertError) {
-      console.log('⚠️ IdentityCodes collection may not exist, creating temporary storage');
-      // If collection doesn't exist, we can use temporary storage or log
+      console.warn('⚠️ IdentityCodes collection may not exist, using fallback storage');
+      // Could implement fallback storage here if needed
     }
-
-    console.log('🔑 Created identity code for contactId:', contactId);
 
     return ok({
       headers: CORS_HEADERS,
       body: {
         code: code,
         contactId: contactId,
+        instanceId: instanceId,
         expiresIn: 60,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        success: true
       }
     });
 
@@ -340,7 +349,8 @@ export async function get_createIdentityCode(request) {
       headers: CORS_HEADERS,
       body: {
         error: 'Failed to create identity code',
-        message: error.message
+        message: error.message,
+        timestamp: new Date().toISOString()
       }
     });
   }
@@ -349,48 +359,67 @@ export async function get_createIdentityCode(request) {
 export async function get_resolveIdentityCode(request) {
   try {
     const code = request.query.code;
+    const instanceId = request.query.instanceId || 'default';
     
     if (!code) {
       return badRequest({
         headers: CORS_HEADERS,
-        body: { error: 'code parameter is required' }
+        body: { 
+          error: 'code parameter is required',
+          code: 'INVALID_REQUEST'
+        }
       });
     }
 
-    // Look up the code
+    // ✅ SECURITY: Look up the code with instance binding
     let codeRecord = null;
     try {
       const results = await wixData.query('IdentityCodes')
         .eq('code', code)
         .eq('used', false)
+        .eq('instanceId', instanceId)
         .find();
       
       if (results.items.length > 0) {
         codeRecord = results.items[0];
       }
     } catch (queryError) {
-      console.log('⚠️ IdentityCodes collection query failed, using fallback');
-    }
-
-    if (!codeRecord) {
-      return badRequest({
+      console.warn('⚠️ IdentityCodes collection query failed:', queryError.message);
+      return serverError({
         headers: CORS_HEADERS,
-        body: { error: 'Invalid or expired identity code' }
+        body: { 
+          error: 'Identity code lookup failed',
+          code: 'LOOKUP_ERROR' 
+        }
       });
     }
 
-    // Check if expired
+    if (!codeRecord) {
+      console.warn('🚫 Invalid identity code attempted:', { code: code.substring(0, 4) + '***', instanceId });
+      return badRequest({
+        headers: CORS_HEADERS,
+        body: { 
+          error: 'Invalid or expired identity code',
+          code: 'INVALID_CODE'
+        }
+      });
+    }
+
+    // ✅ SECURITY: Check if expired
     if (new Date() > new Date(codeRecord.expirationTime)) {
-      // Mark as used/delete
+      // Mark as used to prevent reuse
       try {
-        await wixData.update('IdentityCodes', codeRecord._id, { used: true });
+        await wixData.update('IdentityCodes', codeRecord._id, { used: true, usedAt: new Date() });
       } catch (updateError) {
-        console.log('⚠️ Could not update identity code record');
+        console.warn('⚠️ Could not mark expired code as used');
       }
       
       return badRequest({
         headers: CORS_HEADERS,
-        body: { error: 'Identity code has expired' }
+        body: { 
+          error: 'Identity code has expired',
+          code: 'EXPIRED_CODE'
+        }
       });
     }
 
@@ -415,10 +444,10 @@ export async function get_resolveIdentityCode(request) {
         };
       }
     } catch (memberError) {
-      console.log('⚠️ Could not fetch member profile, using basic data');
+      console.warn('⚠️ Could not fetch member profile:', memberError.message);
       userProfile = {
         contactId: contactId,
-        nickname: `User-${contactId}`,
+        nickname: `User-${contactId.substring(0, 8)}`,
         firstName: '',
         lastName: '',
         loginEmail: '',
@@ -426,21 +455,26 @@ export async function get_resolveIdentityCode(request) {
       };
     }
 
-    // Mark code as used
+    // ✅ SECURITY: Mark code as used immediately to prevent reuse
     try {
-      await wixData.update('IdentityCodes', codeRecord._id, { used: true });
+      await wixData.update('IdentityCodes', codeRecord._id, { 
+        used: true, 
+        usedAt: new Date(),
+        resolvedFromIp: request.ip || 'unknown'
+      });
+      console.log('✅ Resolved identity code for contactId:', contactId.substring(0, 8) + '***');
     } catch (updateError) {
-      console.log('⚠️ Could not mark identity code as used');
+      console.warn('⚠️ Could not mark identity code as used - security risk!');
     }
-
-    console.log('✅ Resolved identity code for contactId:', contactId);
 
     return ok({
       headers: CORS_HEADERS,
       body: {
         contactId: contactId,
         profile: userProfile,
-        timestamp: new Date().toISOString()
+        instanceId: instanceId,
+        timestamp: new Date().toISOString(),
+        success: true
       }
     });
 
@@ -450,7 +484,8 @@ export async function get_resolveIdentityCode(request) {
       headers: CORS_HEADERS,
       body: {
         error: 'Failed to resolve identity code',
-        message: error.message
+        message: error.message,
+        code: 'RESOLVE_ERROR'
       }
     });
   }

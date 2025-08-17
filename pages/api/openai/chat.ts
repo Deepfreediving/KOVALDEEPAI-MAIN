@@ -347,30 +347,36 @@ export default async function handler(
 
     const {
       message,
-      userId = "guest",
+      userId,
+      nickname,
       profile = {},
       embedMode = false,
       diveLogs = [],
     } = req.body;
 
-    // ✅ Enhanced logging for authentication debugging
-    const isGuestUser = !userId || userId.startsWith("guest");
-    const authStatus = isGuestUser
-      ? "🚫 GUEST/UNAUTHENTICATED"
-      : "✅ AUTHENTICATED";
+    // ✅ SECURITY: Enforce authentication - reject guest/session/temp users
+    if (!userId || 
+        userId === "guest" || 
+        userId.startsWith("guest-") || 
+        userId.startsWith("session-") || 
+        userId.startsWith("temp-")) {
+      console.warn("🚫 REJECTED: Unauthenticated chat request:", { userId, origin: req.headers.origin });
+      return res.status(401).json({
+        error: "Authentication required",
+        code: "AUTH_REQUIRED",
+        assistantMessage: {
+          role: "assistant",
+          content: "🔒 Please log into your Wix account to access the AI coaching system.",
+        },
+      });
+    }
+
+    // ✅ Use nickname or userId for user identification
+    const userIdentifier = nickname || userId;
 
     console.log(
-      `🚀 Chat request: ${authStatus} | userId=${userId} | embedMode=${embedMode}`,
+      `🚀 Chat request: ✅ AUTHENTICATED | userId=${userId} | embedMode=${embedMode}`,
     );
-
-    if (isGuestUser) {
-      console.warn(
-        "⚠️ WARNING: Chat request with guest/missing userId - authentication may have failed!",
-      );
-      console.warn(
-        "⚠️ This indicates the frontend authentication gating may not be working properly.",
-      );
-    }
 
     // ✅ Extract consistent user display name using member ID for fast recognition
     const getUserNickname = (profile: any, userId: string): string => {
@@ -388,7 +394,7 @@ export default async function handler(
       return "User";
     };
 
-    const nickname = getUserNickname(profile, userId);
+    const displayNickname = nickname || getUserNickname(profile, userId);
 
     // ✅ Enhanced validation
     if (!message || typeof message !== "string" || !message.trim()) {
@@ -402,7 +408,7 @@ export default async function handler(
     }
 
     console.log(
-      `🚀 Chat request received from ${nickname} (userId=${userId}, embedMode=${embedMode})`,
+      `🚀 Chat request received from ${displayNickname} (userIdentifier=${userIdentifier}, embedMode=${embedMode})`,
     );
     console.log(`📊 Profile data received:`, {
       nickname: profile?.nickname,
