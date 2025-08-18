@@ -9,7 +9,7 @@ export function isAdminUser(userId, email) {
     userId === ADMIN_USER_ID ||
     email === ADMIN_EMAIL ||
     email === 'danielkoval@example.com' ||
-    email === 'admin@deepfreediving.com'
+    email === 'daniel@deepfreediving.com'
   );
 }
 

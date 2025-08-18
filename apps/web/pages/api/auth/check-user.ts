@@ -59,7 +59,7 @@ export default async function handler(
       return res.status(200).json({
         authenticated: true,
         user: {
-          id: "daniel-koval-admin",
+          id: "admin-daniel-koval",
           email: "daniel@kovaldeepai.com",
           displayName: "Daniel Koval",
           source: "admin-auth",
@@ -72,7 +72,7 @@ export default async function handler(
       return res.status(200).json({
         authenticated: true, // Still return authenticated for admin
         user: {
-          id: "daniel-koval-admin",
+          id: "admin-daniel-koval",
           email: "daniel@kovaldeepai.com", 
           displayName: "Daniel Koval",
           source: "admin-auth-fallback",
