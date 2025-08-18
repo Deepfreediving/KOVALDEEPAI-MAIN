@@ -46,8 +46,8 @@ export default async function handler(
         .json({ error: "Missing or invalid userId/messages." });
     }
 
-    // ✅ Session saving migrated to Supabase - no longer using Wix
-    console.log("📋 Session save request - Wix dependency removed");
+    // ✅ Session saving migrated to Supabase
+    console.log("📋 Session save request - using Supabase storage");
     
     const sessionId = `${userId}-${Date.now()}`;
     const results: { logEntry: string; status: string }[] = [];
@@ -82,7 +82,7 @@ export default async function handler(
       }
     }
 
-    // ✅ Mark all messages as saved (Wix sync removed)
+    // ✅ Mark all messages as saved (migrated to Supabase)
     for (const log of pairedMessages) {
       if (!log?.logEntry) continue;
       

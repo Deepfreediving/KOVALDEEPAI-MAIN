@@ -61,7 +61,7 @@ export default async function handler(
           targetDepth: memory.diveLog?.targetDepth || 0,
           reachedDepth: memory.diveLog?.reachedDepth || 0,
           timestamp: memory.timestamp || new Date().toISOString(),
-          source: "wix-backend",
+          source: "supabase-backend",
         },
       },
     ]);

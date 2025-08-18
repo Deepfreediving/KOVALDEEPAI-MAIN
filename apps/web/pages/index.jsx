@@ -16,7 +16,7 @@ const API_ROUTES = {
   GET_USER_PROFILE: "/api/supabase/user-profile",
   SAVE_DIVE_LOG: "/api/supabase/save-dive-log",
   DELETE_DIVE_LOG: "/api/supabase/delete-dive-log",
-  UPLOAD_DIVE_IMAGE: "/api/supabase/upload-image",
+  UPLOAD_DIVE_IMAGE: "/api/openai/upload-dive-image-simple",
   READ_MEMORY: "/api/analyze/read-memory",
   QUERY_DATA: "/api/supabase/query-data",
   HEALTH_CHECK: "/api/system/health-check",
@@ -471,7 +471,7 @@ export default function Index() {
           source: 'dive-journal-main-app',
           // User identification fields for localStorage
           userIdentifier: getUserIdentifier(), // For localStorage key consistency
-          // User fields for Wix collection (when API sync happens)
+          // Admin user profile fields
           nickname: profile?.nickname || profile?.displayName || 'Unknown User',
           firstName: profile?.firstName || '',
           lastName: profile?.lastName || '',
@@ -695,9 +695,6 @@ export default function Index() {
         !(
           event.origin === "https://www.deepfreediving.com" ||
           event.origin === "https://deepfreediving.com" ||
-          event.origin.includes("wix.com") ||
-          event.origin.includes("wixsite.com") ||
-          event.origin.includes("editorx.com") ||
           event.origin === "https://kovaldeepai-main.vercel.app" ||
           event.origin === "http://localhost:3000"
         )
@@ -752,7 +749,7 @@ export default function Index() {
               phone: event.data.data.phone || "",
               bio: event.data.data.bio || "",
               location: event.data.data.location || "",
-              source: event.data.data.source || "wix-parent-auth",
+              source: "admin-auth",
               customFields: event.data.data.customFields || {},
               isGuest: event.data.data.isGuest || false,
             };
@@ -765,7 +762,7 @@ export default function Index() {
             const basicProfile = {
               nickname: `User-${event.data.data.userId}`,
               displayName: `User-${event.data.data.userId}`,
-              source: "wix-parent-auth-basic",
+              source: "admin-auth-basic",
             };
             setProfile(basicProfile);
             localStorage.setItem("kovalProfile", JSON.stringify(basicProfile));

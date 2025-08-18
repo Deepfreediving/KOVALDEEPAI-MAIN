@@ -53,10 +53,10 @@ export default function handler(req, res) {
     success: true,
     debug: debugInfo,
     recommendations: {
-      forGuests: "Redirect to Wix login page",
+      forGuests: "Admin-only access",
       forAuthenticated: "Load user data and enable all features",
       nextSteps: [
-        "Check Wix member authentication",
+        "Check admin authentication",
         "Verify user permissions",
         "Load personalized data",
       ],

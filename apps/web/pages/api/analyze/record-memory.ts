@@ -197,7 +197,7 @@ Notes: ${log.notes}
       );
     }
 
-    // ✅ 5. Memory recorded successfully - Wix sync removed (migrated to Supabase)
+    // ✅ 5. Memory recorded successfully - migrated to Supabase
     console.log("✅ Memory recorded successfully - Supabase migration complete");
 
     return res.status(200).json({

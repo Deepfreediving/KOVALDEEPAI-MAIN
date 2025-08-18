@@ -73,8 +73,8 @@ export default async function handler(
         }
       }
 
-      // 2️⃣ Wix Memory - REMOVED (migrated to Supabase)
-      console.log("📋 Wix memory sync removed - using Supabase storage");
+      // 2️⃣ Memory storage migrated to Supabase
+      console.log("📋 Using Supabase storage for memory");
 
       // 3️⃣ Merge & Deduplicate logs (local memory and dive logs only)
       const mergedLogs = [...localMemory, ...diveLogsMemory];
