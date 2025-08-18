@@ -36,9 +36,6 @@ export default async function handler(
       case "openai":
         return await handleOpenAI(action, data, res);
 
-      case "wix":
-        return await handleWix(action, data, res);
-
       default:
         return res.status(400).json({
           error: "Invalid service",
@@ -118,70 +115,6 @@ async function handleOpenAI(action: string, data: any, res: NextApiResponse) {
       return res.status(400).json({
         error: "Invalid action",
         message: `Action '${action}' not supported for OpenAI`,
-      });
-  }
-}
-
-// ✅ Handle Wix requests
-async function handleWix(action: string, data: any, res: NextApiResponse) {
-  const WIX_API_KEY = process.env.WIX_API_KEY;
-  const WIX_ACCOUNT_ID = process.env.WIX_ACCOUNT_ID;
-  const WIX_SITE_ID = process.env.WIX_SITE_ID;
-
-  if (!WIX_API_KEY || !WIX_ACCOUNT_ID || !WIX_SITE_ID) {
-    return res.status(500).json({
-      error: "Configuration error",
-      message: "Wix credentials not configured",
-    });
-  }
-
-  switch (action) {
-    case "queryData":
-      try {
-        const response = await fetch(
-          "https://www.wixapis.com/wix-data/v2/items/query",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${WIX_API_KEY}`,
-              "wix-account-id": WIX_ACCOUNT_ID,
-              "wix-site-id": WIX_SITE_ID,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              collectionId: data?.collectionId || "UserMemory",
-              query: data?.query || {},
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Wix API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        return res.status(200).json({
-          success: true,
-          data: result,
-        });
-      } catch (error) {
-        console.error("❌ Wix query error:", error);
-        return res.status(500).json({
-          error: "Wix request failed",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-
-    case "check":
-      return res.status(200).json({
-        success: true,
-        data: { status: "connected", service: "wix" },
-      });
-
-    default:
-      return res.status(400).json({
-        error: "Invalid action",
-        message: `Action '${action}' not supported for Wix`,
       });
   }
 }
