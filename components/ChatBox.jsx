@@ -3,22 +3,11 @@ import imageCompression from "browser-image-compression";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 
-// ✅ SECURITY: Helper to check if user ID is a real member ID
-function isRealMemberId(userId) {
-  return userId && 
-         typeof userId === 'string' && 
-         userId !== "Guest" && 
-         !userId.startsWith("guest-") && 
-         !userId.startsWith("session-") && 
-         !userId.startsWith("temp-") &&
-         userId.length > 8; // Real member IDs are longer
-}
+const ADMIN_USER_ID = "admin-daniel-koval";
 
 export default function ChatBox({
   userId,
   profile = {},
-  eqState = {},
-  setEqState,
   darkMode,
   onUploadSuccess,
   messages,
@@ -34,15 +23,15 @@ export default function ChatBox({
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
-  // ✅ SECURITY: Only accept real member IDs
-  const isAuthenticated = isRealMemberId(userId);
+  // ✅ Admin-only authentication
+  const isAuthenticated = userId === ADMIN_USER_ID;
 
   useEffect(() => {
-    console.log("💬 ChatBox authentication status:", isAuthenticated ? "AUTHENTICATED" : "UNAUTHENTICATED");
+    console.log("💬 ChatBox authentication status:", isAuthenticated ? "ADMIN AUTHENTICATED" : "UNAUTHORIZED");
     console.log("💬 ChatBox userId:", userId);
   }, [isAuthenticated, userId]);
 
-  // ✅ Show authentication required banner if not authenticated
+  // ✅ Show admin-only access banner if not authenticated
   if (!isAuthenticated) {
     return (
       <main
@@ -61,21 +50,18 @@ export default function ChatBox({
               alt="Logo"
               className="w-16 h-16 rounded-full mx-auto mb-4"
             />
-            <h1 className="text-2xl font-semibold mb-2">Authentication Required</h1>
+            <h1 className="text-2xl font-semibold mb-2">Admin Access Required</h1>
             <p className="text-gray-600 dark:text-gray-400">
-              🔒 Please log into your Wix account to access the AI chat system.
+              🔒 This AI system is currently admin-only access.
             </p>
           </div>
           <div className="space-y-3">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              This AI coaching system requires authentication to provide personalized dive training advice.
+              Only authorized administrators can access the Koval AI chat system.
             </p>
-            <button
-              onClick={() => window.parent?.postMessage({ type: 'AUTHENTICATION_REQUIRED' }, '*')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Sign In to Continue
-            </button>
+            <p className="text-xs text-gray-400">
+              Contact: daniel.koval@example.com
+            </p>
           </div>
         </div>
       </main>
@@ -104,7 +90,7 @@ export default function ChatBox({
     setFiles(selected);
   };
 
-  // ✅ Unified Send Function
+  // ✅ Unified Send Function - Supabase only
   const handleSubmit = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput && files.length === 0) return;
@@ -123,10 +109,10 @@ export default function ChatBox({
 
           const formData = new FormData();
           formData.append("image", compressed);
-          formData.append("nickname", userId);
+          formData.append("userId", userId);
           formData.append("diveLogId", `dive-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
-          const res = await fetch("/api/openai/upload-dive-image", {
+          const res = await fetch("/api/openai/upload-dive-image-simple", {
             method: "POST",
             body: formData,
           });
@@ -140,11 +126,11 @@ export default function ChatBox({
             { role: "user", content: `📤 Uploaded: ${file.name}` },
             {
               role: "assistant",
-              content: data.answer || "✅ Image uploaded successfully.",
+              content: data.answer || data.response || "✅ Image uploaded successfully.",
             },
           ]);
 
-          onUploadSuccess?.("✅ Dive profile uploaded.");
+          onUploadSuccess?.("✅ Dive image uploaded and analyzed.");
         }
         setFiles([]);
       }
@@ -157,23 +143,19 @@ export default function ChatBox({
         ]);
         setInput("");
 
-        // ✅ Use enhanced Wix bridge API for better integration
-        const res = await fetch("/api/wix/chat-bridge", {
+        // ✅ Use Supabase chat API for admin user
+        const res = await fetch("/api/supabase/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userMessage: trimmedInput,
-            profile,
-            eqState,
+            message: trimmedInput,
             userId: userId,
-            embedMode: false, // This is for direct usage, not embedded
+            profile: profile,
           }),
         });
 
         if (!res.ok) {
-          console.warn(
-            `⚠️ Chat bridge failed (${res.status}), trying fallback...`,
-          );
+          console.warn(`⚠️ Supabase chat failed (${res.status}), trying OpenAI direct...`);
 
           // Fallback to direct OpenAI chat API
           const fallbackRes = await fetch("/api/openai/chat", {
@@ -181,91 +163,41 @@ export default function ChatBox({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               message: trimmedInput,
-              profile,
-              eqState,
               userId: userId,
+              profile: profile,
             }),
           });
 
           if (!fallbackRes.ok) {
             throw new Error(
-              `Both chat APIs failed: Bridge ${res.status}, Fallback ${fallbackRes.status}`,
+              `Both chat APIs failed: Supabase ${res.status}, OpenAI ${fallbackRes.status}`,
             );
           }
 
           const fallbackData = await fallbackRes.json();
-          console.log("✅ Fallback chat response received:", fallbackData);
+          console.log("✅ OpenAI fallback response received:", fallbackData);
 
-          if (fallbackData.assistantMessage) {
-            setMessages((prev) => [...prev, fallbackData.assistantMessage]);
-          } else {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content:
-                  fallbackData.answer ||
-                  fallbackData.aiResponse ||
-                  "I received your message!",
-              },
-            ]);
-          }
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: fallbackData.response || fallbackData.answer || "I received your message!",
+            },
+          ]);
           return;
         }
 
-        const bridgeData = await res.json();
-        console.log("✅ Chat bridge response received:", bridgeData);
+        const chatData = await res.json();
+        console.log("✅ Supabase chat response received:", chatData);
 
-        // Handle bridge API response format
-        if (bridgeData.aiResponse || bridgeData.assistantMessage?.content) {
-          const assistantMessage = {
+        // Handle Supabase chat API response
+        setMessages((prev) => [
+          ...prev,
+          {
             role: "assistant",
-            content:
-              bridgeData.aiResponse ||
-              bridgeData.assistantMessage?.content ||
-              "I received your message!",
-          };
-
-          // Add metadata if available
-          if (bridgeData.metadata) {
-            assistantMessage.metadata = bridgeData.metadata;
-            console.log(
-              `📊 Chat metadata: ${bridgeData.metadata.processingTime}ms, source: ${bridgeData.source}`,
-            );
-          }
-
-          setMessages((prev) => [...prev, assistantMessage]);
-        } else if (bridgeData.type === "eq-followup") {
-          setEqState?.((prev) => ({
-            ...prev,
-            answers: { ...prev.answers, [bridgeData.key]: trimmedInput },
-          }));
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: `🔍 ${bridgeData.question}` },
-          ]);
-        } else if (bridgeData.type === "eq-diagnosis") {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `🧠 Diagnosis: ${bridgeData.label}\n\nRecommended Drills:\n${bridgeData.drills.join(
-                "\n",
-              )}`,
-            },
-          ]);
-          setEqState?.({});
-        } else if (bridgeData.assistantMessage) {
-          setMessages((prev) => [...prev, bridgeData.assistantMessage]);
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: bridgeData.answer || "⚠️ Unrecognized response format.",
-            },
-          ]);
-        }
+            content: chatData.response || chatData.answer || "I received your message!",
+          },
+        ]);
       }
     } catch (err) {
       console.error("❌ Chat/Upload error:", err);
@@ -315,9 +247,9 @@ export default function ChatBox({
               className="w-10 h-10 rounded-full"
             />
             <div>
-              <h1 className="text-xl font-semibold">koval-ai Deep Chat</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {profile?.nickname || userId || "Member"}
+              <h1 className="text-xl font-semibold">Koval AI Admin Chat</h1>
+              <p className="text-xs text-green-500 dark:text-green-400">
+                ✅ Admin Access - {profile?.nickname || "Daniel Koval"}
               </p>
             </div>
           </div>
