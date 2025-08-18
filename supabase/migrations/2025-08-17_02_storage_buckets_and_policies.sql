@@ -1,0 +1,19 @@
+-- ===== NOTE: Storage buckets and policies need to be created manually =====
+-- Due to permission restrictions in local development, storage buckets 
+-- and policies should be created through the Supabase dashboard or using
+-- the Supabase client in your application code.
+--
+-- Required buckets:
+-- 1. 'dive-images' (private) - for original dive images
+-- 2. 'dive-images-compressed' (private) - for compressed dive images  
+-- 3. 'user-docs' (private) - for user documents like certifications
+--
+-- Each bucket should have RLS policies that allow users to:
+-- - Read/write only their own files (path pattern: {user_id}/*)
+-- - Files should be organized as: {bucket}/{user_id}/{filename}
+--
+-- These can be created through:
+-- 1. Supabase Dashboard -> Storage
+-- 2. Or programmatically using supabase.storage.createBucket() in your app
+
+-- For now, we'll skip storage setup in migrations and handle it in the application

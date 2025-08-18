@@ -10,6 +10,10 @@ node_modules/
 .env
 .env.production
 .DS_Store
+
+# Turborepo cache
+.turbo/
+
 # Ignore swap files
 *.swp
 # prevent uploaded images from being committed
@@ -23,3 +27,4 @@ node_modules/
 # wix guides/
 
 # Optional: uncomment above lines after verifying wix-site/ mirror is complete
+.DS_Store
