@@ -43,6 +43,9 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Drop existing trigger if it exists, then recreate
+DROP TRIGGER IF EXISTS update_user_memory_updated_at ON public.user_memory;
+
 CREATE TRIGGER update_user_memory_updated_at 
     BEFORE UPDATE ON public.user_memory 
     FOR EACH ROW 
