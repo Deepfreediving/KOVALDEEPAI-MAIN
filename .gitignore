@@ -14,6 +14,9 @@ node_modules/
 # Turborepo cache
 .turbo/
 
+# Archived legacy files (to prevent conflicts)
+archived-wix/
+
 # Ignore swap files
 *.swp
 # prevent uploaded images from being committed

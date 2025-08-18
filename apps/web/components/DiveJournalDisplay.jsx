@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { ADMIN_USER_ID } from "@/utils/adminAuth";
 
 export default function DiveJournalDisplay({
   nickname,
@@ -220,14 +221,12 @@ export default function DiveJournalDisplay({
           const formData = new FormData();
           formData.append('image', newEntry.imageFile);
           formData.append('diveLogId', newLog.id);
-          formData.append('nickname', nickname);
           
           console.log("📤 Uploading image file:", {
             name: newEntry.imageFile.name,
             size: newEntry.imageFile.size,
             type: newEntry.imageFile.type,
             diveLogId: newLog.id,
-            nickname: nickname
           });
           
           // Log FormData contents for debugging
@@ -349,7 +348,7 @@ export default function DiveJournalDisplay({
 
         // 🚀 STEP 3: Update localStorage IMMEDIATELY with deduplication
         try {
-          const storageKey = `diveLogs_${nickname}`; // ✅ Updated: Use nickname instead of userId
+          const storageKey = `diveLogs_${ADMIN_USER_ID}`; // ✅ Updated: Use nickname instead of userId
           console.log(
             "💾 DiveJournalDisplay: Updating localStorage with key:",
             storageKey,
@@ -413,8 +412,8 @@ export default function DiveJournalDisplay({
             "❌ DiveJournalDisplay: Failed to update localStorage:",
             storageError,
           );
-          console.log("   • Storage key attempted:", `diveLogs_${nickname}`); // ✅ Fixed: Use nickname
-          console.log("   • Nickname:", nickname);
+          console.log("   • Storage key attempted:", `diveLogs_${ADMIN_USER_ID}`); // ✅ Fixed: Use nickname
+          console.log("   • admin user ID:", ADMIN_USER_ID);
           console.log(
             "   • Browser storage available:",
             typeof localStorage !== "undefined",
@@ -439,8 +438,8 @@ export default function DiveJournalDisplay({
         // 🚀 ADDITIONAL: Force sidebar refresh by dispatching storage event
         try {
           window.dispatchEvent(new StorageEvent('storage', {
-            key: `diveLogs_${nickname}`, // ✅ FIXED: Use nickname consistently
-            newValue: localStorage.getItem(`diveLogs_${nickname}`), // ✅ FIXED: Use nickname consistently
+            key: `diveLogs_${ADMIN_USER_ID}`, // ✅ FIXED: Use nickname consistently
+            newValue: localStorage.getItem(`diveLogs_${ADMIN_USER_ID}`), // ✅ FIXED: Use nickname consistently
             storageArea: localStorage
           }));
           console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");
