@@ -1,0 +1,61 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "module": "esnext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@lib/*": ["./lib/*"],
+      "@utils/*": ["./utils/*"],
+      "@components/*": ["./components/*"],
+      "@pages/*": ["./pages/*"],
+      "@styles/*": ["./styles/*"],
+      "@types/*": ["./types/*"],
+      "@koval-ai/core": ["../../packages/core/dist/index"],
+      "@koval-ai/core/*": ["../../packages/core/dist/*"]
+    },
+    "types": ["node"],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "next-env.d.ts",
+    "types/**/*.d.ts",
+    ".next/types/**/*.ts",
+    "next.config.js",
+    "vercel.json"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "../mobile",
+    "../../apps/mobile",
+    "../../packages/mobile",
+    "public/wix-widget-loader-v3.js",
+    "**/wix-widget-loader*.js",
+    "wix-site/**",
+    "Wix App/**",
+    "wix page/**",
+    "wix guides/**"
+  ]
+}

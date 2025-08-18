@@ -1,0 +1,23 @@
+{
+  "id": "dive_anonymous_1755507736457",
+  "timestamp": "2025-08-18T09:02:16.458Z",
+  "userId": "anonymous",
+  "date": "2025-08-18",
+  "disciplineType": "depth",
+  "discipline": "cwt",
+  "location": "honaunau bay",
+  "targetDepth": 110,
+  "reachedDepth": 112,
+  "mouthfillDepth": 50,
+  "issueDepth": 112,
+  "squeeze": true,
+  "exit": "LMC on surface",
+  "durationOrDistance": "",
+  "attemptType": "Personal Best",
+  "notes": "overall best dive of my life and still had a little mouthfill on the bottom but I have not been able to replicate the dive",
+  "totalDiveTime": "3:12",
+  "issueComment": "The line stretched much deeper than it was originally suppose to be set so when I got to 110m and was looking for the bottom, I could not find it and this caused me to tense up at the bottom and spend extra time",
+  "surfaceProtocol": "Lmc on surface but recovered quickly",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}

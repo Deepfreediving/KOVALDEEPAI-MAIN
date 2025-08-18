@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Koval AI Widget - Debug</title>
+  <script src="/bot-widget.js" defer></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    koval-ai {
+      flex: 1;
+      border: 1px solid #ccc;
+    }
+    #debug-console {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px;
+      height: 200px;
+      overflow-y: auto;
+      border-top: 2px solid #444;
+    }
+  </style>
+</head>
+<body>
+  <koval-ai></koval-ai>
+  <div id="debug-console"></div>
+  <script>
+    const debugConsole = document.getElementById("debug-console");
+
+    function logMessage(msg) {
+      const el = document.createElement("div");
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      debugConsole.appendChild(el);
+      debugConsole.scrollTop = debugConsole.scrollHeight;
+    }
+
+    // Log all messages coming from the widget
+    window.addEventListener("message", (event) => {
+      logMessage(`📥 Message received: ${JSON.stringify(event.data)}`);
+    });
+
+    // Example: Send test message to widget after 3 sec
+    setTimeout(() => {
+      window.KovalAI.loadUserData({ name: "Test User", email: "test@example.com" });
+      logMessage("📤 Sent USER_DATA to widget");
+    }, 3000);
+  </script>
+</body>
+</html>

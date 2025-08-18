@@ -1,0 +1,23 @@
+{
+  "id": "dive_anonymous_1755508752614",
+  "timestamp": "2025-08-18T09:19:12.615Z",
+  "userId": "anonymous",
+  "date": "2025-08-18",
+  "disciplineType": "depth",
+  "discipline": "cwt monofin",
+  "location": "Honaunau bay",
+  "targetDepth": 110,
+  "reachedDepth": 112,
+  "mouthfillDepth": 46,
+  "issueDepth": 112,
+  "squeeze": true,
+  "exit": "Lmc on surface",
+  "durationOrDistance": "",
+  "attemptType": "personal best ",
+  "notes": "best eq dive of my life i still had a mouthfill on the bottom",
+  "totalDiveTime": "3:12",
+  "issueComment": "line was set deeper than expected so i wasted time at 112m when i expected a weight but felt nothing which caused me to tense up looking for the bottom weight and waste time",
+  "surfaceProtocol": "LMC light squeeze but fine",
+  "syncedToWix": false,
+  "source": "save-dive-log.ts"
+}

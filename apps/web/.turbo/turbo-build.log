@@ -1,0 +1,62 @@
+
+> @koval-ai/web@1.0.0 build
+> next build
+
+[1G[0K  [1m[38;2;173;127;168m▲ Next.js 14.2.5[39m[22m
+  - Experiments (use with caution):
+    · optimizeCss
+    · scrollRestoration
+
+ [37m[1m [22m[39m Skipping validation of types
+ [37m[1m [22m[39m Skipping linting
+ [37m[1m [22m[39m Creating an optimized production build ...
+[31mFailed to compile.
+[39m
+./components/AppLoader.tsx
+[31m[1mModule not found[22m[39m: Can't resolve '[32m@/utils/apiClient[39m'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/_app.js
+
+./components/FilePreview.jsx
+[31m[1mModule not found[22m[39m: Can't resolve '[32m../utils/extractTextFromImage[39m'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./components/ChatInput.jsx
+./pages/index.jsx
+
+./components/Sidebar.jsx
+[31m[1mModule not found[22m[39m: Can't resolve '[32m../utils/diveLogFormatter[39m'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/index.jsx
+
+./components/UserIdDebugger.jsx
+[31m[1mModule not found[22m[39m: Can't resolve '[32m@/utils/userIdUtils[39m'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./pages/journal.tsx
+
+./pages/embed.jsx
+[31m[1mModule not found[22m[39m: Can't resolve '[32m../utils/userIdUtils[39m'
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+> Build failed because of webpack errors
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `build` failed with error:
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m1[39m
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m @koval-ai/web@1.0.0
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m command failed
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c next build
+[1G[0K⠙[1G[0K
