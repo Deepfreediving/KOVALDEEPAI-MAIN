@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
 import handleCors from "@/utils/handleCors";
-import { fetchUserMemory, saveUserMemory } from "@/lib/userMemoryManager";
+// import { fetchUserMemory, saveUserMemory } from "@/lib/userMemoryManager"; // Disabled for now - using admin-only auth
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
@@ -417,10 +417,11 @@ export default async function handler(
       source: profile?.source,
     });
 
-    // ✅ FIX: Type memory correctly
+    // ✅ FIX: Type memory correctly - Disabled for admin-only mode
     let memory: any = {};
     try {
-      memory = (await fetchUserMemory(userId)) || {};
+      // memory = (await fetchUserMemory(userId)) || {}; // Disabled - using admin-only auth
+      memory = {}; // Empty memory for now
     } catch (memError) {
       console.warn("⚠️ Memory fetch failed:", memError);
     }
@@ -568,19 +569,19 @@ ${recentDiveLogs}
       });
     }
 
-    // ✅ Save to memory if successful response
+    // ✅ Save to memory if successful response - Disabled for admin-only mode
     try {
-      await saveUserMemory(userId, {
-        logs: [
-          {
-            userMessage: message.slice(0, 500),
-            assistantReply: assistantReply.slice(0, 1000),
-            timestamp: new Date().toISOString(),
-          },
-        ],
-        profile: mergedProfile,
-      });
-      console.log(`✅ Memory saved for ${userId}`);
+      // await saveUserMemory(userId, { // Disabled - using admin-only auth
+      //   logs: [
+      //     {
+      //       userMessage: message.slice(0, 500),
+      //       assistantReply: assistantReply.slice(0, 1000),
+      //       timestamp: new Date().toISOString(),
+      //     },
+      //   ],
+      //   profile: mergedProfile,
+      // });
+      console.log(`✅ Memory save disabled for admin-only mode: ${userId}`);
     } catch (saveError) {
       console.warn("⚠️ Could not save memory:", saveError);
     }
