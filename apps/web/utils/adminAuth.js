@@ -2,7 +2,7 @@
 // File: apps/web/utils/adminAuth.js
 
 export const ADMIN_EMAIL = 'daniel@deepfreediving.com'; // Replace with your actual email
-export const ADMIN_USER_ID = 'admin-daniel-koval';
+export const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'; // Fixed UUID for Supabase compatibility
 
 export function isAdminUser(userId, email) {
   return (

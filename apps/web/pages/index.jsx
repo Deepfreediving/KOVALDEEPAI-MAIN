@@ -3,13 +3,12 @@ import { useRouter } from "next/router";
 import ChatMessages from "@/components/ChatMessages";
 import ChatInput from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
-import DiveJournalSidebarCard from "@/components/DiveJournalSidebarCard";
 import { setAdminSession, getAdminUserId, ADMIN_EMAIL } from "@/utils/adminAuth";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
-  // ✅ Use Supabase APIs instead of Wix
-  CHAT: "/api/supabase/chat",
+  // ✅ Use OpenAI chat directly since Supabase chat is admin-only
+  CHAT: "/api/openai/chat",
   CHAT_FALLBACK: "/api/openai/chat",
   GET_DIVE_LOGS: "/api/supabase/dive-logs",
   GET_DIVE_LOGS_FALLBACK: "/api/supabase/get-dive-logs",
@@ -52,10 +51,7 @@ export default function Index() {
   // const [threadId, setThreadId] = useState(null); // Unused - removed
   const [profile, setProfile] = useState({});
   const [diveLogs, setDiveLogs] = useState([]);
-  const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-  const [editLogIndex, setEditLogIndex] = useState(null);
-  const [editingLog, setEditingLog] = useState(null); // ✅ V5.0: Add editing log state
   const [loadingConnections, setLoadingConnections] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState({
     supabase: "⏳ Checking...",
@@ -278,68 +274,36 @@ export default function Index() {
           embedMode: false,
         });
 
-        // ✅ Use enhanced chat bridge with dive logs context
+        // ✅ Use OpenAI chat API directly with correct format
         const response = await fetch(API_ROUTES.CHAT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userMessage: input,
+            message: input,
             userId,
             profile,
             embedMode: false,
             diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
-            conversationHistory: messages.slice(-6), // Last 3 conversation pairs
           }),
         });
 
         if (!response.ok) {
-          console.warn(
-            `⚠️ Chat bridge failed (${response.status}), trying fallback...`,
+          console.error(
+            `❌ Chat API failed with status ${response.status}`,
           );
-
-          // ✅ Fallback to direct chat API
-          const fallbackResponse = await fetch(API_ROUTES.CHAT_FALLBACK, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: input,
-              userId,
-              profile,
-              embedMode: false,
-              diveLogs: diveLogs.slice(0, 5),
-            }),
-          });
-
-          if (!fallbackResponse.ok) {
-            throw new Error(
-              `Both chat APIs failed: Bridge ${response.status}, Fallback ${fallbackResponse.status}`,
-            );
-          }
-
-          const fallbackData = await fallbackResponse.json();
-          console.log("✅ Fallback chat response received:", fallbackData);
-
-          const assistantMessage = fallbackData.assistantMessage || {
-            role: "assistant",
-            content:
-              fallbackData.answer ||
-              fallbackData.aiResponse ||
-              "I received your message!",
-          };
-
-          setMessages((prev) => [...prev, assistantMessage]);
-          return;
+          throw new Error(
+            `Chat API failed with status ${response.status}`,
+          );
         }
 
         const data = await response.json();
-        console.log("✅ Enhanced chat bridge response received:", data);
+        console.log("✅ OpenAI chat response received:", data);
 
-        const assistantMessage = {
+        const assistantMessage = data.assistantMessage || {
           role: "assistant",
           content:
-            data.aiResponse ||
-            data.assistantMessage?.content ||
             data.answer ||
+            data.aiResponse ||
             "I received your message!",
         };
 
@@ -347,7 +311,7 @@ export default function Index() {
         if (data.metadata) {
           assistantMessage.metadata = data.metadata;
           console.log(
-            `📊 Chat metadata: ${data.metadata.processingTime}ms, source: ${data.source}`,
+            `📊 Chat metadata: ${data.metadata.processingTime}ms`,
           );
         }
 
@@ -490,8 +454,6 @@ export default function Index() {
 
         // ✅ UPDATE UI IMMEDIATELY (like sessions)
         setDiveLogs(updatedLogs);
-        setIsDiveJournalOpen(false);
-        setEditLogIndex(null);
 
         // ✅ IMMEDIATE USER FEEDBACK
         setMessages((prev) => [
@@ -563,28 +525,6 @@ export default function Index() {
       }
     },
     [loadDiveLogs],
-  );
-
-  // ✅ V5.0: ADD EDIT DIVE LOG FUNCTION
-  const handleEditDiveLog = useCallback((log) => {
-    console.log("✏️ Main: Starting edit for dive log:", log.id);
-    setEditingLog(log);
-    setIsDiveJournalOpen(true); // Open the popup journal
-  }, []);
-
-  // ✅ WRAPPER FUNCTIONS FOR DIVE JOURNAL COMPONENT
-  const handleDiveLogSubmit = useCallback(
-    async (diveData) => {
-      await handleJournalSubmit(diveData);
-    },
-    [handleJournalSubmit],
-  );
-
-  const handleDiveLogDelete = useCallback(
-    async (logId) => {
-      await handleDelete(logId);
-    },
-    [handleDelete],
   );
 
   // ✅ SESSION MANAGEMENT
@@ -659,7 +599,6 @@ export default function Index() {
       startNewSession,
       handleSaveSession,
       handleSelectSession,
-      toggleDiveJournal: () => setIsDiveJournalOpen((prev) => !prev),
       handleJournalSubmit,
       handleDelete,
       refreshDiveLogs: loadDiveLogs,
@@ -885,155 +824,9 @@ export default function Index() {
             authTimeoutReached={authTimeoutReached}
           />
         </div>
-
-        {/* Dive Journal Button & Quick Access */}
-        <div
-          className={`px-4 py-2 border-t ${darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={() => setIsDiveJournalOpen(true)}
-              disabled={isAuthenticating}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                isAuthenticating
-                  ? "opacity-50 cursor-not-allowed bg-gray-400"
-                  : darkMode
-                    ? "bg-blue-600 hover:bg-blue-500 text-white"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
-              }`}
-            >
-              📝 {isAuthenticating ? "Loading..." : "Add Dive Log"}
-            </button>
-
-            <div className="flex items-center gap-3 text-sm">
-              <span
-                className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}
-              >
-                📊 {diveLogs.length} logs recorded
-              </span>
-              {diveLogs.length > 0 && (
-                <button
-                  onClick={() => setIsDiveJournalOpen(true)}
-                  className={`px-3 py-1 rounded-md transition-colors ${
-                    darkMode
-                      ? "text-blue-400 hover:text-blue-300 hover:bg-gray-700"
-                      : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  }`}
-                >
-                  View All
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Recent Dive Logs Preview */}
-          {diveLogs.length > 0 && (
-            <div
-              className={`mt-3 pt-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}
-            >
-              <div
-                className={`text-xs font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}
-              >
-                🏊‍♂️ Recent Dives
-              </div>
-              <div className="space-y-1">
-                {diveLogs.slice(0, 2).map((log, index) => (
-                  <div
-                    key={index}
-                    className={`text-xs p-2 rounded-md cursor-pointer transition-colors ${
-                      darkMode
-                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                        : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
-                    }`}
-                    onClick={() => setIsDiveJournalOpen(true)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">
-                        {log.reachedDepth || log.targetDepth}m -{" "}
-                        {log.discipline || "Freedive"}
-                      </span>
-                      <span
-                        className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        {log.date || "Recent"}
-                      </span>
-                    </div>
-                    {log.location && (
-                      <div
-                        className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        📍 {log.location}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {diveLogs.length > 2 && (
-                  <div
-                    className={`text-xs text-center py-1 cursor-pointer ${
-                      darkMode
-                        ? "text-blue-400 hover:text-blue-300"
-                        : "text-blue-600 hover:text-blue-700"
-                    }`}
-                    onClick={() => setIsDiveJournalOpen(true)}
-                  >
-                    +{diveLogs.length - 2} more dives...
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* ✅ DIVE JOURNAL SIDEBAR - Now includes both form and display */}
-      {isDiveJournalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div
-            className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
-              darkMode ? "bg-gray-900" : "bg-white"
-            }`}
-          >
-            <div
-              className={`flex justify-between items-center p-4 border-b ${
-                darkMode ? "border-gray-700" : "border-gray-200"
-              }`}
-            >
-              <h2
-                className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}
-              >
-                🤿 Dive Journal
-              </h2>
-              <button
-                onClick={() => setIsDiveJournalOpen(false)}
-                className={`text-2xl transition-colors ${
-                  darkMode
-                    ? "text-gray-400 hover:text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                ×
-              </button>
-            </div>
-            <div className="h-[calc(95vh-80px)]">
-              <DiveJournalSidebarCard
-                userId={userId}
-                darkMode={darkMode}
-                onSubmit={handleDiveLogSubmit}
-                onDelete={handleDiveLogDelete}
-                diveLogs={diveLogs}
-                loadingDiveLogs={loadingDiveLogs}
-                editLogIndex={editLogIndex}
-                setEditLogIndex={setEditLogIndex}
-                editingLog={editingLog} // ✅ V5.0: Pass editing log
-                setEditingLog={setEditingLog} // ✅ V5.0: Pass state setter
-                setMessages={setMessages} // ✅ Pass setMessages for analysis integration
-                onRefreshDiveLogs={loadDiveLogs} // 🚀 Pass refresh function to update parent state
-                onEditDiveLog={handleEditDiveLog} // ✅ V5.0: Pass edit callback
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
     </main>
   );
 }

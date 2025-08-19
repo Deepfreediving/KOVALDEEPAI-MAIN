@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import ChatMessages from "@/components/ChatMessages";
 import ChatInput from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
-import DiveJournalSidebarCard from "@/components/DiveJournalSidebarCard";
 // import apiClient from "@/utils/apiClient"; // Currently unused
 import { upgradeTemporaryUserToAuthenticated } from "@/utils/userIdUtils";
 
@@ -55,7 +54,6 @@ export default function Embed() {
   // const [threadId, setThreadId] = useState(null); // Currently unused
   const [profile, setProfile] = useState({});
   const [diveLogs, setDiveLogs] = useState([]);
-  const [isDiveJournalOpen, setIsDiveJournalOpen] = useState(false);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
   const [editLogIndex, setEditLogIndex] = useState(null);
   const [loadingConnections, setLoadingConnections] = useState(true);
@@ -1241,8 +1239,7 @@ export default function Embed() {
         console.log("🔄 Refreshing dive logs from API after save...");
         await loadDiveLogs();
 
-        // ✅ STEP 3: Close dive journal and show success message
-        setIsDiveJournalOpen(false);
+        // ✅ STEP 3: Show success message
         setEditLogIndex(null);
 
         // Add confirmation message
@@ -1375,7 +1372,6 @@ export default function Embed() {
       darkMode,
       setDarkMode,
       // ✅ Sidebar-specific props
-      toggleDiveJournal: () => setIsDiveJournalOpen((prev) => !prev),
       handleSelectSession,
       handleDeleteSession: () => {}, // Add if needed
       handleSaveSession,
@@ -1549,53 +1545,6 @@ export default function Embed() {
           </div>
         </div>
       </div>
-
-      {/* ✅ DIVE JOURNAL SIDEBAR */}
-      {isDiveJournalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div
-            className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden ${
-              darkMode ? "bg-gray-900" : "bg-white"
-            }`}
-          >
-            <div
-              className={`flex justify-between items-center p-4 border-b ${
-                darkMode ? "border-gray-700" : "border-gray-200"
-              }`}
-            >
-              <h2
-                className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}
-              >
-                🤿 Dive Journal
-              </h2>
-              <button
-                onClick={() => setIsDiveJournalOpen(false)}
-                className={`text-2xl transition-colors ${
-                  darkMode
-                    ? "text-gray-400 hover:text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                ×
-              </button>
-            </div>
-            <div className="h-[calc(95vh-80px)]">
-              <DiveJournalSidebarCard
-                userId={userId}
-                darkMode={darkMode}
-                onSubmit={handleJournalSubmit}
-                onDelete={handleDelete}
-                diveLogs={diveLogs}
-                loadingDiveLogs={loadingDiveLogs}
-                editLogIndex={editLogIndex}
-                setEditLogIndex={setEditLogIndex}
-                setMessages={setMessages}
-                onRefreshDiveLogs={loadDiveLogs}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

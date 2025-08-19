@@ -2,9 +2,10 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Use service key for admin operations (bypasses RLS)
+// Temporarily using anon key since service role key is not configured
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
 export default async function handler(req, res) {
