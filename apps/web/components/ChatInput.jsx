@@ -6,7 +6,6 @@ export default function ChatInput({
   setInput,
   handleSubmit,
   handleKeyDown,
-  handleFileChange,
   files,
   setFiles,
   loading,
@@ -36,95 +35,113 @@ export default function ChatInput({
   };
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleSubmit();
-      }}
-      className={`w-full flex flex-col gap-3 p-4 border-t ${
-        darkMode
-          ? "border-gray-700 bg-[#1a1a1a]"
-          : "border-gray-200 bg-gray-100"
-      }`}
-    >
-      <label htmlFor="chatInput" className="sr-only">
-        Message
-      </label>
-
-      {/* Text Input */}
-      <textarea
-        id="chatInput"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type your message or upload dive profiles..."
-        className={`resize-none rounded-md p-3 text-sm h-20 shadow-md focus:outline-none ${
-          darkMode
-            ? "bg-gray-900 text-white placeholder-gray-500"
-            : "bg-white text-black placeholder-gray-400"
-        }`}
-        onKeyDown={handleKeyDown}
-      />
-
-      {/* File Upload */}
-      <input
-        type="file"
-        accept="image/png, image/jpeg"
-        multiple
-        onChange={handleFileChange || onFilesChange}
-        className="text-sm"
-        aria-label="Upload image files"
-      />
-
-      {/* Error Message */}
-      {error && <p className="text-xs text-red-500">{error}</p>}
-
-      {/* Warning Message */}
-      {files.length >= 3 && (
-        <p className="text-xs text-yellow-500">
-          ⚠️ Only 3 images can be uploaded at a time.
-        </p>
+    <div className="relative">
+      {error && (
+        <div className={`mb-2 p-2 rounded text-sm ${
+          darkMode ? "bg-red-900/20 text-red-300" : "bg-red-50 text-red-600"
+        }`}>
+          {error}
+        </div>
       )}
-
-      {/* File Previews */}
-      <FilePreview files={files} setFiles={setFiles} />
-
-      {/* Send Button */}
-      <button
-        type="submit"
-        className={`mt-1 px-5 py-3 rounded-md font-semibold transition-all ${
-          loading || isAuthenticating
-            ? "opacity-50 cursor-not-allowed"
-            : darkMode
-              ? "bg-blue-500 hover:bg-blue-600 text-white"
-              : "bg-blue-600 hover:bg-blue-700 text-white"
-        }`}
-        disabled={
-          loading || isAuthenticating || (!input.trim() && files.length === 0)
-        }
+      
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        className="relative"
       >
-        {loading
-          ? "Thinking..."
-          : isAuthenticating
-            ? "Authenticating..."
-            : "Send"}
-      </button>
+        <div className={`relative rounded-3xl border ${
+          darkMode 
+            ? "border-gray-600 bg-gray-700" 
+            : "border-gray-300 bg-white"
+        } shadow-sm`}>
+          {/* File previews */}
+          {files.length > 0 && (
+            <div className="p-3 border-b border-gray-200 dark:border-gray-600">
+              <FilePreview
+                files={files}
+                setFiles={setFiles}
+                darkMode={darkMode}
+              />
+            </div>
+          )}
 
-      {/* Authentication Status Message */}
-      {isAuthenticating && (
-        <p
-          className={`text-xs text-center ${darkMode ? "text-gray-400" : "text-gray-600"}`}
-        >
-          ⏳ Verifying your authentication, please wait...
-        </p>
-      )}
+          <div className="flex items-end p-3">
+            {/* File upload button */}
+            <button
+              type="button"
+              className={`p-2 rounded-lg mr-2 transition-colors ${
+                darkMode
+                  ? "hover:bg-gray-600 text-gray-400"
+                  : "hover:bg-gray-100 text-gray-500"
+              }`}
+              onClick={() => document.getElementById('file-upload').click()}
+            >
+              📎
+            </button>
+            <input
+              id="file-upload"
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={onFilesChange}
+              className="hidden"
+            />
 
-      {authTimeoutReached && (
-        <p
-          className={`text-xs text-center ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}
-        >
-          ⚠️ Using limited access mode. Some features may not work properly.
-        </p>
-      )}
-    </form>
+            {/* Text input */}
+            <textarea
+              id="chatInput"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                isAuthenticating && !authTimeoutReached
+                  ? "Authenticating..."
+                  : "Message Koval AI..."
+              }
+              disabled={loading || (isAuthenticating && !authTimeoutReached)}
+              className={`flex-1 resize-none bg-transparent border-none outline-none max-h-32 ${
+                darkMode ? "text-white placeholder-gray-400" : "text-gray-900 placeholder-gray-500"
+              } disabled:opacity-50`}
+              rows="1"
+              style={{
+                minHeight: '24px',
+                lineHeight: '24px'
+              }}
+              onInput={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
+              }}
+            />
+
+            {/* Send button */}
+            <button
+              type="submit"
+              disabled={
+                loading ||
+                !input.trim() ||
+                (isAuthenticating && !authTimeoutReached)
+              }
+              className={`ml-2 p-2 rounded-lg transition-all ${
+                input.trim() && !loading && (!isAuthenticating || authTimeoutReached)
+                  ? darkMode
+                    ? "bg-white text-black hover:bg-gray-100"
+                    : "bg-black text-white hover:bg-gray-800"
+                  : darkMode
+                    ? "bg-gray-600 text-gray-400"
+                    : "bg-gray-200 text-gray-400"
+              } disabled:cursor-not-allowed`}
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "↗"
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 }

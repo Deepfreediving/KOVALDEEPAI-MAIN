@@ -48,12 +48,13 @@ export interface Database {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-// Create Supabase client
-export const createSupabaseClientFromEnv = (): SupabaseClient<Database> => {
+// Create Supabase client with fallback for missing env vars
+export const createSupabaseClientFromEnv = (): SupabaseClient<Database> | null => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Missing Supabase environment variables - running in offline mode');
+    return null;
+  }
+  
   return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
@@ -62,7 +63,7 @@ export const createSupabaseClientFromEnv = (): SupabaseClient<Database> => {
   });
 };
 
-// Default client instance
+// Default client instance (can be null if env vars missing)
 export const supabase = createSupabaseClientFromEnv();
 
 export default supabase;

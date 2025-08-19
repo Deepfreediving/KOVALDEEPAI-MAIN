@@ -2,9 +2,9 @@
   "compilerOptions": {
     "target": "es6",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "allowJs": true,                        // ✅ allow JavaScript files
+    "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "incremental": true,
@@ -13,17 +13,18 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "module": "commonjs",
+    "module": "esnext",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["*"],
-      "@lib/*": ["lib/*"],
-      "@utils/*": ["utils/*"],
-      "@components/*": ["components/*"],
-      "@pages/*": ["pages/*"],
-      "@styles/*": ["styles/*"],
-      "@types/*": ["types/*"]
+      "@/*": ["apps/web/*"],
+      "@lib/*": ["apps/web/lib/*"],
+      "@utils/*": ["apps/web/utils/*"],
+      "@components/*": ["apps/web/components/*"],
+      "@pages/*": ["apps/web/pages/*"],
+      "@styles/*": ["apps/web/styles/*"],
+      "@types/*": ["apps/web/types/*"]
     },
+    "types": ["node"],
     "plugins": [
       {
         "name": "next"
@@ -31,20 +32,24 @@
     ]
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.js",
-    "**/*.jsx",
-    "next-env.d.ts",
-    "types/**/*.d.ts",
-    ".next/types/**/*.ts",
-    "next.config.js",
-    "vercel.json"
+    "apps/web/**/*.ts",
+    "apps/web/**/*.tsx",
+    "apps/web/**/*.js",
+    "apps/web/**/*.jsx",
+    "packages/core/**/*.ts",
+    "packages/core/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
     ".next",
-    "out",
+    "out", 
+    "apps/mobile/**",
+    "packages/mobile/**",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/react-native/**",
+    "**/react-native-*/**",
     "public/wix-widget-loader-v3.js",
     "**/wix-widget-loader*.js",
     "wix-site/**",

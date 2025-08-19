@@ -37,6 +37,8 @@ export default function DiveJournalDisplay({
     notes: "",
     imageFile: null,
     imagePreview: null,
+    diveComputerFile: null,
+    diveComputerFileName: "",
     // Advanced fields
     bottomTime: "",
     earSqueeze: false,
@@ -563,6 +565,8 @@ export default function DiveJournalDisplay({
       notes: "",
       imageFile: null,
       imagePreview: null,
+      diveComputerFile: null,
+      diveComputerFileName: "",
     });
     setIsEditMode(false);
   };
@@ -837,7 +841,7 @@ export default function DiveJournalDisplay({
         </div>
 
         {/* Tab Content for Embedded */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4" style={{maxHeight: 'calc(100vh - 120px)'}}>
           {/* Saved Dive Logs Tab */}
           {activeTab === "saved-logs" && (
             <div className="space-y-4">
@@ -1311,6 +1315,37 @@ export default function DiveJournalDisplay({
                       <label
                         className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                       >
+                        📊 Upload Dive Computer Log
+                      </label>
+                      <input
+                        type="file"
+                        accept=".log,.csv,.txt,.xls,.xlsx,.xml,.json"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setNewEntry(prev => ({
+                              ...prev,
+                              diveComputerFile: file,
+                              diveComputerFileName: file.name
+                            }));
+                          }
+                        }}
+                        className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
+                      />
+                      {newEntry.diveComputerFileName && (
+                        <div className="mt-2 p-2 bg-green-900 rounded text-green-200 text-sm">
+                          📄 {newEntry.diveComputerFileName}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1">
+                        Supported: .log, .csv, .txt, .xls, .xlsx, .xml, .json
+                      </p>
+                    </div>
+
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                      >
                         Notes
                       </label>
                       <textarea
@@ -1641,8 +1676,252 @@ export default function DiveJournalDisplay({
                       </div>
                     </div>
 
-                    {/* All other form sections go here - same as embedded version */}
-                    {/* ... (continuing with all form sections) */}
+                    {/* Depth Section */}
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-gray-700 border border-gray-600" : "bg-green-50 border border-green-200"}`}
+                    >
+                      <h4
+                        className={`text-sm font-semibold mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        📏 Depth Information
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Target Depth (m)
+                          </label>
+                          <input
+                            type="number"
+                            name="targetDepth"
+                            value={newEntry.targetDepth}
+                            onChange={handleInputChange}
+                            placeholder="25"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Reached Depth (m)
+                          </label>
+                          <input
+                            type="number"
+                            name="reachedDepth"
+                            value={newEntry.reachedDepth}
+                            onChange={handleInputChange}
+                            placeholder="23"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Mouthfill Depth (m)
+                          </label>
+                          <input
+                            type="number"
+                            name="mouthfillDepth"
+                            value={newEntry.mouthfillDepth}
+                            onChange={handleInputChange}
+                            placeholder="15"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Issue Depth (m)
+                          </label>
+                          <input
+                            type="number"
+                            name="issueDepth"
+                            value={newEntry.issueDepth}
+                            onChange={handleInputChange}
+                            placeholder="20"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Performance Section */}
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-gray-700 border border-gray-600" : "bg-purple-50 border border-purple-200"}`}
+                    >
+                      <h4
+                        className={`text-sm font-semibold mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        ⏱️ Performance Metrics
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Duration/Distance
+                          </label>
+                          <input
+                            type="text"
+                            name="durationOrDistance"
+                            value={newEntry.durationOrDistance}
+                            onChange={handleInputChange}
+                            placeholder="2:30 or 50m"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Total Dive Time
+                          </label>
+                          <input
+                            type="text"
+                            name="totalDiveTime"
+                            value={newEntry.totalDiveTime}
+                            onChange={handleInputChange}
+                            placeholder="3:45"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Exit Condition
+                          </label>
+                          <input
+                            type="text"
+                            name="exit"
+                            value={newEntry.exit}
+                            onChange={handleInputChange}
+                            placeholder="Clean, LMC, BO, etc."
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Attempt Type
+                          </label>
+                          <input
+                            type="text"
+                            name="attemptType"
+                            value={newEntry.attemptType}
+                            onChange={handleInputChange}
+                            placeholder="Training, PB attempt, etc."
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Issues & Notes Section */}
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-gray-700 border border-gray-600" : "bg-orange-50 border border-orange-200"}`}
+                    >
+                      <h4
+                        className={`text-sm font-semibold mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        ⚠️ Issues & Notes
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Issue Comment
+                          </label>
+                          <textarea
+                            name="issueComment"
+                            value={newEntry.issueComment}
+                            onChange={handleInputChange}
+                            placeholder="Describe any issues encountered..."
+                            rows={2}
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            className={`flex items-center text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              name="squeeze"
+                              checked={newEntry.squeeze}
+                              onChange={handleInputChange}
+                              className="mr-2"
+                            />
+                            Squeeze experienced
+                          </label>
+                        </div>
+
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Surface Protocol
+                          </label>
+                          <input
+                            type="text"
+                            name="surfaceProtocol"
+                            value={newEntry.surfaceProtocol}
+                            onChange={handleInputChange}
+                            placeholder="OK sign, breathing pattern, etc."
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Upload Dive Computer Log / Image
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*,.log,.csv,.txt"
+                            onChange={handleImageChange}
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700" : "bg-white text-gray-900 border-gray-300 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"}`}
+                          />
+                          {newEntry.imagePreview && (
+                            <Image
+                              src={newEntry.imagePreview}
+                              alt="Preview"
+                              width={128}
+                              height={128}
+                              className="mt-2 max-w-full h-32 object-cover rounded"
+                            />
+                          )}
+                          <p className="text-xs text-gray-400 mt-1">
+                            Images: JPG, PNG, etc. | Dive Computer Logs: .log, .csv, .txt
+                          </p>
+                        </div>
+
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                          >
+                            Notes
+                          </label>
+                          <textarea
+                            name="notes"
+                            value={newEntry.notes}
+                            onChange={handleInputChange}
+                            placeholder="How did the dive go? Any observations..."
+                            rows={3}
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
                     <button
                       type="submit"

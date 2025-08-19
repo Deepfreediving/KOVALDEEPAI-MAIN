@@ -31,10 +31,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const supabase = createSupabaseClientFromEnv();
 
   useEffect(() => {
+    // Handle case where Supabase is not available
+    if (!supabase) {
+      console.warn('Supabase not available - running in offline mode');
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Error getting initial session:', error);
       setLoading(false);
     });
 
@@ -51,7 +61,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setSession(null);
   };

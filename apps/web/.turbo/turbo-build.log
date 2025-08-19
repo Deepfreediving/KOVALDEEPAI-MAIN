@@ -3,60 +3,98 @@
 > next build
 
 [1G[0K  [1m[38;2;173;127;168m▲ Next.js 14.2.5[39m[22m
+  - Environments: .env.local
   - Experiments (use with caution):
-    · optimizeCss
     · scrollRestoration
 
+ [37m[1m [22m[39m Creating an optimized production build ...
+ [32m[1m✓[22m[39m Compiled successfully
  [37m[1m [22m[39m Skipping validation of types
  [37m[1m [22m[39m Skipping linting
- [37m[1m [22m[39m Creating an optimized production build ...
-[31mFailed to compile.
-[39m
-./components/AppLoader.tsx
-[31m[1mModule not found[22m[39m: Can't resolve '[32m@/utils/apiClient[39m'
+[?25l [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m...[39m⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+[2K[1G[?25h [37m[1m [22m[39m Collecting page data     [32m[1m✓[22m[39m Collecting page data 
+[?25l [37m[1m [22m[39m Generating static pages (0/12)  [36m[    ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/12)  [36m[=   ][39m[2K[1G[?25h [32m[1m✓[22m[39m Generating static pages (12/12)
+[?25l [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[?25l [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Collecting build traces     [32m[1m✓[22m[39m Collecting build traces 
+[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Finalizing page optimization     [32m[1m✓[22m[39m Finalizing page optimization 
 
-https://nextjs.org/docs/messages/module-not-found
+[4mRoute (app)[24m                                [4mSize[24m     [4mFirst Load JS[24m
+┌ ƒ /api/analyze/dive-log                  0 B                [37m[1m0 B[22m[39m
+└ ƒ /api/dive-logs                         0 B                [37m[1m0 B[22m[39m
++ First Load JS shared by all              [37m[1m0 B[22m[39m
 
-Import trace for requested module:
-./pages/_app.js
+[4mRoute (pages)[24m                              [4mSize[24m     [4mFirst Load JS[24m
+┌ ○ /                                      10.7 kB         [37m[1m226 kB[22m[39m
+├   /_app                                  0 B             [37m[1m212 kB[22m[39m
+├ ○ /404                                   180 B           [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/analyze-dive-log          0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/analyze-upload-image      0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/delete-dive-log           0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/dive-log-openai           0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/dive-logs                 0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/get-dive-logs             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/pattern-analysis          0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/read-memory               0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/record-memory             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/save-dive-log             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/save-session              0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/single-dive-log           0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/single-dive-log-migrated  0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/analyze/sync-dive-logs            0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/apiHandler                        0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/auth/check-user                   0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/debug/dive-logs-debug             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/debug/env-check                   0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/debug/pinecone-test               0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/debug/user-auth-debug             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/diagnostics                       0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/documents/getAllTxtFiles          0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/documents/getFileText             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/health                            0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/monitoring/error                  0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/ocr                               0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/openai/chat                       0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/openai/create-thread              0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/openai/embeddings                 0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/openai/health                     0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/openai/upload-dive-image-simple   0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/pinecone                          0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/pinecone/get-chunks               0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/pinecone/pineconeCreateIndex      0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/pinecone/pineconequery-gpt        0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/pinecone/pineconeQueryTest        0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/pinecone/query                    0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/semanticSearch                    0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/chat                     0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/delete-dive-log          0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/dive-logs                0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/get-dive-logs            0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/save-dive-log            0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/upload-image             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/supabase/user-profile             0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/system/health-check               0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/system/upgrade-session            0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/userMemory/sync                   0 B             [37m[1m212 kB[22m[39m
+├ ƒ /api/verify                            0 B             [37m[1m212 kB[22m[39m
+├ ○ /auth/login                            1.21 kB         [37m[1m213 kB[22m[39m
+├ ○ /create-thread                         1.17 kB         [37m[1m213 kB[22m[39m
+├ ○ /debug                                 769 B           [37m[1m213 kB[22m[39m
+├ ○ /embed                                 6.46 kB         [37m[1m222 kB[22m[39m
+├ ○ /modern-index                          451 B           [37m[1m212 kB[22m[39m
+├ ○ /test                                  1.69 kB         [37m[1m214 kB[22m[39m
+└ ○ /test-minimal                          438 B           [37m[1m212 kB[22m[39m
++ First Load JS shared by all              [37m[1m218 kB[22m[39m
+  └ chunks/vendors-a3857aa45b9628e9.js     207 kB
+  └ other shared chunks (total)            10.6 kB
 
-./components/FilePreview.jsx
-[31m[1mModule not found[22m[39m: Can't resolve '[32m../utils/extractTextFromImage[39m'
+ƒ Middleware                               [37m[1m27 kB[22m[39m
 
-https://nextjs.org/docs/messages/module-not-found
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
 
-Import trace for requested module:
-./components/ChatInput.jsx
-./pages/index.jsx
-
-./components/Sidebar.jsx
-[31m[1mModule not found[22m[39m: Can't resolve '[32m../utils/diveLogFormatter[39m'
-
-https://nextjs.org/docs/messages/module-not-found
-
-Import trace for requested module:
-./pages/index.jsx
-
-./components/UserIdDebugger.jsx
-[31m[1mModule not found[22m[39m: Can't resolve '[32m@/utils/userIdUtils[39m'
-
-https://nextjs.org/docs/messages/module-not-found
-
-Import trace for requested module:
-./pages/journal.tsx
-
-./pages/embed.jsx
-[31m[1mModule not found[22m[39m: Can't resolve '[32m../utils/userIdUtils[39m'
-
-https://nextjs.org/docs/messages/module-not-found
-
-
-> Build failed because of webpack errors
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `build` failed with error:
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m1[39m
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m @koval-ai/web@1.0.0
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m command failed
-[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c next build
-[1G[0K⠙[1G[0K
+[?25h[1G[0K⠙[1G[0K

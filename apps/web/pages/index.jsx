@@ -3,7 +3,9 @@ import { useRouter } from "next/router";
 import ChatMessages from "@/components/ChatMessages";
 import ChatInput from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
+import DiveJournalDisplay from "@/components/DiveJournalDisplay";
 import { setAdminSession, getAdminUserId, ADMIN_EMAIL } from "@/utils/adminAuth";
+import { supabase } from "@/lib/supabaseClient";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
@@ -59,9 +61,15 @@ export default function Index() {
     pinecone: "⏳ Checking...",
   });
 
+  // Dive journal state
+  const [diveJournalOpen, setDiveJournalOpen] = useState(false);
+
   // ✅ NEW: Authentication state to prevent early interactions
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
+  const [user, setUser] = useState(null);
+  // eslint-disable-next-line no-unused-vars
+  const [session, setSession] = useState(null);
 
   const bottomRef = useRef(null);
 
@@ -93,40 +101,127 @@ export default function Index() {
       return "Loading...";
     }
 
-    // ✅ ADMIN USER: Show Daniel Koval
-    return profile?.firstName || profile?.nickname || "Daniel Koval";
-  }, [profile, userId, isAuthenticating]);
+    // ✅ Use actual user data if available
+    if (user) {
+      return user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+    }
 
-  // ✅ HELPER: Get user identifier for data storage (always use admin ID)
+    // ✅ Fallback to profile data
+    return profile?.firstName || profile?.nickname || "User";
+  }, [profile, userId, isAuthenticating, user]);
+
+  // ✅ LOGOUT FUNCTION
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
   const getUserIdentifier = useCallback(() => {
     return getAdminUserId();
   }, []);
 
-  // ✅ SIMPLIFIED ADMIN AUTHENTICATION
+  // ✅ SUPABASE AUTHENTICATION
   useEffect(() => {
+    let isMounted = true;
+    
+    const initAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+        }
+        
+        if (isMounted) {
+          if (currentSession) {
+            console.log("✅ User authenticated:", currentSession.user.email);
+            setSession(currentSession);
+            setUser(currentSession.user);
+            setUserId(currentSession.user.id);
+            setProfile({
+              userId: currentSession.user.id,
+              firstName: currentSession.user.user_metadata?.full_name?.split(' ')[0] || 'User',
+              lastName: currentSession.user.user_metadata?.full_name?.split(' ')[1] || '',
+              nickname: currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0],
+              email: currentSession.user.email,
+              source: 'supabase'
+            });
+            setIsAuthenticating(false);
+          } else {
+            // No session - redirect to login or use guest mode
+            console.log("❌ No session found, redirecting to login");
+            // For now, fallback to admin mode for development
+            setAdminSession();
+            const adminUserId = getAdminUserId();
+            setUserId(adminUserId);
+            setProfile({
+              userId: adminUserId,
+              firstName: 'Daniel',
+              lastName: 'Koval', 
+              nickname: 'Daniel Koval (Admin)',
+              email: ADMIN_EMAIL,
+              isAdmin: true,
+              isInstructor: true,
+              pb: 120,
+              source: 'admin'
+            });
+            setIsAuthenticating(false);
+          }
+        }
+        
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!isMounted) return;
+            
+            console.log("🔄 Auth state changed:", event, session?.user?.email);
+            
+            if (session) {
+              setSession(session);
+              setUser(session.user);
+              setUserId(session.user.id);
+              setProfile({
+                userId: session.user.id,
+                firstName: session.user.user_metadata?.full_name?.split(' ')[0] || 'User',
+                lastName: session.user.user_metadata?.full_name?.split(' ')[1] || '',
+                nickname: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+                email: session.user.email,
+                source: 'supabase'
+              });
+              setIsAuthenticating(false);
+            } else {
+              setSession(null);
+              setUser(null);
+              // Redirect to login or use guest mode
+              router.push('/auth/login');
+            }
+          }
+        );
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        if (isMounted) {
+          setIsAuthenticating(false);
+        }
+      }
+    };
+    
     if (typeof window !== "undefined") {
       setSessionsList(safeParse("kovalSessionsList", []));
-      
-      // ✅ Set admin session automatically 
-      setAdminSession();
-      const adminUserId = getAdminUserId();
-      setUserId(adminUserId);
-      setProfile(safeParse("kovalProfile", {
-        userId: adminUserId,
-        firstName: 'Daniel',
-        lastName: 'Koval', 
-        nickname: 'Daniel Koval',
-        email: ADMIN_EMAIL,
-        isAdmin: true,
-        isInstructor: true,
-        pb: 120,
-        source: 'admin'
-      }));
-      setIsAuthenticating(false);
-      
-      console.log("✅ Admin authentication complete:", adminUserId);
+      initAuth();
     }
-  }, []);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE
   useEffect(() => {
@@ -231,6 +326,13 @@ export default function Index() {
     };
   }, []);
 
+
+
+  // ✅ DIVE JOURNAL FUNCTIONS
+  const toggleDiveJournal = useCallback(() => {
+    setDiveJournalOpen(!diveJournalOpen);
+  }, [diveJournalOpen]);
+
   // ✅ WORKING CHAT SUBMISSION - Enhanced with authentication gating
   const handleSubmit = useCallback(
     async (e) => {
@@ -272,19 +374,50 @@ export default function Index() {
           profileSource: profile?.source,
           diveLogsCount: diveLogs?.length || 0,
           embedMode: false,
+          filesCount: files?.length || 0,
         });
+
+        let messageData = {
+          message: input,
+          userId,
+          profile,
+          embedMode: false,
+          diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
+        };
+
+        // ✅ Handle file uploads if present
+        if (files && files.length > 0) {
+          console.log("📎 Processing file uploads:", files.length, "files");
+          
+          // Convert files to base64 for API transmission
+          const filePromises = files.map(file => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                resolve({
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  data: reader.result
+                });
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+          });
+
+          const uploadedFiles = await Promise.all(filePromises);
+          messageData.files = uploadedFiles;
+          
+          // Clear files after processing
+          setFiles([]);
+        }
 
         // ✅ Use OpenAI chat API directly with correct format
         const response = await fetch(API_ROUTES.CHAT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: input,
-            userId,
-            profile,
-            embedMode: false,
-            diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
-          }),
+          body: JSON.stringify(messageData),
         });
 
         if (!response.ok) {
@@ -329,7 +462,7 @@ export default function Index() {
         setLoading(false);
       }
     },
-    [input, loading, userId, profile, isAuthenticating, authTimeoutReached, diveLogs, messages],
+    [input, loading, userId, profile, isAuthenticating, authTimeoutReached, diveLogs, files],
   );
 
   const handleKeyDown = useCallback(
@@ -416,6 +549,19 @@ export default function Index() {
     if (typeof window !== "undefined") {
       loadDiveLogs();
     }
+  }, [loadDiveLogs]);
+
+  // ✅ DIVE LOG CALLBACKS - Defined after loadDiveLogs
+  const handleDiveLogSaved = useCallback((newLog) => {
+    console.log("🚀 Dive log saved:", newLog);
+    // Refresh dive logs
+    loadDiveLogs();
+  }, [loadDiveLogs]);
+
+  const handleDiveLogDeleted = useCallback((deletedLogId) => {
+    console.log("🗑️ Dive log deleted:", deletedLogId);
+    // Refresh dive logs
+    loadDiveLogs();
   }, [loadDiveLogs]);
 
   // ✅ DIVE JOURNAL SUBMIT (Session-like: Immediate localStorage, optional API sync)
@@ -505,7 +651,8 @@ export default function Index() {
     [profile, diveLogs, getUserIdentifier],
   );
 
-  // ✅ DELETE DIVE LOG
+  // ✅ DELETE DIVE LOG (for future use)
+  // eslint-disable-next-line no-unused-vars
   const handleDelete = useCallback(
     async (logId) => {
       try {
@@ -527,13 +674,15 @@ export default function Index() {
     [loadDiveLogs],
   );
 
-  // ✅ SESSION MANAGEMENT
+  // ✅ SESSION MANAGEMENT - Enhanced with auto-save and better feedback
   const handleSaveSession = useCallback(() => {
     const newSession = {
       id: Date.now(),
       sessionName,
       messages,
       timestamp: Date.now(),
+      userId,
+      messageCount: messages.length,
     };
     const updated = [
       newSession,
@@ -542,9 +691,67 @@ export default function Index() {
     setSessionsList(updated);
     if (typeof window !== "undefined") {
       localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+      // Also save a backup with user identifier
+      localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
     }
-    console.log("✅ Session saved");
-  }, [sessionName, messages, sessionsList]);
+    console.log("✅ Session saved with", messages.length, "messages");
+    
+    // Add a success message to the chat
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: "💾 **Session Saved** \n\nYour chat session has been saved to local storage. You can continue this conversation later by selecting it from the sidebar.",
+        metadata: { type: "system", timestamp: new Date().toISOString() }
+      },
+    ]);
+  }, [sessionName, messages, sessionsList, userId]);
+
+  // Auto-save session every 5 messages
+  useEffect(() => {
+    if (messages.length > 1 && messages.length % 5 === 0) {
+      const newSession = {
+        id: Date.now(),
+        sessionName,
+        messages,
+        timestamp: Date.now(),
+        userId,
+        messageCount: messages.length,
+        autoSaved: true,
+      };
+      const updated = [
+        newSession,
+        ...sessionsList.filter((s) => s.sessionName !== sessionName),
+      ];
+      setSessionsList(updated);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+        localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
+      }
+      console.log("🔄 Auto-saved session with", messages.length, "messages");
+    }
+  }, [messages, sessionName, sessionsList, userId]);
+
+  // Load user-specific sessions on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && userId) {
+      const userSessions = JSON.parse(localStorage.getItem(`kovalSessions_${userId}`) || "[]");
+      const globalSessions = JSON.parse(localStorage.getItem("kovalSessionsList") || "[]");
+      
+      // Merge and deduplicate sessions
+      const allSessions = [...userSessions, ...globalSessions];
+      const uniqueSessions = allSessions.reduce((acc, session) => {
+        const key = session.sessionName;
+        if (!acc[key] || session.timestamp > acc[key].timestamp) {
+          acc[key] = session;
+        }
+        return acc;
+      }, {});
+      
+      const mergedSessions = Object.values(uniqueSessions).sort((a, b) => b.timestamp - a.timestamp);
+      setSessionsList(mergedSessions);
+    }
+  }, [userId]);
 
   const startNewSession = useCallback(() => {
     const name = `Session – ${new Date().toLocaleDateString("en-US")} (${Date.now()})`;
@@ -599,8 +806,9 @@ export default function Index() {
       startNewSession,
       handleSaveSession,
       handleSelectSession,
+      handleDeleteSession,
       handleJournalSubmit,
-      handleDelete,
+      toggleDiveJournal,
       refreshDiveLogs: loadDiveLogs,
       loadingDiveLogs,
       syncStatus: "✅ Ready",
@@ -618,8 +826,9 @@ export default function Index() {
       startNewSession,
       handleSaveSession,
       handleSelectSession,
+      handleDeleteSession,
       handleJournalSubmit,
-      handleDelete,
+      toggleDiveJournal,
       loadDiveLogs,
       loadingDiveLogs,
       editingSessionName,
@@ -728,6 +937,16 @@ export default function Index() {
     }
   }, []);
 
+  const handleDeleteSession = useCallback((index) => {
+    const updated = sessionsList.filter((_, i) => i !== index);
+    setSessionsList(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+      localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
+    }
+    console.log("🗑️ Session deleted");
+  }, [sessionsList, userId]);
+
   return (
     <main
       className={`${isEmbedded ? "h-full" : "h-screen"} flex ${
@@ -767,34 +986,53 @@ export default function Index() {
       <div
         className={`flex-1 flex flex-col ${isEmbedded ? "h-full" : "h-screen"}`}
       >
-        {/* Top Bar - Simplified in embedded mode */}
+        {/* Top Bar - Compact ChatGPT-style */}
         <div
-          className={`sticky top-0 z-10 border-b ${isEmbedded ? "p-2" : "p-3"} flex justify-between items-center text-sm ${
-            darkMode ? "bg-black border-gray-700" : "bg-white border-gray-300"
+          className={`sticky top-0 z-10 border-b ${isEmbedded ? "px-3 py-2" : "px-4 py-3"} flex justify-between items-center ${
+            darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
           }`}
         >
-          <div
-            className={`px-2 truncate ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-          >
-            👤 {getDisplayName()}
+          <div className="flex items-center space-x-3">
+            <div className={`text-sm font-medium ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
+              {getDisplayName()}
+            </div>
+            {user && (
+              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                {user.email}
+              </div>
+            )}
           </div>
-          {!isEmbedded && (
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`px-3 py-1 rounded-md ${
-                darkMode
-                  ? "bg-gray-800 text-white hover:bg-gray-700"
-                  : "bg-gray-200 text-black hover:bg-gray-300"
-              }`}
-            >
-              {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            {user && !isEmbedded && (
+              <button
+                onClick={handleLogout}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                  darkMode
+                    ? "hover:bg-gray-800 text-gray-400 hover:text-gray-200"
+                    : "hover:bg-gray-100 text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                Sign out
+              </button>
+            )}
+            {!isEmbedded && (
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  darkMode
+                    ? "hover:bg-gray-800 text-gray-400 hover:text-gray-200"
+                    : "hover:bg-gray-100 text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                {darkMode ? "☀️" : "🌙"}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto flex justify-center">
-          <div className="w-full max-w-3xl px-6 py-4">
+        {/* Messages - ChatGPT-style compact layout */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="w-full max-w-4xl mx-auto">
             <ChatMessages
               messages={messages}
               BOT_NAME={BOT_NAME}
@@ -806,26 +1044,40 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Chat Input */}
-        <div
-          className={`px-4 py-3 border-t ${darkMode ? "border-gray-700" : "border-gray-300"}`}
-        >
-          <ChatInput
-            input={input}
-            setInput={setInput}
-            handleSubmit={handleSubmit}
-            handleKeyDown={handleKeyDown}
-            handleFileChange={handleFileChange}
-            files={files}
-            setFiles={setFiles}
-            loading={loading}
-            darkMode={darkMode}
-            isAuthenticating={isAuthenticating}
-            authTimeoutReached={authTimeoutReached}
-          />
+        {/* Chat Input - ChatGPT-style compact */}
+        <div className={`border-t ${darkMode ? "border-gray-700 bg-gray-900" : "border-gray-200 bg-gray-50"}`}>
+          <div className="w-full max-w-4xl mx-auto px-4 py-3">
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              handleSubmit={handleSubmit}
+              handleKeyDown={handleKeyDown}
+              handleFileChange={handleFileChange}
+              files={files}
+              setFiles={setFiles}
+              loading={loading}
+              darkMode={darkMode}
+              isAuthenticating={isAuthenticating}
+              authTimeoutReached={authTimeoutReached}
+            />
+          </div>
         </div>
       </div>
 
+      {/* ✅ DIVE JOURNAL DISPLAY - Modal overlay */}
+      {diveJournalOpen && (
+        <DiveJournalDisplay
+          darkMode={darkMode}
+          isOpen={diveJournalOpen}
+          onClose={() => setDiveJournalOpen(false)}
+          isEmbedded={isEmbedded}
+          setMessages={setMessages}
+          refreshKey={Date.now()}
+          onDiveLogSaved={handleDiveLogSaved}
+          onDiveLogDeleted={handleDiveLogDeleted}
+          onRefreshDiveLogs={loadDiveLogs}
+        />
+      )}
 
     </main>
   );

@@ -1,9 +1,4 @@
-import { useState, useEffect } from "react";
-import AIAnalyzeButton from "./AIAnalyzeButton";
-import {
-  formatDiveLogForDisplay,
-  formatDiveLogForAnalysis,
-} from "../utils/diveLogFormatter";
+import { useEffect } from "react";
 
 export default function Sidebar({
   sessionName,
@@ -14,317 +9,135 @@ export default function Sidebar({
   handleDeleteSession,
   handleSaveSession,
   startNewSession,
-  handleJournalSubmit, // Keep for backward compatibility
-  editLogIndex,
-  handleEdit,
-  handleDelete,
   userId,
-  setLoading,
-  setMessages,
   darkMode,
-  connectionStatus = { pinecone: "", wix: "", openai: "" },
-  loadingConnections = false,
-  onDiveLogsUpdate,
   refreshDiveLogs,
 }) {
-  console.log(
-    "🔧 SIDEBAR: Dive logs count:",
-    diveLogs.length,
-    "userId:",
-    userId,
-  );
-
-  // 🔄 Load dive logs when component mounts or userId changes
   useEffect(() => {
     if (userId && refreshDiveLogs) {
       refreshDiveLogs();
     }
-  }, [userId]);
-
-  // ✅ Wix Repeater Sync Functions
-  const refreshWixRepeaterSync = async (userId) => {
-    try {
-      console.log("🔄 Syncing with Wix repeater...");
-      const response = await fetch(
-        `/api/wix/dive-journal-repeater?userId=${userId}&limit=20`,
-      );
-      if (response.ok) {
-        const data = await response.json();
-        console.log("✅ Wix repeater sync successful:", data.count, "entries");
-        // Trigger refresh of local state
-        if (refreshDiveLogs) {
-          refreshDiveLogs();
-        }
-      }
-    } catch (error) {
-      console.error("❌ Wix repeater sync error:", error);
-    }
-  };
-
-  const handleDeleteWithWixSync = async (log, index) => {
-    try {
-      setLoading?.(true);
-
-      // ✅ Call local delete handler first
-      if (handleDelete) {
-        await handleDelete(index);
-      }
-
-      // ✅ Sync with Wix repeater
-      if (log.id && userId) {
-        console.log("🗑️ Syncing delete with Wix repeater...");
-        // Note: The actual delete endpoint might need to be created in Wix backend
-        // For now, we refresh to get the updated state
-        await refreshWixRepeaterSync(userId);
-      }
-
-      console.log("✅ Dive log deleted and synced with Wix");
-    } catch (error) {
-      console.error("❌ Delete with Wix sync error:", error);
-    } finally {
-      setLoading?.(false);
-    }
-  };
-
-  // 🚀 Legacy DiveJournalForm has been removed - all functionality moved to DiveJournalDisplay
-  // The popup DiveJournalSidebarCard now handles all dive log operations
+  }, [userId, refreshDiveLogs]);
 
   return (
     <aside
-      className={`w-[320px] h-screen border-r flex flex-col ${
+      className={`w-[260px] h-screen border-r flex flex-col ${
         darkMode
-          ? "bg-[#121212] text-white border-gray-700"
-          : "bg-gray-100 text-black border-gray-200"
+          ? "bg-gray-900 text-white border-gray-700"
+          : "bg-gray-50 text-black border-gray-200"
       }`}
     >
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Sessions */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">🗂️ Sessions</h2>
-          <button
-            onClick={startNewSession}
-            className="text-blue-600 underline mb-3"
-            aria-label="Start a new session"
-          >
-            ➕ New Session
-          </button>
-          {sessionsList.length > 0 ? (
-            <ul className="space-y-2">
-              {sessionsList.map((s, i) => (
-                <li
-                  key={s.id || i}
-                  className="flex justify-between items-center"
-                >
-                  <button
-                    className={`text-left flex-1 px-2 py-1 rounded ${
-                      s.sessionName === sessionName
-                        ? "bg-blue-100 dark:bg-blue-700"
-                        : darkMode
-                          ? "hover:bg-gray-800"
-                          : "hover:bg-gray-200"
-                    }`}
-                    onClick={() => handleSelectSession(s.sessionName)}
-                  >
-                    {s.sessionName}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSession(i)}
-                    className="text-red-500 text-xs ml-2"
-                    title="Delete session"
-                  >
-                    ❌
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm italic text-gray-500">
-              No sessions available
-            </p>
-          )}
-        </div>
+      <div className={`p-3 border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+        <button
+          onClick={startNewSession}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+            darkMode
+              ? "border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white"
+              : "border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800"
+          }`}
+        >
+          ✨ New chat
+        </button>
+      </div>
 
-        {/* Enhanced Dive Journal */}
-        <div>
+      <div className="flex-1 overflow-y-auto p-2">
+        {sessionsList.length > 0 && (
+          <div className="mb-4">
+            <div className={`text-xs font-medium px-2 py-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+              Recent
+            </div>
+            {sessionsList.slice(0, 10).map((s, i) => (
+              <div key={s.id || i} className="flex items-center group">
+                <button
+                  className={`flex-1 text-left px-2 py-2 rounded-lg text-sm transition-colors ${
+                    s.sessionName === sessionName
+                      ? darkMode ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-900"
+                      : darkMode
+                        ? "hover:bg-gray-800 text-gray-300"
+                        : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                  onClick={() => handleSelectSession(s.sessionName)}
+                >
+                  <div className="truncate">
+                    {s.sessionName.replace('Session – ', '')}
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleDeleteSession(i)}
+                  className={`opacity-0 group-hover:opacity-100 p-1 rounded text-xs transition-opacity ${
+                    darkMode ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mb-4">
           <button
             onClick={toggleDiveJournal}
-            className={`w-full px-3 py-2 rounded border font-medium ${
+            className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-colors ${
               darkMode
-                ? "bg-blue-900 hover:bg-blue-800 text-white"
-                : "bg-blue-50 hover:bg-blue-100 text-black"
+                ? "hover:bg-gray-800 text-gray-300"
+                : "hover:bg-gray-100 text-gray-700"
             }`}
           >
-            Open Dive Journal
+            📒 Dive Journal
           </button>
 
-          {/* Dive Logs Summary - Improved for Many Logs */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">
-                📒 Dive Logs ({diveLogs.length})
-              </h3>
-              {diveLogs.length > 5 && (
-                <span className="text-xs text-gray-500">Showing 10 latest</span>
-              )}
-            </div>
-            {diveLogs.length > 0 ? (
-              <div className="space-y-2 max-h-[35rem] overflow-y-auto custom-scrollbar">
-                {diveLogs.slice(0, 10).map((log, i) => {
-                  const formattedLog = formatDiveLogForDisplay(log);
-                  return (
-                    <li
-                      key={log.id || i}
-                      className={`border p-2 rounded-lg text-sm transition-all duration-200 hover:shadow-md ${
-                        darkMode
-                          ? "bg-gray-800 text-white border-gray-600 hover:bg-gray-750"
-                          : "bg-white text-black border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      {/* ✅ Compact dive log display for better space usage */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-start">
-                          <div className="text-xs font-medium text-gray-500 min-w-0 flex-1">
-                            {new Date(
-                              log.date || log.timestamp,
-                            ).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                            {log.location && (
-                              <span className="ml-2 text-gray-400">
-                                @ {log.location.slice(0, 12)}
-                                {log.location.length > 12 ? "..." : ""}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-1 flex-shrink-0">
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                darkMode
-                                  ? "bg-blue-900 text-blue-200"
-                                  : "bg-blue-100 text-blue-800"
-                              }`}
-                            >
-                              {log.reachedDepth || log.targetDepth}m
-                            </span>
-                            {log.discipline && (
-                              <span
-                                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                                  darkMode
-                                    ? "bg-green-900 text-green-200"
-                                    : "bg-green-100 text-green-800"
-                                }`}
-                              >
-                                {log.discipline.slice(0, 3)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* ✅ Collapsible content to save space */}
-                        <details className="group">
-                          <summary
-                            className={`cursor-pointer text-xs ${
-                              darkMode
-                                ? "text-gray-300 hover:text-gray-100"
-                                : "text-gray-600 hover:text-gray-800"
-                            } list-none`}
-                          >
-                            <span className="flex items-center justify-between">
-                              <span>
-                                📝{" "}
-                                {log.notes
-                                  ? log.notes.slice(0, 30) + "..."
-                                  : "View details"}
-                              </span>
-                              <span className="group-open:rotate-90 transition-transform text-gray-400">
-                                ▶
-                              </span>
-                            </span>
-                          </summary>
-                          <div
-                            className={`mt-2 text-xs whitespace-pre-line ${
-                              darkMode ? "text-gray-300" : "text-gray-600"
-                            } p-2 rounded bg-opacity-50 ${
-                              darkMode ? "bg-gray-700" : "bg-gray-100"
-                            }`}
-                          >
-                            {formattedLog}
-                          </div>
-                        </details>
-
-                        {/* ✅ Compact action buttons */}
-                        <div className="flex items-center justify-between pt-1.5 border-t border-opacity-30 border-gray-300 dark:border-gray-600">
-                          <AIAnalyzeButton
-                            diveLog={log}
-                            userId={userId}
-                            onAnalysisComplete={(analysisPrompt) => {
-                              // ✅ Send analysis request directly to chatbox
-                              if (setMessages) {
-                                setMessages((prev) => [
-                                  ...prev,
-                                  {
-                                    role: "user",
-                                    content: analysisPrompt,
-                                  },
-                                ]);
-                              }
-                            }}
-                            darkMode={darkMode}
-                            size="xs"
-                          />
-
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={() => handleEdit?.(i)}
-                              className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
-                                darkMode
-                                  ? "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
-                                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                              }`}
-                              title="Edit dive log"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDeleteWithWixSync(log, i)}
-                              className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
-                                darkMode
-                                  ? "text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  : "text-red-500 hover:text-red-700 hover:bg-red-50"
-                              }`}
-                              title="Delete dive log"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
+          {diveLogs.length > 0 && (
+            <div className="mt-2 px-2">
+              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"} mb-2`}>
+                {diveLogs.length} dive logs
+              </div>
+              {diveLogs.slice(0, 5).map((log, i) => (
+                <div
+                  key={log.id || i}
+                  className={`group p-2 rounded text-xs mb-1 transition-colors ${
+                    darkMode
+                      ? "bg-gray-800 hover:bg-gray-750 text-gray-300"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">
+                        {new Date(log.date || log.timestamp).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </div>
-                    </li>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-sm italic text-gray-500 mb-2">
-                  No dive logs yet. Add your first dive above!
-                </p>
-                <p className="text-xs text-gray-400">
-                  Each log will be saved to your DiveLogs database for AI
-                  pattern analysis
-                </p>
-              </div>
-            )}
-          </div>
+                      {log.location && (
+                        <div className="truncate text-xs opacity-75">
+                          {log.location}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`text-xs px-1.5 py-0.5 rounded ${
+                        darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"
+                      }`}>
+                        {log.reachedDepth || log.targetDepth}m
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Sticky Bottom Save Button */}
-      <div className="p-4 border-t border-gray-300 dark:border-gray-700">
+      <div className={`p-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
         <button
           onClick={handleSaveSession}
-          className="w-full bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700"
+          className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+            darkMode
+              ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+          }`}
         >
           💾 Save Session
         </button>

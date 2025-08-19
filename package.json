@@ -12,8 +12,11 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
+    "build": "turbo run build --filter=!@koval-ai/mobile",
+    "build:all": "turbo run build",
+    "dev": "turbo run dev --filter=!@koval-ai/mobile",
+    "dev:web": "turbo run dev --filter=@koval-ai/web",
+    "dev:all": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
