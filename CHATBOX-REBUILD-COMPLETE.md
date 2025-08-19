@@ -11,6 +11,7 @@
 ## 🔧 What Was Rebuilt
 
 ### Old ChatBox Issues:
+
 - ❌ Used Wix-specific authentication logic (`isRealMemberId`)
 - ❌ Called Wix bridge API (`/api/wix/chat-bridge`)
 - ❌ Had complex EQ state management logic
@@ -18,6 +19,7 @@
 - ❌ Multiple fallback API chains
 
 ### New ChatBox Features:
+
 - ✅ **Admin-only authentication** (`userId === "admin-daniel-koval"`)
 - ✅ **Supabase-first API calls** (`/api/supabase/chat`)
 - ✅ **Clean fallback chain** (Supabase → OpenAI direct)
@@ -30,16 +32,19 @@
 ## 📋 Key Changes Made
 
 ### 1. Authentication Logic
+
 ```jsx
 // OLD (Wix-based)
 function isRealMemberId(userId) {
-  return userId && 
-         typeof userId === 'string' && 
-         userId !== "Guest" && 
-         !userId.startsWith("guest-") && 
-         !userId.startsWith("session-") && 
-         !userId.startsWith("temp-") &&
-         userId.length > 8;
+  return (
+    userId &&
+    typeof userId === "string" &&
+    userId !== "Guest" &&
+    !userId.startsWith("guest-") &&
+    !userId.startsWith("session-") &&
+    !userId.startsWith("temp-") &&
+    userId.length > 8
+  );
 }
 
 // NEW (Admin-only)
@@ -48,6 +53,7 @@ const isAuthenticated = userId === ADMIN_USER_ID;
 ```
 
 ### 2. API Calls
+
 ```jsx
 // OLD (Wix Bridge)
 const res = await fetch("/api/wix/chat-bridge", {
@@ -75,6 +81,7 @@ const res = await fetch("/api/supabase/chat", {
 ```
 
 ### 3. Authentication Banner
+
 ```jsx
 // OLD (Wix Account Required)
 <p>🔒 Please log into your Wix account to access the AI chat system.</p>
@@ -89,6 +96,7 @@ const res = await fetch("/api/supabase/chat", {
 ```
 
 ### 4. Header Branding
+
 ```jsx
 // OLD
 <h1>koval-ai Deep Chat</h1>
@@ -104,11 +112,13 @@ const res = await fetch("/api/supabase/chat", {
 ## 🗂️ File Cleanup & Architecture
 
 ### Component Conflicts Resolved:
+
 - **ISSUE:** Duplicate components in `/components` (old) and `/apps/web/components` (new)
 - **SOLUTION:** Moved `/components` to `/archived-wix/old-root-components`
 - **GITIGNORE:** Added `archived-wix/` to prevent tracking conflicts
 
 ### Files Updated:
+
 - ✅ `/apps/web/components/ChatBox.jsx` - Completely rebuilt
 - ✅ `/apps/web/utils/adminAuth.js` - Admin-only logic
 - ✅ `/.gitignore` - Archive directory exclusion
@@ -119,6 +129,7 @@ const res = await fetch("/api/supabase/chat", {
 ## 🧪 Testing Results
 
 ### ✅ Build Success:
+
 ```bash
 > @koval-ai/web@1.0.0 dev
 > next dev
@@ -129,11 +140,13 @@ const res = await fetch("/api/supabase/chat", {
 ```
 
 ### ✅ Admin Authentication:
+
 - Admin user (`admin-daniel-koval`) can access chat
 - Non-admin users see admin-only banner
 - Clean UI with green admin indicator
 
 ### ✅ API Integration:
+
 - Primary: Supabase chat API (`/api/supabase/chat`)
 - Fallback: OpenAI direct API (`/api/openai/chat`)
 - Image Upload: Simple OpenAI endpoint (`/api/openai/upload-dive-image-simple`)
@@ -143,6 +156,7 @@ const res = await fetch("/api/supabase/chat", {
 ## 🚀 Production Ready
 
 The ChatBox component is now:
+
 - **Wix-free** - No remaining Wix dependencies or bridge logic
 - **Supabase-native** - Uses Supabase APIs as primary endpoints
 - **Admin-only** - Secure access control for Daniel Koval only
@@ -167,8 +181,8 @@ The ChatBox component is now:
 **Build Status:** ✅ PASSING  
 **Architecture:** ✅ CLEAN  
 **Security:** ✅ ADMIN-ONLY  
-**APIs:** ✅ SUPABASE-FIRST  
+**APIs:** ✅ SUPABASE-FIRST
 
 ---
 
-*Rebuild completed on August 18, 2025*
+_Rebuild completed on August 18, 2025_

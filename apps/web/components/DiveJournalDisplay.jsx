@@ -3,7 +3,6 @@ import Image from "next/image";
 import { ADMIN_USER_ID } from "@/utils/adminAuth";
 
 export default function DiveJournalDisplay({
-  nickname,
   darkMode,
   isOpen,
   onClose,
@@ -79,11 +78,11 @@ export default function DiveJournalDisplay({
 
   useEffect(() => {
     console.log("🔄 DiveJournalDisplay: Refreshing logs from localStorage...", {
-      nickname,
+      adminUserId: ADMIN_USER_ID,
       refreshKey,
     });
     try {
-      const stored = localStorage.getItem(`diveLogs_${nickname}`); // ✅ Updated: Use nickname instead of userId
+      const stored = localStorage.getItem(`diveLogs_${ADMIN_USER_ID}`); // ✅ Updated: Use ADMIN_USER_ID
       if (stored) {
         const parsedLogs = JSON.parse(stored);
         setLogs(parsedLogs);
@@ -98,7 +97,7 @@ export default function DiveJournalDisplay({
       console.error("❌ DiveJournalDisplay: Failed to load logs:", error);
       setLogs([]);
     }
-  }, [nickname, refreshKey]);
+  }, [refreshKey]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -167,7 +166,7 @@ export default function DiveJournalDisplay({
       ...newEntry,
       id: isEditMode ? editingLog.id : Date.now().toString(),
       timestamp: new Date().toISOString(),
-      nickname: nickname, // ✅ Updated: Use nickname instead of userId
+      nickname: ADMIN_USER_ID, // ✅ Updated: Use ADMIN_USER_ID
       imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
       imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
       // Convert form data to database schema
@@ -475,7 +474,8 @@ export default function DiveJournalDisplay({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  nickname: nickname,
+                  adminUserId: ADMIN_USER_ID,
+                  nickname: ADMIN_USER_ID, // backward compatibility
                   diveLogData: newLog,
                 }),
               });
@@ -568,114 +568,100 @@ export default function DiveJournalDisplay({
     setIsEditMode(false);
   };
 
-  // ✅ Add analyze functionality for individual dive logs
+  // ✅ Reworked analyze handler - fire-and-forget pattern
   const handleAnalyzeDiveLog = async (log) => {
-    if (!log || !nickname) {
-      console.warn("⚠️ Missing log or nickname for analysis");
+    if (!log || !ADMIN_USER_ID) {
+      console.warn("⚠️ Missing log or ADMIN_USER_ID for analysis", { log, ADMIN_USER_ID });
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: "❌ Can't analyze: missing user context." }
+        ]);
+      }
       return;
     }
 
+    // show immediate feedback in chat
+    if (setMessages) {
+      const depth = log.reachedDepth ?? log.targetDepth ?? "—";
+      const disc  = log.discipline || "freediving";
+      const loc   = log.location || "your location";
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: `🔄 Analyzing your ${disc} dive to ${depth}m at ${loc}...` }
+      ]);
+    }
+
+    setAnalyzingLogId?.(log.id);
+
+    // 👉 Close the journal ASAP so the user can keep using chat
+    if (onClose && !isEmbedded) {
+      // microtask to avoid interfering with current React event
+      Promise.resolve().then(() => onClose());
+    }
+
+    // Fire the request (do not block UI). We still handle the response to post results.
+    const payload = {
+      adminUserId: ADMIN_USER_ID,   // ✅ new field your API should use
+      nickname: ADMIN_USER_ID,      // ↙ keep for backward-compat if your API still reads `nickname`
+      diveLogId: log.id,
+      diveLogData: log,
+    };
+
     try {
-      console.log("🔍 Starting dive log analysis in DiveJournalDisplay:", log);
-      setAnalyzingLogId(log.id);
-
-      // ✅ Show analyzing message in chat immediately
-      if (setMessages) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: `🔄 Analyzing your ${log.discipline || "freediving"} dive to ${log.reachedDepth || log.targetDepth}m at ${log.location || "location"}...`,
-          },
-        ]);
-      }
-
-      console.log("🌐 Calling OpenAI analysis API from DiveJournalDisplay...");
-      const response = await fetch("/api/analyze/dive-log-openai", {
+      const resp = await fetch("/api/analyze/dive-log-openai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nickname,
-          diveLogData: log,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      console.log("📊 Analyze API response status:", response.status);
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`Analyze API failed ${resp.status}: ${txt}`);
+      }
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Analysis result:", result);
+      const result = await resp.json();
 
-        if (result.success && result.analysis) {
-          // Update the log with analysis
-          const updatedLogs = logs.map((l) =>
-            l.id === log.id
-              ? { ...l, analysis: result.analysis, analyzed: true }
-              : l,
-          );
-          setLogs(updatedLogs);
-
-          // Save to localStorage
-          localStorage.setItem(
-            `diveLogs_${nickname}`, // ✅ Fixed: Use nickname
-            JSON.stringify(updatedLogs),
-          );
-
-          // ✅ Post analysis to chat
-          if (setMessages) {
-            console.log("💬 Posting analysis result to chat...");
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: `📊 **Dive Analysis Complete** \n\n${result.analysis}`,
-              },
-            ]);
+      if (result?.success && result?.analysis) {
+        // Update logs safely (avoid stale closure)
+        setLogs?.((prev = []) => {
+          const updated = prev.map(l => (l.id === log.id ? { ...l, analysis: result.analysis, analyzed: true } : l));
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem(`diveLogs_${ADMIN_USER_ID}`, JSON.stringify(updated));
+            }
+          } catch (storageError) {
+            console.warn("⚠️ Failed to update localStorage:", storageError);
           }
+          return updated;
+        });
 
-          // ✅ Close dive journal after successful analysis
-          if (onClose && !isEmbedded) {
-            console.log("🔒 Closing dive journal after successful analysis");
-            setTimeout(() => {
-              onClose();
-            }, 500); // Small delay to let user see the analysis started
-          }
-
-          console.log("✅ Dive log analyzed successfully");
-        } else {
-          console.error("❌ Analysis failed:", result.error);
-
-          // ✅ Post error to chat
-          if (setMessages) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: `❌ Analysis failed: ${result.error || "Unknown error"}. Please try again.`,
-              },
-            ]);
-          }
+        // Post analysis to chat
+        if (setMessages) {
+          setMessages(prev => [
+            ...prev,
+            { role: "assistant", content: `📊 **Dive Analysis Complete**\n\n${result.analysis}` }
+          ]);
         }
       } else {
-        throw new Error(
-          `Analysis request failed: ${response.status} ${response.statusText}`,
-        );
+        const errMsg = result?.error || "Unknown analysis error";
+        if (setMessages) {
+          setMessages(prev => [
+            ...prev,
+            { role: "assistant", content: `❌ Analysis failed: ${errMsg}` }
+          ]);
+        }
       }
-    } catch (error) {
-      console.error("❌ Analysis error:", error);
-
-      // ✅ Post error to chat
+    } catch (err) {
+      console.error("❌ Analysis error:", err);
       if (setMessages) {
-        setMessages((prev) => [
+        setMessages(prev => [
           ...prev,
-          {
-            role: "assistant",
-            content: `❌ Failed to analyze dive log: ${error.message}. Please try again.`,
-          },
+          { role: "assistant", content: `❌ Failed to analyze dive log: ${err.message}` }
         ]);
       }
     } finally {
-      setAnalyzingLogId(null);
+      setAnalyzingLogId?.(null);
     }
   };
 
@@ -708,7 +694,8 @@ export default function DiveJournalDisplay({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          nickname: nickname,
+          adminUserId: ADMIN_USER_ID,
+          nickname: ADMIN_USER_ID, // backward compatibility
           logId: logToDelete.id,
           source: "dive-journal-display",
         }),
@@ -730,7 +717,7 @@ export default function DiveJournalDisplay({
         // 🚀 STEP 3: Update localStorage
         try {
           localStorage.setItem(
-            `diveLogs_${nickname}`, // ✅ Fixed: Use nickname
+            `diveLogs_${ADMIN_USER_ID}`, // ✅ Fixed: Use ADMIN_USER_ID
             JSON.stringify(updatedLogs),
           );
           console.log(

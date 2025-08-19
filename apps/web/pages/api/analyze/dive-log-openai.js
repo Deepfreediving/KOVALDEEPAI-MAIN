@@ -14,9 +14,10 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { diveLogData, nickname } = req.body;
+    const { adminUserId, nickname, diveLogData } = req.body;
+    const userId = adminUserId || nickname; // migrate away from `nickname`
 
-    console.log('🤖 Starting OpenAI dive analysis for:', nickname);
+    console.log('🤖 Starting OpenAI dive analysis for:', userId);
 
     if (!diveLogData) {
       return res.status(400).json({ error: 'Dive log data is required' });
