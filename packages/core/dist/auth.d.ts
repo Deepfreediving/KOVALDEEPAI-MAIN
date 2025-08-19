@@ -14,6 +14,7 @@ export declare class AuthService {
         error?: string;
     }>;
     getCurrentUser(): Promise<User | null>;
+    getCurrentUserId(): Promise<string | null>;
     getCurrentSession(): Promise<Session | null>;
     getUserProfile(userId: string): Promise<UserProfile | null>;
     updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null>;

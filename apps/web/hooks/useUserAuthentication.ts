@@ -134,7 +134,7 @@ export function useUserAuthentication() {
             const memoryResponse = await fetch(
               `/api/auth/get-user-memory?userId=${urlUserId}`,
             );
-            let userMemoryData = null;
+            let userMemoryData: any = null;
 
             if (memoryResponse.ok) {
               const memoryResult = await memoryResponse.json();

@@ -64,7 +64,7 @@ export default async function handler(
     // Save to error log file (for development/debugging)
     try {
       const errorLogPath = path.join(process.cwd(), "error-logs.json");
-      let existingErrors = [];
+      let existingErrors: any[] = [];
 
       if (fs.existsSync(errorLogPath)) {
         const fileContent = fs.readFileSync(errorLogPath, "utf-8");

@@ -70,13 +70,28 @@ export class AuthService {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const { data: { user } } = await this.supabase.auth.getUser();
-    return user;
+    try {
+      const { data: { user }, error } = await this.supabase.auth.getUser();
+      if (error) throw error;
+      return user;
+    } catch {
+      return null;
+    }
+  }
+
+  async getCurrentUserId(): Promise<string | null> {
+    const user = await this.getCurrentUser();
+    return user?.id ?? null;
   }
 
   async getCurrentSession(): Promise<Session | null> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    return session;
+    try {
+      const { data: { session }, error } = await this.supabase.auth.getSession();
+      if (error) throw error;
+      return session;
+    } catch {
+      return null;
+    }
   }
 
   async getUserProfile(userId: string): Promise<UserProfile | null> {

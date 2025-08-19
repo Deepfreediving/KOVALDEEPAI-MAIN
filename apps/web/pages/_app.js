@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import ErrorBoundary from "../components/ErrorBoundary";
 import AppLoader from "../components/AppLoader";
 import PerformanceOptimizer from "../components/PerformanceOptimizer";
+import { AuthProvider } from "../src/providers/AuthProvider";
 
 function MyApp({ Component, pageProps }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -75,8 +76,10 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <ErrorBoundary>
-      <PerformanceOptimizer />
-      <Component {...pageProps} tokenProcessed={tokenProcessed} />
+      <AuthProvider>
+        <PerformanceOptimizer />
+        <Component {...pageProps} tokenProcessed={tokenProcessed} />
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

@@ -100,7 +100,7 @@ export default async function handler(
 
 // Helper function to format dive log for analysis
 function formatDiveLogForAnalysis(diveLog: any): string {
-  const parts = [];
+  const parts: string[] = [];
   
   if (diveLog.date) parts.push(`Date: ${diveLog.date}`);
   if (diveLog.discipline) parts.push(`Discipline: ${diveLog.discipline}`);

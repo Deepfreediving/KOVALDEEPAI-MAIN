@@ -53,7 +53,6 @@ export default function DiveJournalDisplay({
       computer: ""
     }
   });
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [analyzingLogId, setAnalyzingLogId] = useState(null); // Track which log is being analyzed
   const [isEditMode, setIsEditMode] = useState(false); // Track if we're editing
 

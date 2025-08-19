@@ -1,26 +1,22 @@
 // pages/api/analyze/save-session.ts
 
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import handleCors from "@/utils/handleCors"; // ✅ CHANGED from cors to handleCors
+import { createClient } from '@supabase/supabase-js';
+import handleCors from "@/utils/handleCors";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-interface MemoryLog {
-  userId: string;
-  logEntry: string;
-  memoryContent: string;
-  eqState?: string;
-  profile?: string;
+interface SessionData {
+  user_id: string;
+  session_name: string;
+  messages: ChatMessage[];
   timestamp: string;
-  sessionId: string;
   metadata: {
-    intentLabel: string;
-    sessionType: string;
-    sessionName: string;
+    intent_label: string;
+    session_type: string;
   };
 }
 
@@ -36,24 +32,44 @@ export default async function handler(
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { userId, sessionName, profile, eqState, messages, timestamp } =
-      req.body;
-
-    // ✅ Validate inputs
-    if (!userId || !Array.isArray(messages) || messages.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "Missing or invalid userId/messages." });
+    // ✅ Verify authentication with Supabase JWT
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Missing or invalid authorization header" });
     }
 
-    // ✅ Session saving migrated to Supabase
-    console.log("📋 Session save request - using Supabase storage");
+    const token = authHeader.substring(7);
     
-    const sessionId = `${userId}-${Date.now()}`;
-    const results: { logEntry: string; status: string }[] = [];
-    const pairedMessages: MemoryLog[] = [];
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({ error: "Missing Supabase configuration" });
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Verify the JWT token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return res.status(401).json({ error: "Invalid authentication token" });
+    }
 
-    // ✅ Process messages for compatibility
+    const { sessionName, profile, eqState, messages, timestamp } = req.body;
+
+    // ✅ Validate inputs
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "Missing or invalid messages array." });
+    }
+
+    // ✅ Session saving to Supabase user_memory table
+    console.log("📋 Session save request - using Supabase storage for user:", user.id);
+    
+    const sessionId = `${user.id}-${Date.now()}`;
+    const results: { logEntry: string; status: string }[] = [];
+
+    // ✅ Process messages and save to user_memory
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i] as ChatMessage;
 
@@ -64,34 +80,50 @@ export default async function handler(
             ? nextMsg.content
             : "⚠️ No assistant response recorded";
 
-        pairedMessages.push({
-          userId,
-          logEntry: msg.content,
-          memoryContent: assistantReply,
-          eqState,
-          profile,
-          timestamp: timestamp || new Date().toISOString(),
-          sessionId,
-          metadata: {
-            intentLabel: "manual-save",
-            sessionType: "manual",
-            sessionName:
-              sessionName || `Manual – ${new Date().toLocaleString()}`,
-          },
-        });
+        // Save each user-assistant pair to user_memory
+        const memoryEntry = {
+          user_id: user.id,
+          memory_type: 'session' as const,
+          content: {
+            user_message: msg.content,
+            assistant_reply: assistantReply,
+            session_id: sessionId,
+            session_name: sessionName || `Manual – ${new Date().toLocaleString()}`,
+            timestamp: timestamp || new Date().toISOString(),
+            metadata: {
+              intent_label: "manual-save",
+              session_type: "manual",
+              eq_state: eqState,
+              profile,
+            }
+          }
+        };
+
+        try {
+          const { error: insertError } = await supabase
+            .from('user_memory')
+            .insert(memoryEntry);
+
+          if (insertError) {
+            console.error('Failed to save memory entry:', insertError);
+            results.push({ logEntry: msg.content, status: "error" });
+          } else {
+            console.log(`📝 Saved message: ${msg.content.substring(0, 50)}...`);
+            results.push({ logEntry: msg.content, status: "saved" });
+          }
+        } catch (error) {
+          console.error('Error saving memory entry:', error);
+          results.push({ logEntry: msg.content, status: "error" });
+        }
       }
     }
 
-    // ✅ Mark all messages as saved (migrated to Supabase)
-    for (const log of pairedMessages) {
-      if (!log?.logEntry) continue;
-      
-      // Log locally for debugging
-      console.log(`📝 Processing message: ${log.logEntry.substring(0, 50)}...`);
-      results.push({ logEntry: log.logEntry, status: "processed" });
-    }
-
-    return res.status(200).json({ success: true, saved: results });
+    return res.status(200).json({ 
+      success: true, 
+      saved: results,
+      user_id: user.id,
+      session_id: sessionId
+    });
   } catch (error) {
     console.error("❌ Save session error:", error);
     return res.status(500).json({ error: "Internal server error" });

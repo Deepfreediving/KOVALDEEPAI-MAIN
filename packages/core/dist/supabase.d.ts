@@ -53,3 +53,4 @@ export interface Database {
 }
 export declare function createSupabaseClient(url: string, anonKey: string): SupabaseClient<Database>;
 export declare function createSupabaseClientFromEnv(): SupabaseClient<Database>;
+export declare function createSupabaseAdminClient(): SupabaseClient<Database>;
