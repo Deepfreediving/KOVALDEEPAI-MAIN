@@ -1,4 +1,4 @@
-import { createSupabaseClientFromEnv } from '@koval-ai/core/supabase';
+import { createSupabaseClientFromEnv } from '@/lib/supabase';
 
 interface FetchWithAuthOptions extends RequestInit {
   requireAuth?: boolean;

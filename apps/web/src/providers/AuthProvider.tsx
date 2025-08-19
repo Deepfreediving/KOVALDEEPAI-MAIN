@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { createSupabaseClientFromEnv } from '@koval-ai/core/supabase';
+import { createSupabaseClientFromEnv } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;

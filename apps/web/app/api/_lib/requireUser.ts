@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Database } from '@koval-ai/core/supabase';
+import { Database } from '@/lib/supabase';
 
 /**
  * Utility to verify Supabase JWT and extract user from API routes

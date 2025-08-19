@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { createSupabaseClientFromEnv } from '@koval-ai/core/supabase';
+import { createSupabaseClientFromEnv } from '@/lib/supabase';
 
 export default function Login() {
   const [email, setEmail] = useState('daniel@kovaldeepai.com');

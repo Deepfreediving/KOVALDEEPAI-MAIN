@@ -1,17 +1,24 @@
-import { UserMemoryService, createSupabaseClientFromEnv, UserMemory } from "@koval-ai/core";
+import { createSupabaseClientFromEnv, UserMemory } from "@/lib/supabase";
 
-// Initialize Supabase client and user memory service
+// Initialize Supabase client
 const supabase = createSupabaseClientFromEnv();
-const userMemoryService = new UserMemoryService(supabase);
 
 /**
  * Fetch UserMemory document for a specific userId
  */
 export async function fetchUserMemory(userId: string) {
   try {
-    const memories = await userMemoryService.getMemories(userId);
+    const { data: memories, error } = await supabase
+      .from('user_memory')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (error) {
+      throw error;
+    }
+    
     // Convert to format expected by existing code
-    if (memories.length > 0) {
+    if (memories && memories.length > 0) {
       return {
         _id: userId, // Use userId as the document ID
         userId: userId,
@@ -44,16 +51,34 @@ export async function saveUserMemory(userId: string, newData: any) {
     if (newData.logs && Array.isArray(newData.logs)) {
       // Save dive logs as memory
       for (const log of newData.logs.slice(-10)) { // Keep only last 10
-        await userMemoryService.saveMemory(userId, 'dive_log', log);
+        await supabase
+          .from('user_memory')
+          .insert({
+            user_id: userId,
+            memory_type: 'dive_log',
+            content: log
+          });
       }
     }
 
     if (newData.preferences) {
-      await userMemoryService.saveMemory(userId, 'preference', newData.preferences);
+      await supabase
+        .from('user_memory')
+        .insert({
+          user_id: userId,
+          memory_type: 'preference',
+          content: newData.preferences
+        });
     }
 
     if (newData.goals) {
-      await userMemoryService.saveMemory(userId, 'goal', newData.goals);
+      await supabase
+        .from('user_memory')
+        .insert({
+          user_id: userId,
+          memory_type: 'session', // Changed from 'goal' to valid enum value
+          content: newData.goals
+        });
     }
 
     return true;
