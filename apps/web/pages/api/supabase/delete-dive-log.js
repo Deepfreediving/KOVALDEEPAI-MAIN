@@ -1,12 +1,8 @@
 // Supabase delete dive log API endpoint - ADMIN ONLY
-import { createClient } from '@supabase/supabase-js'
+import { getServerSupabaseClient } from '@/lib/supabaseServerClient'
 
-// Use service key for admin operations (bypasses RLS)
-// Temporarily using anon key since service role key is not configured
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Use singleton client to prevent multiple instances
+const supabase = getServerSupabaseClient();
 
 export default async function handler(req, res) {
   try {

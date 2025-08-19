@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { createSupabaseClientFromEnv } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 interface AuthContextType {
   user: User | null;
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createSupabaseClientFromEnv();
+  const supabase = getSupabaseClient();
 
   useEffect(() => {
     // Handle case where Supabase is not available

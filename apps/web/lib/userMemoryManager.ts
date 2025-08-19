@@ -1,13 +1,18 @@
-import { createSupabaseClientFromEnv, UserMemory } from "@/lib/supabase";
+import { getSupabaseClient, UserMemory } from "@/lib/supabaseClient";
 
 // Initialize Supabase client
-const supabase = createSupabaseClientFromEnv();
+const supabase = getSupabaseClient();
 
 /**
  * Fetch UserMemory document for a specific userId
  */
 export async function fetchUserMemory(userId: string) {
   try {
+    if (!supabase) {
+      console.warn('Supabase not available for memory fetch');
+      return null;
+    }
+    
     const { data: memories, error } = await supabase
       .from('user_memory')
       .select('*')
@@ -47,6 +52,11 @@ export async function fetchUserMemory(userId: string) {
  */
 export async function saveUserMemory(userId: string, newData: any) {
   try {
+    if (!supabase) {
+      console.warn('Supabase not available for memory save');
+      return false;
+    }
+    
     // Save different types of memory separately
     if (newData.logs && Array.isArray(newData.logs)) {
       // Save dive logs as memory

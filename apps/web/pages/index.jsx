@@ -787,6 +787,17 @@ export default function Index() {
     }
   }, [userId, loadDiveLogs]);
 
+  // ✅ SESSION DELETE HANDLER
+  const handleDeleteSession = useCallback((index) => {
+    const updated = sessionsList.filter((_, i) => i !== index);
+    setSessionsList(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+      localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
+    }
+    console.log("🗑️ Session deleted");
+  }, [sessionsList, userId]);
+
   // ✅ MEMOIZED PROPS FOR PERFORMANCE
   const sidebarProps = useMemo(
     () => ({
@@ -936,16 +947,6 @@ export default function Index() {
       };
     }
   }, []);
-
-  const handleDeleteSession = useCallback((index) => {
-    const updated = sessionsList.filter((_, i) => i !== index);
-    setSessionsList(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
-      localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
-    }
-    console.log("🗑️ Session deleted");
-  }, [sessionsList, userId]);
 
   return (
     <main

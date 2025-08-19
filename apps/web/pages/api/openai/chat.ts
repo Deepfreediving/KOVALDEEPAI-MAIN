@@ -31,8 +31,8 @@ function getDepthRange(depth: number): string {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ FIX: Use local development URL for internal API calls
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // ✅ FIX: Use runtime port detection for internal API calls
+    const baseUrl = `http://localhost:3000`;
 
     console.log(
       `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
@@ -69,8 +69,8 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string): Promise<string[]> {
   if (!userId || userId.startsWith("guest")) return [];
   try {
-    // ✅ FIX: Use local development URL for internal API calls
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // ✅ FIX: Use runtime port detection for internal API calls
+    const baseUrl = `http://localhost:3000`;
 
     console.log(
       `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
@@ -443,8 +443,8 @@ export default async function handler(
     // ✅ Load actual dive logs for detailed analysis
     let localDiveLogs = [];
     try {
-      // ✅ FIX: Use local development URL for internal API calls
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      // ✅ FIX: Use runtime port detection for internal API calls
+      const baseUrl = `http://localhost:3000`;
 
       console.log(
         `🗃️ Loading detailed dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,

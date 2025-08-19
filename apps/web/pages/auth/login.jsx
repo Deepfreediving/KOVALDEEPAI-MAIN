@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { createSupabaseClientFromEnv } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('daniel@kovaldeepai.com');
@@ -9,7 +9,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const router = useRouter();
-  const supabase = createSupabaseClientFromEnv();
+  const supabase = getSupabaseClient();
 
   const handleAuth = async (e) => {
     e.preventDefault();

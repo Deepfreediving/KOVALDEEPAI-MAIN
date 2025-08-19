@@ -1,4 +1,4 @@
-import { createSupabaseClientFromEnv } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 interface FetchWithAuthOptions extends RequestInit {
   requireAuth?: boolean;
@@ -13,7 +13,12 @@ export async function fetchWithAuth(
 ): Promise<Response> {
   const { requireAuth = true, ...fetchOptions } = options;
   
-  const supabase = createSupabaseClientFromEnv();
+  const supabase = getSupabaseClient();
+  
+  if (!supabase) {
+    throw new Error('Supabase client not available');
+  }
+  
   const { data: { session } } = await supabase.auth.getSession();
   
   if (requireAuth && !session?.access_token) {
