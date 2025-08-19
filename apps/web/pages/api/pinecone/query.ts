@@ -1,7 +1,7 @@
 // 📂 pages/api/query.ts
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { queryVectors } from "../../../lib/pineconeClient";
+import { queryVectors } from "@/lib/pineconeClient";
 import OpenAI from "openai";
 
 // Define or import PineconeRecord and RecordMetadata types

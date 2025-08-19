@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUser } from '../../_lib/requireUser';
+import { requireUser } from '@/app/api/_lib/requireUser';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({

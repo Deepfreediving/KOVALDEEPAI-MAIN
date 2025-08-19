@@ -3,7 +3,7 @@
  * Upgrades temporary user to authenticated Wix member
  */
 
-import { upgradeTemporaryUserToAuthenticated } from "../../../utils/userIdUtils";
+import { upgradeTemporaryUserToAuthenticated } from "@/utils/userIdUtils";
 
 // CORS configuration for Wix domain
 const corsHeaders = {

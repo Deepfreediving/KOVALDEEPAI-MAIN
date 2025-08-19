@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "../src/providers/AuthProvider";
-import { fetchWithAuth } from "../src/lib/fetchWithAuth";
+import { useAuth } from "@/src/providers/AuthProvider";
+import { fetchWithAuth } from "@/src/lib/fetchWithAuth";
 
 export default function ModernDiveJournalDisplay({
   darkMode,

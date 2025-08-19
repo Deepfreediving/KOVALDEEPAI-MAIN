@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
-import { useAuth } from "../src/providers/AuthProvider";
-import { fetchWithAuth } from "../src/lib/fetchWithAuth";
-import ChatMessages from "../components/ChatMessages";
-import ChatInput from "../components/ChatInput";
-import Sidebar from "../components/Sidebar";
-import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
+import { useAuth } from "@/src/providers/AuthProvider";
+import { fetchWithAuth } from "@/src/lib/fetchWithAuth";
+import ChatMessages from "@/components/ChatMessages";
+import ChatInput from "@/components/ChatInput";
+import Sidebar from "@/components/Sidebar";
+import DiveJournalSidebarCard from "@/components/DiveJournalSidebarCard";
 
 export default function ModernIndex() {
   const router = useRouter();

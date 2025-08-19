@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
-import ChatMessages from "../components/ChatMessages";
-import ChatInput from "../components/ChatInput";
-import Sidebar from "../components/Sidebar";
-import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
-// import apiClient from "../utils/apiClient"; // Currently unused
-import { upgradeTemporaryUserToAuthenticated } from "../utils/userIdUtils";
+import ChatMessages from "@/components/ChatMessages";
+import ChatInput from "@/components/ChatInput";
+import Sidebar from "@/components/Sidebar";
+import DiveJournalSidebarCard from "@/components/DiveJournalSidebarCard";
+// import apiClient from "@/utils/apiClient"; // Currently unused
+import { upgradeTemporaryUserToAuthenticated } from "@/utils/userIdUtils";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",

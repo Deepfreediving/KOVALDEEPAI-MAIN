@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUser } from '../_lib/requireUser';
+import { requireUser } from '@/app/api/_lib/requireUser';
 
 export async function GET(request: NextRequest) {
   try {

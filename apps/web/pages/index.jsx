@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
-import ChatMessages from "../components/ChatMessages";
-import ChatInput from "../components/ChatInput";
-import Sidebar from "../components/Sidebar";
-import DiveJournalSidebarCard from "../components/DiveJournalSidebarCard";
-import { setAdminSession, getAdminUserId, ADMIN_EMAIL } from "../utils/adminAuth";
+import ChatMessages from "@/components/ChatMessages";
+import ChatInput from "@/components/ChatInput";
+import Sidebar from "@/components/Sidebar";
+import DiveJournalSidebarCard from "@/components/DiveJournalSidebarCard";
+import { setAdminSession, getAdminUserId, ADMIN_EMAIL } from "@/utils/adminAuth";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
