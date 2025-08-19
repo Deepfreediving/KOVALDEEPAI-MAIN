@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { tempUserId, wixMemberId, wixAccessToken, sessionId, bufferData } =
+    const { tempUserId, wixMemberId, sessionId, bufferData } =
       req.body;
 
     // Validate required fields
@@ -79,16 +79,16 @@ export default async function handler(req, res) {
       }
     }
 
-    // Step 3: Create authenticated session record
-    const sessionInfo = {
-      userId: upgradeResult.newUserId,
-      wixMemberId,
-      sessionId,
-      upgradedFrom: tempUserId,
-      upgradedAt: new Date().toISOString(),
-      processedBufferItems,
-      ip: req.headers["x-forwarded-for"] || req.connection.remoteAddress,
-    };
+    // Step 3: Create authenticated session record (for future use)
+    // const sessionInfo = {
+    //   userId: upgradeResult.newUserId,
+    //   wixMemberId,
+    //   sessionId,
+    //   upgradedFrom: tempUserId,
+    //   upgradedAt: new Date().toISOString(),
+    //   processedBufferItems,
+    //   ip: req.headers["x-forwarded-for"] || req.connection.remoteAddress,
+    // };
 
     console.log("✅ Session upgrade successful:", {
       tempUserId,
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
  * Process a single buffered item
  */
 async function processBufferedItem(bufferedItem, wixMemberId) {
-  const { operation, data, timestamp } = bufferedItem;
+  const { operation, data } = bufferedItem;
 
   console.log("🔄 Processing buffered operation:", operation, bufferedItem.id);
 
@@ -191,11 +191,11 @@ async function processDiveLogSave(diveLogData, wixMemberId) {
  */
 async function processChatMessage(messageData, wixMemberId) {
   // Update the message data with the authenticated user ID
-  const updatedData = {
-    ...messageData,
-    userId: wixMemberId,
-    processedFromBuffer: true,
-  };
+  // const updatedData = {
+  //   ...messageData,
+  //   userId: wixMemberId,
+  //   processedFromBuffer: true,
+  // };
 
   console.log("💬 Processing buffered chat message for:", wixMemberId);
 
@@ -208,11 +208,11 @@ async function processChatMessage(messageData, wixMemberId) {
  */
 async function processImageUpload(imageData, wixMemberId) {
   // Update the image data with the authenticated user ID
-  const updatedData = {
-    ...imageData,
-    userId: wixMemberId,
-    processedFromBuffer: true,
-  };
+  // const updatedData = {
+  //   ...imageData,
+  //   userId: wixMemberId,
+  //   processedFromBuffer: true,
+  // };
 
   console.log("🖼️ Processing buffered image upload for:", wixMemberId);
 

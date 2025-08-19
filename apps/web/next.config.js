@@ -32,7 +32,8 @@ const nextConfig = {
 
   // ✅ Performance optimizations
   experimental: {
-    optimizeCss: true,
+    // Temporarily disabled for Vercel deployment
+    // optimizeCss: true,
     scrollRestoration: true,
   },
 

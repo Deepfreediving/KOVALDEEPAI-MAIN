@@ -28,7 +28,8 @@
     "tesseract.js": "^5.1.1",
     "@pinecone-database/pinecone": "^3.0.3",
     "formidable": "^3.5.1",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "critters": "^0.0.20"
   },
   "devDependencies": {
     "eslint": "^8",

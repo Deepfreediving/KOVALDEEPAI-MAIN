@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { extractDiveText } from "@/utils/extractTextFromImage";
 
 export default function FilePreview({
@@ -27,6 +27,7 @@ export default function FilePreview({
         performOCR(file, index);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
 
   const performOCR = async (file, index) => {
@@ -153,7 +154,7 @@ export default function FilePreview({
               <div
                 className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}
               >
-                "{result.preview}"
+                &quot;{result.preview}&quot;
               </div>
             </div>
           ))}
