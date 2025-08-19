@@ -1,5 +1,4 @@
 const path = require('path');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const isAnalyze = process.env.BUNDLE_ANALYZE === 'true';
 
@@ -10,13 +9,18 @@ const getPlugins = () => {
   const plugins = [];
 
   if (isAnalyze) {
-    plugins.push(
-      new BundleAnalyzerPlugin({
-        analyzerMode: 'static',
-        openAnalyzer: false,
-        reportFilename: 'bundle-report.html',
-      })
-    );
+    try {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+      plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: false,
+          reportFilename: 'bundle-report.html',
+        })
+      );
+    } catch (error) {
+      console.warn('webpack-bundle-analyzer not installed, skipping bundle analysis');
+    }
   }
 
   return plugins;
