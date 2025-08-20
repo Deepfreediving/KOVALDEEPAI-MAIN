@@ -52,6 +52,7 @@ export default function ChatBox({
               width={64}
               height={64}
               className="w-16 h-16 rounded-full mx-auto mb-4"
+              unoptimized
             />
             <h1 className="text-2xl font-semibold mb-2">Admin Access Required</h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -250,6 +251,7 @@ export default function ChatBox({
               width={40}
               height={40}
               className="w-10 h-10 rounded-full"
+              unoptimized
             />
             <div>
               <h1 className="text-xl font-semibold">Koval AI Admin Chat</h1>

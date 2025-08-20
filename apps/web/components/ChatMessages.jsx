@@ -42,6 +42,7 @@ export default function ChatMessages({
                     width={64}
                     height={64}
                     className="w-16 h-16 object-contain"
+                    unoptimized
                   />
                 ) : (
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -80,6 +81,7 @@ export default function ChatMessages({
                   width={64}
                   height={64}
                   className="w-16 h-16 object-contain"
+                  unoptimized
                 />
               </div>
               <div className="flex-1 min-w-0">

@@ -37,6 +37,7 @@ export default function Sidebar({
           height={120}
           className="h-30 w-48"
           priority
+          unoptimized
         />
       </div>
       

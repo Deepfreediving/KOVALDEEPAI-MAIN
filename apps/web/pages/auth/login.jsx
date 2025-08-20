@@ -58,6 +58,7 @@ export default function Login() {
               height={384}
               className="h-96 w-auto"
               priority
+              unoptimized
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
