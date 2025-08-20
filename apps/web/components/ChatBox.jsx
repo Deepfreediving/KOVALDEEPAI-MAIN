@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
@@ -45,9 +46,11 @@ export default function ChatBox({
           }`}
         >
           <div className="mb-6">
-            <img
+            <Image
               src="/deeplogo.jpg"
               alt="Logo"
+              width={64}
+              height={64}
               className="w-16 h-16 rounded-full mx-auto mb-4"
             />
             <h1 className="text-2xl font-semibold mb-2">Admin Access Required</h1>
@@ -241,9 +244,11 @@ export default function ChatBox({
           }`}
         >
           <div className="flex items-center gap-4">
-            <img
+            <Image
               src="/deeplogo.jpg"
               alt="Logo"
+              width={40}
+              height={40}
               className="w-10 h-10 rounded-full"
             />
             <div>

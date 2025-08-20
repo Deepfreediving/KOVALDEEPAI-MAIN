@@ -1,4 +1,6 @@
 // components/ChatMessages.jsx
+import Image from "next/image";
+
 export default function ChatMessages({
   messages,
   BOT_NAME,
@@ -34,9 +36,11 @@ export default function ChatMessages({
               {/* Avatar */}
               <div className="flex-shrink-0">
                 {m.role === "assistant" ? (
-                  <img 
-                    src="/daniel1 copy.png" 
+                  <Image 
+                    src="/daniel-avatar.png" 
                     alt="Daniel Avatar" 
+                    width={64}
+                    height={64}
                     className="w-16 h-16 object-contain"
                   />
                 ) : (
@@ -70,9 +74,11 @@ export default function ChatMessages({
           <div className="max-w-3xl mx-auto px-4 py-6">
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
-                <img 
-                  src="/daniel1 copy.png" 
+                <Image 
+                  src="/daniel-avatar.png" 
                   alt="Daniel Avatar" 
+                  width={64}
+                  height={64}
                   className="w-16 h-16 object-contain"
                 />
               </div>

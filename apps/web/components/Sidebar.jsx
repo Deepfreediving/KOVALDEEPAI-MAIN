@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import Image from "next/image";
 
 export default function Sidebar({
   sessionName,
@@ -29,10 +30,13 @@ export default function Sidebar({
     >
       {/* Koval AI Logo at top of sidebar */}
       <div className="p-2 pt-1 flex justify-center">
-        <img 
-          src="/Kovalailogo copy.png" 
+        <Image 
+          src="/koval-logo.png" 
           alt="Koval AI Logo" 
+          width={192}
+          height={120}
           className="h-30 w-48"
+          priority
         />
       </div>
       

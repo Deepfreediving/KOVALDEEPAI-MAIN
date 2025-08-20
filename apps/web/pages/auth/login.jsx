@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function Login() {
@@ -50,10 +51,13 @@ export default function Login() {
         <div>
           {/* Koval AI Logo */}
           <div className="flex justify-start mb-6 -ml-8">
-            <img 
-              src="/Kovalailogo copy.png" 
+            <Image 
+              src="/koval-logo.png" 
               alt="Koval AI Logo" 
+              width={384}
+              height={384}
               className="h-96 w-auto"
+              priority
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
