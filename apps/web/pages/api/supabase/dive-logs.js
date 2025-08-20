@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       }
 
       const { data: diveLogs, error } = await supabase
-        .from('dive_log')
+        .from('dive_logs')
         .select('*')
         .eq('user_id', final_user_id)
         .order('date', { ascending: false })

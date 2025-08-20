@@ -20,15 +20,17 @@ export default async function handler(req, res) {
     if (method === 'POST') {
       console.log('📝 Save dive log request:', req.body)
       
-      const { diveLogData, adminUserId, nickname } = req.body
+      // ✅ Handle both formats: direct dive log data or wrapped in diveLogData
+      let diveLogData = req.body.diveLogData || req.body;
       
       // ✅ ADMIN ONLY: Use fixed admin user ID
       const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479' // Fixed admin UUID
       
       console.log(`💾 Saving dive log for admin user: ${ADMIN_USER_ID}`)
+      console.log('📝 Dive log data received:', diveLogData)
 
       if (!diveLogData) {
-        return res.status(400).json({ error: 'diveLogData is required' })
+        return res.status(400).json({ error: 'Dive log data is required' })
       }
 
       // Helper function to convert values

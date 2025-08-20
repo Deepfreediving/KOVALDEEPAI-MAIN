@@ -4,7 +4,7 @@ import ChatMessages from "@/components/ChatMessages";
 import ChatInput from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
 import DiveJournalDisplay from "@/components/DiveJournalDisplay";
-import { setAdminSession, getAdminUserId, ADMIN_EMAIL } from "@/utils/adminAuth";
+import { getAdminUserId } from "@/utils/adminAuth";
 import { supabase } from "@/lib/supabaseClient";
 
 const API_ROUTES = {
@@ -54,12 +54,6 @@ export default function Index() {
   const [profile, setProfile] = useState({});
   const [diveLogs, setDiveLogs] = useState([]);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-  const [loadingConnections, setLoadingConnections] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState({
-    supabase: "⏳ Checking...",
-    openai: "⏳ Checking...",
-    pinecone: "⏳ Checking...",
-  });
 
   // Dive journal state
   const [diveJournalOpen, setDiveJournalOpen] = useState(false);
@@ -120,8 +114,17 @@ export default function Index() {
     }
   };
   const getUserIdentifier = useCallback(() => {
+    // Use the actual authenticated user's ID if available
+    if (user?.id) {
+      return user.id;
+    }
+    // Fallback to profile userId if available
+    if (profile?.userId) {
+      return profile.userId;
+    }
+    // Last resort fallback (should rarely be used)
     return getAdminUserId();
-  }, []);
+  }, [user, profile]);
 
   // ✅ SUPABASE AUTHENTICATION
   useEffect(() => {
@@ -152,24 +155,11 @@ export default function Index() {
             });
             setIsAuthenticating(false);
           } else {
-            // No session - redirect to login or use guest mode
+            // No session - redirect to login
             console.log("❌ No session found, redirecting to login");
-            // For now, fallback to admin mode for development
-            setAdminSession();
-            const adminUserId = getAdminUserId();
-            setUserId(adminUserId);
-            setProfile({
-              userId: adminUserId,
-              firstName: 'Daniel',
-              lastName: 'Koval', 
-              nickname: 'Daniel Koval (Admin)',
-              email: ADMIN_EMAIL,
-              isAdmin: true,
-              isInstructor: true,
-              pb: 120,
-              source: 'admin'
-            });
             setIsAuthenticating(false);
+            router.push('/auth/login');
+            return;
           }
         }
         
@@ -302,29 +292,6 @@ export default function Index() {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
-  // ✅ CONNECTION CHECK
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        // Simple connection check - Supabase migrated
-        const checks = {
-          openai: "✅ Connected",
-          pinecone: "✅ Connected",
-          supabase: "✅ Connected",
-        };
-        if (isMounted) setConnectionStatus(checks);
-      } catch (error) {
-        console.warn("⚠️ Connection check failed:", error);
-      } finally {
-        if (isMounted) setLoadingConnections(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
 
 
@@ -501,14 +468,14 @@ export default function Index() {
     setLoadingDiveLogs(true);
     try {
       console.log(
-        `🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?nickname=${currentUserId}`,
+        `🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?userId=${currentUserId}`,
       );
       const response = await fetch(
-        `${API_ROUTES.GET_DIVE_LOGS}?nickname=${encodeURIComponent(currentUserId)}`,
+        `${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(currentUserId)}`,
       );
       if (response.ok) {
         const data = await response.json();
-        const remoteLogs = data.logs || [];
+        const remoteLogs = data.diveLogs || data.logs || [];
         console.log(`🌐 Remote logs found: ${remoteLogs.length}`);
 
         // Merge local and remote logs (remove duplicates)
@@ -956,31 +923,9 @@ export default function Index() {
     >
       {/* ✅ SIDEBAR - Hidden in embedded mode on mobile, smaller on desktop */}
       <div
-        className={`${isEmbedded ? "w-[250px] hidden sm:flex" : "w-[320px]"} h-full overflow-y-auto border-r flex flex-col justify-between ${
-          darkMode ? "border-gray-700" : "border-gray-300"
-        }`}
+        className={`${isEmbedded ? "w-[250px] hidden sm:flex" : "w-[320px]"} h-full overflow-y-auto flex flex-col`}
       >
         <Sidebar {...sidebarProps} />
-
-        {/* ✅ CONNECTION STATUS - Simplified in embedded mode */}
-        {!isEmbedded && (
-          <div
-            className={`mt-4 mb-4 mx-4 flex space-x-4 text-xl px-3 py-2 rounded-lg ${
-              darkMode ? "bg-gray-800" : "bg-gray-100"
-            }`}
-          >
-            {!loadingConnections && connectionStatus.openai?.includes("✅") && (
-              <span title="AI Connected">🤖</span>
-            )}
-            {!loadingConnections &&
-              connectionStatus.pinecone?.includes("✅") && (
-                <span title="Data Connected">🌲</span>
-              )}
-            {!loadingConnections && connectionStatus.supabase?.includes("✅") && (
-              <span title="Supabase Database Connected">🗄️</span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ✅ MAIN CHAT AREA */}
@@ -1077,6 +1022,8 @@ export default function Index() {
           onDiveLogSaved={handleDiveLogSaved}
           onDiveLogDeleted={handleDiveLogDeleted}
           onRefreshDiveLogs={loadDiveLogs}
+          diveLogs={diveLogs}
+          loadingDiveLogs={loadingDiveLogs}
         />
       )}
 

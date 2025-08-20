@@ -21,10 +21,10 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`w-[260px] h-screen border-r flex flex-col ${
+      className={`w-[260px] h-screen flex flex-col ${
         darkMode
-          ? "bg-gray-900 text-white border-gray-700"
-          : "bg-gray-50 text-black border-gray-200"
+          ? "bg-gray-900 text-white"
+          : "bg-gray-50 text-black"
       }`}
     >
       <div className={`p-3 border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
@@ -119,7 +119,7 @@ export default function Sidebar({
                       <div className={`text-xs px-1.5 py-0.5 rounded ${
                         darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"
                       }`}>
-                        {log.reachedDepth || log.targetDepth}m
+                        {log.reached_depth || log.reachedDepth || log.target_depth || log.targetDepth || 0}m
                       </div>
                     </div>
                   </div>

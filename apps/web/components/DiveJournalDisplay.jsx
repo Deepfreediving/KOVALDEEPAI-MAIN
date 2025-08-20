@@ -13,6 +13,8 @@ export default function DiveJournalDisplay({
   onDiveLogDeleted, // 🚀 NEW: Callback when dive log is deleted
   onRefreshDiveLogs, // 🚀 NEW: Callback to refresh dive logs in parent
   editingLog = null, // 🚀 NEW: Log to edit (pre-fills form)
+  diveLogs = [], // 🚀 NEW: Dive logs passed from parent
+  loadingDiveLogs = false, // 🚀 NEW: Loading state from parent
   // onEditDiveLog is available but not currently used in this component
 }) {
   const [logs, setLogs] = useState([]);
@@ -77,28 +79,14 @@ export default function DiveJournalDisplay({
     }
   }, [editingLog]);
 
+  // Update logs when parent passes new data
   useEffect(() => {
-    console.log("🔄 DiveJournalDisplay: Refreshing logs from localStorage...", {
-      adminUserId: ADMIN_USER_ID,
-      refreshKey,
-    });
-    try {
-      const stored = localStorage.getItem(`diveLogs_${ADMIN_USER_ID}`); // ✅ Updated: Use ADMIN_USER_ID
-      if (stored) {
-        const parsedLogs = JSON.parse(stored);
-        setLogs(parsedLogs);
-        console.log(
-          `✅ DiveJournalDisplay: Loaded ${parsedLogs.length} logs from localStorage`,
-        );
-      } else {
-        setLogs([]);
-        console.log("📭 DiveJournalDisplay: No stored logs found");
-      }
-    } catch (error) {
-      console.error("❌ DiveJournalDisplay: Failed to load logs:", error);
-      setLogs([]);
-    }
-  }, [refreshKey]);
+    console.log("🔄 DiveJournalDisplay: Received dive logs from parent:", diveLogs.length);
+    setLogs(diveLogs);
+  }, [diveLogs]);
+
+  // Use diveLogs directly instead of local state for display
+  const displayLogs = diveLogs.length > 0 ? diveLogs : logs;
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -789,8 +777,9 @@ export default function DiveJournalDisplay({
   // If not open and not embedded, don't render
   if (!isEmbedded && !isOpen) return null;
 
-  // Sort logs
-  const sortedLogs = [...logs].sort((a, b) => {
+  // Sort logs - use diveLogs from parent or fallback to local state
+  const logsToSort = diveLogs.length > 0 ? diveLogs : logs;
+  const sortedLogs = [...logsToSort].sort((a, b) => {
     switch (sortBy) {
       case "depth":
         return (b.reachedDepth || 0) - (a.reachedDepth || 0);
@@ -845,7 +834,16 @@ export default function DiveJournalDisplay({
           {/* Saved Dive Logs Tab */}
           {activeTab === "saved-logs" && (
             <div className="space-y-4">
-              {!logs.length ? (
+              {loadingDiveLogs ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">⏳</div>
+                  <p
+                    className={`text-lg font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+                  >
+                    Loading dive logs...
+                  </p>
+                </div>
+              ) : !logsToSort.length ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">🤿</div>
                   <p
@@ -867,8 +865,8 @@ export default function DiveJournalDisplay({
                     <div
                       className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}
                     >
-                      <span className="font-medium">{logs.length}</span> dive
-                      {logs.length !== 1 ? "s" : ""} logged
+                      <span className="font-medium">{logsToSort.length}</span> dive
+                      {logsToSort.length !== 1 ? "s" : ""} logged
                     </div>
                     <select
                       value={sortBy}
@@ -1435,7 +1433,16 @@ export default function DiveJournalDisplay({
               {/* Saved Dive Logs Tab Content - Same as embedded */}
               {activeTab === "saved-logs" && (
                 <div className="space-y-4">
-                  {!logs.length ? (
+                  {loadingDiveLogs ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">⏳</div>
+                      <p
+                        className={`text-lg font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+                      >
+                        Loading dive logs...
+                      </p>
+                    </div>
+                  ) : !logs.length ? (
                     <div className="text-center py-8">
                       <div className="text-4xl mb-4">🤿</div>
                       <p
