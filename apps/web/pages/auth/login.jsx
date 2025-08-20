@@ -57,7 +57,6 @@ export default function Login() {
               width={384}
               height={384}
               className="h-96 w-auto"
-              priority
               unoptimized
             />
           </div>
