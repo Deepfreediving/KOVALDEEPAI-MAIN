@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
 import handleCors from "@/utils/handleCors";
+import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
 // import { fetchUserMemory, saveUserMemory } from "@/lib/userMemoryManager"; // Disabled for now - using admin-only auth
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -26,6 +27,50 @@ function getDepthRange(depth: number): string {
   if (!depth || depth <= 0) return "10m";
   if (depth > 100) return "100m";
   return `${Math.floor(depth / 10) * 10}m`;
+}
+
+// ✅ NEW: Function to get latest analyzed dive from Supabase
+async function getLatestAnalyzedDive(userId: string) {
+  try {
+    const supabase = getServerSupabaseClient();
+    
+    // Create deterministic UUID for consistency (same as dive-logs.js)
+    const crypto = require('crypto');
+    let final_user_id;
+    
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+    if (isUUID) {
+      final_user_id = userId
+    } else {
+      // Create a deterministic UUID from the user identifier
+      const hash = crypto.createHash('md5').update(userId).digest('hex');
+      final_user_id = [
+        hash.substr(0, 8),
+        hash.substr(8, 4), 
+        hash.substr(12, 4),
+        hash.substr(16, 4),
+        hash.substr(20, 12)
+      ].join('-');
+    }
+
+    const { data: diveLogs, error } = await supabase
+      .from('dive_logs')
+      .select('*')
+      .eq('user_id', final_user_id)
+      .not('ai_analysis', 'is', null)
+      .order('date', { ascending: false })
+      .limit(3); // Get last 3 analyzed dives
+
+    if (error) {
+      console.error('❌ Supabase error getting analyzed dives:', error);
+      return [];
+    }
+
+    return diveLogs || [];
+  } catch (error) {
+    console.error('❌ Error loading analyzed dives from Supabase:', error);
+    return [];
+  }
 }
 
 async function queryPinecone(query: string): Promise<string[]> {
@@ -123,7 +168,13 @@ function generateSystemPrompt(
 - Address the user personally as a valued member with access to exclusive training
 ${hasDiveLogs ? "- When dive log data is present, focus your response on analyzing their actual performance and providing personalized improvement recommendations" : ""}
 
-🚫 FORBIDDEN:
+� DIVE LOG AUDIT FEATURE:
+- When appropriate (especially after discussing dive performance issues, patterns, or technical concerns), offer: "Do you want me to do a dive journal evaluation of patterns or issues that can be causing your problems for a more technical and in-depth evaluation? Just respond with 'yes' if you'd like me to proceed."
+- Only offer this for users who have dive logs and when it would be genuinely helpful
+- The audit provides technical analysis of speeds, risk factors, patterns, and detailed coaching suggestions
+- Wait for the user to explicitly respond "yes" before the audit will be triggered
+
+�🚫 FORBIDDEN:
 - Making up training protocols not in the knowledge base
 - Combining different methodologies
 - Providing generic freediving advice when Daniel's specific approach exists
@@ -440,6 +491,15 @@ export default async function handler(
     const contextChunks = await queryPinecone(message);
     const diveContext = await queryDiveLogs(userId);
 
+    // ✅ Load analyzed dive logs from Supabase first
+    let analyzedDiveLogs = [];
+    try {
+      analyzedDiveLogs = await getLatestAnalyzedDive(userIdentifier);
+      console.log(`📊 Found ${analyzedDiveLogs.length} analyzed dives in Supabase`);
+    } catch (err) {
+      console.warn("⚠️ Could not load analyzed dive logs from Supabase:", err);
+    }
+
     // ✅ Load actual dive logs for detailed analysis
     let localDiveLogs = [];
     try {
@@ -464,9 +524,10 @@ export default async function handler(
       console.warn("⚠️ Could not load detailed dive logs:", err);
     }
 
-    // ✅ Use local dive logs OR request dive logs, prioritizing local
-    const allDiveLogs =
-      localDiveLogs.length > 0 ? localDiveLogs : diveLogs || [];
+    // ✅ Prioritize analyzed dive logs from Supabase, fallback to local/request
+    const allDiveLogs = analyzedDiveLogs.length > 0 ? analyzedDiveLogs : 
+                       localDiveLogs.length > 0 ? localDiveLogs : 
+                       diveLogs || [];
 
     // ✅ Process dive logs for context (using both local and request dive logs)
     let diveLogContext = "";
@@ -521,6 +582,59 @@ ${recentDiveLogs}
     console.log(
       `📊 Has dive logs flag: ${!!(allDiveLogs && allDiveLogs.length > 0)}`,
     );
+
+    // ✅ NEW: Check if user is responding "yes" to audit offer
+    const lowerMessage = message.toLowerCase().trim();
+    const isAuditResponse = (lowerMessage === 'yes' || 
+                           (lowerMessage.includes('yes') && (
+                             lowerMessage.includes('audit') || 
+                             lowerMessage.includes('evaluation') ||
+                             lowerMessage.includes('journal') ||
+                             lowerMessage.includes('analyze') ||
+                             lowerMessage.includes('technical')
+                           ))) && 
+                           (allDiveLogs && allDiveLogs.length > 0);
+
+    if (isAuditResponse) {
+      console.log('🔍 User requesting dive log audit - processing...');
+      
+      try {
+        // Call the audit request handler
+        const baseUrl = `http://localhost:3000`;
+        const auditResponse = await fetch(`${baseUrl}/api/chat/audit-request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: userIdentifier,
+            message: message
+          }),
+        });
+
+        if (auditResponse.ok) {
+          const auditData = await auditResponse.json();
+          
+          if (auditData.success && auditData.auditMessage) {
+            console.log('✅ Audit completed successfully');
+            return res.status(200).json({
+              assistantMessage: { role: "assistant", content: auditData.auditMessage },
+              metadata: {
+                userLevel,
+                depthRange,
+                contextChunks: contextChunks.length,
+                diveContext: diveContext.length,
+                processingTime: Date.now() - startTime,
+                embedMode,
+                auditPerformed: true,
+              },
+            });
+          }
+        }
+        
+        console.warn('⚠️ Audit request failed, falling back to normal chat');
+      } catch (auditError) {
+        console.warn('⚠️ Audit error, falling back to normal chat:', auditError);
+      }
+    }
 
     const assistantReply = await askWithContext(
       [...contextChunks, ...diveContext],

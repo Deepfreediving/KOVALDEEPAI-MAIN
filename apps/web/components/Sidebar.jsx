@@ -27,6 +27,15 @@ export default function Sidebar({
           : "bg-gray-50 text-black"
       }`}
     >
+      {/* Koval AI Logo at top of sidebar */}
+      <div className="p-2 pt-1 flex justify-center">
+        <img 
+          src="/Kovalailogo copy.png" 
+          alt="Koval AI Logo" 
+          className="h-30 w-48"
+        />
+      </div>
+      
       <div className={`p-3 border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
         <button
           onClick={startNewSession}

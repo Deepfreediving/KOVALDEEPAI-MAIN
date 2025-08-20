@@ -923,19 +923,19 @@ export default function Index() {
     >
       {/* ✅ SIDEBAR - Hidden in embedded mode on mobile, smaller on desktop */}
       <div
-        className={`${isEmbedded ? "w-[250px] hidden sm:flex" : "w-[320px]"} h-full overflow-y-auto flex flex-col`}
+        className={`${isEmbedded ? "w-[250px] hidden sm:flex" : "w-[320px]"} h-full overflow-y-auto flex flex-col relative z-20`}
       >
         <Sidebar {...sidebarProps} />
       </div>
 
       {/* ✅ MAIN CHAT AREA */}
       <div
-        className={`flex-1 flex flex-col ${isEmbedded ? "h-full" : "h-screen"}`}
+        className={`flex-1 flex flex-col ${isEmbedded ? "h-full" : "h-screen"} relative`}
       >
         {/* Top Bar - Compact ChatGPT-style */}
         <div
-          className={`sticky top-0 z-10 border-b ${isEmbedded ? "px-3 py-2" : "px-4 py-3"} flex justify-between items-center ${
-            darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
+          className={`sticky top-0 z-10 ${isEmbedded ? "px-3 py-2" : "px-4 py-3"} flex justify-between items-center ${
+            darkMode ? "bg-gray-900" : "bg-white"
           }`}
         >
           <div className="flex items-center space-x-3">
@@ -976,6 +976,15 @@ export default function Index() {
           </div>
         </div>
 
+        {/* Border line that flows seamlessly from sidebar */}
+        <div className={`relative ${isEmbedded ? "hidden" : ""}`}>
+          <div
+            className={`absolute left-[-320px] right-0 h-px -top-px ${
+              darkMode ? "bg-gray-700" : "bg-gray-200"
+            }`}
+          ></div>
+        </div>
+
         {/* Messages - ChatGPT-style compact layout */}
         <div className="flex-1 overflow-y-auto">
           <div className="w-full max-w-4xl mx-auto">
@@ -991,8 +1000,14 @@ export default function Index() {
         </div>
 
         {/* Chat Input - ChatGPT-style compact */}
-        <div className={`border-t ${darkMode ? "border-gray-700 bg-gray-900" : "border-gray-200 bg-gray-50"}`}>
-          <div className="w-full max-w-4xl mx-auto px-4 py-3">
+        <div className={`relative ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}>
+          {/* Background extension that goes under sidebar but behind it */}
+          <div
+            className={`absolute top-0 bottom-0 left-[-320px] right-0 z-0 ${
+              darkMode ? "bg-gray-900" : "bg-gray-50"
+            } ${isEmbedded ? "hidden" : ""}`}
+          ></div>
+          <div className="relative z-10 w-full max-w-4xl mx-auto px-4 py-3">
             <ChatInput
               input={input}
               setInput={setInput}

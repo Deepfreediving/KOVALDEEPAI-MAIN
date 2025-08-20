@@ -5,7 +5,6 @@ export default function ChatMessages({
   darkMode,
   loading,
   bottomRef,
-  userId,
 }) {
 
   return (
@@ -33,12 +32,20 @@ export default function ChatMessages({
           <div className="max-w-3xl mx-auto px-4 py-6">
             <div className="flex items-start space-x-4">
               {/* Avatar */}
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                m.role === "assistant"
-                  ? darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white"
-                  : darkMode ? "bg-purple-600 text-white" : "bg-purple-500 text-white"
-              }`}>
-                {m.role === "assistant" ? "🤿" : "👤"}
+              <div className="flex-shrink-0">
+                {m.role === "assistant" ? (
+                  <img 
+                    src="/daniel1 copy.png" 
+                    alt="Daniel Avatar" 
+                    className="w-16 h-16 object-contain"
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    darkMode ? "bg-purple-600 text-white" : "bg-purple-500 text-white"
+                  }`}>
+                    👤
+                  </div>
+                )}
               </div>
               
               {/* Message content */}
@@ -62,10 +69,12 @@ export default function ChatMessages({
         <div className={`group relative ${darkMode ? "bg-gray-800" : "bg-gray-50"}`}>
           <div className="max-w-3xl mx-auto px-4 py-6">
             <div className="flex items-start space-x-4">
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white"
-              }`}>
-                🤿
+              <div className="flex-shrink-0">
+                <img 
+                  src="/daniel1 copy.png" 
+                  alt="Daniel Avatar" 
+                  className="w-16 h-16 object-contain"
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className={`flex items-center space-x-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>

@@ -8,7 +8,6 @@ export default function DiveJournalDisplay({
   onClose,
   isEmbedded = false,
   setMessages,
-  refreshKey,
   onDiveLogSaved, // 🚀 NEW: Callback when dive log is saved
   onDiveLogDeleted, // 🚀 NEW: Callback when dive log is deleted
   onRefreshDiveLogs, // 🚀 NEW: Callback to refresh dive logs in parent
@@ -84,9 +83,6 @@ export default function DiveJournalDisplay({
     console.log("🔄 DiveJournalDisplay: Received dive logs from parent:", diveLogs.length);
     setLogs(diveLogs);
   }, [diveLogs]);
-
-  // Use diveLogs directly instead of local state for display
-  const displayLogs = diveLogs.length > 0 ? diveLogs : logs;
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -777,9 +773,8 @@ export default function DiveJournalDisplay({
   // If not open and not embedded, don't render
   if (!isEmbedded && !isOpen) return null;
 
-  // Sort logs - use diveLogs from parent or fallback to local state
-  const logsToSort = diveLogs.length > 0 ? diveLogs : logs;
-  const sortedLogs = [...logsToSort].sort((a, b) => {
+  // Sort logs
+  const sortedLogs = [...logs].sort((a, b) => {
     switch (sortBy) {
       case "depth":
         return (b.reachedDepth || 0) - (a.reachedDepth || 0);
@@ -843,7 +838,7 @@ export default function DiveJournalDisplay({
                     Loading dive logs...
                   </p>
                 </div>
-              ) : !logsToSort.length ? (
+              ) : !logs.length ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">🤿</div>
                   <p
@@ -865,8 +860,8 @@ export default function DiveJournalDisplay({
                     <div
                       className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}
                     >
-                      <span className="font-medium">{logsToSort.length}</span> dive
-                      {logsToSort.length !== 1 ? "s" : ""} logged
+                      <span className="font-medium">{logs.length}</span> dive
+                      {logs.length !== 1 ? "s" : ""} logged
                     </div>
                     <select
                       value={sortBy}
