@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { extractDiveText } from "@/utils/extractTextFromImage";
 
 export default function FilePreview({
