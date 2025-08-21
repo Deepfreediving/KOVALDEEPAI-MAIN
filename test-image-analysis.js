@@ -74,19 +74,26 @@ async function testImageAnalysis() {
     return;
   }
   
-  // Test 4: Test Supabase connection
-  console.log('\n4️⃣ Testing Supabase connection...');
+  // Test 4: Test Supabase connection with admin client
+  console.log('\n4️⃣ Testing Supabase admin connection...');
   try {
     const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!serviceRoleKey || serviceRoleKey === 'YOUR_SERVICE_ROLE_KEY_HERE') {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not properly set');
+      return;
+    }
+    
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
     
     // Test basic connection
     const { data, error } = await supabase.from('dive_logs').select('count').limit(1);
     if (error) {
-      console.error('❌ Supabase connection failed:', error.message);
+      console.error('❌ Supabase admin connection failed:', error.message);
       return;
     }
-    console.log('✅ Supabase connection working');
+    console.log('✅ Supabase admin connection working');
     
     // Test storage bucket
     const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
