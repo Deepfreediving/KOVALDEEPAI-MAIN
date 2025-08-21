@@ -56,47 +56,66 @@ async function testDiveLogs() {
     console.error('❌ Error fetching dive logs:', err.message)
   }
 
-  // Test 3: Test the same query that the API uses for user "daniel_koval"
+  // Test 3: Test the updated API logic with admin pattern detection
   try {
-    console.log('\n3️⃣ Testing userId conversion for "daniel_koval"...')
+    console.log('\n3️⃣ Testing admin pattern detection logic...')
     const crypto = require('crypto')
-    const user_identifier = 'daniel_koval'
     
-    // Create deterministic UUID (same as in the API)
-    const hash = crypto.createHash('md5').update(user_identifier).digest('hex')
-    const final_user_id = [
-      hash.substr(0, 8),
-      hash.substr(8, 4), 
-      hash.substr(12, 4),
-      hash.substr(16, 4),
-      hash.substr(20, 12)
-    ].join('-')
+    // Test different user identifiers that should map to admin
+    const testUsers = ['daniel_koval', 'Daniel Koval', 'daniel@deepfreediving.com']
+    const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
+    const adminPatterns = ['daniel_koval', 'Daniel Koval', 'daniel@deepfreediving.com', 'danielkoval@example.com']
     
-    console.log(`🔑 User identifier: ${user_identifier}`)
-    console.log(`🆔 Generated UUID: ${final_user_id}`)
-    
-    const { data: userLogs, error } = await supabase
-      .from('dive_logs')
-      .select('*')
-      .eq('user_id', final_user_id)
-      .order('date', { ascending: false })
+    for (const user_identifier of testUsers) {
+      console.log(`\n🔍 Testing user: "${user_identifier}"`)
+      
+      let final_user_id;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_identifier)
+      
+      if (isUUID) {
+        final_user_id = user_identifier
+      } else if (adminPatterns.includes(user_identifier)) {
+        // Use admin ID for known admin patterns
+        final_user_id = ADMIN_USER_ID
+        console.log(`🔑 Admin pattern detected: "${user_identifier}" → using admin UUID: ${ADMIN_USER_ID}`)
+      } else {
+        // Create a deterministic UUID from the user identifier  
+        const hash = crypto.createHash('md5').update(user_identifier).digest('hex')
+        final_user_id = [
+          hash.substr(0, 8),
+          hash.substr(8, 4), 
+          hash.substr(12, 4),
+          hash.substr(16, 4),
+          hash.substr(20, 12)
+        ].join('-')
+      }
+      
+      console.log(`🆔 Generated UUID: ${final_user_id}`)
+      
+      // Test with Supabase
+      const { data: userLogs, error } = await supabase
+        .from('dive_logs')
+        .select('*')
+        .eq('user_id', final_user_id)
+        .order('date', { ascending: false })
 
-    if (error) {
-      console.error('❌ Failed to fetch user dive logs:', error.message)
-      return
-    }
+      if (error) {
+        console.error('❌ Failed to fetch logs:', error.message)
+        continue
+      }
 
-    console.log(`✅ Found ${userLogs?.length || 0} dive logs for user "${user_identifier}"`)
-    
-    if (userLogs && userLogs.length > 0) {
-      console.log('\n📊 User dive logs:')
-      userLogs.forEach((log, index) => {
-        console.log(`${index + 1}. ${log.date} - ${log.discipline} at ${log.location}`)
-      })
+      console.log(`✅ Found ${userLogs?.length || 0} dive logs`)
+      
+      if (userLogs && userLogs.length > 0) {
+        console.log('📊 Sample logs:')
+        userLogs.slice(0, 2).forEach((log, index) => {
+          console.log(`   ${index + 1}. ${log.date} - ${log.discipline} at ${log.location}`)
+        })
+      }
     }
 
   } catch (err) {
-    console.error('❌ Error testing user query:', err.message)
+    console.error('❌ Error testing admin patterns:', err.message)
   }
 
   console.log('\n🏁 Test completed!')

@@ -3,7 +3,7 @@ import formidable from 'formidable';
 import OpenAI from 'openai';
 import fs from 'fs';
 import sharp from 'sharp';
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
+import { getAdminSupabaseClient } from '@/lib/supabaseServerClient';
 
 export const config = {
   api: {
@@ -199,8 +199,8 @@ Please be specific about the numbers you can read. Return the extracted data in 
     const extractedMetrics = extractMetricsFromAnalysis(analysis);
     console.log('📊 Extracted metrics:', extractedMetrics);
 
-    // Initialize Supabase client
-    const supabase = getServerSupabaseClient();
+    // Initialize Supabase admin client (needed for storage operations)
+    const supabase = getAdminSupabaseClient();
     
     // Ensure storage bucket exists
     await ensureStorageBucket(supabase);
