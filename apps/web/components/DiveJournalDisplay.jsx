@@ -19,6 +19,7 @@ export default function DiveJournalDisplay({
   const [logs, setLogs] = useState([]);
   const [sortBy, setSortBy] = useState("date");
   const [activeTab, setActiveTab] = useState("saved-logs"); // Tab navigation: saved-logs, add-new
+  const [isSaving, setIsSaving] = useState(false); // Loading state for save operation
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
     disciplineType: "depth",
@@ -144,6 +145,9 @@ export default function DiveJournalDisplay({
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("🚀 DiveJournalDisplay: Starting dive log submit process...");
+
+    // Set saving state
+    setIsSaving(true);
 
     const toNum = (v) => v === '' || v == null ? null : Number(v);
 
@@ -526,6 +530,9 @@ export default function DiveJournalDisplay({
           },
         ]);
       }
+    } finally {
+      // Reset saving state
+      setIsSaving(false);
     }
   };
 
@@ -1357,7 +1364,7 @@ export default function DiveJournalDisplay({
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded font-semibold transition-colors"
                 >
-                  💾 {isEditMode ? "Update Dive Entry" : "Save Dive Entry"}
+                  {isSaving ? "⏳ Saving..." : "💾 "}{isEditMode ? "Update Dive Entry" : "Save Dive Entry"}
                 </button>
               </form>
             </div>
@@ -1656,13 +1663,6 @@ export default function DiveJournalDisplay({
                             name="discipline"
                             value={newEntry.discipline}
                             onChange={handleInputChange}
-                            placeholder="e.g., CWT, CNF, FIM"
-                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
-                          />
-                        </div>
-                        <div>
-                          <label
-                            className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                           >
                             Location
                           </label>

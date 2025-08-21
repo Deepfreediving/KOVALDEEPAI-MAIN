@@ -2,6 +2,8 @@
 import formidable from 'formidable';
 import OpenAI from 'openai';
 import fs from 'fs';
+import sharp from 'sharp';
+import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
 
 export const config = {
   api: {
@@ -16,6 +18,84 @@ const openai = new OpenAI({
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
+// ✅ Extract metrics from OpenAI analysis
+function extractMetricsFromAnalysis(analysis) {
+  const metrics = {};
+  
+  try {
+    // Extract depth (look for patterns like "30m", "30 meters", "depth: 30")
+    const depthMatch = analysis.match(/(?:depth|maximum depth|max depth):?\s*(\d+(?:\.\d+)?)\s*(?:m|meters?|ft|feet?)/i);
+    if (depthMatch) {
+      metrics.max_depth = parseFloat(depthMatch[1]);
+    }
+    
+    // Extract dive time (look for patterns like "3:45", "3 minutes", "225 seconds")
+    const timeMatch = analysis.match(/(?:dive time|duration|time):?\s*(\d+):(\d+)|(\d+)\s*(?:minutes?|mins?)|(\d+)\s*(?:seconds?|secs?)/i);
+    if (timeMatch) {
+      if (timeMatch[1] && timeMatch[2]) {
+        // MM:SS format
+        metrics.dive_time_seconds = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+      } else if (timeMatch[3]) {
+        // Minutes
+        metrics.dive_time_seconds = parseInt(timeMatch[3]) * 60;
+      } else if (timeMatch[4]) {
+        // Seconds
+        metrics.dive_time_seconds = parseInt(timeMatch[4]);
+      }
+    }
+    
+    // Extract temperature
+    const tempMatch = analysis.match(/(?:temperature|temp):?\s*(\d+(?:\.\d+)?)\s*(?:°?c|celsius|°?f|fahrenheit)/i);
+    if (tempMatch) {
+      metrics.temperature = parseFloat(tempMatch[1]);
+    }
+    
+    // Extract descent/ascent times if mentioned
+    const descentMatch = analysis.match(/descent time:?\s*(\d+)\s*(?:seconds?|mins?|minutes?)/i);
+    if (descentMatch) {
+      metrics.descent_time = parseInt(descentMatch[1]);
+    }
+    
+    const ascentMatch = analysis.match(/ascent time:?\s*(\d+)\s*(?:seconds?|mins?|minutes?)/i);
+    if (ascentMatch) {
+      metrics.ascent_time = parseInt(ascentMatch[1]);
+    }
+    
+  } catch (error) {
+    console.warn('⚠️ Error extracting metrics:', error);
+  }
+  
+  return metrics;
+}
+
+// ✅ Ensure storage bucket exists
+async function ensureStorageBucket(supabase) {
+  try {
+    // Check if bucket exists
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    if (listError) throw listError;
+    
+    const bucketExists = buckets.some(bucket => bucket.name === 'dive-images');
+    
+    if (!bucketExists) {
+      console.log('📁 Creating dive-images bucket...');
+      const { error: createError } = await supabase.storage.createBucket('dive-images', {
+        public: true,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+        fileSizeLimit: 10485760 // 10MB
+      });
+      
+      if (createError) {
+        console.warn('⚠️ Bucket creation error (may already exist):', createError);
+      } else {
+        console.log('✅ dive-images bucket created');
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Storage bucket check error:', error);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -23,6 +103,12 @@ export default async function handler(req, res) {
 
   try {
     console.log('📸 Starting image upload and analysis...');
+    
+    // Get user ID from request headers or body
+    const userId = req.headers['x-user-id'] || req.body?.userId;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
 
     // Parse the multipart form data
     const form = formidable({
@@ -50,9 +136,28 @@ export default async function handler(req, res) {
       size: imageFile.size
     });
 
-    // Read the image file
+    // Read and compress the image
     const imageBuffer = fs.readFileSync(imageFile.filepath);
+    
+    // Compress image using sharp
+    const compressedBuffer = await sharp(imageBuffer)
+      .resize(1920, 1080, { 
+        fit: 'inside', 
+        withoutEnlargement: true 
+      })
+      .jpeg({ 
+        quality: 80, 
+        progressive: true 
+      })
+      .toBuffer();
+    
     const base64Image = imageBuffer.toString('base64');
+
+    console.log('🗜️ Image compressed:', {
+      originalSize: imageBuffer.length,
+      compressedSize: compressedBuffer.length,
+      compressionRatio: Math.round((1 - compressedBuffer.length / imageBuffer.length) * 100) + '%'
+    });
 
     console.log('🤖 Analyzing image with OpenAI Vision...');
 
@@ -66,14 +171,14 @@ export default async function handler(req, res) {
             {
               type: 'text',
               text: `Please analyze this dive computer profile image. Extract all readable text and data, including:
-- Dive time/duration
-- Maximum depth
+- Dive time/duration (in MM:SS format or total seconds)
+- Maximum depth reached (in meters or feet)
 - Temperature readings
-- Any numerical data visible
+- Descent and ascent times if visible
 - Surface intervals
-- Dive profile information
+- Any numerical data visible on the display
 
-Also describe what you see in the dive profile graph/chart. Return the extracted text and analysis in a clear format.`
+Please be specific about the numbers you can read. Return the extracted data in a clear format with specific values.`
             },
             {
               type: 'image_url',
@@ -88,8 +193,76 @@ Also describe what you see in the dive profile graph/chart. Return the extracted
     });
 
     const analysis = response.choices[0].message.content;
-    
     console.log('✅ OpenAI Vision analysis complete');
+
+    // Extract structured metrics from the analysis
+    const extractedMetrics = extractMetricsFromAnalysis(analysis);
+    console.log('📊 Extracted metrics:', extractedMetrics);
+
+    // Initialize Supabase client
+    const supabase = getServerSupabaseClient();
+    
+    // Ensure storage bucket exists
+    await ensureStorageBucket(supabase);
+    
+    // Generate unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileExtension = imageFile.originalFilename?.split('.').pop() || 'jpg';
+    const fileName = `dive-log-${userId}-${timestamp}.${fileExtension}`;
+    
+    // Upload compressed image to Supabase Storage
+    console.log('☁️ Uploading to Supabase Storage...');
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('dive-images')
+      .upload(fileName, compressedBuffer, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('❌ Storage upload error:', uploadError);
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+
+    console.log('✅ Image uploaded to storage:', uploadData.path);
+
+    // Save image metadata and extracted metrics to database
+    console.log('💾 Saving to dive_log_image table...');
+    const imageRecord = {
+      user_id: userId,
+      dive_log_id: null, // Will be linked later when dive log is created
+      bucket: 'dive-images',
+      path: uploadData.path,
+      original_filename: imageFile.originalFilename,
+      file_size: compressedBuffer.length,
+      mime_type: 'image/jpeg',
+      ai_analysis: analysis,
+      extracted_metrics: extractedMetrics,
+      created_at: new Date().toISOString()
+    };
+
+    const { data: dbData, error: dbError } = await supabase
+      .from('dive_log_image')
+      .insert(imageRecord)
+      .select()
+      .single();
+
+    if (dbError) {
+      console.error('❌ Database save error:', dbError);
+      throw new Error(`Failed to save image record: ${dbError.message}`);
+    }
+
+    console.log('✅ Image record saved to database:', dbData.id);
+
+    // Clean up temp file
+    try {
+      fs.unlinkSync(imageFile.filepath);
+    } catch (cleanupError) {
+      console.warn('⚠️ Could not clean up temp file:', cleanupError);
+    }
+
+    console.log('✅ Image record saved to database:', dbData.id);
 
     // Clean up temp file
     try {
@@ -101,17 +274,27 @@ Also describe what you see in the dive profile graph/chart. Return the extracted
     const result = {
       success: true,
       data: {
+        imageId: dbData.id,
         extractedText: analysis,
+        extractedMetrics: extractedMetrics,
         imageAnalysis: analysis,
         fileName: imageFile.originalFilename,
-        fileSize: imageFile.size,
-        mimeType: imageFile.mimetype,
+        storagePath: uploadData.path,
+        originalSize: imageBuffer.length,
+        compressedSize: compressedBuffer.length,
+        fileSize: compressedBuffer.length,
+        mimeType: 'image/jpeg',
         processedAt: new Date().toISOString()
       },
-      message: 'Image analyzed successfully'
+      message: 'Image analyzed and saved successfully'
     };
 
-    console.log('📊 Image analysis result ready');
+    console.log('📊 Image processing complete:', {
+      imageId: dbData.id,
+      metricsExtracted: Object.keys(extractedMetrics).length,
+      storagePath: uploadData.path
+    });
+    
     return res.status(200).json(result);
 
   } catch (error) {

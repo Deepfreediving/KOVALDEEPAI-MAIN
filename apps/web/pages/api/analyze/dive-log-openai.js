@@ -62,6 +62,58 @@ function extractMetricsFromAnalysis(analysis) {
   return metrics;
 }
 
+// ✅ Link uploaded images to dive log
+async function linkUploadedImages(supabase, userId, diveLogId) {
+  try {
+    // Find recent unlinked images for this user (last 10 minutes)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    
+    const { data: images, error } = await supabase
+      .from('dive_log_image')
+      .select('*')
+      .eq('user_id', userId)
+      .is('dive_log_id', null)
+      .gte('created_at', tenMinutesAgo)
+      .order('created_at', { ascending: false })
+      .limit(5); // Link up to 5 recent images
+    
+    if (error) {
+      console.warn('⚠️ Error fetching images to link:', error);
+      return;
+    }
+    
+    if (images && images.length > 0) {
+      console.log(`🔗 Linking ${images.length} images to dive log ${diveLogId}`);
+      
+      // Update images to link them to this dive log
+      const { error: updateError } = await supabase
+        .from('dive_log_image')
+        .update({ 
+          dive_log_id: diveLogId,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', images.map(img => img.id));
+      
+      if (updateError) {
+        console.warn('⚠️ Error linking images:', updateError);
+      } else {
+        console.log('✅ Images linked successfully');
+        
+        // Log the image metrics that were captured
+        images.forEach(img => {
+          if (img.extracted_metrics && Object.keys(img.extracted_metrics).length > 0) {
+            console.log(`📊 Image ${img.id} had metrics:`, img.extracted_metrics);
+          }
+        });
+      }
+    } else {
+      console.log('ℹ️ No recent unlinked images found for user');
+    }
+  } catch (error) {
+    console.warn('⚠️ Error in linkUploadedImages:', error);
+  }
+}
+
 // ✅ NEW: Function to save analysis to Supabase
 async function saveAnalysisToSupabase(userId, diveLogData, analysis) {
   try {
@@ -152,6 +204,10 @@ async function saveAnalysisToSupabase(userId, diveLogData, analysis) {
     }
 
     console.log('✅ Dive analysis saved to Supabase:', data.id);
+    
+    // ✅ NEW: Link any uploaded images to this dive log
+    await linkUploadedImages(supabase, final_user_id, data.id);
+    
     return data;
     
   } catch (error) {
