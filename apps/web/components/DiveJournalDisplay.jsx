@@ -1663,7 +1663,12 @@ export default function DiveJournalDisplay({
                             name="discipline"
                             value={newEntry.discipline}
                             onChange={handleInputChange}
-                          >
+                            placeholder="e.g., Freediving, Spearfishing"
+                            className={`w-full p-2 rounded border ${darkMode ? "bg-gray-600 text-white border-gray-500" : "bg-white text-gray-900 border-gray-300"}`}
+                          />
+                        </div>
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                             Location
                           </label>
                           <input
