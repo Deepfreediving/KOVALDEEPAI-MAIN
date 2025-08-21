@@ -12,15 +12,22 @@ export default async function handler(req, res) {
       const { nickname, userId } = req.query
       const user_identifier = userId || nickname || 'anonymous'
 
-      // Create deterministic UUID for consistency
-      const crypto = require('crypto');
-      let final_user_id;
+      // ✅ ADMIN FALLBACK: If user_identifier matches admin patterns, use admin ID directly
+      const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
+      const adminPatterns = ['daniel_koval', 'Daniel Koval', 'daniel@deepfreediving.com', 'danielkoval@example.com']
       
+      let final_user_id;
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_identifier)
+      
       if (isUUID) {
         final_user_id = user_identifier
+      } else if (adminPatterns.includes(user_identifier)) {
+        // Use admin ID for known admin patterns
+        final_user_id = ADMIN_USER_ID
+        console.log(`🔑 Admin pattern detected: "${user_identifier}" → using admin UUID: ${ADMIN_USER_ID}`)
       } else {
         // Create a deterministic UUID from the user identifier
+        const crypto = require('crypto');
         const hash = crypto.createHash('md5').update(user_identifier).digest('hex');
         final_user_id = [
           hash.substr(0, 8),
