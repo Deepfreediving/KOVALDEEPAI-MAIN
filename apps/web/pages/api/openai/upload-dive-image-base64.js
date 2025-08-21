@@ -162,12 +162,12 @@ export default async function handler(req, res) {
       .from('dive_log_image')
       .insert({
         user_id: userId,
-        image_url: imageUrl,
-        storage_path: storagePath,
-        original_filename: filename || 'uploaded-image.jpg',
-        file_size: compressedBuffer.length,
-        extracted_text: analysis,
-        metrics: metrics,
+        bucket: 'dive-images',
+        path_original: storagePath,
+        mime_type: 'image/jpeg',
+        bytes: compressedBuffer.length,
+        ocr_text: analysis,
+        ai_analysis: metrics,
         created_at: new Date().toISOString()
       })
       .select()

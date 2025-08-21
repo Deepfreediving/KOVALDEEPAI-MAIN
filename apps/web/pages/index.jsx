@@ -116,14 +116,18 @@ export default function Index() {
   const getUserIdentifier = useCallback(() => {
     // Use the actual authenticated user's ID if available
     if (user?.id) {
+      console.log(`🆔 Using authenticated user ID: ${user.id}`);
       return user.id;
     }
     // Fallback to profile userId if available
     if (profile?.userId) {
+      console.log(`🆔 Using profile user ID: ${profile.userId}`);
       return profile.userId;
     }
-    // Last resort fallback (should rarely be used)
-    return getAdminUserId();
+    // For development/demo purposes, always fall back to admin ID
+    const adminId = getAdminUserId();
+    console.log(`🆔 Using admin fallback ID: ${adminId}`);
+    return adminId;
   }, [user, profile]);
 
   // ✅ SUPABASE AUTHENTICATION
@@ -453,18 +457,19 @@ export default function Index() {
     const currentUserId = getUserIdentifier();
     const key = storageKey(currentUserId);
     const localLogs = safeParse(key, []);
-    console.log(`� Local storage logs found: ${localLogs.length} for user: ${currentUserId}`);
+    console.log(`🗄️ Local storage logs found: ${localLogs.length} for user: ${currentUserId}`);
+    console.log(`🔑 Storage key: ${key}`);
     setDiveLogs(localLogs);
 
-    // ✅ SKIP API IF NO REAL USER (guest users stay local-only)
-    if (!profile?.nickname && !profile?.firstName) {
-      console.log("📱 Using localStorage-only mode (guest user)");
+    // ✅ SKIP API ONLY IF NO USER IDENTIFIER AT ALL
+    if (!currentUserId || currentUserId === 'anonymous') {
+      console.log("📱 Using localStorage-only mode (no user identifier)");
       setLoadingDiveLogs(false);
       return;
     }
 
-    // ✅ OPTIONAL API SYNC (only if we have a real userId)
-    console.log(`� Loading dive logs for user: ${currentUserId}`);
+    // ✅ API SYNC - Always try to get remote logs when we have a user ID
+    console.log(`🌐 Loading dive logs for user: ${currentUserId}`);
     setLoadingDiveLogs(true);
     try {
       console.log(
@@ -509,7 +514,7 @@ export default function Index() {
     } finally {
       setLoadingDiveLogs(false);
     }
-  }, [profile, getUserIdentifier]);
+  }, [getUserIdentifier]);
 
   // ✅ INITIAL DIVE LOGS LOADING - Runs after loadDiveLogs is defined
   useEffect(() => {
