@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       const toBool = (v) => Boolean(v)
       const toStr = (v) => v === '' || v == null ? null : String(v)
 
-      // ✅ COMPLETE FIELD MAPPING - ALL COACHING DATA PRESERVED
+      // ✅ COMPLETE FIELD MAPPING - MATCHES EXACT DIVE_LOGS SCHEMA
       const supabaseDiveLog = {
         id: generateUUID(), // Always generate new UUID for inserts
         user_id: ADMIN_USER_ID,
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         // Basic dive information
         date: diveLogData.date,
         discipline: diveLogData.discipline,
-        location: diveLogData.location,
+        location: toStr(diveLogData.location),
         
         // Depth measurements - CRITICAL FOR COACHING
         target_depth: toNum(diveLogData.targetDepth || diveLogData.target_depth),
@@ -55,21 +55,16 @@ export default async function handler(req, res) {
         issue_depth: toNum(diveLogData.issueDepth || diveLogData.issue_depth), // ⚠️ CRITICAL FOR SAFETY
         
         // Time measurements
-        total_dive_time: diveLogData.totalDiveTime || diveLogData.total_dive_time,
-        bottom_time: diveLogData.bottomTime || diveLogData.bottom_time,
+        total_dive_time: toStr(diveLogData.totalDiveTime || diveLogData.total_dive_time),
         
         // Safety and issues - ESSENTIAL FOR COACHING
         squeeze: toBool(diveLogData.squeeze), // ⚠️ CRITICAL SAFETY INDICATOR
-        ear_squeeze: toBool(diveLogData.earSqueeze), // ⚠️ INJURY PREVENTION
-        lung_squeeze: toBool(diveLogData.lungSqueeze), // ⚠️ INJURY PREVENTION
         issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment), // ⚠️ DETAILED PROBLEM DESCRIPTION
         
         // Performance data
         exit: toStr(diveLogData.exit), // Clean/messy exit for performance analysis
         attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type), // Training/competition/fun
         surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol), // Recovery analysis
-        narcosis_level: toStr(diveLogData.narcosisLevel || diveLogData.narcosis_level), // Mental state assessment
-        recovery_quality: toStr(diveLogData.recoveryQuality || diveLogData.recovery_quality), // Post-dive recovery
         
         // Training notes - ESSENTIAL FOR COACHING PROGRESSION
         notes: toStr(diveLogData.notes), // Detailed coaching observations
@@ -78,10 +73,15 @@ export default async function handler(req, res) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         
-        // Store additional metadata that doesn't map to columns
+        // Store additional coaching metadata in JSONB field
         metadata: {
           disciplineType: diveLogData.disciplineType,
           durationOrDistance: diveLogData.durationOrDistance,
+          bottomTime: diveLogData.bottomTime, // Store here since no column exists
+          earSqueeze: toBool(diveLogData.earSqueeze), // Store here since no column exists
+          lungSqueeze: toBool(diveLogData.lungSqueeze), // Store here since no column exists
+          narcosisLevel: diveLogData.narcosisLevel,
+          recoveryQuality: diveLogData.recoveryQuality,
           gear: diveLogData.gear || {},
           imagePreview: diveLogData.imagePreview,
           diveComputerFileName: diveLogData.diveComputerFileName
