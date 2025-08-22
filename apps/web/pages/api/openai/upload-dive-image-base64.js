@@ -134,7 +134,7 @@ export default async function handler(req, res) {
     const storagePath = `${userId}/${timestamp}.${fileExtension}`;
 
     console.log('☁️ Uploading to Supabase Storage...');
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('dive-images')
       .upload(storagePath, compressedBuffer, {
         contentType: 'image/jpeg',
