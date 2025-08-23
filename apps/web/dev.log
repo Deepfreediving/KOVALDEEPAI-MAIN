@@ -1,0 +1,17 @@
+
+> @koval-ai/web@1.0.0 dev
+> next dev
+
+  ▲ Next.js 14.2.5
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+  - Experiments (use with caution):
+    · scrollRestoration
+
+ ✓ Starting...
+TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+    at Object.relative (node:path:1223:5)
+    at Watchpack.<anonymous> (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:381:55) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+[?25h

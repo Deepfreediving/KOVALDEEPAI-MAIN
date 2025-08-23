@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dive Logs Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+        .error { background: #ffe6e6; }
+        .success { background: #e6ffe6; }
+        button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🤿 Dive Logs Test</h1>
+    
+    <button onclick="testDiveLogs()">Test Dive Logs API</button>
+    <button onclick="testDirectSupabase()">Test Direct Supabase</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Load environment variables from the same .env.local file
+        const SUPABASE_URL = 'https://zhlacqhzhwvkmyxsxevv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpobGFjcWh6aHd2a215eHN4ZXZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0Nzc4NTgsImV4cCI6MjA3MTA1Mzg1OH0.ILuLKFK4DgS6qVPp1o6VA_o1I_h7PIXO0XnTv4UtOQ4';
+        const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+        function addResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = isError ? 'result error' : 'result success';
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        async function testDiveLogs() {
+            addResult('🔄 Testing dive logs API...');
+            try {
+                const response = await fetch(`/api/supabase/dive-logs?userId=${ADMIN_USER_ID}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ API Success: Found ${data.diveLogs?.length || 0} dive logs<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                } else {
+                    addResult(`❌ API Error: ${data.error}<pre>${JSON.stringify(data, null, 2)}</pre>`, true);
+                }
+            } catch (error) {
+                addResult(`❌ Network Error: ${error.message}`, true);
+            }
+        }
+
+        async function testDirectSupabase() {
+            addResult('🔄 Testing direct Supabase connection...');
+            try {
+                const { createClient } = supabase;
+                const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                const { data, error } = await client
+                    .from('dive_logs')
+                    .select('*')
+                    .eq('user_id', ADMIN_USER_ID)
+                    .limit(5);
+                
+                if (error) {
+                    addResult(`❌ Supabase Error: ${error.message}<pre>${JSON.stringify(error, null, 2)}</pre>`, true);
+                } else {
+                    addResult(`✅ Direct Supabase Success: Found ${data.length} dive logs<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                }
+            } catch (error) {
+                addResult(`❌ Direct Supabase Error: ${error.message}`, true);
+            }
+        }
+
+        // Auto-run tests when page loads
+        window.onload = function() {
+            addResult('🚀 Starting dive logs tests...');
+            setTimeout(testDirectSupabase, 1000);
+        };
+    </script>
+</body>
+</html>
