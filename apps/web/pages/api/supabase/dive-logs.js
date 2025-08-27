@@ -1,16 +1,63 @@
-// Supabase dive logs API endpoint
+// Supabase dive logs API endpoint with enhanced security
 import { getServerSupabaseClient } from '@/lib/supabaseServerClient'
+import { SecurityValidator } from '@/lib/security'
 
 const supabase = getServerSupabaseClient();
 
 export default async function handler(req, res) {
+  const startTime = Date.now();
+  const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'unknown';
+  
   try {
+    // Security: Validate request method
     const { method } = req
+    
+    // Security: Rate limiting check
+    if (!SecurityValidator.checkRateLimit(clientIP, 60, 60000)) {
+      SecurityValidator.logSecurityEvent({
+        type: 'rate_limit_exceeded',
+        details: `Rate limit exceeded for dive-logs API`,
+        ip: clientIP,
+        userAgent: req.headers['user-agent'],
+        timestamp: new Date()
+      });
+      return res.status(429).json({ 
+        error: 'Rate limit exceeded',
+        retryAfter: 60 
+      });
+    }
 
     if (method === 'GET') {
-      // Get user's dive logs (support both authenticated and anonymous users)
-      const { nickname, userId, email } = req.query
-      const user_identifier = userId || nickname || email || 'anonymous'
+      // Security: Validate and sanitize query parameters
+      const { nickname, userId, email } = req.query;
+      
+      // Validate each parameter
+      const nicknameValidation = SecurityValidator.validateInput(nickname, 'string');
+      const userIdValidation = SecurityValidator.validateInput(userId, 'uuid');
+      const emailValidation = SecurityValidator.validateInput(email, 'email');
+      
+      // Check for validation failures
+      const validationErrors = [
+        ...(!nicknameValidation.isValid ? nicknameValidation.errors.map(e => `nickname: ${e}`) : []),
+        ...(!userIdValidation.isValid ? userIdValidation.errors.map(e => `userId: ${e}`) : []),
+        ...(!emailValidation.isValid ? emailValidation.errors.map(e => `email: ${e}`) : [])
+      ];
+      
+      if (validationErrors.length > 0) {
+        SecurityValidator.logSecurityEvent({
+          type: 'validation_failed',
+          details: `Input validation failed: ${validationErrors.join(', ')}`,
+          ip: clientIP,
+          userAgent: req.headers['user-agent'],
+          timestamp: new Date()
+        });
+        return res.status(400).json({ 
+          error: 'Invalid input parameters',
+          details: validationErrors 
+        });
+      }
+      
+      const user_identifier = userIdValidation.sanitizedData || nicknameValidation.sanitizedData || emailValidation.sanitizedData || 'anonymous'
 
       // ✅ ADMIN FALLBACK: If user_identifier matches admin patterns, use admin ID directly
       const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
@@ -105,19 +152,50 @@ export default async function handler(req, res) {
       console.log(`✅ Found ${processedDiveLogs.length} dive logs for user: ${user_identifier} (UUID: ${final_user_id})`)
       console.log(`📸 Images found: ${processedDiveLogs.filter(log => log.hasImage).length}`)
       
+      // Security: Add response headers
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+      res.setHeader('X-Request-ID', `dive-logs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+      
       return res.status(200).json({ 
         diveLogs: processedDiveLogs,
         stats: {
           totalLogs: processedDiveLogs.length,
           logsWithImages: processedDiveLogs.filter(log => log.hasImage).length,
           logsWithExtractedMetrics: processedDiveLogs.filter(log => log.extractedMetrics && Object.keys(log.extractedMetrics).length > 0).length
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          processingTime: Date.now() - startTime
         }
       })
     }
 
+    // Security: Method not allowed
+    SecurityValidator.logSecurityEvent({
+      type: 'suspicious_activity',
+      details: `Invalid method ${method} attempted on dive-logs API`,
+      ip: clientIP,
+      userAgent: req.headers['user-agent'],
+      timestamp: new Date()
+    });
+    
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (error) {
+    // Security: Log error without exposing sensitive details
+    SecurityValidator.logSecurityEvent({
+      type: 'suspicious_activity',
+      details: `API error: ${error.message}`,
+      ip: clientIP,
+      userAgent: req.headers['user-agent'],
+      timestamp: new Date()
+    });
+    
     console.error('API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      requestId: `dive-logs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    })
   }
 }

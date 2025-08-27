@@ -17,7 +17,10 @@ export default async function handler(req, res) {
   try {
     const { method } = req
 
-    if (method === 'POST') {
+    if (method === 'PUT') {
+      // Handle update operation
+      return await handleUpdateDiveLog(req, res);
+    } else if (method === 'POST') {
       console.log('📝 Save dive log request:', req.body)
       
       // ✅ Handle both formats: direct dive log data or wrapped in diveLogData
@@ -189,5 +192,104 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('API error:', error)
     return res.status(500).json({ error: 'Internal server error' })
+  }
+}
+
+async function handleUpdateDiveLog(req, res) {
+  try {
+    const diveLogData = req.body.diveLogData || req.body;
+    const { id, imageAnalysis, extractedMetrics, imageUrl, imageId } = diveLogData;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Dive log ID is required for updates' });
+    }
+
+    const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    console.log(`🔄 Updating dive log ${id} with data:`, diveLogData);
+
+    // Helper functions
+    const toNum = (v) => v === '' || v == null ? null : Number(v);
+    const toBool = (v) => Boolean(v);
+    const toStr = (v) => v === '' || v == null ? null : String(v);
+
+    // Prepare update data
+    const updateData = {
+      date: diveLogData.date,
+      discipline: diveLogData.discipline,
+      location: toStr(diveLogData.location),
+      target_depth: toNum(diveLogData.targetDepth || diveLogData.target_depth),
+      reached_depth: toNum(diveLogData.reachedDepth || diveLogData.reached_depth),
+      mouthfill_depth: toNum(diveLogData.mouthfillDepth || diveLogData.mouthfill_depth),
+      issue_depth: toNum(diveLogData.issueDepth || diveLogData.issue_depth),
+      total_dive_time: toStr(diveLogData.totalDiveTime || diveLogData.total_dive_time),
+      squeeze: toBool(diveLogData.squeeze),
+      issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment),
+      exit: toStr(diveLogData.exit),
+      attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type),
+      surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol),
+      notes: toStr(diveLogData.notes),
+      updated_at: new Date().toISOString(),
+      metadata: {
+        ...diveLogData.metadata,
+        imageAnalysis,
+        extractedMetrics,
+        imageUrl,
+        imageId,
+        updatedAt: new Date().toISOString()
+      }
+    };
+
+    // Update the dive log
+    const { data: updatedLog, error: updateError } = await supabase
+      .from('dive_logs')
+      .update(updateData)
+      .eq('id', id)
+      .eq('user_id', ADMIN_USER_ID) // Ensure user can only update their own logs
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Error updating dive log:', updateError);
+      return res.status(500).json({ error: 'Failed to update dive log', details: updateError.message });
+    }
+
+    // If there's image data, also update the image record
+    if (imageId && (imageAnalysis || extractedMetrics)) {
+      await handleImageUpdate(imageId, imageAnalysis, extractedMetrics);
+    }
+
+    console.log('✅ Dive log updated successfully:', updatedLog);
+    return res.status(200).json({ 
+      success: true, 
+      diveLog: updatedLog,
+      message: 'Dive log updated successfully',
+      imageLinked: !!imageId,
+      metricsExtracted: !!extractedMetrics
+    });
+
+  } catch (error) {
+    console.error('❌ Error in handleUpdateDiveLog:', error);
+    return res.status(500).json({ error: 'Failed to update dive log' });
+  }
+}
+
+async function handleImageUpdate(imageId, imageAnalysis, extractedMetrics) {
+  try {
+    const { error } = await supabase
+      .from('dive_log_image')
+      .update({
+        ai_analysis: imageAnalysis,
+        extracted_metrics: extractedMetrics,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', imageId);
+
+    if (error) {
+      console.error('❌ Error updating image record:', error);
+    } else {
+      console.log('✅ Image record updated successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error in handleImageUpdate:', error);
   }
 }

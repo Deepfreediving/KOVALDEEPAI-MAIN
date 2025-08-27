@@ -192,7 +192,7 @@ export default function DiveJournalDisplay({
     try {
       // 🚀 STEP 1: Handle image upload if present
       let imageAnalysis = null;
-      if (newEntry.imageFile && !isEditMode) {
+      if (newEntry.imageFile) {
         console.log("📸 DiveJournalDisplay: Uploading and analyzing image...");
         
         // Show immediate feedback
@@ -293,7 +293,7 @@ export default function DiveJournalDisplay({
       // 🚀 STEP 2: Save to Supabase via API
       console.log("🌐 DiveJournalDisplay: Saving to Supabase via API...");
       const response = await fetch("/api/supabase/save-dive-log", {
-        method: "POST",
+        method: isEditMode ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },

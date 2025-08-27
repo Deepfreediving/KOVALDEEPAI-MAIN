@@ -32,5 +32,5 @@ archived-wix/
 # Optional: uncomment above lines after verifying wix-site/ mirror is complete
 .DS_Store
 
-# Personal dive logs - keep private
-/public/freedive log/
+# Personal dive logs - temporarily enabled for testing
+# /public/freedive log/

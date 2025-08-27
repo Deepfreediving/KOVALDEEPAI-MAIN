@@ -4,6 +4,8 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import sharp from 'sharp';
 import { getAdminSupabaseClient } from '@/lib/supabaseServerClient';
+import { extractDiveText } from '@/utils/extractTextFromImage';
+import { compressDiveLogForWix } from '@/utils/diveLogCompression';
 
 export const config = {
   api: {
@@ -162,6 +164,17 @@ export default async function handler(req, res) {
       compressionRatio: Math.round((1 - compressedBuffer.length / imageBuffer.length) * 100) + '%'
     });
 
+    // Step 1: Extract text using OCR first
+    console.log('🔍 Extracting text with OCR...');
+    let ocrText = '';
+    try {
+      ocrText = await extractDiveText(compressedBuffer);
+      console.log('✅ OCR extraction successful:', ocrText.substring(0, 200) + '...');
+    } catch (ocrError) {
+      console.warn('⚠️ OCR extraction failed, will rely on OpenAI Vision:', ocrError.message);
+    }
+
+    // Step 2: Enhanced analysis with OpenAI Vision
     console.log('🤖 Analyzing image with OpenAI Vision...');
 
     // Use OpenAI Vision to extract text and analyze the dive profile
@@ -173,7 +186,7 @@ export default async function handler(req, res) {
           content: [
             {
               type: 'text',
-              text: `Please analyze this dive computer profile image. Extract all readable text and data, including:
+              text: `Please analyze this dive computer profile image. ${ocrText ? `OCR detected this text: "${ocrText}". ` : ''}Extract all readable text and data, including:
 - Dive time/duration (in MM:SS format or total seconds)
 - Maximum depth reached (in meters or feet)
 - Temperature readings
@@ -240,6 +253,16 @@ Please be specific about the numbers you can read. Return the extracted data in 
 
     // Save image metadata and extracted metrics to database
     console.log('💾 Saving to dive_log_image table...');
+    
+    // Compress the extracted data for efficient storage
+    const compressedData = {
+      analysis,
+      extractedMetrics,
+      ocrText: ocrText || null,
+      extractedAt: new Date().toISOString(),
+      confidence: Object.keys(extractedMetrics).length > 0 ? 'high' : 'medium'
+    };
+
     const imageRecord = {
       user_id: userId,
       dive_log_id: diveLogId || null, // Link to dive log if provided
@@ -248,7 +271,7 @@ Please be specific about the numbers you can read. Return the extracted data in 
       original_filename: imageFile.originalFilename,
       file_size: compressedBuffer.length,
       mime_type: 'image/jpeg',
-      ai_analysis: analysis,
+      ai_analysis: JSON.stringify(compressedData), // Store comprehensive analysis
       extracted_metrics: extractedMetrics,
       created_at: new Date().toISOString()
     };
@@ -288,6 +311,7 @@ Please be specific about the numbers you can read. Return the extracted data in 
         imageId: dbData.id,
         imageUrl: publicImageUrl, // 🚀 Critical: Include public URL
         extractedText: analysis,
+        ocrText: ocrText || null, // Include raw OCR text
         extractedMetrics: extractedMetrics,
         imageAnalysis: analysis,
         fileName: imageFile.originalFilename,
@@ -297,9 +321,10 @@ Please be specific about the numbers you can read. Return the extracted data in 
         fileSize: compressedBuffer.length,
         mimeType: 'image/jpeg',
         processedAt: new Date().toISOString(),
-        diveLogId: diveLogId // Include for linking reference
+        diveLogId: diveLogId, // Include for linking reference
+        confidence: Object.keys(extractedMetrics).length > 0 ? 'high' : 'medium'
       },
-      message: 'Image analyzed and saved successfully'
+      message: 'Image analyzed and saved successfully with OCR + AI Vision'
     };
 
     console.log('📊 Image processing complete:', {
