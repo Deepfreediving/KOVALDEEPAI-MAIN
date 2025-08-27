@@ -1,0 +1,103 @@
+---
+slug: clear-dive-bailout
+title: CLEAR DIVE — Bailout Triggers
+topic: safety
+version: 1
+author: Daniel Koval
+risk_level: high
+min_cert_level: L1
+water_required: true
+tags: [bailout, safety, abort, diagnostics, CLEAR]
+updated_at: 2025-08-21
+---
+
+# CLEAR DIVE — Bailout Triggers
+
+> ⚠️ **Safety First**
+>
+> - If it's not a CLEAR DIVE, BAIL OUT immediately.
+> - Never chase a depth when safety signals are present.
+> - Trust your body's warnings over ego or targets.
+
+## The CLEAR DIVE Rule
+
+**C.L.E.A.R. D.I.V.E.** — Each letter represents a critical safety checkpoint. If ANY of these conditions occur, abort the dive immediately:
+
+### **C** — Contractions Too Early
+
+- Contractions before 1/3 of planned dive time
+- Unexpected or intense urge to breathe
+- **Action**: Abort and log the issue
+
+### **L** — Leg Burn on Descent
+
+- Premature muscle fatigue during descent phase
+- Anaerobic shift robs brain of O₂
+- **Action**: Abort immediately
+
+### **E** — Equalization Fails
+
+- Unable to equalize at expected cadence
+- Pain or blockage in ears/sinuses
+- **Action**: Turn around (forcing EQ risks mouthfill loss & squeeze)
+
+### **A** — Any O₂ Symptoms
+
+- Tunnel vision, stars, euphoria
+- Visual disturbances or cognitive changes
+- **Action**: Abort immediately
+
+### **R** — Rising Doubts/Distraction
+
+- Mental uncertainty or loss of focus
+- Equipment concerns or environmental changes
+- **Action**: Abort and reassess
+
+---
+
+### **D** — Discomfort Chest/Throat
+
+- Any squeeze signs (scratch, pain, pressure)
+- Throat irritation or chest tightness
+- **Action**: Abort immediately, rest 24-48h if severe
+
+### **I** — Impairment from Narcosis
+
+- Confusion, disorientation, poor judgment
+- Depth-related cognitive changes
+- **Action**: Turn at onset depth, note for future planning
+
+### **V** — Vision Distortion
+
+- Any visual changes or disturbances
+- Pre-syncope warning sign
+- **Action**: Abort (critical safety hazard)
+
+### **E** — Equipment Malfunction
+
+- Mask leaks, weight shifts, gear issues
+- Any equipment that affects safety or performance
+- **Action**: Abort, surface, regain full control
+
+## Instructor Teaching Cue
+
+**"If the dive's not CLEAR, don't go DEEP."**
+
+## Implementation Notes
+
+- Practice CLEAR DIVE assessment during every training dive
+- Brief dive partners on your abort signals
+- Log aborted dives to identify patterns
+- Never shame athletes for aborting — celebrate safety-first decisions
+
+## Recovery Protocol
+
+After any CLEAR DIVE abort:
+
+1. Complete normal surface protocol
+2. Rest appropriate interval (minimum 2x normal)
+3. Assess what triggered the abort
+4. Modify plan or end session if multiple triggers occur
+5. Log incident with specific trigger details
+
+Remember: An aborted dive is a successful dive if it prevents injury.

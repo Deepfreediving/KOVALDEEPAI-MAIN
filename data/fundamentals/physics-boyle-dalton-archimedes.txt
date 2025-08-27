@@ -1,0 +1,167 @@
+---
+slug: physics-freediving
+title: Boyle, Dalton, Archimedes — Practical Freediving
+topic: fundamentals
+version: 1
+author: Daniel Koval
+risk_level: low
+min_cert_level: L1
+water_required: false
+tags: [physics, boyle, dalton, archimedes, pressure, buoyancy]
+updated_at: 2025-08-21
+---
+
+# Boyle, Dalton, Archimedes — Practical Freediving
+
+Understanding the physics that govern freediving helps you make safer, more efficient decisions about technique, timing, and safety.
+
+## Boyle's Law — Pressure & Volume
+
+### The Basic Principle
+
+**P₁V₁ = P₂V₂** — As pressure increases, gas volume decreases proportionally.
+
+### Practical Application
+
+**Pressure at depth**: P(depth) = 1 + depth/10 atmospheres
+
+- Surface (0m): 1 ATA
+- 10m: 2 ATA
+- 30m: 4 ATA
+- 100m: 11 ATA
+
+### What This Means for Divers
+
+**Air Spaces Compress:**
+
+- Lungs at 100m = 1/11th surface volume
+- Mouthfill at 100m = 1/11th the volume you took
+- Mask space compresses (risk of squeeze)
+
+**Equalization Volume Requirements:**
+
+- Deeper = more compressed air needed per equalization
+- Why mouthfill timing matters: take it before maximum compression
+- Why small, frequent doses work better than big, rare pushes
+
+**Residual Volume (RV) Depth:**
+When lung volume compresses to your RV, you can't access more air:
+
+- **RV Depth** = (TLC ÷ RV - 1) × 10 meters
+- Typical recreational: ~40-50m
+- **Elite freedivers**: 70-80m (RV ~0.3-0.5L vs typical 1.0-1.5L)
+
+## Dalton's Law — Partial Pressures
+
+### The Principle
+
+Total pressure = sum of partial pressures of all gases.
+
+### Practical Application
+
+**Oxygen Partial Pressure:**
+
+- At surface: O₂ partial pressure = 0.21 ATA
+- At 30m (4 ATA): O₂ partial pressure = 0.84 ATA
+- Higher O₂ partial pressure = better tissue oxygenation at depth
+
+**Carbon Dioxide Effects:**
+
+- CO₂ partial pressure also increases with depth
+- Affects urge to breathe and narcosis onset
+- Why relaxation and efficiency matter more at depth
+
+**Nitrogen Narcosis:**
+
+- N₂ partial pressure increases linearly with depth
+- Narcosis typically noticeable beyond 30-40m
+- Affects judgment, coordination, and technique
+
+## Archimedes' Principle — Buoyancy
+
+### The Principle
+
+Buoyancy force = weight of displaced water.
+
+### Practical Application
+
+**Buoyancy Changes with Depth:**
+
+- **Positive buoyancy** (0-10m): Must kick down, burns energy
+- **Neutral zone** (~10-15m): Effortless gliding
+- **Negative buoyancy** (15m+): Natural sinking, conserve energy
+
+**Body Position Effects:**
+
+- **Head-down**: Mouthfill "sits below" lungs, better retention
+- **Streamlined**: Less drag = less energy = longer breath-hold
+- **Relaxed**: Reduced oxygen consumption
+
+**Wetsuit Compression:**
+
+- Neoprene compresses with depth
+- Buoyancy becomes more negative
+- Weight distribution may need adjustment
+
+## Combined Effects — Why Technique Matters
+
+### Early Descent (0-30m)
+
+- **High lung volume** + positive buoyancy = higher energy cost
+- **Dense equalization** needed (pressure changes rapidly)
+- **Technique focus**: Efficient movement, consistent EQ cadence
+
+### Mid-Descent (30-70m)
+
+- **Approaching RV** = mouthfill timing becomes critical
+- **Narcosis onset** = maintain focus on technique
+- **Negative buoyancy** = conserve energy, perfect streamline
+
+### Deep Phase (70m+)
+
+- **Past RV** = mouthfill is your only equalization source
+- **Maximum compression** = small volumes, precise dosing
+- **High partial pressures** = efficiency and safety paramount
+
+## Practical Decision Making
+
+### Mouthfill Timing
+
+**Physics tells you when:**
+
+- Too early = unnecessary compression and loss
+- Too late = insufficient volume for deep equalization
+- **Optimal**: Near your functional RV depth
+
+### Equalization Cadence
+
+**Physics tells you frequency:**
+
+- Shallow: Frequent (pressure changes rapidly)
+- Deep: Precise dosing (limited air supply)
+- Never force: Physics limits what's possible
+
+### Safety Margins
+
+**Physics sets the boundaries:**
+
+- RV depth = absolute air supply limit
+- Partial pressure effects = cognitive function changes
+- Compression ratios = squeeze risk assessment
+
+## Key Takeaways
+
+1. **Pressure increases linearly** (1 ATA per 10m)
+2. **Volume decreases proportionally** (Boyle's law)
+3. **Gas effects intensify** with partial pressure (Dalton's law)
+4. **Buoyancy shifts** change energy requirements (Archimedes)
+5. **Physics sets limits** — technique works within them, never against them
+
+Understanding these principles helps you:
+
+- Time mouthfill for maximum efficiency
+- Plan equalization cadence appropriately
+- Recognize when physics, not technique, sets the limit
+- Make safer decisions about progression and abort points
+
+**Bottom line**: Physics is your guide, not your enemy. Work with the laws of nature for safer, more efficient diving.

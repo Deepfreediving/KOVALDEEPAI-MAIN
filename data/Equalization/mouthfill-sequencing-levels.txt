@@ -1,0 +1,107 @@
+---
+slug: mouthfill-sequencing-levels
+title: Mouthfill Sequencing — Levels & Timing
+topic: equalization
+version: 1
+author: Daniel Koval
+risk_level: medium
+min_cert_level: L2
+water_required: true
+tags: [mouthfill, sequencing, levels, timing, progression]
+updated_at: 2025-08-21
+---
+
+# Mouthfill Sequencing — Levels & Timing
+
+> ⚠️ **Safety First**
+>
+> - Mouthfill training requires supervised progression
+> - Never attempt mouthfill without mastering basic Frenzel
+> - All mouthfill practice must be done with qualified supervision
+
+## Level Progression
+
+### **Level 1 / Recreational (0-30m)**
+
+- **Focus**: Master Frenzel pacing only
+- **No mouthfill** — build automatic equalization habits
+- **Cadence**: Dense early EQ pattern
+  - 0-10m: 6-7 equalizations
+  - 10-20m: 5 equalizations
+  - 20-30m: 4 equalizations
+- **Key Skills**: Clean entries, consistent descent rate, glottic control
+
+### **Level 2 / Intermediate (30-60m)**
+
+- **Introduce mouthfill at 30-40m** only after Frenzel cadence is automatic
+- **Prerequisites**:
+  - 50+ clean dives with consistent EQ pacing
+  - No equalization failures in shallow water
+  - Demonstrated glottic control and soft palate management
+- **Training**: Supervised introduction with small volumes (60-80ml)
+
+### **Level 3 / Competitive (45-100m)**
+
+- **Mouthfill depth**: 45-60m
+- **Volume**: 80-120ml pocket capacity
+- **Critical Skills**:
+  - Lock posture (glottis closed, neck neutral)
+  - No tongue retraction
+  - Glottic lift only for pressure delivery
+  - Avoid soft palate lock
+
+### **Elite / Deep Competitive (70-150m+)**
+
+- **Mouthfill depth**: 70-90m (near RV depth for maximum efficiency)
+- **Volume**: 120-160ml pocket capacity
+- **Advanced Techniques**:
+  - Protect pocket above RV depth
+  - Strict **no-leak** discipline
+  - Micro-dosing for deep equalization
+  - Advanced glottic control
+
+## Timing Principles
+
+### Early Mouthfill (Discouraged)
+
+**Why 10-20m mouthfill is premature:**
+
+- Narcosis risk when control isn't stable
+- Higher chance of pocket loss
+- Less efficient volume usage
+- Greater squeeze risk if technique fails
+
+### Optimal Timing Strategy
+
+1. **Master foundation first**: Clean Frenzel to 25-30m
+2. **Gradual introduction**: Start mouthfill only when basic skills are automatic
+3. **Depth progression**: Increase mouthfill depth as RV depth increases
+4. **Volume progression**: Start small (60ml) and build capacity gradually
+
+## Safety Gates
+
+### Prerequisites for Mouthfill Training
+
+- [ ] Consistent Frenzel technique to 30m
+- [ ] No equalization struggles in shallow water
+- [ ] Demonstrated neck/glottic control
+- [ ] Qualified instructor supervision
+- [ ] Medical clearance for deep training
+
+### Red Flags (Stop Mouthfill Progression)
+
+- Pocket leaks or sudden pressure loss
+- Tongue retraction during equalization
+- Soft palate locking (sinus pressure without ear relief)
+- Neck extension or poor posture
+- Any squeeze symptoms
+
+## Teaching Progression
+
+1. **Dry Training**: Glottic control, pocket formation
+2. **Pool Practice**: Inverted mouthfill holds (supervised)
+3. **Shallow Depth**: 10-15m technique verification
+4. **Progressive Depth**: Gradual increase with volume monitoring
+5. **Integration**: Combine with full dive profiles
+
+Remember: **Technique before depth, depth before volume.**

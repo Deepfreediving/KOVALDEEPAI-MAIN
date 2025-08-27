@@ -1,0 +1,44 @@
+{
+  "id": "safety_clear_dive_bailout_v1",
+  "title": "CLEAR DIVE Bailout Guide",
+  "version": "1.0",
+  "topic": "safety_abort_logic",
+  "audience": [
+    "student",
+    "coach",
+    "assistant_engine"
+  ],
+  "tags": [
+    "CLEAR",
+    "BAIL OUT",
+    "safety",
+    "checklist",
+    "diagnostic",
+    "EN.C.L.O.S.E."
+  ],
+  "language": "en",
+  "routing_hooks": {
+    "pre_dive_cues": [
+      "clear",
+      "bail out",
+      "checklist"
+    ],
+    "post_dive_cues": [
+      "debrief",
+      "score",
+      "enclose"
+    ],
+    "fields_expected": [
+      "early_contractions",
+      "leg_burn_on_descent",
+      "eq_fail_events",
+      "o2_symptoms",
+      "narcosis_signs",
+      "doubt_tension",
+      "gear_issues",
+      "chest_throat_discomfort",
+      "vision_distortion"
+    ]
+  },
+  "source": "Daniel Koval / Koval Deep AI"
+}

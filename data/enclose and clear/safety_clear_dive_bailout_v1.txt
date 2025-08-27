@@ -1,0 +1,79 @@
+KOVAL DEEP AI — CLEAR DIVE Bailout Guide (v1)
+Doc ID: safety_clear_dive_bailout_v1
+Updated: 2025-08-21
+Audience: freedivers (student → pro), coaches
+Topic: safety_abort_logic
+
+SUMMARY
+If it’s not a CLEAR DIVE, it’s time to BAIL OUT. Use the acronym below pre‑dive (readout/checklist) and post‑dive (debrief/score). This guide is designed for retrieval-augmented coaching and audit engines.
+
+C.L.E.A.R. D.I.V.E. — SMART BAILOUT TRIGGER ACRONYM
+C — Contractions too early
+    • Trigger: Contractions begin before ~1/3 of planned dive time.
+    • Why bail: Indicates poor warm‑up or rapid CO₂ rise. Pushing on = hypercapnia risk and inefficient oxygen use.
+L — Leg burn on descent
+    • Trigger: Significant quad/calf burn before freefall.
+    • Why bail: Early anaerobic shift steals blood O₂ from the brain → raises blackout risk.
+E — Equalization fails
+    • Trigger: Repeated stalls; pressure mismatch ear<sinus; MF instability.
+    • Why bail: Forcing EQ fatigues glottis/tongue, risks MF loss and squeezes. Rule: If you can’t equalize, you TURN.
+A — Any O₂ symptoms
+    • Trigger: Tunnel vision, “stars,” dizziness, cognitive slowness.
+    • Why bail: You are already hypoxic. Continuing → high LMC/BO probability.
+R — Rising doubts / distraction
+    • Trigger: Focus breaks, anxiety/tension spikes, intrusive thoughts.
+    • Why bail: Mental stress increases O₂ cost, worsens thoracic/neck rigidity, degrades technique.
+
+D — Discomfort in chest or throat
+    • Trigger: Tickle, pain, or compression feeling.
+    • Why bail: Early pulmonary/airway squeeze signs. Abort immediately.
+I — Impairment from narcosis
+    • Trigger: Euphoria, confusion, odd visuals, delayed decisions > ~35–40 m and deeper.
+    • Why bail: Judgment is impaired; set a personal turn-depth until adaptation improves.
+V — Vision distortion / visual triggers
+    • Trigger: Blurry vision, dark haze, tunneling, peripheral drop‑out.
+    • Why bail: On verge of hypoxic shutdown; abort and signal.
+E — Equipment malfunction
+    • Trigger: Flooded mask, dropped nose clip, fogged vision, weight/line mismatch.
+    • Why bail: You are no longer fully in control; abort safely.
+
+INSTRUCTOR CUE
+“If the dive’s not CLEAR, don’t go DEEP.”
+
+STUDENT USAGE
+• Use “CLEAR” during pre‑dive checklist (self + buddy verbalization).
+• Use “DIVE” cues during debrief to identify what should have triggered an earlier abort.
+• Rate each dive 0–5 for “how CLEAR it felt” to build safety journaling and spot patterns.
+
+ENHANCED BAILOUT TRIGGERS WITH PHYSIO EXPLANATION
+1) Gear malfunction → HR↑, stress↑, EQ compromised → greater O₂ burn; risk of laryngospasm or panic. Abort.
+2) Early contractions (<⅓ plan) → MDR not settled / CO₂ unmanaged → hypercapnia/LMC risk. Abort, re‑warm‑up.
+3) Throat/chest discomfort → airway/pulmonary squeeze risk scales with depth and tension. Abort immediately.
+4) Leg burn on descent → anaerobic draw shifts O₂ away from brain; increases ascent risk. Abort.
+5) Doubt + tightness → thoracic/neck rigidity + CO₂ rise = technique collapse. Abort.
+6) O₂ symptoms on descent → already hypoxic; continuation invites BO before surface. Abort and signal.
+7) Narcosis symptoms → judgment degraded; fix a conservative turn depth and progress gradually.
+8) Equalization problems → never descend to “fix it.” Turn early to protect MF/glottis and sinuses.
+9) Fusion of doubt + tightness → classic failure spiral. Abort, reset, diagnose.
+
+ENGINE HOOKS (for Assistant/Audit)
+• Pre‑dive: Prompt CLEAR checklist; block start if any letter is “red.”
+• In‑dive (simulated/coach mode): If EQ cadence spikes or sinus>ear pressure repeats, prompt “Abort to protect budget.”
+• Post‑dive: Compute CLEAR score (0–5). If <3 → route to EN.C.L.O.S.E. diagnostic category and suggest drills.
+• Log fields to capture: early_contractions, leg_burn_on_descent, eq_fail_events, o2_symptoms, narcosis_signs, doubt_tension, gear_issues, chest_throat_discomfort, vision_distortion.
+• Safety rule: “Turn at first persistent fail signal; every aborted dive is a data point, not a failure.”
+
+CHECKLIST (SHORT FORM)
+- Contractions timing ≥ ⅓ of plan?  □ Yes  □ No (No = bail)
+- Legs calm on descent?              □ Yes  □ No (No = bail)
+- EQ smooth and repeatable?          □ Yes  □ No (No = bail)
+- O₂ cues absent?                    □ Yes  □ No (No = bail)
+- Mind clear and relaxed?            □ Yes  □ No (No = bail)
+- Discomfort chest/throat?           □ No   □ Yes (Yes = bail)
+- Narcosis/vision off?               □ No   □ Yes (Yes = bail)
+- Equipment fully functional?        □ Yes  □ No (No = bail)
+
+NOTES
+• This text is intentionally compact and consistent for RAG retrieval.
+• Pair with the EN.C.L.O.S.E. diagnostic tooling for root‑cause analysis.
+• Always train with certified supervision and conservative protocols.
