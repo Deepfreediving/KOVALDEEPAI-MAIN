@@ -55,6 +55,11 @@ export default function Index() {
   const [diveLogs, setDiveLogs] = useState([]);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
 
+  // Debug: Track diveLogs state changes
+  useEffect(() => {
+    console.log(`🔍 diveLogs state updated: ${diveLogs.length} logs`);
+  }, [diveLogs]);
+
   // Dive journal state
   const [diveJournalOpen, setDiveJournalOpen] = useState(false);
 
@@ -472,12 +477,16 @@ export default function Index() {
     console.log(`🌐 Loading dive logs for user: ${currentUserId}`);
     setLoadingDiveLogs(true);
     try {
-      console.log(
-        `🌐 Fetching logs from API: ${API_ROUTES.GET_DIVE_LOGS}?userId=${currentUserId}`,
-      );
-      const response = await fetch(
-        `${API_ROUTES.GET_DIVE_LOGS}?userId=${encodeURIComponent(currentUserId)}`,
-      );
+      // Build query parameters including email for admin detection
+      const queryParams = new URLSearchParams({ userId: currentUserId });
+      if (user?.email) {
+        queryParams.append('email', user.email);
+      }
+      
+      const apiUrl = `${API_ROUTES.GET_DIVE_LOGS}?${queryParams.toString()}`;
+      console.log(`🌐 Fetching logs from API: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl);
       if (response.ok) {
         const data = await response.json();
         const remoteLogs = data.diveLogs || data.logs || [];
@@ -498,6 +507,7 @@ export default function Index() {
         );
 
         console.log(`✅ Combined total logs: ${combined.length}`);
+        console.log(`🔄 Setting diveLogs state with ${combined.length} logs:`, combined.slice(0, 2));
         setDiveLogs(combined);
         if (typeof window !== "undefined") {
           localStorage.setItem(storageKey(getUserIdentifier()), JSON.stringify(combined));
@@ -514,7 +524,7 @@ export default function Index() {
     } finally {
       setLoadingDiveLogs(false);
     }
-  }, [getUserIdentifier]);
+  }, [getUserIdentifier, user?.email]);
 
   // ✅ INITIAL DIVE LOGS LOADING - Runs after loadDiveLogs is defined
   useEffect(() => {
@@ -1046,6 +1056,8 @@ export default function Index() {
           loadingDiveLogs={loadingDiveLogs}
         />
       )}
+      {/* Debug: Log diveLogs state when passing to component */}
+      {diveJournalOpen && console.log(`🔍 Passing ${diveLogs.length} dive logs to DiveJournalDisplay`)}
 
     </main>
   );

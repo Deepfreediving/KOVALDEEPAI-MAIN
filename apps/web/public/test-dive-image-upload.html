@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dive Log Image Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #0056b3;
+            background: #f8f9fa;
+        }
+        .upload-area.dragover {
+            border-color: #0056b3;
+            background: #e3f2fd;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #007bff; }
+        .warning { color: #ffc107; }
+        .image-preview {
+            max-width: 300px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .dive-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏊‍♂️ Test Dive Log Image Upload</h1>
+        <p>Upload one of your dive computer images to test the complete workflow</p>
+        
+        <div class="upload-area" onclick="document.getElementById('imageInput').click()">
+            <h3>📸 Drop your dive computer image here or click to browse</h3>
+            <p>Select an image from your freedive log folder</p>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+        
+        <div id="imagePreview"></div>
+        
+        <div class="dive-form" id="diveForm" style="display: none;">
+            <div class="form-group">
+                <label for="discipline">Discipline:</label>
+                <select id="discipline">
+                    <option value="Constant Weight No Fins">Constant Weight No Fins</option>
+                    <option value="Constant Weight">Constant Weight</option>
+                    <option value="Free Immersion">Free Immersion</option>
+                    <option value="Constant Weight Bi-Fins">Constant Weight Bi-Fins</option>
+                    <option value="Variable Weight">Variable Weight</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location:</label>
+                <input type="text" id="location" placeholder="e.g., Dean's Blue Hole">
+            </div>
+            
+            <div class="form-group">
+                <label for="targetDepth">Target Depth (m):</label>
+                <input type="number" id="targetDepth" placeholder="e.g., 40">
+            </div>
+            
+            <div class="form-group">
+                <label for="attemptType">Attempt Type:</label>
+                <select id="attemptType">
+                    <option value="Training">Training</option>
+                    <option value="Personal Best">Personal Best</option>
+                    <option value="Competition">Competition</option>
+                    <option value="National Record">National Record</option>
+                </select>
+            </div>
+            
+            <div class="form-group full-width">
+                <label for="notes">Notes:</label>
+                <textarea id="notes" rows="3" placeholder="Additional notes about the dive..."></textarea>
+            </div>
+        </div>
+        
+        <button class="btn" onclick="analyzeImage()" id="analyzeBtn" disabled>
+            🔍 Analyze Dive Computer Image
+        </button>
+        
+        <button class="btn" onclick="saveDiveLog()" id="saveBtn" disabled style="display: none;">
+            💾 Save Dive Log
+        </button>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let selectedImage = null;
+        let analysisResult = null;
+        
+        // File upload handling
+        const imageInput = document.getElementById('imageInput');
+        const uploadArea = document.querySelector('.upload-area');
+        const log = document.getElementById('log');
+        
+        imageInput.addEventListener('change', handleImageSelect);
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                imageInput.files = files;
+                handleImageSelect();
+            }
+        });
+        
+        function handleImageSelect() {
+            const file = imageInput.files[0];
+            if (!file) return;
+            
+            selectedImage = file;
+            logMessage(`📸 Selected image: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`, 'info');
+            
+            // Show image preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').innerHTML = 
+                    `<img src="${e.target.result}" class="image-preview" alt="Dive computer image">`;
+            };
+            reader.readAsDataURL(file);
+            
+            // Parse filename and pre-fill form
+            parseFilenameAndFillForm(file.name);
+            
+            // Show form and enable analyze button
+            document.getElementById('diveForm').style.display = 'grid';
+            document.getElementById('analyzeBtn').disabled = false;
+        }
+        
+        function parseFilenameAndFillForm(filename) {
+            const lowerName = filename.toLowerCase();
+            
+            // Extract depth
+            const depthMatch = filename.match(/(\d+)m/i);
+            if (depthMatch) {
+                document.getElementById('targetDepth').value = depthMatch[1];
+            }
+            
+            // Extract discipline
+            if (lowerName.includes('cwt') && !lowerName.includes('bifins')) {
+                document.getElementById('discipline').value = 'Constant Weight';
+            } else if (lowerName.includes('fim')) {
+                document.getElementById('discipline').value = 'Free Immersion';
+            } else if (lowerName.includes('bifins') || lowerName.includes('bi-fins')) {
+                document.getElementById('discipline').value = 'Constant Weight Bi-Fins';
+            } else if (lowerName.includes('vwt')) {
+                document.getElementById('discipline').value = 'Variable Weight';
+            }
+            
+            // Extract location
+            if (lowerName.includes('vb') || lowerName.includes('vertical blue')) {
+                document.getElementById('location').value = 'Vertical Blue - Bahamas';
+            } else if (lowerName.includes('dbh') || lowerName.includes('dean')) {
+                document.getElementById('location').value = "Dean's Blue Hole - Bahamas";
+            } else if (lowerName.includes('philippines') || lowerName.includes('phillipines')) {
+                document.getElementById('location').value = 'Philippines';
+            }
+            
+            // Extract attempt type
+            if (lowerName.includes('pb') || lowerName.includes('personal best')) {
+                document.getElementById('attemptType').value = 'Personal Best';
+            } else if (lowerName.includes('nr') || lowerName.includes('national record')) {
+                document.getElementById('attemptType').value = 'National Record';
+            } else if (lowerName.includes('competition') || lowerName.includes('cmas')) {
+                document.getElementById('attemptType').value = 'Competition';
+            }
+            
+            // Extract notes from filename
+            let notes = `From image: ${filename}`;
+            if (lowerName.includes('squeeze')) notes += ' - Experienced squeeze';
+            if (lowerName.includes('edema')) notes += ' - Had edema';
+            if (lowerName.includes('contractions')) notes += ' - Strong contractions';
+            if (lowerName.includes('lmc')) notes += ' - Loss of motor control';
+            if (lowerName.includes('narcosis') || lowerName.includes('narced')) notes += ' - Narcosis effects';
+            
+            document.getElementById('notes').value = notes;
+        }
+        
+        async function analyzeImage() {
+            if (!selectedImage) {
+                logMessage('❌ No image selected', 'error');
+                return;
+            }
+            
+            logMessage('🔍 Analyzing dive computer image...', 'info');
+            document.getElementById('analyzeBtn').disabled = true;
+            
+            try {
+                // Convert image to base64
+                const base64 = await fileToBase64(selectedImage);
+                
+                // Call the image analysis API
+                const response = await fetch('/api/openai/upload-dive-image-simple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageData: base64,
+                        userId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                analysisResult = await response.json();
+                
+                if (analysisResult.success) {
+                    logMessage('✅ Image analysis completed!', 'success');
+                    logMessage(`📊 Analysis: ${analysisResult.analysis}`, 'info');
+                    
+                    if (analysisResult.extractedMetrics) {
+                        logMessage(`📈 Extracted ${Object.keys(analysisResult.extractedMetrics).length} metrics`, 'success');
+                        Object.entries(analysisResult.extractedMetrics).forEach(([key, value]) => {
+                            logMessage(`   • ${key}: ${value}`, 'info');
+                        });
+                    }
+                    
+                    // Enable save button
+                    document.getElementById('saveBtn').style.display = 'inline-block';
+                    document.getElementById('saveBtn').disabled = false;
+                } else {
+                    logMessage(`❌ Analysis failed: ${analysisResult.error}`, 'error');
+                }
+                
+            } catch (error) {
+                logMessage(`❌ Error analyzing image: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+        
+        async function saveDiveLog() {
+            if (!analysisResult) {
+                logMessage('❌ No analysis result to save', 'error');
+                return;
+            }
+            
+            logMessage('💾 Saving dive log...', 'info');
+            document.getElementById('saveBtn').disabled = true;
+            
+            try {
+                const diveLogData = {
+                    diveLog: {
+                        date: new Date().toISOString().split('T')[0],
+                        discipline: document.getElementById('discipline').value,
+                        location: document.getElementById('location').value,
+                        target_depth: parseInt(document.getElementById('targetDepth').value),
+                        reached_depth: analysisResult.extractedMetrics?.max_depth || parseInt(document.getElementById('targetDepth').value),
+                        total_dive_time: formatSeconds(analysisResult.extractedMetrics?.dive_time_seconds || 180),
+                        exit: 'Clean',
+                        attempt_type: document.getElementById('attemptType').value,
+                        notes: document.getElementById('notes').value
+                    },
+                    imageAnalysis: analysisResult.analysis,
+                    extractedMetrics: analysisResult.extractedMetrics,
+                    imageId: analysisResult.imageId
+                };
+                
+                const response = await fetch('/api/supabase/save-dive-log', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(diveLogData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    logMessage('✅ Dive log saved successfully!', 'success');
+                    logMessage(`📊 Dive Log ID: ${result.diveLog.id}`, 'info');
+                    logMessage('🔗 Check your Supabase dashboard to see the entry', 'success');
+                    
+                    if (result.imageLinked) {
+                        logMessage('📸 Image successfully linked to dive log', 'success');
+                    } else {
+                        logMessage('⚠️ Image could not be linked (RLS policy)', 'warning');
+                        logMessage('💡 Image data is stored in dive log metadata instead', 'info');
+                    }
+                } else {
+                    logMessage(`❌ Save failed: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                logMessage(`❌ Error saving dive log: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('saveBtn').disabled = false;
+            }
+        }
+        
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        function formatSeconds(seconds) {
+            if (!seconds) return '3:00';
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('log');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.innerHTML = `[${timestamp}] ${message}`;
+            logDiv.appendChild(messageDiv);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        // Initial log message
+        logMessage('🚀 Ready to test dive log image upload!', 'success');
+        logMessage('📂 Select an image from your freedive log folder to begin', 'info');
+    </script>
+</body>
+</html>

@@ -82,6 +82,7 @@ export default function DiveJournalDisplay({
   // Update logs when parent passes new data
   useEffect(() => {
     console.log("🔄 DiveJournalDisplay: Received dive logs from parent:", diveLogs.length);
+    console.log("🔍 DiveJournalDisplay: diveLogs data:", diveLogs);
     setLogs(diveLogs);
   }, [diveLogs]);
 
@@ -237,9 +238,21 @@ export default function DiveJournalDisplay({
             const imageResult = JSON.parse(responseText);
             console.log("✅ DiveJournalDisplay: Image analyzed successfully:", imageResult);
             imageAnalysis = imageResult.data;
+            
+            // 🚀 CRITICAL: Add all image data to newLog for API
+            newLog.imageId = imageResult.data?.imageId;
             newLog.imageUrl = imageResult.data?.imageUrl;
-            newLog.imageAnalysis = imageAnalysis;
+            newLog.imageAnalysis = imageResult.data?.imageAnalysis || imageResult.data?.extractedText;
             newLog.extractedText = imageResult.data?.extractedText;
+            newLog.extractedMetrics = imageResult.data?.extractedMetrics;
+            
+            console.log("📊 DiveJournalDisplay: Image data added to newLog:", {
+              imageId: newLog.imageId,
+              hasImageUrl: !!newLog.imageUrl,
+              hasAnalysis: !!newLog.imageAnalysis,
+              hasMetrics: !!newLog.extractedMetrics,
+              metricsKeys: newLog.extractedMetrics ? Object.keys(newLog.extractedMetrics) : []
+            });
             
             // Show image analysis in chat
             if (setMessages && imageAnalysis) {

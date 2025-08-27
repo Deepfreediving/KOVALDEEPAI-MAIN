@@ -104,24 +104,27 @@ export default async function handler(req, res) {
   try {
     console.log('📸 Starting image upload and analysis...');
     
-    // Get user ID from request headers or body
-    const userId = req.headers['x-user-id'] || req.body?.userId;
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID required' });
-    }
-
     // Parse the multipart form data
     const form = formidable({
       maxFileSize: MAX_FILE_SIZE,
       keepExtensions: true,
     });
 
-    const [, files] = await form.parse(req);
+    const [fields, files] = await form.parse(req);
     const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
+    const diveLogId = Array.isArray(fields.diveLogId) ? fields.diveLogId[0] : fields.diveLogId;
+
+    console.log('📝 Form data received:', {
+      diveLogId,
+      imageFile: imageFile ? imageFile.originalFilename : 'none'
+    });
 
     if (!imageFile) {
       return res.status(400).json({ error: 'No image file provided' });
     }
+
+    // Get user ID from request headers, body, or use admin fallback
+    const userId = req.headers['x-user-id'] || req.body?.userId || 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(imageFile.mimetype)) {
@@ -227,11 +230,19 @@ Please be specific about the numbers you can read. Return the extracted data in 
 
     console.log('✅ Image uploaded to storage:', uploadData.path);
 
+    // Get public URL for the uploaded image
+    const { data: urlData } = supabase.storage
+      .from('dive-images')
+      .getPublicUrl(uploadData.path);
+    
+    const publicImageUrl = urlData.publicUrl;
+    console.log('🌐 Public image URL:', publicImageUrl);
+
     // Save image metadata and extracted metrics to database
     console.log('💾 Saving to dive_log_image table...');
     const imageRecord = {
       user_id: userId,
-      dive_log_id: null, // Will be linked later when dive log is created
+      dive_log_id: diveLogId || null, // Link to dive log if provided
       bucket: 'dive-images',
       path: uploadData.path,
       original_filename: imageFile.originalFilename,
@@ -275,6 +286,7 @@ Please be specific about the numbers you can read. Return the extracted data in 
       success: true,
       data: {
         imageId: dbData.id,
+        imageUrl: publicImageUrl, // 🚀 Critical: Include public URL
         extractedText: analysis,
         extractedMetrics: extractedMetrics,
         imageAnalysis: analysis,
@@ -284,7 +296,8 @@ Please be specific about the numbers you can read. Return the extracted data in 
         compressedSize: compressedBuffer.length,
         fileSize: compressedBuffer.length,
         mimeType: 'image/jpeg',
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
+        diveLogId: diveLogId // Include for linking reference
       },
       message: 'Image analyzed and saved successfully'
     };

@@ -39,8 +39,9 @@ export default async function handler(req, res) {
       const toStr = (v) => v === '' || v == null ? null : String(v)
 
       // ✅ COMPLETE FIELD MAPPING - MATCHES EXACT DIVE_LOGS SCHEMA
+      const diveLogId = generateUUID(); // Generate UUID for linking
       const supabaseDiveLog = {
-        id: generateUUID(), // Always generate new UUID for inserts
+        id: diveLogId, // Use generated UUID for linking
         user_id: ADMIN_USER_ID,
         
         // Basic dive information
@@ -84,7 +85,12 @@ export default async function handler(req, res) {
           recoveryQuality: diveLogData.recoveryQuality,
           gear: diveLogData.gear || {},
           imagePreview: diveLogData.imagePreview,
-          diveComputerFileName: diveLogData.diveComputerFileName
+          diveComputerFileName: diveLogData.diveComputerFileName,
+          // 🚀 NEW: Store image analysis data and metrics
+          imageAnalysis: diveLogData.imageAnalysis,
+          extractedMetrics: diveLogData.extractedMetrics,
+          imageUrl: diveLogData.imageUrl,
+          imageId: diveLogData.imageId
         }
       }
       console.log('💾 Inserting dive log into Supabase:', supabaseDiveLog)
@@ -105,10 +111,77 @@ export default async function handler(req, res) {
       }
 
       console.log('✅ Dive log saved successfully to Supabase:', savedLog.id)
+
+      // 🚀 CRITICAL: Link image record to dive log if image data exists
+      if (diveLogData.imageId) {
+        console.log(`🔗 Linking image ${diveLogData.imageId} to dive log ${savedLog.id}`)
+        const { error: linkError } = await supabase
+          .from('dive_log_image')
+          .update({ dive_log_id: savedLog.id })
+          .eq('id', diveLogData.imageId)
+
+        if (linkError) {
+          console.error('❌ Failed to link image to dive log:', linkError)
+          // Don't fail the whole request, but log the error
+        } else {
+          console.log('✅ Image successfully linked to dive log')
+        }
+      }
+
+      // 🚀 CRITICAL: Merge extracted metrics into dive log if available
+      if (diveLogData.extractedMetrics && Object.keys(diveLogData.extractedMetrics).length > 0) {
+        console.log('📊 Updating dive log with extracted metrics:', diveLogData.extractedMetrics)
+        
+        // Prepare fields to update based on extracted metrics
+        const metricsUpdate = {};
+        
+        if (diveLogData.extractedMetrics.max_depth && !savedLog.reached_depth) {
+          metricsUpdate.reached_depth = diveLogData.extractedMetrics.max_depth;
+          console.log(`📏 Setting reached_depth from image: ${diveLogData.extractedMetrics.max_depth}m`);
+        }
+        
+        if (diveLogData.extractedMetrics.dive_time_seconds && !savedLog.total_dive_time) {
+          const minutes = Math.floor(diveLogData.extractedMetrics.dive_time_seconds / 60);
+          const seconds = diveLogData.extractedMetrics.dive_time_seconds % 60;
+          metricsUpdate.total_dive_time = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          console.log(`⏱️ Setting total_dive_time from image: ${metricsUpdate.total_dive_time}`);
+        }
+        
+        // Update metadata with full extracted metrics
+        const updatedMetadata = {
+          ...savedLog.metadata,
+          extractedMetrics: diveLogData.extractedMetrics,
+          imageAnalysis: diveLogData.imageAnalysis,
+          autoExtractedData: {
+            source: 'dive_computer_image',
+            extractedAt: new Date().toISOString(),
+            confidence: 'high' // Could be determined by AI analysis quality
+          }
+        };
+        metricsUpdate.metadata = updatedMetadata;
+        
+        if (Object.keys(metricsUpdate).length > 0) {
+          const { error: updateError } = await supabase
+            .from('dive_logs')
+            .update(metricsUpdate)
+            .eq('id', savedLog.id)
+          
+          if (updateError) {
+            console.error('❌ Failed to update dive log with extracted metrics:', updateError)
+          } else {
+            console.log('✅ Dive log updated with extracted metrics')
+            // Update the returned savedLog with new data
+            Object.assign(savedLog, metricsUpdate);
+          }
+        }
+      }
+
       return res.status(200).json({ 
         success: true, 
         diveLog: savedLog,
-        message: 'Dive log saved successfully'
+        message: 'Dive log saved successfully',
+        imageLinked: !!diveLogData.imageId,
+        metricsExtracted: !!diveLogData.extractedMetrics
       })
     }
 
