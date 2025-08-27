@@ -4,9 +4,17 @@
     "eslint:recommended",
     "prettier"
   ],
-  "plugins": ["react", "prettier"],
+  "plugins": [
+    "react",
+    "prettier"
+  ],
   "rules": {
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
     "no-console": "off",
     "no-undef": "warn",
     "no-empty": "warn",
@@ -41,7 +49,6 @@
     "build/",
     "dist/",
     "*.config.js",
-    "package.json",
-    "wix-site/"
+    "package.json"
   ]
 }

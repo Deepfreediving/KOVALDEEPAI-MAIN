@@ -1,5 +1,4 @@
 // ===== 📄 middleware.ts - CORS Configuration & Security =====
-// Fix CORS issues for Wix integration and enhance security
 
 import { NextRequest, NextResponse } from "next/server";
 
@@ -116,12 +115,7 @@ export function middleware(request: NextRequest) {
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     response.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
 
-    // Allow Wix domains
     const allowedOrigins = [
-      "https://www.deepfreediving.com",
-      "https://deepfreediving.com",
-      "https://editor.wix.com",
-      "https://manage.wix.com",
       "http://localhost:3000", // Development
       "https://localhost:3000" // Development HTTPS
     ];
@@ -191,7 +185,6 @@ export function middleware(request: NextRequest) {
       "img-src 'self' data: blob: https: http:",
       "media-src 'self' blob:",
       "connect-src 'self' https: wss:",
-      "frame-ancestors 'self' https://*.wix.com https://*.wixsite.com https://www.deepfreediving.com https://deepfreediving.com",
       "form-action 'self'",
       "base-uri 'self'",
       "object-src 'none'"

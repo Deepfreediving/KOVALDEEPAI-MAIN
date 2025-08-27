@@ -5,8 +5,6 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { getAdminSupabaseClient } from '@/lib/supabaseServerClient';
 import { extractDiveText } from '@/utils/extractTextFromImage';
-import { compressDiveLogForWix } from '@/utils/diveLogCompression';
-
 export const config = {
   api: {
     bodyParser: false,

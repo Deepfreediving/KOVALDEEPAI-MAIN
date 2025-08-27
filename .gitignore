@@ -15,7 +15,6 @@ node_modules/
 .turbo/
 
 # Archived legacy files (to prevent conflicts)
-archived-wix/
 
 # Ignore swap files
 *.swp
@@ -23,13 +22,7 @@ archived-wix/
 /public/uploads/
 .next
 
-# Wix development files - legacy locations (keep for now during transition)
-# These will be moved to /wix-site/ mirror folder
-# Wix App/
-# wix page/
-# wix guides/
 
-# Optional: uncomment above lines after verifying wix-site/ mirror is complete
 .DS_Store
 
 # Personal dive logs - temporarily enabled for testing

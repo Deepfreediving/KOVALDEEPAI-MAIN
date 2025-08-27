@@ -24,8 +24,8 @@ function MyApp({ Component, pageProps }) {
           if (sanitizedToken.length > 0 && sanitizedToken.length < 2000) {
             // ✅ Safe localStorage access
             try {
-              localStorage.setItem("wixAppToken", sanitizedToken);
-              console.log("✅ Wix token saved successfully");
+              localStorage.setItem("appToken", sanitizedToken);
+              console.log("✅ App token saved successfully");
 
               // ✅ Clean URL after saving token
               const url = new URL(window.location.href);

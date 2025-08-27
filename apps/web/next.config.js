@@ -9,8 +9,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Skip static generation to avoid build errors
-  output: 'standalone',
+  // Remove standalone output to avoid SSG issues
+  experimental: {
+    outputFileTracingRoot: undefined,
+  },
   
   env: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

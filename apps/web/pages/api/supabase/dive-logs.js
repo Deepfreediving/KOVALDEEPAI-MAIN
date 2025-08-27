@@ -110,6 +110,23 @@ export default async function handler(req, res) {
       
       for (const log of diveLogs || []) {
         try {
+          // 🔧 Map database fields to frontend expected fields
+          const mappedLog = {
+            ...log,
+            // Map snake_case to camelCase for frontend compatibility
+            targetDepth: log.target_depth,
+            reachedDepth: log.reached_depth,
+            totalDiveTime: log.total_dive_time,
+            mouthfillDepth: log.mouthfill_depth,
+            issueDepth: log.issue_depth,
+            issueComment: log.issue_comment,
+            attemptType: log.attempt_type,
+            surfaceProtocol: log.surface_protocol,
+            // Keep original fields for backward compatibility
+            target_depth: log.target_depth,
+            reached_depth: log.reached_depth,
+          };
+          
           // Get images for this dive log
           const { data: images, error: imageError } = await supabase
             .from('dive_log_image')
@@ -126,7 +143,7 @@ export default async function handler(req, res) {
               .getPublicUrl(imageRecord.path);
             
             processedDiveLogs.push({
-              ...log,
+              ...mappedLog,
               imageUrl: urlData.publicUrl,
               imageAnalysis: imageRecord.ai_analysis,
               extractedMetrics: imageRecord.extracted_metrics,
@@ -136,7 +153,7 @@ export default async function handler(req, res) {
             });
           } else {
             processedDiveLogs.push({
-              ...log,
+              ...mappedLog,
               hasImage: false
             });
           }

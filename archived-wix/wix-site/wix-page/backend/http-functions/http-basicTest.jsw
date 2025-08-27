@@ -1,7 +1,0 @@
-// Most basic possible function - no ES6 syntax
-function post_basicTest(request) {
-  return {
-    status: 200,
-    body: '{"message": "basic test working"}'
-  };
-}
