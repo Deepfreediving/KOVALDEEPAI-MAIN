@@ -1,10 +1,20 @@
 // Supabase save dive log API endpoint - ADMIN ONLY
 import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 
-// Use admin client for service role operations
-const supabase = getAdminSupabaseClient();
-
 export default async function handler(req, res) {
+  // Initialize Supabase client with error handling
+  const supabase = getAdminSupabaseClient();
+  
+  if (!supabase) {
+    console.error('❌ Failed to initialize Supabase admin client');
+    return res.status(500).json({ 
+      error: 'Database connection failed',
+      details: 'Could not initialize Supabase client'
+    });
+  }
+
+  console.log('✅ Supabase admin client initialized successfully');
+
   // Generate UUID helper function
   function generateUUID() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {

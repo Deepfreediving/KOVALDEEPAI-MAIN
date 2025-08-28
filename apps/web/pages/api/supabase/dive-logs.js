@@ -2,11 +2,23 @@
 import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 import { SecurityValidator } from '@/lib/security'
 
-const supabase = getAdminSupabaseClient();
-
 export default async function handler(req, res) {
   const startTime = Date.now();
   const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'unknown';
+  
+  try {
+    // Initialize Supabase client with error handling
+    const supabase = getAdminSupabaseClient();
+    
+    if (!supabase) {
+      console.error('❌ Failed to initialize Supabase admin client');
+      return res.status(500).json({ 
+        error: 'Database connection failed',
+        details: 'Could not initialize Supabase client'
+      });
+    }
+
+    console.log('✅ Supabase admin client initialized successfully');
   
   try {
     // Security: Validate request method
