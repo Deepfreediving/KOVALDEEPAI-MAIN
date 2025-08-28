@@ -194,31 +194,18 @@ export default async function handler(req, res) {
 
       console.log(`🔍 Querying dive logs for user: ${user_identifier} (UUID: ${final_user_id})`);
 
-      // ✅ PERFORMANCE OPTIMIZATION: Use direct table query with optimized joins
-      let query;
+      // ✅ PERFORMANCE OPTIMIZATION: Use simple direct query first
       const queryStartTime = Date.now();
       
-      // Use direct table query instead of the function for now
-      // This still provides good performance with proper indexing
-      query = supabase
+      // First, get dive logs without trying to join images
+      const { data: diveLogs, error } = await supabase
         .from('dive_logs')
-        .select(`
-          *,
-          dive_log_image (
-            id,
-            path,
-            bucket,
-            original_filename,
-            ai_analysis,
-            extracted_metrics
-          )
-        `)
+        .select('*')
         .eq('user_id', final_user_id)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(sanitizedLimit);
 
-      const { data: diveLogs, error } = await query;
       const queryTime = Date.now() - queryStartTime;
       console.log(`⏱️ Database query completed in ${queryTime}ms`);
 
@@ -230,38 +217,12 @@ export default async function handler(req, res) {
         });
       }
 
-      // ✅ Process the results efficiently - batch process images
+      // ✅ Process the results efficiently 
       console.log(`📊 Processing ${diveLogs?.length || 0} dive logs...`);
       
-      // Extract image data from the nested structure
-      const logsWithImages = (diveLogs || []).filter(log => 
-        log.dive_log_image && log.dive_log_image.length > 0
-      );
-      console.log(`📸 Found ${logsWithImages.length} logs with images to process`);
-      
-      // Create a map of image paths to public URLs (batch operation)
-      const imageUrlMap = new Map();
-      try {
-        logsWithImages.forEach(log => {
-          const image = log.dive_log_image[0]; // Take first image
-          if (image && image.path) {
-            const { data: urlData } = supabase.storage
-              .from(image.bucket || 'dive-images')
-              .getPublicUrl(image.path);
-            imageUrlMap.set(image.path, urlData.publicUrl);
-          }
-        });
-        console.log(`🔗 Generated ${imageUrlMap.size} image URLs`);
-      } catch (storageError) {
-        console.error('Storage URL generation error:', storageError);
-        // Continue without failing the entire request
-      }
-
+      // For now, we'll handle this without images to get the basic API working
+      // Images can be added back once the database relationship is properly configured
       const processedDiveLogs = (diveLogs || []).map(log => {
-        // Extract image data from nested structure
-        const hasImage = log.dive_log_image && log.dive_log_image.length > 0;
-        const imageData = hasImage ? log.dive_log_image[0] : null;
-        
         // Map database fields to frontend expected fields
         const mappedLog = {
           id: log.id,
@@ -287,30 +248,15 @@ export default async function handler(req, res) {
           // Keep original fields for backward compatibility
           target_depth: log.target_depth,
           reached_depth: log.reached_depth,
+          // For now, no images until relationship is fixed
+          hasImage: false
         };
 
-        // Handle image data efficiently using pre-calculated URLs
-        if (hasImage && imageData) {
-          const imageUrl = imageUrlMap.get(imageData.path);
-          return {
-            ...mappedLog,
-            imageUrl: imageUrl || null,
-            imageAnalysis: imageData.ai_analysis,
-            extractedMetrics: imageData.extracted_metrics,
-            imageId: imageData.id,
-            originalFileName: imageData.original_filename,
-            hasImage: true
-          };
-        } else {
-          return {
-            ...mappedLog,
-            hasImage: false
-          };
-        }
+        return mappedLog;
       });
 
       console.log(`✅ Found ${processedDiveLogs.length} dive logs for user: ${user_identifier} (UUID: ${final_user_id})`)
-      console.log(`📸 Images found: ${processedDiveLogs.filter(log => log.hasImage).length}`)
+      console.log(`📸 Images found: ${processedDiveLogs.filter(log => log.hasImage).length} (temporarily disabled until DB relationship is fixed)`)
       
       // Add response headers
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -323,13 +269,14 @@ export default async function handler(req, res) {
         stats: {
           totalLogs: processedDiveLogs.length,
           logsWithImages: processedDiveLogs.filter(log => log.hasImage).length,
-          logsWithExtractedMetrics: processedDiveLogs.filter(log => log.extractedMetrics && Object.keys(log.extractedMetrics).length > 0).length
+          logsWithExtractedMetrics: 0 // Temporarily 0 until images are re-enabled
         },
         meta: {
           timestamp: new Date().toISOString(),
           processingTime: Date.now() - startTime,
           optimized: true,
-          viewUsed: final_user_id === ADMIN_USER_ID ? 'v_admin_dive_logs' : 'v_dive_logs_with_images'
+          mode: 'simplified-no-images',
+          note: 'Images temporarily disabled until database relationship is configured'
         }
       })
     }
