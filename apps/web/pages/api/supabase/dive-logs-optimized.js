@@ -1,9 +1,67 @@
-// Optimized Supabase dive logs API endpoint - Performance Enhanced
+// Optimized Supabase dive logs API endpoint - Performance Enhanced with Rate Limiting
 import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
+
+// Simple in-memory rate limiting (for production, use Redis or a proper rate limiter)
+const requestTracker = new Map();
+const RATE_LIMIT = {
+  requests: 10, // Max requests per window
+  windowMs: 60000, // 1 minute window
+  maxConcurrent: 3 // Max concurrent requests per IP
+};
+
+function isRateLimited(clientIP) {
+  const now = Date.now();
+  const clientKey = `${clientIP}`;
+  
+  if (!requestTracker.has(clientKey)) {
+    requestTracker.set(clientKey, { requests: [], concurrent: 0 });
+  }
+  
+  const clientData = requestTracker.get(clientKey);
+  
+  // Clean old requests outside the window
+  clientData.requests = clientData.requests.filter(timestamp => 
+    now - timestamp < RATE_LIMIT.windowMs
+  );
+  
+  // Check rate limits
+  if (clientData.requests.length >= RATE_LIMIT.requests) {
+    return { limited: true, reason: 'Too many requests' };
+  }
+  
+  if (clientData.concurrent >= RATE_LIMIT.maxConcurrent) {
+    return { limited: true, reason: 'Too many concurrent requests' };
+  }
+  
+  // Add current request
+  clientData.requests.push(now);
+  clientData.concurrent++;
+  
+  return { limited: false };
+}
+
+function releaseRateLimit(clientIP) {
+  const clientKey = `${clientIP}`;
+  const clientData = requestTracker.get(clientKey);
+  if (clientData && clientData.concurrent > 0) {
+    clientData.concurrent--;
+  }
+}
 
 export default async function handler(req, res) {
   const startTime = Date.now();
   const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'unknown';
+  
+  // Apply rate limiting
+  const rateLimitCheck = isRateLimited(clientIP);
+  if (rateLimitCheck.limited) {
+    console.warn(`🚫 Rate limit exceeded for ${clientIP}: ${rateLimitCheck.reason}`);
+    return res.status(429).json({ 
+      error: 'Too many requests',
+      details: rateLimitCheck.reason,
+      retryAfter: Math.ceil(RATE_LIMIT.windowMs / 1000)
+    });
+  }
   
   try {
     // Initialize Supabase client with error handling
@@ -127,28 +185,66 @@ export default async function handler(req, res) {
 
       console.log(`🔍 Querying dive logs for user: ${user_identifier} (UUID: ${final_user_id})`);
 
-      // ✅ PERFORMANCE OPTIMIZATION: Use the optimized function
+      // ✅ PERFORMANCE OPTIMIZATION: Use the optimized function with timeout
       let query;
+      const queryStartTime = Date.now();
+      
       if (final_user_id === ADMIN_USER_ID) {
         // Use the optimized function with no user filter (gets all for admin)
         query = supabase
           .rpc('get_user_dive_logs_optimized')
-          .limit(sanitizedLimit);
+          .limit(sanitizedLimit)
+          .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
       } else {
         // Use the optimized function with user filter
         query = supabase
           .rpc('get_user_dive_logs_optimized', { target_user_id: final_user_id })
-          .limit(sanitizedLimit);
+          .limit(sanitizedLimit)
+          .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
       }
 
       const { data: diveLogs, error } = await query;
+      const queryTime = Date.now() - queryStartTime;
+      console.log(`⏱️ Database query completed in ${queryTime}ms`);
 
       if (error) {
-        console.error('Supabase error:', error)
-        return res.status(500).json({ error: error.message })
+        console.error('❌ Supabase query error:', error);
+        if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
+          return res.status(504).json({ 
+            error: 'Database query timeout - please try again with fewer results',
+            details: 'Query took too long to execute'
+          });
+        }
+        return res.status(500).json({ 
+          error: error.message || 'Database query failed',
+          details: 'Failed to fetch dive logs'
+        });
       }
 
-      // ✅ Process the results (no need for additional image queries!)
+      // ✅ Process the results efficiently - batch process images
+      console.log(`📊 Processing ${diveLogs?.length || 0} dive logs...`);
+      
+      // Pre-calculate all storage URLs in one batch to avoid individual calls
+      const logsWithImages = (diveLogs || []).filter(log => log.has_image && log.image_path);
+      console.log(`📸 Found ${logsWithImages.length} logs with images to process`);
+      
+      // Create a map of image paths to public URLs (batch operation)
+      const imageUrlMap = new Map();
+      try {
+        logsWithImages.forEach(log => {
+          if (log.image_path) {
+            const { data: urlData } = supabase.storage
+              .from(log.image_bucket || 'dive-images')
+              .getPublicUrl(log.image_path);
+            imageUrlMap.set(log.image_path, urlData.publicUrl);
+          }
+        });
+        console.log(`🔗 Generated ${imageUrlMap.size} image URLs`);
+      } catch (storageError) {
+        console.error('Storage URL generation error:', storageError);
+        // Continue without failing the entire request
+      }
+
       const processedDiveLogs = (diveLogs || []).map(log => {
         // Map database fields to frontend expected fields
         const mappedLog = {
@@ -167,15 +263,12 @@ export default async function handler(req, res) {
           reached_depth: log.reached_depth,
         };
 
-        // Handle image data (already joined in the view)
+        // Handle image data efficiently using pre-calculated URLs
         if (log.has_image && log.image_path) {
-          const { data: urlData } = supabase.storage
-            .from(log.image_bucket || 'dive-images')
-            .getPublicUrl(log.image_path);
-
+          const imageUrl = imageUrlMap.get(log.image_path);
           return {
             ...mappedLog,
-            imageUrl: urlData.publicUrl,
+            imageUrl: imageUrl || null,
             imageAnalysis: log.image_analysis,
             extractedMetrics: log.extracted_metrics,
             imageId: log.image_id,
@@ -225,5 +318,8 @@ export default async function handler(req, res) {
       error: 'Internal server error',
       requestId: `dive-logs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     });
+  } finally {
+    // Always release rate limit
+    releaseRateLimit(clientIP);
   }
 }
