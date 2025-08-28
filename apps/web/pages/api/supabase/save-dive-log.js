@@ -1,8 +1,8 @@
 // Supabase save dive log API endpoint - ADMIN ONLY
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient'
+import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 
-// Use singleton client to prevent multiple instances
-const supabase = getServerSupabaseClient();
+// Use admin client for service role operations
+const supabase = getAdminSupabaseClient();
 
 export default async function handler(req, res) {
   // Generate UUID helper function

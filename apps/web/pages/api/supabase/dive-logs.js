@@ -1,8 +1,8 @@
 // Supabase dive logs API endpoint with enhanced security
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient'
+import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 import { SecurityValidator } from '@/lib/security'
 
-const supabase = getServerSupabaseClient();
+const supabase = getAdminSupabaseClient();
 
 export default async function handler(req, res) {
   const startTime = Date.now();

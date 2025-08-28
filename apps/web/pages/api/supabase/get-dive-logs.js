@@ -1,9 +1,9 @@
 // Supabase-powered get dive logs API endpoint - ADMIN ONLY
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient'
+import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 import handleCors from "@/utils/handleCors";
 
-// Use singleton client to prevent multiple instances
-const supabase = getServerSupabaseClient();
+// Use admin client for elevated access
+const supabase = getAdminSupabaseClient();
 
 export default async function handler(req, res) {
   try {

@@ -1,8 +1,8 @@
-// Supabase delete dive log API endpoint - ADMIN ONLY
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient'
+// Delete dive log API endpoint - ADMIN ONLY
+import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 
-// Use singleton client to prevent multiple instances
-const supabase = getServerSupabaseClient();
+// Use admin client for delete operations
+const supabase = getAdminSupabaseClient();
 
 export default async function handler(req, res) {
   try {
