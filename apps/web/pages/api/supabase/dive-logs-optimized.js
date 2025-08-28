@@ -4,12 +4,21 @@ import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 // Simple in-memory rate limiting (for production, use Redis or a proper rate limiter)
 const requestTracker = new Map();
 const RATE_LIMIT = {
-  requests: 10, // Max requests per window
+  requests: 50, // Max requests per window (increased from 10)
   windowMs: 60000, // 1 minute window
-  maxConcurrent: 3 // Max concurrent requests per IP
+  maxConcurrent: 10 // Max concurrent requests per IP (increased from 3)
 };
 
 function isRateLimited(clientIP) {
+  // Skip rate limiting for localhost and common testing IPs
+  if (clientIP === '127.0.0.1' || 
+      clientIP === 'localhost' || 
+      clientIP === '::1' ||
+      clientIP === 'unknown' ||
+      !clientIP) {
+    return { limited: false };
+  }
+  
   const now = Date.now();
   const clientKey = `${clientIP}`;
   
@@ -24,13 +33,13 @@ function isRateLimited(clientIP) {
     now - timestamp < RATE_LIMIT.windowMs
   );
   
-  // Check rate limits
+  // Check rate limits - be more lenient
   if (clientData.requests.length >= RATE_LIMIT.requests) {
-    return { limited: true, reason: 'Too many requests' };
+    return { limited: true, reason: `Too many requests (${clientData.requests.length}/${RATE_LIMIT.requests})` };
   }
   
   if (clientData.concurrent >= RATE_LIMIT.maxConcurrent) {
-    return { limited: true, reason: 'Too many concurrent requests' };
+    return { limited: true, reason: `Too many concurrent requests (${clientData.concurrent}/${RATE_LIMIT.maxConcurrent})` };
   }
   
   // Add current request
