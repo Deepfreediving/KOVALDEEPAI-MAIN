@@ -14,6 +14,8 @@ export default function Sidebar({
   userId,
   darkMode,
   refreshDiveLogs,
+  handleBackToDashboard,
+  adminMode = false,
 }) {
   useEffect(() => {
     if (userId && refreshDiveLogs) {
@@ -32,7 +34,7 @@ export default function Sidebar({
       {/* Koval AI Logo at top of sidebar */}
       <div className="p-2 pt-1 flex justify-center">
         <Image 
-          src="/koval-logo.png" 
+          src="/deeplogo.jpg" 
           alt="Koval AI Logo" 
           width={192}
           height={120}
@@ -150,6 +152,18 @@ export default function Sidebar({
       </div>
 
       <div className={`p-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+        {adminMode && handleBackToDashboard && (
+          <button
+            onClick={handleBackToDashboard}
+            className={`w-full mb-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              darkMode
+                ? "bg-red-800 hover:bg-red-700 text-red-200"
+                : "bg-red-100 hover:bg-red-200 text-red-700"
+            }`}
+          >
+            ← Admin Dashboard
+          </button>
+        )}
         <button
           onClick={handleSaveSession}
           className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
