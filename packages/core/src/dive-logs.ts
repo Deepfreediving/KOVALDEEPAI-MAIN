@@ -26,7 +26,7 @@ export class DiveLogService {
 
   async createDiveLog(userId: string, diveLog: CreateDiveLogRequest): Promise<DiveLog | null> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from('dive_logs')
         .insert({
           user_id: userId,
@@ -108,7 +108,7 @@ export class DiveLogService {
 
   async updateDiveLog(id: string, userId: string, updates: Partial<CreateDiveLogRequest & { analysis?: string }>): Promise<DiveLog | null> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from('dive_logs')
         .update(updates)
         .eq('id', id)
@@ -150,7 +150,7 @@ export class UserMemoryService {
 
   async saveMemory(userId: string, memoryType: UserMemory['memory_type'], content: any): Promise<UserMemory | null> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from('user_memory')
         .insert({
           id: crypto.randomUUID(),

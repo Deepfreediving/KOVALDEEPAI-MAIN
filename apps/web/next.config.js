@@ -11,7 +11,7 @@ const nextConfig = {
 
   // Remove standalone output to avoid SSG issues
   experimental: {
-    outputFileTracingRoot: undefined,
+    // outputFileTracingRoot: undefined, // Commented out to fix watchpack error
   },
   
   env: {

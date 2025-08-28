@@ -110,7 +110,7 @@ export class AuthService {
   }
 
   async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
-    const { data, error } = await this.supabase
+    const { data, error } = await (this.supabase as any)
       .from('profiles')
       .update(updates)
       .eq('id', userId)

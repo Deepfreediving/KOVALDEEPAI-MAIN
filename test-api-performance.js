@@ -7,7 +7,7 @@
 require('dotenv').config({ path: '.env.local' });
 
 const VERCEL_URL = 'https://kovaldeepai-main.vercel.app';
-const LOCAL_URL = 'http://localhost:3000';
+const LOCAL_URL = 'http://localhost:3002';
 const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
 async function testAPIPerformance() {

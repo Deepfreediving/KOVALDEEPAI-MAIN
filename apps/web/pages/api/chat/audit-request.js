@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     
     console.log(`🔍 Looking for recent dive logs for audit request...`);
     
-    const diveLogsResponse = await fetch(`${baseUrl}/api/supabase/dive-logs-optimized?userId=${encodeURIComponent(userId)}`);
+    const diveLogsResponse = await fetch(`${baseUrl}/api/supabase/dive-logs?userId=${encodeURIComponent(userId)}`);
     
     if (!diveLogsResponse.ok) {
       throw new Error('Could not fetch dive logs');

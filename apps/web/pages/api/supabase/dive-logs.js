@@ -114,46 +114,31 @@ export default async function handler(req, res) {
         ].join('-');
       }
 
-      // ✅ PERFORMANCE OPTIMIZATION: Use optimized view to eliminate N+1 queries
-      let query;
-      if (final_user_id === ADMIN_USER_ID) {
-        // Use the optimized admin view (if it exists, fallback to regular query)
-        query = supabase
-          .from('v_admin_dive_logs')
-          .select('*')
-          .limit(50);
-      } else {
-        // Use the general optimized view (if it exists, fallback to regular query)
-        query = supabase
-          .from('v_dive_logs_with_images')
-          .select('*')
-          .eq('user_id', final_user_id)
-          .limit(50);
-      }
+      // ✅ EMERGENCY PERFORMANCE FIX: Use simple optimized query instead of views
+      console.log(`🔍 Querying dive logs for user: ${user_identifier} (UUID: ${final_user_id})`);
 
-      let { data: diveLogs, error } = await query;
+      // Try dive_logs table first (admin table)
+      let { data: diveLogs, error } = await supabase
+        .from('dive_logs')
+        .select('*')
+        .eq('user_id', final_user_id)
+        .order('date', { ascending: false })
+        .limit(50);
 
-      // Fallback to original query if optimized views don't exist yet
-      if (error && error.message?.includes('relation') && error.message?.includes('does not exist')) {
-        console.warn('⚠️ Optimized views not available, falling back to original query');
-        
+      // If no results in dive_logs table, try dive_log table (original table)
+      if (!error && (!diveLogs || diveLogs.length === 0)) {
+        console.log('🔄 No data in dive_logs table, trying dive_log table...');
         const { data: fallbackLogs, error: fallbackError } = await supabase
-          .from('dive_logs')
+          .from('dive_log')
           .select('*')
           .eq('user_id', final_user_id)
           .order('date', { ascending: false })
           .limit(50);
 
-        if (fallbackError) {
-          console.error('Supabase error:', fallbackError)
-          return res.status(500).json({ error: fallbackError.message })
+        if (!fallbackError && fallbackLogs && fallbackLogs.length > 0) {
+          diveLogs = fallbackLogs;
+          console.log(`✅ Found ${fallbackLogs.length} logs in dive_log table`);
         }
-
-        diveLogs = fallbackLogs;
-        error = null;
-      } else if (error) {
-        console.error('Supabase error:', error)
-        return res.status(500).json({ error: error.message })
       }
 
       // Process the logs (optimized views include image data, fallback needs separate queries)

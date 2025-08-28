@@ -39,7 +39,7 @@
         async function testDiveLogs() {
             addResult('🔄 Testing dive logs API...');
             try {
-                const response = await fetch(`/api/supabase/dive-logs-optimized?userId=${ADMIN_USER_ID}`);
+                const response = await fetch(`/api/supabase/dive-logs?userId=${ADMIN_USER_ID}`);
                 const data = await response.json();
                 
                 if (response.ok) {

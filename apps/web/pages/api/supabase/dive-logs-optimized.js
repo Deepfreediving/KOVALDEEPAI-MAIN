@@ -127,20 +127,17 @@ export default async function handler(req, res) {
 
       console.log(`🔍 Querying dive logs for user: ${user_identifier} (UUID: ${final_user_id})`);
 
-      // ✅ PERFORMANCE OPTIMIZATION: Use the optimized view for admin user
+      // ✅ PERFORMANCE OPTIMIZATION: Use the optimized function
       let query;
       if (final_user_id === ADMIN_USER_ID) {
-        // Use the optimized admin view
+        // Use the optimized function with no user filter (gets all for admin)
         query = supabase
-          .from('v_admin_dive_logs')
-          .select('*')
+          .rpc('get_user_dive_logs_optimized')
           .limit(sanitizedLimit);
       } else {
-        // Use the general optimized view for other users
+        // Use the optimized function with user filter
         query = supabase
-          .from('v_dive_logs_with_images')
-          .select('*')
-          .eq('user_id', final_user_id)
+          .rpc('get_user_dive_logs_optimized', { target_user_id: final_user_id })
           .limit(sanitizedLimit);
       }
 
