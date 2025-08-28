@@ -59,16 +59,6 @@ const envVarsToRemove = [
     'WIX_CLIENT_SECRET'
 ];
 
-// Files to edit (remove Wix references)
-const filesToEdit = [
-    'middleware.ts',
-    'apps/web/pages/api/openai/upload-dive-image-simple.js',
-    '.gitignore',
-    '.eslintrc.json',
-    '.eslintignore',
-    '.env.local'
-];
-
 function deleteFile(filePath) {
     const fullPath = path.join(workspaceRoot, filePath);
     try {

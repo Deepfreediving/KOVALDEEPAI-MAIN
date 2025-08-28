@@ -15,7 +15,7 @@ async function checkTableSchema() {
 
   try {
     // Try to get the actual table structure by attempting a select with limit 0
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('dive_log_image')
       .select('*')
       .limit(0);

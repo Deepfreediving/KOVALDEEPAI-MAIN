@@ -30,7 +30,7 @@ async function checkDiveLogSchema() {
       console.log('📋 Table exists but no data found');
       
       // Try to get column info differently
-      const { data: testInsert, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from('dive_log')
         .insert({})
         .select();
