@@ -189,16 +189,22 @@ export default async function handler(req, res) {
       let query;
       const queryStartTime = Date.now();
       
+      // Use simple table query instead of non-existent function
       if (final_user_id === ADMIN_USER_ID) {
-        // Use the optimized function with no user filter (gets all for admin)
+        // Admin can see all dive logs
         query = supabase
-          .rpc('get_user_dive_logs_optimized')
+          .from('dive_logs')
+          .select('*')
+          .order('date', { ascending: false })
           .limit(sanitizedLimit)
           .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
       } else {
-        // Use the optimized function with user filter
+        // Regular user sees only their logs
         query = supabase
-          .rpc('get_user_dive_logs_optimized', { target_user_id: final_user_id })
+          .from('dive_logs')
+          .select('*')
+          .eq('user_id', final_user_id)
+          .order('date', { ascending: false })
           .limit(sanitizedLimit)
           .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
       }
