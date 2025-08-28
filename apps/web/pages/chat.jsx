@@ -73,10 +73,6 @@ export default function ChatPage() {
     router.push('/admin');
   };
 
-  const handleLogout = () => {
-    router.push('/admin');
-  };
-
   const getDisplayName = useCallback(() => {
     return profile?.nickname || "Daniel Koval (Admin)";
   }, [profile]);
@@ -125,6 +121,11 @@ export default function ChatPage() {
     // Mock function for admin mode
     console.log("Refreshing dive logs...");
   }, []);
+
+  // ✅ DIVE JOURNAL FUNCTIONS
+  const toggleDiveJournal = useCallback(() => {
+    setDiveJournalOpen(!diveJournalOpen);
+  }, [diveJournalOpen]);
 
   // ✅ WORKING CHAT SUBMISSION
   const handleSubmit = useCallback(
