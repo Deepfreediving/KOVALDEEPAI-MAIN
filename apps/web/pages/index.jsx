@@ -138,6 +138,20 @@ export default function Index() {
     console.log(`🔍 diveLogs state updated: ${diveLogs.length} logs`);
   }, [diveLogs]);
 
+  // ✅ Simplified authentication - skip complex flow for admin/demo mode
+  useEffect(() => {
+    if (adminMode || demoMode) {
+      // For admin/demo mode, bypass complex auth
+      setIsAuthenticating(false);
+      return;
+    }
+
+    // Only run complex auth for regular users
+    if (typeof window !== "undefined" && router.isReady) {
+      setSessionsList(safeParse("kovalSessionsList", []));
+    }
+  }, [adminMode, demoMode, router.isReady]);
+
   // ✅ HELPERS
   // ✅ STORAGE KEY: Use nickname for consistent storage across sessions
   const storageKey = (userIdentifier) => `diveLogs_${userIdentifier}`;
@@ -198,28 +212,17 @@ export default function Index() {
 
   // ✅ SUPABASE AUTHENTICATION (Modified to handle demo mode)
   useEffect(() => {
+    // Skip complex auth for admin/demo mode
+    if (adminMode || demoMode) {
+      console.log("🎯 Skipping complex auth for admin/demo mode");
+      setIsAuthenticating(false);
+      return;
+    }
+
     let isMounted = true;
     
     const initAuth = async () => {
       try {
-        // Check if we have URL parameters for demo/admin mode
-        const { userId: urlUserId } = router.query;
-        
-        if (urlUserId && !urlUserId.startsWith("guest-")) {
-          console.log("🎯 Demo/Admin mode detected from URL parameters");
-          setUserId(String(urlUserId));
-          setProfile({
-            userId: String(urlUserId),
-            firstName: 'Admin',
-            lastName: 'User',
-            nickname: 'KovalAdmin',
-            email: 'admin@koval.ai',
-            source: 'url-params'
-          });
-          setIsAuthenticating(false);
-          return; // Skip Supabase auth for demo mode
-        }
-        
         // Get initial session for real authentication
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
@@ -243,17 +246,10 @@ export default function Index() {
             });
             setIsAuthenticating(false);
           } else {
-            // No session and no URL userId - redirect to login
-            console.log("❌ No session found, checking for demo mode...");
-            
-            // Give a moment for router to be ready and check for URL params
-            setTimeout(() => {
-              if (isMounted && !router.query.userId) {
-                console.log("❌ No demo mode, redirecting to login");
-                setIsAuthenticating(false);
-                router.push('/auth/login');
-              }
-            }, 500);
+            // No session - redirect to login
+            console.log("❌ No session found, redirecting to login");
+            setIsAuthenticating(false);
+            router.push('/auth/login');
             return;
           }
         }
@@ -278,8 +274,7 @@ export default function Index() {
                 source: 'supabase'
               });
               setIsAuthenticating(false);
-            } else if (!router.query.userId) {
-              // Only redirect if not in demo mode
+            } else {
               setSession(null);
               setUser(null);
               router.push('/auth/login');
@@ -306,7 +301,7 @@ export default function Index() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [router, adminMode, demoMode]);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE AND THEME
   useEffect(() => {
