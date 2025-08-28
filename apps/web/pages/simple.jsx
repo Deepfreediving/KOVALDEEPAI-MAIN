@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/src/providers/AuthProvider";
 
-export default function Index() {
+export default function SimpleIndex() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [adminMode, setAdminMode] = useState(false);
@@ -38,35 +38,28 @@ export default function Index() {
     }
   }, [user]);
 
-  // ✅ FORCE AUTHENTICATION - Redirect to login if not authenticated
+  // Redirect to login if not authenticated and not in admin/demo mode
   useEffect(() => {
     if (!authLoading && !currentUser && !adminMode && !demoMode) {
-      console.log('No authentication detected, redirecting to login...');
       router.push('/auth/login');
     }
   }, [authLoading, currentUser, adminMode, demoMode, router]);
 
-  // Show loading screen while checking authentication
+  // Show loading screen
   if (authLoading && !adminMode && !demoMode) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking authentication...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Don't render main app if not authenticated
+  // Don't render if not authenticated
   if (!currentUser && !adminMode && !demoMode) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Redirecting to login...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const handleSignOut = () => {
@@ -141,35 +134,60 @@ export default function Index() {
             </div>
           )}
 
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              You are successfully authenticated! This is the main KovalAI application.
-            </p>
-            
+          {demoMode && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800">Demo Mode</h3>
+                  <p className="text-sm text-blue-700">You&apos;re using demo mode with limited features. Sign up for full access!</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Feature Cards */}
             <div className="bg-blue-50 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">🔒 Authentication Status</h3>
-              <ul className="text-blue-700 text-sm space-y-1">
-                <li>✅ User authenticated: {getUserDisplayName()}</li>
-                <li>✅ User ID: {currentUser?.id}</li>
-                <li>✅ Email: {currentUser?.email}</li>
-                {adminMode && <li>✅ Admin privileges active</li>}
-                {demoMode && <li>✅ Demo mode active</li>}
-              </ul>
+              <h3 className="font-semibold text-blue-900 mb-2">🧠 AI Coaching</h3>
+              <p className="text-blue-700 text-sm">
+                Get personalized freediving advice and training plans from your AI coach.
+              </p>
             </div>
 
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="font-semibold text-green-900 mb-2">📊 Dive Logs</h3>
+              <p className="text-green-700 text-sm">
+                Track your dives, analyze your progress, and improve your performance.
+              </p>
+            </div>
+
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h3 className="font-semibold text-purple-900 mb-2">💡 Insights</h3>
+              <p className="text-purple-700 text-sm">
+                Get detailed analytics and insights to optimize your freediving journey.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
             <div className="flex space-x-4">
               <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                Start AI Chat
+                Start Chat with AI Coach
               </button>
               <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                View Dive Logs
+                Log a New Dive
               </button>
               {!adminMode && !demoMode && (
                 <button 
                   onClick={() => router.push('/auth/subscription')}
                   className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
                 >
-                  Manage Subscription
+                  Upgrade Plan
                 </button>
               )}
             </div>

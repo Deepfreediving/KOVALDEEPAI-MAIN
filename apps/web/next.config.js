@@ -9,10 +9,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Remove standalone output to avoid SSG issues
-  experimental: {
-    // outputFileTracingRoot: undefined, // Commented out to fix watchpack error
-  },
+  // Fix for watchpack error - remove experimental config
+  experimental: {},
   
   env: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

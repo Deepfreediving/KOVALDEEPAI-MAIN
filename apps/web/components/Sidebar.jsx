@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import Image from "next/image";
+import UserProfile from "@/components/UserProfile";
 
 export default function Sidebar({
   sessionName,
@@ -38,6 +39,11 @@ export default function Sidebar({
           className="h-30 w-48"
           unoptimized
         />
+      </div>
+      
+      {/* User Profile */}
+      <div className={`px-3 pb-3 border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+        <UserProfile />
       </div>
       
       <div className={`p-3 border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
