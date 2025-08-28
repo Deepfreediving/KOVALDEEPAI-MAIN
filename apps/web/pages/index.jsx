@@ -26,7 +26,7 @@ const API_ROUTES = {
 
 export default function Index() {
   const router = useRouter();
-  const { user, loading: authLoading, session } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
@@ -60,8 +60,8 @@ export default function Index() {
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
-  const [internalUser, setUser] = useState(null);
-  const [internalSession, setSession] = useState(null);
+  const [localUser, setUser] = useState(null);
+  const [localSession, setSession] = useState(null);
   const [diveJournalOpen, setDiveJournalOpen] = useState(false);
 
   const bottomRef = useRef(null);

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function Login() {
   const router = useRouter();
@@ -87,15 +86,19 @@ export default function Login() {
   };
 
   const handleAdminLogin = async () => {
-    // Direct admin access - redirect to simple admin dashboard
-    setLoading(true);
-    try {
-      // Redirect to dedicated admin page
-      router.push('/admin');
-    } catch (error) {
-      setError('Admin login failed');
-    } finally {
-      setLoading(false);
+    // Check for admin credentials
+    if (email === 'danielkoval' && password === 'Juice1122!') {
+      setLoading(true);
+      try {
+        // Create a special admin session or use demo mode with admin privileges
+        router.push('/?admin=true&userId=admin-daniel-koval&userName=Daniel%20Koval&subscription=premium');
+      } catch (error) {
+        setError('Admin login failed');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setError('Invalid admin credentials');
     }
   };
 
@@ -104,11 +107,7 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <img 
-              src="/koval-logo.png" 
-              alt="KovalAI" 
-              className="h-16 w-auto"
-            />
+            <div className="text-4xl font-bold text-blue-600">🤿 KovalAI</div>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
@@ -214,7 +213,7 @@ export default function Login() {
               onClick={handleAdminLogin}
               className="w-full text-center py-2 px-4 border border-red-300 rounded-md shadow-sm bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 mb-3"
             >
-              🔑 Admin Access
+              🔑 Admin Login (danielkoval / Juice1122!)
             </button>
             
             <button
