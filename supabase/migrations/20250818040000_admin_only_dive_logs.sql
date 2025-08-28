@@ -19,6 +19,21 @@ CREATE TABLE IF NOT EXISTS public.dive_logs (
     notes TEXT,
     issue_comment TEXT,
     surface_protocol TEXT,
+    -- Add missing performance-critical columns
+    bottom_time_seconds INTEGER,
+    total_time_seconds INTEGER,
+    discipline_type TEXT,
+    exit_status TEXT,
+    duration_seconds INTEGER,
+    distance_m DECIMAL(8,2),
+    ear_squeeze TEXT,
+    lung_squeeze TEXT,
+    narcosis_level INTEGER,
+    recovery_quality TEXT,
+    gear JSONB DEFAULT '{}'::jsonb,
+    ai_analysis JSONB DEFAULT '{}'::jsonb,
+    ai_summary TEXT,
+    -- Standard timestamps and metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}'::jsonb
@@ -47,6 +62,14 @@ CREATE INDEX IF NOT EXISTS idx_dive_logs_discipline ON public.dive_logs(discipli
 CREATE INDEX IF NOT EXISTS idx_dive_logs_created_at ON public.dive_logs(created_at);
 
 -- Add updated_at trigger
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 CREATE TRIGGER update_dive_logs_updated_at 
     BEFORE UPDATE ON public.dive_logs 
     FOR EACH ROW 
