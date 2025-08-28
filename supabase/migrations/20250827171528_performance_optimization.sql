@@ -21,10 +21,10 @@ CREATE INDEX IF NOT EXISTS idx_user_acceptance_legal_document_id ON public.user_
 -- CRITICAL PERFORMANCE FIXES FOR ERR_INSUFFICIENT_RESOURCES
 -- ================================================================
 
--- 1. Optimize dive_log table queries (primary bottleneck)
-CREATE INDEX IF NOT EXISTS idx_dive_log_user_date_composite ON public.dive_log(user_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_dive_log_user_created_composite ON public.dive_log(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_dive_log_admin_user ON public.dive_log(user_id) WHERE user_id::text = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+-- 1. Optimize dive_logs table queries (primary bottleneck)
+CREATE INDEX IF NOT EXISTS idx_dive_logs_user_date_composite ON public.dive_logs(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_dive_logs_user_created_composite ON public.dive_logs(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dive_logs_admin_user ON public.dive_logs(user_id) WHERE user_id = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
 -- 2. Optimize dive_log_image table (N+1 query fix)
 CREATE INDEX IF NOT EXISTS idx_dive_log_image_dive_log_composite ON public.dive_log_image(dive_log_id, user_id);
@@ -38,34 +38,20 @@ SELECT
   dl.date,
   dl.discipline,
   dl.location,
-  dl.reached_depth,
-  dl.bottom_time_seconds,
-  dl.total_time_seconds,
-  dl.lat,
-  dl.lng,
-  dl.tags,
-  dl.notes,
-  dl.ai_summary,
-  dl.ai_analysis,
-  dl.created_at,
-  dl.updated_at,
-  -- Additional columns from ALTER statements
-  dl.discipline_type,
   dl.target_depth,
+  dl.reached_depth,
+  dl.total_dive_time,
   dl.mouthfill_depth,
   dl.issue_depth,
-  dl.issue_comment,
   dl.squeeze,
-  dl.exit_status,
-  dl.duration_seconds,
-  dl.distance_m,
+  dl.exit,
   dl.attempt_type,
+  dl.notes,
+  dl.issue_comment,
   dl.surface_protocol,
-  dl.ear_squeeze,
-  dl.lung_squeeze,
-  dl.narcosis_level,
-  dl.recovery_quality,
-  dl.gear,
+  dl.metadata,
+  dl.created_at,
+  dl.updated_at,
   -- Image data (LEFT JOIN to avoid excluding logs without images)
   dli.id as image_id,
   dli.bucket as image_bucket,
@@ -74,7 +60,7 @@ SELECT
   dli.ai_analysis as image_analysis,
   dli.extracted_metrics,
   CASE WHEN dli.id IS NOT NULL THEN true ELSE false END as has_image
-FROM public.dive_log dl
+FROM public.dive_logs dl
 LEFT JOIN public.dive_log_image dli ON dl.id = dli.dive_log_id
 ORDER BY dl.date DESC, dl.created_at DESC;
 
@@ -84,7 +70,26 @@ CREATE INDEX IF NOT EXISTS idx_dive_log_image_dive_log_id_btree ON public.dive_l
 -- 5. Create admin-specific optimized view (for the specific admin user causing issues)
 CREATE OR REPLACE VIEW v_admin_dive_logs AS
 SELECT 
-  dl.*,
+  dl.id,
+  dl.user_id,
+  dl.date,
+  dl.discipline,
+  dl.location,
+  dl.target_depth,
+  dl.reached_depth,
+  dl.total_dive_time,
+  dl.mouthfill_depth,
+  dl.issue_depth,
+  dl.squeeze,
+  dl.exit,
+  dl.attempt_type,
+  dl.notes,
+  dl.issue_comment,
+  dl.surface_protocol,
+  dl.metadata,
+  dl.created_at,
+  dl.updated_at,
+  -- Image data
   dli.id as image_id,
   dli.bucket as image_bucket,
   dli.path as image_path,
@@ -92,7 +97,7 @@ SELECT
   dli.ai_analysis as image_analysis,
   dli.extracted_metrics,
   CASE WHEN dli.id IS NOT NULL THEN true ELSE false END as has_image
-FROM public.dive_log dl
+FROM public.dive_logs dl
 LEFT JOIN public.dive_log_image dli ON dl.id = dli.dive_log_id
 WHERE dl.user_id::text = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
 ORDER BY dl.date DESC;
@@ -143,18 +148,19 @@ DROP INDEX IF EXISTS public.idx_dive_log_image_filename;
 -- ================================================================
 
 -- Add partial indexes for common query patterns
-CREATE INDEX IF NOT EXISTS idx_dive_log_recent_admin ON public.dive_log(date DESC, created_at DESC) 
-WHERE user_id::text = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+CREATE INDEX IF NOT EXISTS idx_dive_logs_recent_admin ON public.dive_logs(date DESC, created_at DESC) 
+WHERE user_id = 'f47ac10b-58cc-4372-a567-0e02b2c3d479' AND date >= CURRENT_DATE - INTERVAL '90 days';
 
 -- Optimize image queries for recent records
-CREATE INDEX IF NOT EXISTS idx_dive_log_image_recent ON public.dive_log_image(dive_log_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dive_log_image_recent ON public.dive_log_image(dive_log_id, created_at DESC) 
+WHERE created_at >= CURRENT_DATE - INTERVAL '90 days';
 
 -- ================================================================
 -- DATABASE CONFIGURATION OPTIMIZATIONS
 -- ================================================================
 
 -- Analyze tables to update query planner statistics
-ANALYZE public.dive_log;
+ANALYZE public.dive_logs;
 ANALYZE public.dive_log_image;
 ANALYZE public.dive_log_audit;
 
@@ -164,7 +170,7 @@ COMMENT ON INDEX idx_chat_message_user_id IS 'Foreign key index for chat message
 COMMENT ON INDEX idx_chat_thread_user_id IS 'Foreign key index for chat thread user references';
 COMMENT ON INDEX idx_dive_log_audit_log_id IS 'Foreign key index for dive log audit references';
 COMMENT ON INDEX idx_journal_entry_dive_log_id IS 'Foreign key index for journal entry dive log references';
-COMMENT ON INDEX idx_dive_log_user_date_composite IS 'Composite index for efficient user dive log queries ordered by date';
+COMMENT ON INDEX idx_dive_logs_user_date_composite IS 'Composite index for efficient user dive log queries ordered by date';
 COMMENT ON INDEX idx_dive_log_image_dive_log_composite IS 'Composite index to prevent N+1 queries for dive log images';
 COMMENT ON VIEW v_dive_logs_with_images IS 'Optimized view combining dive logs with images to prevent N+1 queries';
 COMMENT ON VIEW v_admin_dive_logs IS 'Admin-specific optimized view for high-traffic admin user queries';

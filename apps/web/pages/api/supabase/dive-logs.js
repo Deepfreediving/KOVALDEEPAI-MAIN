@@ -114,18 +114,49 @@ export default async function handler(req, res) {
         ].join('-');
       }
 
-      const { data: diveLogs, error } = await supabase
-        .from('dive_logs')
-        .select('*')
-        .eq('user_id', final_user_id)
-        .order('date', { ascending: false })
+      // ✅ PERFORMANCE OPTIMIZATION: Use optimized view to eliminate N+1 queries
+      let query;
+      if (final_user_id === ADMIN_USER_ID) {
+        // Use the optimized admin view (if it exists, fallback to regular query)
+        query = supabase
+          .from('v_admin_dive_logs')
+          .select('*')
+          .limit(50);
+      } else {
+        // Use the general optimized view (if it exists, fallback to regular query)
+        query = supabase
+          .from('v_dive_logs_with_images')
+          .select('*')
+          .eq('user_id', final_user_id)
+          .limit(50);
+      }
 
-      if (error) {
+      let { data: diveLogs, error } = await query;
+
+      // Fallback to original query if optimized views don't exist yet
+      if (error && error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        console.warn('⚠️ Optimized views not available, falling back to original query');
+        
+        const { data: fallbackLogs, error: fallbackError } = await supabase
+          .from('dive_logs')
+          .select('*')
+          .eq('user_id', final_user_id)
+          .order('date', { ascending: false })
+          .limit(50);
+
+        if (fallbackError) {
+          console.error('Supabase error:', fallbackError)
+          return res.status(500).json({ error: fallbackError.message })
+        }
+
+        diveLogs = fallbackLogs;
+        error = null;
+      } else if (error) {
         console.error('Supabase error:', error)
         return res.status(500).json({ error: error.message })
       }
 
-      // 🚀 Fetch associated images separately to avoid foreign key issues
+      // Process the logs (optimized views include image data, fallback needs separate queries)
       const processedDiveLogs = [];
       
       for (const log of diveLogs || []) {
@@ -147,35 +178,59 @@ export default async function handler(req, res) {
             reached_depth: log.reached_depth,
           };
           
-          // Get images for this dive log
-          const { data: images, error: imageError } = await supabase
-            .from('dive_log_image')
-            .select('*')
-            .eq('dive_log_id', log.id)
-            .limit(1);
-          
-          const imageRecord = images?.[0];
-          
-          if (imageRecord && !imageError) {
-            // Generate public URL for image
-            const { data: urlData } = supabase.storage
-              .from(imageRecord.bucket)
-              .getPublicUrl(imageRecord.path);
-            
-            processedDiveLogs.push({
-              ...mappedLog,
-              imageUrl: urlData.publicUrl,
-              imageAnalysis: imageRecord.ai_analysis,
-              extractedMetrics: imageRecord.extracted_metrics,
-              imageId: imageRecord.id,
-              originalFileName: imageRecord.original_filename,
-              hasImage: true
-            });
+          // Check if this is from an optimized view (has image data already)
+          if ('image_id' in log) {
+            // Data from optimized view - image data is already included
+            if (log.image_id) {
+              const { data: urlData } = supabase.storage
+                .from(log.image_bucket)
+                .getPublicUrl(log.image_path);
+              
+              processedDiveLogs.push({
+                ...mappedLog,
+                imageUrl: urlData.publicUrl,
+                imageAnalysis: log.image_analysis,
+                extractedMetrics: log.extracted_metrics,
+                imageId: log.image_id,
+                originalFileName: log.original_filename,
+                hasImage: true
+              });
+            } else {
+              processedDiveLogs.push({
+                ...mappedLog,
+                hasImage: false
+              });
+            }
           } else {
-            processedDiveLogs.push({
-              ...mappedLog,
-              hasImage: false
-            });
+            // Fallback - fetch images separately (N+1 query - not ideal but works)
+            const { data: images, error: imageError } = await supabase
+              .from('dive_log_image')
+              .select('*')
+              .eq('dive_log_id', log.id)
+              .limit(1);
+            
+            const imageRecord = images?.[0];
+            
+            if (imageRecord && !imageError) {
+              const { data: urlData } = supabase.storage
+                .from(imageRecord.bucket)
+                .getPublicUrl(imageRecord.path);
+              
+              processedDiveLogs.push({
+                ...mappedLog,
+                imageUrl: urlData.publicUrl,
+                imageAnalysis: imageRecord.ai_analysis,
+                extractedMetrics: imageRecord.extracted_metrics,
+                imageId: imageRecord.id,
+                originalFileName: imageRecord.original_filename,
+                hasImage: true
+              });
+            } else {
+              processedDiveLogs.push({
+                ...mappedLog,
+                hasImage: false
+              });
+            }
           }
         } catch (imageErr) {
           console.warn(`⚠️ Could not fetch image for log ${log.id}:`, imageErr);
