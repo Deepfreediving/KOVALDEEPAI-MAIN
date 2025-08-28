@@ -12,7 +12,7 @@ const API_ROUTES = {
   // ✅ Use OpenAI chat directly since Supabase chat is admin-only
   CHAT: "/api/openai/chat",
   CHAT_FALLBACK: "/api/openai/chat",
-  GET_DIVE_LOGS: "/api/supabase/dive-logs",
+  GET_DIVE_LOGS: "/api/supabase/dive-logs-optimized",
   GET_DIVE_LOGS_FALLBACK: "/api/supabase/get-dive-logs",
   GET_USER_PROFILE: "/api/supabase/user-profile",
   SAVE_DIVE_LOG: "/api/supabase/save-dive-log",
