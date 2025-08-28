@@ -101,7 +101,10 @@ export default function AdminDashboard() {
               <p className="text-blue-700 text-sm">
                 Access the full AI coaching system with unlimited conversations.
               </p>
-              <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+              <button 
+                onClick={() => router.push('/chat')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
                 Launch Chat
               </button>
             </div>
@@ -111,7 +114,10 @@ export default function AdminDashboard() {
               <p className="text-green-700 text-sm">
                 Manage and analyze dive logs across all user accounts.
               </p>
-              <button className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+              <button 
+                onClick={() => router.push('/dive-logs')}
+                className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              >
                 View Logs
               </button>
             </div>
@@ -121,7 +127,10 @@ export default function AdminDashboard() {
               <p className="text-purple-700 text-sm">
                 Monitor user accounts, subscriptions, and system usage.
               </p>
-              <button className="mt-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm">
+              <button 
+                onClick={() => router.push('/users')}
+                className="mt-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm"
+              >
                 Manage Users
               </button>
             </div>
@@ -131,7 +140,10 @@ export default function AdminDashboard() {
               <p className="text-yellow-700 text-sm">
                 Monitor PayPal transactions and subscription management.
               </p>
-              <button className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm">
+              <button 
+                onClick={() => router.push('/payments')}
+                className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm"
+              >
                 View Payments
               </button>
             </div>
