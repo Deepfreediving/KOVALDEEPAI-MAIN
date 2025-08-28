@@ -87,11 +87,11 @@ export default function Login() {
   };
 
   const handleAdminLogin = async () => {
-    // Direct admin access - no credentials check needed
+    // Direct admin access - redirect to simple admin dashboard
     setLoading(true);
     try {
-      // Create a special admin session with admin privileges
-      router.push('/?admin=true&userId=admin-daniel-koval&userName=Daniel%20Koval&subscription=premium');
+      // Redirect to dedicated admin page
+      router.push('/admin');
     } catch (error) {
       setError('Admin login failed');
     } finally {
