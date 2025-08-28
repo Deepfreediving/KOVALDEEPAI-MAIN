@@ -194,23 +194,29 @@ export default async function handler(req, res) {
 
       console.log(`🔍 Querying dive logs for user: ${user_identifier} (UUID: ${final_user_id})`);
 
-      // ✅ PERFORMANCE OPTIMIZATION: Use the optimized function with timeout
+      // ✅ PERFORMANCE OPTIMIZATION: Use direct table query with optimized joins
       let query;
       const queryStartTime = Date.now();
       
-      if (final_user_id === ADMIN_USER_ID) {
-        // Use the optimized function with no user filter (gets all for admin)
-        query = supabase
-          .rpc('get_user_dive_logs_optimized')
-          .limit(sanitizedLimit)
-          .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
-      } else {
-        // Use the optimized function with user filter
-        query = supabase
-          .rpc('get_user_dive_logs_optimized', { target_user_id: final_user_id })
-          .limit(sanitizedLimit)
-          .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
-      }
+      // Use direct table query instead of the function for now
+      // This still provides good performance with proper indexing
+      query = supabase
+        .from('dive_logs')
+        .select(`
+          *,
+          dive_log_image (
+            id,
+            path,
+            bucket,
+            original_filename,
+            ai_analysis,
+            extracted_metrics
+          )
+        `)
+        .eq('user_id', final_user_id)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(sanitizedLimit);
 
       const { data: diveLogs, error } = await query;
       const queryTime = Date.now() - queryStartTime;
@@ -218,12 +224,6 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('❌ Supabase query error:', error);
-        if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
-          return res.status(504).json({ 
-            error: 'Database query timeout - please try again with fewer results',
-            details: 'Query took too long to execute'
-          });
-        }
         return res.status(500).json({ 
           error: error.message || 'Database query failed',
           details: 'Failed to fetch dive logs'
@@ -233,19 +233,22 @@ export default async function handler(req, res) {
       // ✅ Process the results efficiently - batch process images
       console.log(`📊 Processing ${diveLogs?.length || 0} dive logs...`);
       
-      // Pre-calculate all storage URLs in one batch to avoid individual calls
-      const logsWithImages = (diveLogs || []).filter(log => log.has_image && log.image_path);
+      // Extract image data from the nested structure
+      const logsWithImages = (diveLogs || []).filter(log => 
+        log.dive_log_image && log.dive_log_image.length > 0
+      );
       console.log(`📸 Found ${logsWithImages.length} logs with images to process`);
       
       // Create a map of image paths to public URLs (batch operation)
       const imageUrlMap = new Map();
       try {
         logsWithImages.forEach(log => {
-          if (log.image_path) {
+          const image = log.dive_log_image[0]; // Take first image
+          if (image && image.path) {
             const { data: urlData } = supabase.storage
-              .from(log.image_bucket || 'dive-images')
-              .getPublicUrl(log.image_path);
-            imageUrlMap.set(log.image_path, urlData.publicUrl);
+              .from(image.bucket || 'dive-images')
+              .getPublicUrl(image.path);
+            imageUrlMap.set(image.path, urlData.publicUrl);
           }
         });
         console.log(`🔗 Generated ${imageUrlMap.size} image URLs`);
@@ -255,9 +258,20 @@ export default async function handler(req, res) {
       }
 
       const processedDiveLogs = (diveLogs || []).map(log => {
+        // Extract image data from nested structure
+        const hasImage = log.dive_log_image && log.dive_log_image.length > 0;
+        const imageData = hasImage ? log.dive_log_image[0] : null;
+        
         // Map database fields to frontend expected fields
         const mappedLog = {
-          ...log,
+          id: log.id,
+          user_id: log.user_id,
+          date: log.date,
+          discipline: log.discipline,
+          location: log.location,
+          notes: log.notes,
+          created_at: log.created_at,
+          updated_at: log.updated_at,
           // Map snake_case to camelCase for frontend compatibility
           targetDepth: log.target_depth,
           reachedDepth: log.reached_depth,
@@ -267,21 +281,24 @@ export default async function handler(req, res) {
           issueComment: log.issue_comment,
           attemptType: log.attempt_type,
           surfaceProtocol: log.surface_protocol,
+          squeeze: log.squeeze,
+          exit: log.exit,
+          metadata: log.metadata,
           // Keep original fields for backward compatibility
           target_depth: log.target_depth,
           reached_depth: log.reached_depth,
         };
 
         // Handle image data efficiently using pre-calculated URLs
-        if (log.has_image && log.image_path) {
-          const imageUrl = imageUrlMap.get(log.image_path);
+        if (hasImage && imageData) {
+          const imageUrl = imageUrlMap.get(imageData.path);
           return {
             ...mappedLog,
             imageUrl: imageUrl || null,
-            imageAnalysis: log.image_analysis,
-            extractedMetrics: log.extracted_metrics,
-            imageId: log.image_id,
-            originalFileName: log.original_filename,
+            imageAnalysis: imageData.ai_analysis,
+            extractedMetrics: imageData.extracted_metrics,
+            imageId: imageData.id,
+            originalFileName: imageData.original_filename,
             hasImage: true
           };
         } else {
