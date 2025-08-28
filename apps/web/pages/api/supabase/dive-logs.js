@@ -1,6 +1,5 @@
-// Supabase dive logs API endpoint with enhanced security
+// Supabase dive logs API endpoint
 import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
-import { SecurityValidator } from '@/lib/security'
 
 export default async function handler(req, res) {
   const startTime = Date.now();
@@ -20,33 +19,48 @@ export default async function handler(req, res) {
 
     console.log('✅ Supabase admin client initialized successfully');
   
-  try {
-    // Security: Validate request method
+    // Validate request method
     const { method } = req
     
-    // Security: Rate limiting check
-    if (!SecurityValidator.checkRateLimit(clientIP, 60, 60000)) {
-      SecurityValidator.logSecurityEvent({
-        type: 'rate_limit_exceeded',
-        details: `Rate limit exceeded for dive-logs API`,
-        ip: clientIP,
-        userAgent: req.headers['user-agent'],
-        timestamp: new Date()
-      });
-      return res.status(429).json({ 
-        error: 'Rate limit exceeded',
-        retryAfter: 60 
-      });
-    }
-
     if (method === 'GET') {
-      // Security: Validate and sanitize query parameters
+      // Get and validate query parameters
       const { nickname, userId, email } = req.query;
       
-      // Validate each parameter
-      const nicknameValidation = SecurityValidator.validateInput(nickname, 'string');
-      const userIdValidation = SecurityValidator.validateInput(userId, 'uuid');
-      const emailValidation = SecurityValidator.validateInput(email, 'email');
+      // Basic input validation
+      const validateInput = (input, type) => {
+        if (!input) return { isValid: true, sanitizedData: null };
+        
+        switch (type) {
+          case 'uuid': {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            return {
+              isValid: uuidRegex.test(input),
+              sanitizedData: input.trim(),
+              errors: !uuidRegex.test(input) ? ['Invalid UUID format'] : []
+            };
+          }
+          case 'email': {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return {
+              isValid: emailRegex.test(input),
+              sanitizedData: input.trim().toLowerCase(),
+              errors: !emailRegex.test(input) ? ['Invalid email format'] : []
+            };
+          }
+          case 'string':
+            return {
+              isValid: typeof input === 'string' && input.length <= 100,
+              sanitizedData: input.trim(),
+              errors: typeof input !== 'string' || input.length > 100 ? ['Invalid string'] : []
+            };
+          default:
+            return { isValid: true, sanitizedData: input };
+        }
+      };
+      
+      const nicknameValidation = validateInput(nickname, 'string');
+      const userIdValidation = validateInput(userId, 'uuid');
+      const emailValidation = validateInput(email, 'email');
       
       // Check for validation failures
       const validationErrors = [
@@ -56,13 +70,7 @@ export default async function handler(req, res) {
       ];
       
       if (validationErrors.length > 0) {
-        SecurityValidator.logSecurityEvent({
-          type: 'validation_failed',
-          details: `Input validation failed: ${validationErrors.join(', ')}`,
-          ip: clientIP,
-          userAgent: req.headers['user-agent'],
-          timestamp: new Date()
-        });
+        console.warn(`Input validation failed: ${validationErrors.join(', ')}`);
         return res.status(400).json({ 
           error: 'Invalid input parameters',
           details: validationErrors 
@@ -181,7 +189,7 @@ export default async function handler(req, res) {
       console.log(`✅ Found ${processedDiveLogs.length} dive logs for user: ${user_identifier} (UUID: ${final_user_id})`)
       console.log(`📸 Images found: ${processedDiveLogs.filter(log => log.hasImage).length}`)
       
-      // Security: Add response headers
+      // Add response headers
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('X-Frame-Options', 'DENY');
       res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
@@ -201,30 +209,15 @@ export default async function handler(req, res) {
       })
     }
 
-    // Security: Method not allowed
-    SecurityValidator.logSecurityEvent({
-      type: 'suspicious_activity',
-      details: `Invalid method ${method} attempted on dive-logs API`,
-      ip: clientIP,
-      userAgent: req.headers['user-agent'],
-      timestamp: new Date()
-    });
-    
-    return res.status(405).json({ error: 'Method not allowed' })
+    // Method not allowed
+    console.warn(`Invalid method ${method} attempted on dive-logs API from ${clientIP}`);
+    return res.status(405).json({ error: 'Method not allowed' });
+
   } catch (error) {
-    // Security: Log error without exposing sensitive details
-    SecurityValidator.logSecurityEvent({
-      type: 'suspicious_activity',
-      details: `API error: ${error.message}`,
-      ip: clientIP,
-      userAgent: req.headers['user-agent'],
-      timestamp: new Date()
-    });
-    
-    console.error('API error:', error)
+    console.error('API error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       requestId: `dive-logs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    })
+    });
   }
 }

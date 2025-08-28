@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
     if (method === 'PUT') {
       // Handle update operation
-      return await handleUpdateDiveLog(req, res);
+      return await handleUpdateDiveLog(req, res, supabase);
     } else if (method === 'POST') {
       console.log('📝 Save dive log request:', req.body)
       
@@ -205,7 +205,7 @@ export default async function handler(req, res) {
   }
 }
 
-async function handleUpdateDiveLog(req, res) {
+async function handleUpdateDiveLog(req, res, supabase) {
   try {
     const diveLogData = req.body.diveLogData || req.body;
     const { id, imageAnalysis, extractedMetrics, imageUrl, imageId } = diveLogData;
@@ -265,7 +265,7 @@ async function handleUpdateDiveLog(req, res) {
 
     // If there's image data, also update the image record
     if (imageId && (imageAnalysis || extractedMetrics)) {
-      await handleImageUpdate(imageId, imageAnalysis, extractedMetrics);
+      await handleImageUpdate(imageId, imageAnalysis, extractedMetrics, supabase);
     }
 
     console.log('✅ Dive log updated successfully:', updatedLog);
@@ -283,7 +283,7 @@ async function handleUpdateDiveLog(req, res) {
   }
 }
 
-async function handleImageUpdate(imageId, imageAnalysis, extractedMetrics) {
+async function handleImageUpdate(imageId, imageAnalysis, extractedMetrics, supabase) {
   try {
     const { error } = await supabase
       .from('dive_log_image')
