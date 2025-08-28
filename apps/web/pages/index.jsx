@@ -35,6 +35,37 @@ export default function Index() {
   const [demoMode, setDemoMode] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
 
+  // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  const [sessionName, setSessionName] = useState(defaultSessionName);
+  const [sessionsList, setSessionsList] = useState([]);
+  const [editingSessionName, setEditingSessionName] = useState(false);
+  const [input, setInput] = useState("");
+  const [files, setFiles] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: `🤿 Hi! I'm ${BOT_NAME}, your freediving coach. How can I help you today?`,
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(() =>
+    typeof window !== "undefined"
+      ? localStorage.getItem("kovalDarkMode") === "true"
+      : false,
+  );
+  const [userId, setUserId] = useState("");
+  const [profile, setProfile] = useState({});
+  const [diveLogs, setDiveLogs] = useState([]);
+  const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
+  const [internalUser, setUser] = useState(null);
+  const [internalSession, setSession] = useState(null);
+  const [diveJournalOpen, setDiveJournalOpen] = useState(false);
+
+  const bottomRef = useRef(null);
+
   useEffect(() => {
     // Check URL parameters for admin or demo mode
     const urlParams = new URLSearchParams(window.location.search);
@@ -94,40 +125,6 @@ export default function Index() {
   // ✅ Use admin user or authenticated user
   const currentUser = adminUser || user;
 
-  // Check if we're in embedded mode
-  const [isEmbedded, setIsEmbedded] = useState(false);
-
-  // ✅ CORE STATE (Combined from both versions)
-  const [sessionName, setSessionName] = useState(defaultSessionName);
-  const [sessionsList, setSessionsList] = useState([]);
-  const [editingSessionName, setEditingSessionName] = useState(false);
-  const [input, setInput] = useState("");
-  const [files, setFiles] = useState([]);
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: `🤿 Hi! I'm ${BOT_NAME}, your freediving coach. How can I help you today?`,
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(() =>
-    typeof window !== "undefined"
-      ? localStorage.getItem("kovalDarkMode") === "true"
-      : false,
-  );
-  const [userId, setUserId] = useState("");
-  // const [threadId, setThreadId] = useState(null); // Unused - removed
-  const [profile, setProfile] = useState({});
-  const [diveLogs, setDiveLogs] = useState([]);
-  const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-
-  // ✅ Add missing authentication state variables that the code expects
-  const [isAuthenticating, setIsAuthenticating] = useState(true);
-  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
-  // Add missing state for internal auth logic (but use useAuth for main logic)
-  const [internalUser, setUser] = useState(null);
-  const [internalSession, setSession] = useState(null);
-
   // Set userId from authenticated user
   useEffect(() => {
     if (currentUser?.id) {
@@ -140,11 +137,6 @@ export default function Index() {
   useEffect(() => {
     console.log(`🔍 diveLogs state updated: ${diveLogs.length} logs`);
   }, [diveLogs]);
-
-  // Dive journal state
-  const [diveJournalOpen, setDiveJournalOpen] = useState(false);
-
-  const bottomRef = useRef(null);
 
   // ✅ HELPERS
   // ✅ STORAGE KEY: Use nickname for consistent storage across sessions
