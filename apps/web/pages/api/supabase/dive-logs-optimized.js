@@ -4,21 +4,12 @@ import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
 // Simple in-memory rate limiting (for production, use Redis or a proper rate limiter)
 const requestTracker = new Map();
 const RATE_LIMIT = {
-  requests: 50, // Max requests per window (increased from 10)
+  requests: 10, // Max requests per window
   windowMs: 60000, // 1 minute window
-  maxConcurrent: 10 // Max concurrent requests per IP (increased from 3)
+  maxConcurrent: 3 // Max concurrent requests per IP
 };
 
 function isRateLimited(clientIP) {
-  // Skip rate limiting for localhost and common testing IPs
-  if (clientIP === '127.0.0.1' || 
-      clientIP === 'localhost' || 
-      clientIP === '::1' ||
-      clientIP === 'unknown' ||
-      !clientIP) {
-    return { limited: false };
-  }
-  
   const now = Date.now();
   const clientKey = `${clientIP}`;
   
@@ -33,13 +24,13 @@ function isRateLimited(clientIP) {
     now - timestamp < RATE_LIMIT.windowMs
   );
   
-  // Check rate limits - be more lenient
+  // Check rate limits
   if (clientData.requests.length >= RATE_LIMIT.requests) {
-    return { limited: true, reason: `Too many requests (${clientData.requests.length}/${RATE_LIMIT.requests})` };
+    return { limited: true, reason: 'Too many requests' };
   }
   
   if (clientData.concurrent >= RATE_LIMIT.maxConcurrent) {
-    return { limited: true, reason: `Too many concurrent requests (${clientData.concurrent}/${RATE_LIMIT.maxConcurrent})` };
+    return { limited: true, reason: 'Too many concurrent requests' };
   }
   
   // Add current request
@@ -194,45 +185,70 @@ export default async function handler(req, res) {
 
       console.log(`🔍 Querying dive logs for user: ${user_identifier} (UUID: ${final_user_id})`);
 
-      // ✅ PERFORMANCE OPTIMIZATION: Use simple direct query first
+      // ✅ PERFORMANCE OPTIMIZATION: Use the optimized function with timeout
+      let query;
       const queryStartTime = Date.now();
       
-      // First, get dive logs without trying to join images
-      const { data: diveLogs, error } = await supabase
-        .from('dive_logs')
-        .select('*')
-        .eq('user_id', final_user_id)
-        .order('date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(sanitizedLimit);
+      if (final_user_id === ADMIN_USER_ID) {
+        // Use the optimized function with no user filter (gets all for admin)
+        query = supabase
+          .rpc('get_user_dive_logs_optimized')
+          .limit(sanitizedLimit)
+          .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
+      } else {
+        // Use the optimized function with user filter
+        query = supabase
+          .rpc('get_user_dive_logs_optimized', { target_user_id: final_user_id })
+          .limit(sanitizedLimit)
+          .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
+      }
 
+      const { data: diveLogs, error } = await query;
       const queryTime = Date.now() - queryStartTime;
       console.log(`⏱️ Database query completed in ${queryTime}ms`);
 
       if (error) {
         console.error('❌ Supabase query error:', error);
+        if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
+          return res.status(504).json({ 
+            error: 'Database query timeout - please try again with fewer results',
+            details: 'Query took too long to execute'
+          });
+        }
         return res.status(500).json({ 
           error: error.message || 'Database query failed',
           details: 'Failed to fetch dive logs'
         });
       }
 
-      // ✅ Process the results efficiently 
+      // ✅ Process the results efficiently - batch process images
       console.log(`📊 Processing ${diveLogs?.length || 0} dive logs...`);
       
-      // For now, we'll handle this without images to get the basic API working
-      // Images can be added back once the database relationship is properly configured
+      // Pre-calculate all storage URLs in one batch to avoid individual calls
+      const logsWithImages = (diveLogs || []).filter(log => log.has_image && log.image_path);
+      console.log(`📸 Found ${logsWithImages.length} logs with images to process`);
+      
+      // Create a map of image paths to public URLs (batch operation)
+      const imageUrlMap = new Map();
+      try {
+        logsWithImages.forEach(log => {
+          if (log.image_path) {
+            const { data: urlData } = supabase.storage
+              .from(log.image_bucket || 'dive-images')
+              .getPublicUrl(log.image_path);
+            imageUrlMap.set(log.image_path, urlData.publicUrl);
+          }
+        });
+        console.log(`🔗 Generated ${imageUrlMap.size} image URLs`);
+      } catch (storageError) {
+        console.error('Storage URL generation error:', storageError);
+        // Continue without failing the entire request
+      }
+
       const processedDiveLogs = (diveLogs || []).map(log => {
         // Map database fields to frontend expected fields
         const mappedLog = {
-          id: log.id,
-          user_id: log.user_id,
-          date: log.date,
-          discipline: log.discipline,
-          location: log.location,
-          notes: log.notes,
-          created_at: log.created_at,
-          updated_at: log.updated_at,
+          ...log,
           // Map snake_case to camelCase for frontend compatibility
           targetDepth: log.target_depth,
           reachedDepth: log.reached_depth,
@@ -242,21 +258,33 @@ export default async function handler(req, res) {
           issueComment: log.issue_comment,
           attemptType: log.attempt_type,
           surfaceProtocol: log.surface_protocol,
-          squeeze: log.squeeze,
-          exit: log.exit,
-          metadata: log.metadata,
           // Keep original fields for backward compatibility
           target_depth: log.target_depth,
           reached_depth: log.reached_depth,
-          // For now, no images until relationship is fixed
-          hasImage: false
         };
 
-        return mappedLog;
+        // Handle image data efficiently using pre-calculated URLs
+        if (log.has_image && log.image_path) {
+          const imageUrl = imageUrlMap.get(log.image_path);
+          return {
+            ...mappedLog,
+            imageUrl: imageUrl || null,
+            imageAnalysis: log.image_analysis,
+            extractedMetrics: log.extracted_metrics,
+            imageId: log.image_id,
+            originalFileName: log.original_filename,
+            hasImage: true
+          };
+        } else {
+          return {
+            ...mappedLog,
+            hasImage: false
+          };
+        }
       });
 
       console.log(`✅ Found ${processedDiveLogs.length} dive logs for user: ${user_identifier} (UUID: ${final_user_id})`)
-      console.log(`📸 Images found: ${processedDiveLogs.filter(log => log.hasImage).length} (temporarily disabled until DB relationship is fixed)`)
+      console.log(`📸 Images found: ${processedDiveLogs.filter(log => log.hasImage).length}`)
       
       // Add response headers
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -269,14 +297,13 @@ export default async function handler(req, res) {
         stats: {
           totalLogs: processedDiveLogs.length,
           logsWithImages: processedDiveLogs.filter(log => log.hasImage).length,
-          logsWithExtractedMetrics: 0 // Temporarily 0 until images are re-enabled
+          logsWithExtractedMetrics: processedDiveLogs.filter(log => log.extractedMetrics && Object.keys(log.extractedMetrics).length > 0).length
         },
         meta: {
           timestamp: new Date().toISOString(),
           processingTime: Date.now() - startTime,
           optimized: true,
-          mode: 'simplified-no-images',
-          note: 'Images temporarily disabled until database relationship is configured'
+          viewUsed: final_user_id === ADMIN_USER_ID ? 'v_admin_dive_logs' : 'v_dive_logs_with_images'
         }
       })
     }
