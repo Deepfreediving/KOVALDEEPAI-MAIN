@@ -118,7 +118,8 @@ export default function Index() {
       console.error('Logout error:', error);
     }
   };
-  const getUserIdentifier = useCallback(() => {
+  // ✅ STABLE USER IDENTIFIER (Memoized to prevent unnecessary re-renders)
+  const getUserIdentifier = useMemo(() => {
     // Use the actual authenticated user's ID if available
     if (user?.id) {
       console.log(`🆔 Using authenticated user ID: ${user.id}`);
@@ -133,7 +134,7 @@ export default function Index() {
     const adminId = getAdminUserId();
     console.log(`🆔 Using admin fallback ID: ${adminId}`);
     return adminId;
-  }, [user, profile]);
+  }, [user?.id, profile?.userId]);
 
   // ✅ SUPABASE AUTHENTICATION
   useEffect(() => {
@@ -456,24 +457,37 @@ export default function Index() {
     setFiles(selectedFiles);
   }, []);
 
-  // ✅ LOAD DIVE LOGS (Enhanced with session-like reliability)
+  // ✅ LOAD DIVE LOGS (Fixed to prevent infinite loops)
   const loadDiveLogs = useCallback(async () => {
-    // ✅ IMMEDIATE LOCAL LOADING using nickname-based storage
+    // ✅ PREVENT DUPLICATE LOADING
+    if (loadingDiveLogs) {
+      console.log("🚫 Already loading dive logs, skipping...");
+      return;
+    }
+
+    // ✅ IMMEDIATE LOCAL LOADING using stable user identifier
     const currentUserId = getUserIdentifier();
     const key = storageKey(currentUserId);
     const localLogs = safeParse(key, []);
     console.log(`🗄️ Local storage logs found: ${localLogs.length} for user: ${currentUserId}`);
     console.log(`🔑 Storage key: ${key}`);
-    setDiveLogs(localLogs);
-
+    
     // ✅ SKIP API ONLY IF NO USER IDENTIFIER AT ALL
     if (!currentUserId || currentUserId === 'anonymous') {
       console.log("📱 Using localStorage-only mode (no user identifier)");
+      // Only set state if it's actually different
+      setDiveLogs(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(localLogs)) {
+          console.log(`🔄 Setting diveLogs to local storage: ${localLogs.length} logs`);
+          return localLogs;
+        }
+        return prev;
+      });
       setLoadingDiveLogs(false);
       return;
     }
 
-    // ✅ API SYNC - Always try to get remote logs when we have a user ID
+    // ✅ API SYNC - Only if we don't already have the same data
     console.log(`🌐 Loading dive logs for user: ${currentUserId}`);
     setLoadingDiveLogs(true);
     try {
@@ -507,44 +521,96 @@ export default function Index() {
         );
 
         console.log(`✅ Combined total logs: ${combined.length}`);
-        console.log(`🔄 Setting diveLogs state with ${combined.length} logs:`, combined.slice(0, 2));
-        setDiveLogs(combined);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(storageKey(getUserIdentifier()), JSON.stringify(combined));
-        }
+        
+        // ✅ ONLY UPDATE STATE IF DATA ACTUALLY CHANGED
+        setDiveLogs(prev => {
+          const prevJson = JSON.stringify(prev);
+          const newJson = JSON.stringify(combined);
+          if (prevJson !== newJson) {
+            console.log(`🔄 Setting diveLogs state with ${combined.length} logs (changed)`);
+            // Update localStorage
+            if (typeof window !== "undefined") {
+              localStorage.setItem(storageKey(currentUserId), JSON.stringify(combined));
+            }
+            return combined;
+          } else {
+            console.log(`✅ Dive logs unchanged, keeping ${prev.length} logs`);
+            return prev;
+          }
+        });
 
         console.log(`✅ Loaded ${combined.length} dive logs`);
       } else {
         console.warn(
           `⚠️ API request failed: ${response.status} ${response.statusText}, using localStorage only`,
         );
+        // Set local logs only if different
+        setDiveLogs(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(localLogs)) {
+            console.log(`🔄 Setting diveLogs to local storage (API failed): ${localLogs.length} logs`);
+            return localLogs;
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error("❌ Failed to load dive logs from API, using localStorage:", error);
+      // Set local logs only if different
+      setDiveLogs(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(localLogs)) {
+          console.log(`🔄 Setting diveLogs to local storage (error): ${localLogs.length} logs`);
+          return localLogs;
+        }
+        return prev;
+      });
     } finally {
       setLoadingDiveLogs(false);
     }
-  }, [getUserIdentifier, user?.email]);
+  }, [loadingDiveLogs, user?.email, getUserIdentifier]);
 
-  // ✅ INITIAL DIVE LOGS LOADING - Runs after loadDiveLogs is defined
+  // ✅ INITIAL DIVE LOGS LOADING - Controlled loading to prevent loops
+  const hasLoadedInitialLogs = useRef(false);
+  
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !isAuthenticating && getUserIdentifier !== 'anonymous' && !hasLoadedInitialLogs.current) {
+      console.log("🚀 Initial dive logs loading triggered");
+      hasLoadedInitialLogs.current = true;
       loadDiveLogs();
     }
-  }, [loadDiveLogs]);
+  }, [isAuthenticating, getUserIdentifier, loadDiveLogs]);
 
-  // ✅ DIVE LOG CALLBACKS - Defined after loadDiveLogs
+  // ✅ DIVE LOG CALLBACKS - Optimized to avoid unnecessary reloads
   const handleDiveLogSaved = useCallback((newLog) => {
     console.log("🚀 Dive log saved:", newLog);
-    // Refresh dive logs
-    loadDiveLogs();
-  }, [loadDiveLogs]);
+    // Add the new log immediately to avoid reload delay
+    setDiveLogs(prev => {
+      const updated = [newLog, ...prev.filter(log => 
+        (log.localId || log._id || log.id) !== (newLog.localId || newLog._id || newLog.id)
+      )];
+      // Update localStorage
+      const currentUserId = getUserIdentifier;
+      if (typeof window !== "undefined" && currentUserId) {
+        localStorage.setItem(storageKey(currentUserId), JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, [getUserIdentifier]);
 
   const handleDiveLogDeleted = useCallback((deletedLogId) => {
     console.log("🗑️ Dive log deleted:", deletedLogId);
-    // Refresh dive logs
-    loadDiveLogs();
-  }, [loadDiveLogs]);
+    // Remove the log immediately
+    setDiveLogs(prev => {
+      const updated = prev.filter(log => 
+        (log.localId || log._id || log.id) !== deletedLogId
+      );
+      // Update localStorage
+      const currentUserId = getUserIdentifier;
+      if (typeof window !== "undefined" && currentUserId) {
+        localStorage.setItem(storageKey(currentUserId), JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, [getUserIdentifier]);
 
   // ✅ DIVE JOURNAL SUBMIT (Session-like: Immediate localStorage, optional API sync)
   const handleJournalSubmit = useCallback(
@@ -633,11 +699,25 @@ export default function Index() {
     [profile, diveLogs, getUserIdentifier],
   );
 
-  // ✅ DELETE DIVE LOG (for future use)
+  // ✅ DELETE DIVE LOG (Optimized to avoid reload)
   // eslint-disable-next-line no-unused-vars
   const handleDelete = useCallback(
     async (logId) => {
       try {
+        // Remove from local state immediately
+        setDiveLogs(prev => {
+          const updated = prev.filter(log => 
+            (log.localId || log._id || log.id) !== logId
+          );
+          // Update localStorage
+          const currentUserId = getUserIdentifier;
+          if (typeof window !== "undefined" && currentUserId) {
+            localStorage.setItem(storageKey(currentUserId), JSON.stringify(updated));
+          }
+          return updated;
+        });
+
+        // Try API deletion in background
         const response = await fetch(
           `${API_ROUTES.DELETE_DIVE_LOG}?id=${logId}`,
           {
@@ -646,14 +726,15 @@ export default function Index() {
         );
 
         if (response.ok) {
-          console.log("✅ Dive log deleted");
-          await loadDiveLogs(); // Refresh the list
+          console.log("✅ Dive log deleted from API");
+        } else {
+          console.warn("⚠️ API deletion failed, but local deletion succeeded");
         }
       } catch (error) {
         console.error("❌ Error deleting dive log:", error);
       }
     },
-    [loadDiveLogs],
+    [getUserIdentifier],
   );
 
   // ✅ SESSION MANAGEMENT - Enhanced with auto-save and better feedback
@@ -762,9 +843,10 @@ export default function Index() {
     [sessionsList],
   );
 
-  // ✅ Load dive logs on mount
+  // ✅ Load dive logs when userId changes (but not on initial mount)
   useEffect(() => {
-    if (userId) {
+    if (userId && hasLoadedInitialLogs.current) {
+      console.log("🔄 UserId changed, reloading dive logs");
       loadDiveLogs();
     }
   }, [userId, loadDiveLogs]);
