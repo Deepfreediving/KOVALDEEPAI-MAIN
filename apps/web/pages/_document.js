@@ -20,6 +20,7 @@ export default class MyDocument extends Document {
 
           {/* ✅ DNS prefetch for external APIs */}
           <link rel="dns-prefetch" href="//openai.com" />
+          <link rel="dns-prefetch" href="//api.pinecone.io" />
           <link rel="dns-prefetch" href="//pinecone.io" />
           <link rel="dns-prefetch" href="//zhlacqhzhwvkmyxsxevv.supabase.co" />
           <link rel="dns-prefetch" href="//supabase.co" />
