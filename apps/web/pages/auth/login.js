@@ -86,12 +86,12 @@ export default function Login() {
   };
 
   const handleAdminLogin = async () => {
-    // Check for admin credentials
-    if (email === 'danielkoval' && password === 'Juice1122!') {
+    // Check for admin credentials (accept both username and email formats)
+    if ((email === 'danielkoval' || email === 'daniel@deepfreediving.com') && password === 'Juice1122!') {
       setLoading(true);
       try {
-        // Create a special admin session or use demo mode with admin privileges
-        router.push('/?admin=true&userId=admin-daniel-koval&userName=Daniel%20Koval&subscription=premium');
+        // Redirect directly to admin dashboard
+        router.push('/admin');
       } catch (error) {
         setError('Admin login failed');
       } finally {
