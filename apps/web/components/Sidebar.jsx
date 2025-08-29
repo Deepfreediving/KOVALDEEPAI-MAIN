@@ -34,7 +34,7 @@ export default function Sidebar({
       {/* Koval AI Logo at top of sidebar */}
       <div className="p-2 pt-1 flex justify-center">
         <Image 
-          src="/deeplogo.jpg" 
+          src="/koval-logo.png" 
           alt="Koval AI Logo" 
           width={192}
           height={120}

@@ -47,7 +47,7 @@ export default function ChatBox({
         >
           <div className="mb-6">
             <Image
-              src="/deeplogo.jpg"
+              src="/koval-logo.png"
               alt="Logo"
               width={64}
               height={64}
@@ -246,7 +246,7 @@ export default function ChatBox({
         >
           <div className="flex items-center gap-4">
             <Image
-              src="/deeplogo.jpg"
+              src="/koval-logo.png"
               alt="Logo"
               width={40}
               height={40}

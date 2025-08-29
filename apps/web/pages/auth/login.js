@@ -86,19 +86,14 @@ export default function Login() {
   };
 
   const handleAdminLogin = async () => {
-    // Check for admin credentials (accept both username and email formats)
-    if ((email === 'danielkoval' || email === 'daniel@deepfreediving.com') && password === 'Juice1122!') {
-      setLoading(true);
-      try {
-        // Redirect directly to admin dashboard
-        router.push('/admin');
-      } catch (error) {
-        setError('Admin login failed');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setError('Invalid admin credentials');
+    setLoading(true);
+    try {
+      // Direct admin access - no credential check needed
+      router.push('/admin');
+    } catch (error) {
+      setError('Admin access failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -107,7 +102,11 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="text-4xl font-bold text-blue-600">🤿 KovalAI</div>
+            <img 
+              src="/koval-logo.png" 
+              alt="KovalAI Logo" 
+              className="h-16 w-auto"
+            />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
@@ -213,7 +212,7 @@ export default function Login() {
               onClick={handleAdminLogin}
               className="w-full text-center py-2 px-4 border border-red-300 rounded-md shadow-sm bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 mb-3"
             >
-              🔑 Admin Login (danielkoval / Juice1122!)
+              🔑 Admin Access
             </button>
             
             <button

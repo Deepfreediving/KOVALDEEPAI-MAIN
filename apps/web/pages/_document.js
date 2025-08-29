@@ -15,7 +15,7 @@ export default function Document() {
         <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
 
         {/* ✅ Preload critical resources with proper attributes */}
-        <link rel="preload" href="/deeplogo.jpg" as="image" type="image/jpeg" crossOrigin="anonymous" />
+        <link rel="preload" href="/koval-logo.png" as="image" type="image/png" crossOrigin="anonymous" />
 
         {/* ✅ DNS prefetch for external APIs */}
         <link rel="dns-prefetch" href="//openai.com" />
