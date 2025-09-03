@@ -10,9 +10,32 @@ export default function Subscription() {
   const [processingPayment, setProcessingPayment] = useState(null);
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [adminMode, setAdminMode] = useState(false);
 
   useEffect(() => {
-    // Check authentication
+    // Check for admin mode from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === 'true';
+    
+    if (isAdmin) {
+      setAdminMode(true);
+      setUser({
+        id: urlParams.get('userId') || 'admin-daniel-koval',
+        email: 'danielkoval@admin.com',
+        user_metadata: {
+          full_name: urlParams.get('userName') || 'Daniel Koval (Admin)',
+        }
+      });
+      setUserProfile({
+        id: urlParams.get('userId') || 'admin-daniel-koval',
+        subscription_tier: urlParams.get('subscription') || 'premium',
+        subscription_status: 'active'
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Check authentication (skip if in admin mode)
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -46,8 +69,14 @@ export default function Subscription() {
   }, []);
 
   const handleSelectPlan = async (plan) => {
-    if (!user) {
+    if (!user && !adminMode) {
       router.push('/auth/login');
+      return;
+    }
+
+    if (adminMode) {
+      // In admin mode, just show a demo message
+      alert(`Admin Demo: Selected ${plan.name} plan (${plan.tier}). In production, this would process the payment.`);
       return;
     }
 

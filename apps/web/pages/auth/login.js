@@ -105,7 +105,7 @@ export default function Login() {
             <img 
               src="/koval-logo.png" 
               alt="KovalAI Logo" 
-              className="h-16 w-auto"
+              className="h-24 w-auto"
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">

@@ -1,17 +1,15 @@
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
-
-  // Fix for watchpack error - remove experimental config
-  experimental: {},
-  
+  // Disable static optimization to avoid the Html import error
+  output: 'export',
+  trailingSlash: true,
   env: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_ASSISTANT_ID: process.env.OPENAI_ASSISTANT_ID,

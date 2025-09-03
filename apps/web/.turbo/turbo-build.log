@@ -2,99 +2,338 @@
 > @koval-ai/web@1.0.0 build
 > next build
 
-[1G[0K  [1m[38;2;173;127;168m▲ Next.js 14.2.5[39m[22m
+[1G[0K [33m[1m⚠[22m[39m You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+  [1m[38;2;173;127;168m▲ Next.js 14.2.5[39m[22m
   - Environments: .env.local
-  - Experiments (use with caution):
-    · scrollRestoration
 
  [37m[1m [22m[39m Creating an optimized production build ...
  [32m[1m✓[22m[39m Compiled successfully
  [37m[1m [22m[39m Skipping validation of types
  [37m[1m [22m[39m Skipping linting
-[?25l [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m...[39m⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+[?25l [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m.[39m⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
 ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
 ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
 ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
 ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
-⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+[2K[1G [37m[1m [22m[39m Collecting page data  [36m..[39m⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
 ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
 [2K[1G[?25h [37m[1m [22m[39m Collecting page data     [32m[1m✓[22m[39m Collecting page data 
-[?25l [37m[1m [22m[39m Generating static pages (0/12)  [36m[    ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/12)  [36m[=   ][39m[2K[1G[?25h [32m[1m✓[22m[39m Generating static pages (12/12)
-[?25l [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[?25l [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G[?25h [37m[1m [22m[39m Collecting build traces     [32m[1m✓[22m[39m Collecting build traces 
-[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Finalizing page optimization     [32m[1m✓[22m[39m Finalizing page optimization 
+[?25l [37m[1m [22m[39m Generating static pages (0/13)  [36m[    ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/13)  [36m[=   ][39mError: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
 
-[4mRoute (app)[24m                                [4mSize[24m     [4mFirst Load JS[24m
-┌ ƒ /api/analyze/dive-log                  0 B                [37m[1m0 B[22m[39m
-└ ƒ /api/dive-logs                         0 B                [37m[1m0 B[22m[39m
-+ First Load JS shared by all              [37m[1m0 B[22m[39m
+Error occurred prerendering page "/payments". Read more: https://nextjs.org/docs/messages/prerender-error
 
-[4mRoute (pages)[24m                              [4mSize[24m     [4mFirst Load JS[24m
-┌ ○ /                                      10.4 kB         [37m[1m226 kB[22m[39m
-├   /_app                                  0 B             [37m[1m212 kB[22m[39m
-├ ○ /404                                   180 B           [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/analyze-dive-log          0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/analyze-upload-image      0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/delete-dive-log           0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/dive-log-openai           0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/dive-logs                 0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/get-dive-logs             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/pattern-analysis          0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/read-memory               0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/record-memory             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/save-dive-log             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/save-session              0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/single-dive-log           0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/single-dive-log-migrated  0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/analyze/sync-dive-logs            0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/apiHandler                        0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/auth/check-user                   0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/debug/dive-logs-debug             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/debug/env-check                   0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/debug/pinecone-test               0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/debug/user-auth-debug             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/diagnostics                       0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/documents/getAllTxtFiles          0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/documents/getFileText             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/health                            0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/monitoring/error                  0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/ocr                               0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/openai/chat                       0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/openai/create-thread              0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/openai/embeddings                 0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/openai/health                     0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/openai/upload-dive-image-simple   0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/pinecone                          0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/pinecone/get-chunks               0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/pinecone/pineconeCreateIndex      0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/pinecone/pineconequery-gpt        0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/pinecone/pineconeQueryTest        0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/pinecone/query                    0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/semanticSearch                    0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/chat                     0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/delete-dive-log          0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/dive-logs                0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/get-dive-logs            0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/save-dive-log            0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/upload-image             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/supabase/user-profile             0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/system/health-check               0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/system/upgrade-session            0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/userMemory/sync                   0 B             [37m[1m212 kB[22m[39m
-├ ƒ /api/verify                            0 B             [37m[1m212 kB[22m[39m
-├ ○ /auth/login                            1.21 kB         [37m[1m213 kB[22m[39m
-├ ○ /create-thread                         1.17 kB         [37m[1m213 kB[22m[39m
-├ ○ /debug                                 769 B           [37m[1m213 kB[22m[39m
-├ ○ /embed                                 6.46 kB         [37m[1m222 kB[22m[39m
-├ ○ /modern-index                          451 B           [37m[1m212 kB[22m[39m
-├ ○ /test                                  1.69 kB         [37m[1m214 kB[22m[39m
-└ ○ /test-minimal                          438 B           [37m[1m212 kB[22m[39m
-+ First Load JS shared by all              [37m[1m218 kB[22m[39m
-  └ chunks/vendors-a3857aa45b9628e9.js     207 kB
-  └ other shared chunks (total)            10.6 kB
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
 
-ƒ Middleware                               [37m[1m27 kB[22m[39m
+Error occurred prerendering page "/chat". Read more: https://nextjs.org/docs/messages/prerender-error
 
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
 
-[?25h[1G[0K⠙[1G[0K
+Error occurred prerendering page "/dive-logs". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/admin". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/simple". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/users". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/auth/login". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/auth/subscription". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/500". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/404". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+[2K[1G[?25h [32m[1m✓[22m[39m Generating static pages (13/13)
+
+> Export encountered errors on following paths:
+	/
+	/_error: /404
+	/_error: /500
+	/admin
+	/auth/login
+	/auth/subscription
+	/chat
+	/dive-logs
+	/payments
+	/simple
+	/users
+[?25h[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `build` failed with error:
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m1[39m
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m @koval-ai/web@1.0.0
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m command failed
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c next build
+[1G[0K⠙[1G[0K

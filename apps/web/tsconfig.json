@@ -41,12 +41,6 @@
       ],
       "@types/*": [
         "./types/*"
-      ],
-      "@koval-ai/core": [
-        "../../packages/core/dist/index"
-      ],
-      "@koval-ai/core/*": [
-        "../../packages/core/dist/*"
       ]
     },
     "types": [
