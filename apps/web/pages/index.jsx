@@ -30,9 +30,47 @@ export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
+  // ✅ DETECT ADMIN/DEMO MODE IMMEDIATELY (before any state)
+  const isAdminMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get('admin') === 'true';
+  const isDemoMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get('demo') === 'true';
+
+  // ✅ INITIALIZE ADMIN DATA IMMEDIATELY
+  const getInitialUserId = () => {
+    if (isAdminMode) {
+      return getAdminUserId();
+    } else if (isDemoMode) {
+      return 'demo-user-id';
+    }
+    return "";
+  };
+
+  const getInitialProfile = () => {
+    if (isAdminMode) {
+      const adminId = getAdminUserId();
+      return {
+        userId: adminId,
+        firstName: 'Daniel',
+        lastName: 'Koval',
+        nickname: 'Daniel Koval (Admin)',
+        email: 'danielkoval@admin.com',
+        source: 'admin'
+      };
+    } else if (isDemoMode) {
+      return {
+        userId: 'demo-user-id',
+        firstName: 'Demo',
+        lastName: 'User',
+        nickname: 'Demo User',
+        email: 'demo@example.com',
+        source: 'demo'
+      };
+    }
+    return {};
+  };
+
   // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
-  const [adminMode, setAdminMode] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
+  const [adminMode, setAdminMode] = useState(isAdminMode);
+  const [demoMode, setDemoMode] = useState(isDemoMode);
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -51,11 +89,11 @@ export default function Index() {
       ? localStorage.getItem("kovalDarkMode") === "true"
       : false,
   );
-  const [userId, setUserId] = useState("");
-  const [profile, setProfile] = useState({});
+  const [userId, setUserId] = useState(getInitialUserId());
+  const [profile, setProfile] = useState(getInitialProfile());
   const [diveLogs, setDiveLogs] = useState([]);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(!isAdminMode && !isDemoMode); // Skip auth for admin/demo
   const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
   const [localUser, setUser] = useState(null); // eslint-disable-line no-unused-vars
   const [localSession, setSession] = useState(null); // eslint-disable-line no-unused-vars
@@ -122,49 +160,14 @@ export default function Index() {
     }
   }, [router]);
 
-  // ✅ URL PARAMETER DETECTION (ADMIN/DEMO MODE)
+  // ✅ Log admin/demo mode status immediately
   useEffect(() => {
-    // Check URL parameters for admin or demo mode
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.get('admin') === 'true';
-    const isDemo = urlParams.get('demo') === 'true';
-
-    if (isAdmin) {
-      console.log("🎯 Admin mode activated");
-      setAdminMode(true);
-      
-      // Set up admin user data immediately
-      const adminId = getAdminUserId();
-      setUserId(adminId);
-      setProfile({
-        userId: adminId,
-        firstName: 'Daniel',
-        lastName: 'Koval',
-        nickname: 'Daniel Koval (Admin)',
-        email: 'danielkoval@admin.com',
-        source: 'admin'
-      });
-      
-      console.log("✅ Admin user set up:", adminId);
-    } else if (isDemo) {
-      console.log("🎯 Demo mode activated");
-      setDemoMode(true);
-      
-      // Set up demo user data
-      const demoId = 'demo-user-id';
-      setUserId(demoId);
-      setProfile({
-        userId: demoId,
-        firstName: 'Demo',
-        lastName: 'User',
-        nickname: 'Demo User',
-        email: 'demo@example.com',
-        source: 'demo'
-      });
-      
-      console.log("✅ Demo user set up:", demoId);
+    if (adminMode) {
+      console.log("🎯 Admin mode activated with userId:", userId);
+    } else if (demoMode) {
+      console.log("🎯 Demo mode activated with userId:", userId);
     }
-  }, []);
+  }, [adminMode, demoMode, userId]);
 
   // ✅ Redirect to login if not authenticated (unless admin/demo mode)
   useEffect(() => {
