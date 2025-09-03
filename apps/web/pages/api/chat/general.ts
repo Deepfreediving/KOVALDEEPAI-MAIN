@@ -93,8 +93,12 @@ async function getLatestAnalyzedDive(userId: string) {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ FIX: Use runtime port detection for internal API calls
-    const baseUrl = `http://localhost:3000`;
+    // ✅ FIX: Use dynamic base URL for both local and production
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NODE_ENV === 'development'
+        ? `http://localhost:3000`
+        : 'https://kovaldeepai.vercel.app';
 
     console.log(
       `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
@@ -131,8 +135,12 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string): Promise<string[]> {
   if (!userId || userId.startsWith("guest")) return [];
   try {
-    // ✅ FIX: Use runtime port detection for internal API calls
-    const baseUrl = `http://localhost:3000`;
+    // ✅ FIX: Use dynamic base URL for both local and production
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NODE_ENV === 'development'
+        ? `http://localhost:3000`
+        : 'https://kovaldeepai.vercel.app';
 
     console.log(
       `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
