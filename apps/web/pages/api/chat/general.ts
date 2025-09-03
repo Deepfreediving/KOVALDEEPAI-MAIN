@@ -93,16 +93,16 @@ async function getLatestAnalyzedDive(userId: string) {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ FIX: Use dynamic base URL for both local and production
+    // ✅ VERCEL PRODUCTION FIX: Prioritize VERCEL_URL for production
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}`
-      : process.env.NODE_ENV === 'development'
-        ? `http://localhost:3000`
-        : 'https://kovaldeepai.vercel.app';
+      : process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
     console.log(
       `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
     );
+    console.log(`📝 Query: "${query}"`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV}, VERCEL_URL: ${process.env.VERCEL_URL || 'not set'}`);
 
     // ✅ Use pineconequery-gpt endpoint
     const response = await fetch(`${baseUrl}/api/pinecone/pineconequery-gpt`, {
@@ -114,8 +114,11 @@ async function queryPinecone(query: string): Promise<string[]> {
       }),
     });
 
+    console.log(`📡 Pinecone API response status: ${response.status}`);
+
     if (!response.ok) {
-      console.warn(`⚠️ Pinecone query failed with status ${response.status}`);
+      const errorText = await response.text();
+      console.warn(`⚠️ Pinecone query failed with status ${response.status}: ${errorText}`);
       return [];
     }
 
@@ -129,6 +132,8 @@ async function queryPinecone(query: string): Promise<string[]> {
       console.log("🔍 Sample Pinecone content (first chunk):", 
         result.chunks[0].substring(0, 200) + "..."
       );
+    } else {
+      console.log("⚠️ No chunks returned from Pinecone - knowledge base may be empty or query didn't match");
     }
 
     // ✅ FIX: The endpoint returns `chunks`, not `matches`
@@ -142,12 +147,10 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string): Promise<string[]> {
   if (!userId || userId.startsWith("guest")) return [];
   try {
-    // ✅ FIX: Use dynamic base URL for both local and production
+    // ✅ VERCEL PRODUCTION FIX: Prioritize VERCEL_URL for production
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}`
-      : process.env.NODE_ENV === 'development'
-        ? `http://localhost:3000`
-        : 'https://kovaldeepai.vercel.app';
+      : process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
     console.log(
       `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,

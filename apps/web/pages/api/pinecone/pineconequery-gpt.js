@@ -87,15 +87,20 @@ export default async function handler(req, res) {
   }
 
   const { query, returnChunks = false } = req.body;
+  console.log(`🔍 Pinecone endpoint called with query: "${query}" (returnChunks: ${returnChunks})`);
 
   if (!query || typeof query !== "string") {
+    console.log("❌ Invalid query provided");
     return res.status(400).json({ error: "Query must be a string" });
   }
 
   try {
+    console.log("🚀 Querying Pinecone database...");
     const chunks = await queryPineconeAndSearchDocs(query);
+    console.log(`📊 Pinecone returned ${chunks.length} chunks`);
 
     if (chunks.length === 0) {
+      console.log("⚠️ No relevant chunks found in Pinecone");
       // Return empty response based on requested format
       if (returnChunks) {
         return res.status(200).json({ chunks: [] });
@@ -106,13 +111,20 @@ export default async function handler(req, res) {
       }
     }
 
+    console.log(`✅ Found ${chunks.length} relevant chunks, first chunk preview:`, 
+      chunks[0]?.substring(0, 100) + "..."
+    );
+
     // If returnChunks is true, return raw chunks for chat-embed integration
     if (returnChunks) {
+      console.log("📤 Returning raw chunks to chat endpoint");
       return res.status(200).json({ chunks });
     }
 
     // Otherwise, return full GPT answer (default behavior)
+    console.log("🤖 Processing with GPT...");
     const answer = await askGPTWithContext(chunks, query);
+    console.log("✅ GPT response generated successfully");
     return res.status(200).json({ answer });
   } catch (err) {
     console.error("❌ Handler error:", err.message || err);
