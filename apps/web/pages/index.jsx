@@ -219,6 +219,13 @@ export default function Index() {
       return;
     }
 
+    // Only proceed with Supabase auth if not in admin/demo mode
+    if (!supabase) {
+      console.warn('Supabase not available - setting auth complete');
+      setIsAuthenticating(false);
+      return;
+    }
+
     let isMounted = true;
     
     const initAuth = async () => {
