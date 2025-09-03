@@ -4,47 +4,18 @@
 -- Fix unindexed foreign keys identified by Supabase linter
 -- This migration adds missing indexes to improve query performance
 
--- Add missing foreign key indexes (only for tables that exist)
-DO $$
-BEGIN
-    -- Check and create indexes only for tables that exist
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ai_job') THEN
-        CREATE INDEX IF NOT EXISTS idx_ai_job_image_id ON public.ai_job(image_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chat_message') THEN
-        CREATE INDEX IF NOT EXISTS idx_chat_message_user_id ON public.chat_message(user_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chat_thread') THEN
-        CREATE INDEX IF NOT EXISTS idx_chat_thread_user_id ON public.chat_thread(user_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'coach_assignment') THEN
-        CREATE INDEX IF NOT EXISTS idx_coach_assignment_athlete_user_id ON public.coach_assignment(athlete_user_id);
-        CREATE INDEX IF NOT EXISTS idx_coach_assignment_coach_user_id ON public.coach_assignment(coach_user_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dive_log_comment') THEN
-        CREATE INDEX IF NOT EXISTS idx_dive_log_comment_author_user_id ON public.dive_log_comment(author_user_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'journal_entry') THEN
-        CREATE INDEX IF NOT EXISTS idx_journal_entry_dive_log_id ON public.journal_entry(dive_log_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'location_catalog') THEN
-        CREATE INDEX IF NOT EXISTS idx_location_catalog_user_id ON public.location_catalog(user_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'training_metric') THEN
-        CREATE INDEX IF NOT EXISTS idx_training_metric_dive_log_id ON public.training_metric(dive_log_id);
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_acceptance') THEN
-        CREATE INDEX IF NOT EXISTS idx_user_acceptance_legal_document_id ON public.user_acceptance(legal_document_id);
-    END IF;
-END $$;
+-- Add missing foreign key indexes
+CREATE INDEX IF NOT EXISTS idx_ai_job_image_id ON public.ai_job(image_id);
+CREATE INDEX IF NOT EXISTS idx_chat_message_user_id ON public.chat_message(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_thread_user_id ON public.chat_thread(user_id);
+CREATE INDEX IF NOT EXISTS idx_coach_assignment_athlete_user_id ON public.coach_assignment(athlete_user_id);
+CREATE INDEX IF NOT EXISTS idx_coach_assignment_coach_user_id ON public.coach_assignment(coach_user_id);
+CREATE INDEX IF NOT EXISTS idx_dive_log_audit_log_id ON public.dive_log_audit(log_id);
+CREATE INDEX IF NOT EXISTS idx_dive_log_comment_author_user_id ON public.dive_log_comment(author_user_id);
+CREATE INDEX IF NOT EXISTS idx_journal_entry_dive_log_id ON public.journal_entry(dive_log_id);
+CREATE INDEX IF NOT EXISTS idx_location_catalog_user_id ON public.location_catalog(user_id);
+CREATE INDEX IF NOT EXISTS idx_training_metric_dive_log_id ON public.training_metric(dive_log_id);
+CREATE INDEX IF NOT EXISTS idx_user_acceptance_legal_document_id ON public.user_acceptance(legal_document_id);
 
 -- ================================================================
 -- CRITICAL PERFORMANCE FIXES FOR ERR_INSUFFICIENT_RESOURCES
@@ -118,46 +89,21 @@ CREATE INDEX IF NOT EXISTS idx_dive_log_image_recent ON public.dive_log_image(di
 -- DATABASE CONFIGURATION OPTIMIZATIONS
 -- ================================================================
 
--- Analyze tables to update query planner statistics (only for existing tables)
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dive_logs') THEN
-        ANALYZE public.dive_logs;
-    END IF;
-    
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'dive_log_image') THEN
-        ANALYZE public.dive_log_image;
-    END IF;
-END $$;
+-- Analyze tables to update query planner statistics
+ANALYZE public.dive_logs;
+ANALYZE public.dive_log_image;
+ANALYZE public.dive_log_audit;
 
--- Add comment for documentation (only for indexes that exist)
-DO $$
-BEGIN
-    -- Check if indexes exist before adding comments
-    IF EXISTS (SELECT 1 FROM pg_stat_user_indexes WHERE indexrelname = 'idx_ai_job_image_id') THEN
-        EXECUTE 'COMMENT ON INDEX idx_ai_job_image_id IS ''Foreign key index for AI job image references''';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM pg_stat_user_indexes WHERE indexrelname = 'idx_chat_message_user_id') THEN
-        EXECUTE 'COMMENT ON INDEX idx_chat_message_user_id IS ''Foreign key index for chat message user references''';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM pg_stat_user_indexes WHERE indexrelname = 'idx_chat_thread_user_id') THEN
-        EXECUTE 'COMMENT ON INDEX idx_chat_thread_user_id IS ''Foreign key index for chat thread user references''';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM pg_stat_user_indexes WHERE indexrelname = 'idx_journal_entry_dive_log_id') THEN
-        EXECUTE 'COMMENT ON INDEX idx_journal_entry_dive_log_id IS ''Foreign key index for journal entry dive log references''';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM pg_stat_user_indexes WHERE indexrelname = 'idx_dive_logs_user_date_composite') THEN
-        EXECUTE 'COMMENT ON INDEX idx_dive_logs_user_date_composite IS ''Composite index for efficient user dive log queries ordered by date''';
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM pg_stat_user_indexes WHERE indexrelname = 'idx_dive_log_image_dive_log_composite') THEN
-        EXECUTE 'COMMENT ON INDEX idx_dive_log_image_dive_log_composite IS ''Composite index to prevent N+1 queries for dive log images''';
-    END IF;
-END $$;
+-- Add comment for documentation
+COMMENT ON INDEX idx_ai_job_image_id IS 'Foreign key index for AI job image references';
+COMMENT ON INDEX idx_chat_message_user_id IS 'Foreign key index for chat message user references';
+COMMENT ON INDEX idx_chat_thread_user_id IS 'Foreign key index for chat thread user references';
+COMMENT ON INDEX idx_dive_log_audit_log_id IS 'Foreign key index for dive log audit references';
+COMMENT ON INDEX idx_journal_entry_dive_log_id IS 'Foreign key index for journal entry dive log references';
+COMMENT ON INDEX idx_dive_logs_user_date_composite IS 'Composite index for efficient user dive log queries ordered by date';
+COMMENT ON INDEX idx_dive_log_image_dive_log_composite IS 'Composite index to prevent N+1 queries for dive log images';
+COMMENT ON VIEW v_dive_logs_with_images IS 'Optimized view combining dive logs with images to prevent N+1 queries';
+COMMENT ON VIEW v_admin_dive_logs IS 'Admin-specific optimized view for high-traffic admin user queries';
 
 -- Verify indexes were created
 SELECT 

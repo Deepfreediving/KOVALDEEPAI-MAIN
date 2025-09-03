@@ -30,9 +30,12 @@ export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
-  // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
+  // ✅ Check for admin or demo mode from URL
   const [adminMode, setAdminMode] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
+
+  // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -61,11 +64,98 @@ export default function Index() {
   const [localSession, setSession] = useState(null); // eslint-disable-line no-unused-vars
   const [diveJournalOpen, setDiveJournalOpen] = useState(false);
 
-  // ✅ ALL REFS MUST BE AT THE TOP
   const bottomRef = useRef(null);
 
-  // ✅ ALL USECALLBACKS AND USEMEMOS MUST BE AT THE TOP
-  const safeParse = useCallback((key, fallback) => {
+  useEffect(() => {
+    // Check URL parameters for admin or demo mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === 'true';
+    const isDemo = urlParams.get('demo') === 'true';
+    const userName = urlParams.get('userName');
+    const userId = urlParams.get('userId');
+    const subscription = urlParams.get('subscription');
+
+    if (isAdmin) {
+      setAdminMode(true);
+      setAdminUser({
+        id: userId || 'admin-daniel-koval',
+        email: 'danielkoval@admin.com',
+        user_metadata: {
+          full_name: userName || 'Daniel Koval (Admin)',
+        },
+        subscription_tier: subscription || 'premium'
+      });
+    } else if (isDemo) {
+      setDemoMode(true);
+      setAdminUser({
+        id: userId,
+        email: 'demo@example.com',
+        user_metadata: {
+          full_name: userName || 'Demo User',
+        },
+        subscription_tier: 'free'
+      });
+    }
+  }, []);
+
+  // ✅ Redirect to login if not authenticated (unless admin/demo mode)
+  useEffect(() => {
+    if (!authLoading && !user && !adminMode && !demoMode) {
+      router.push('/auth/login');
+    }
+  }, [authLoading, user, adminMode, demoMode, router]);
+
+  // ✅ Show loading screen while checking authentication
+  if (authLoading && !adminMode && !demoMode) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Don't render main app if not authenticated (unless admin/demo mode)
+  if (!user && !adminMode && !demoMode) {
+    return null;
+  }
+
+  // ✅ Use admin user or authenticated user
+  const currentUser = adminUser || user;
+
+  // Set userId from authenticated user
+  useEffect(() => {
+    if (currentUser?.id) {
+      setUserId(currentUser.id);
+      setIsAuthenticating(false); // Authentication complete
+    }
+  }, [currentUser]);
+
+  // Debug: Track diveLogs state changes
+  useEffect(() => {
+    console.log(`🔍 diveLogs state updated: ${diveLogs.length} logs`);
+  }, [diveLogs]);
+
+  // ✅ Simplified authentication - skip complex flow for admin/demo mode
+  useEffect(() => {
+    if (adminMode || demoMode) {
+      // For admin/demo mode, bypass complex auth
+      setIsAuthenticating(false);
+      return;
+    }
+
+    // Only run complex auth for regular users
+    if (typeof window !== "undefined" && router.isReady) {
+      setSessionsList(safeParse("kovalSessionsList", []));
+    }
+  }, [adminMode, demoMode, router.isReady]);
+
+  // ✅ HELPERS
+  // ✅ STORAGE KEY: Use nickname for consistent storage across sessions
+  const storageKey = (userIdentifier) => `diveLogs_${userIdentifier}`;
+  const safeParse = (key, fallback) => {
     try {
       return typeof window !== "undefined"
         ? JSON.parse(localStorage.getItem(key)) || fallback
@@ -73,9 +163,7 @@ export default function Index() {
     } catch {
       return fallback;
     }
-  }, []);
-
-  const storageKey = useCallback((userIdentifier) => `diveLogs_${userIdentifier}`, []);
+  };
 
   const getDisplayName = useCallback(() => {
     console.log(
@@ -96,6 +184,15 @@ export default function Index() {
     return profile?.firstName || profile?.nickname || "User";
   }, [profile, userId, user]);
 
+  // ✅ LOGOUT FUNCTION
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
   const getUserIdentifier = useCallback(() => {
     // Use the actual authenticated user's ID if available
     if (user?.id) {
@@ -113,48 +210,11 @@ export default function Index() {
     return adminId;
   }, [user, profile]);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-      router.push('/auth/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  }, [router]);
-
-  // ✅ URL PARAMETER DETECTION (ADMIN/DEMO MODE)
-  useEffect(() => {
-    // Check URL parameters for admin or demo mode
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.get('admin') === 'true';
-    const isDemo = urlParams.get('demo') === 'true';
-
-    if (isAdmin) {
-      setAdminMode(true);
-    } else if (isDemo) {
-      setDemoMode(true);
-    }
-  }, []);
-
-  // ✅ Redirect to login if not authenticated (unless admin/demo mode)
-  useEffect(() => {
-    if (!authLoading && !user && !adminMode && !demoMode) {
-      router.push('/auth/login');
-    }
-  }, [authLoading, user, adminMode, demoMode, router]);
-
   // ✅ SUPABASE AUTHENTICATION (Modified to handle demo mode)
   useEffect(() => {
     // Skip complex auth for admin/demo mode
     if (adminMode || demoMode) {
       console.log("🎯 Skipping complex auth for admin/demo mode");
-      setIsAuthenticating(false);
-      return;
-    }
-
-    // Only proceed with Supabase auth if not in admin/demo mode
-    if (!supabase) {
-      console.warn('Supabase not available - setting auth complete');
       setIsAuthenticating(false);
       return;
     }
@@ -241,7 +301,7 @@ export default function Index() {
     return () => {
       isMounted = false;
     };
-  }, [router, adminMode, demoMode, safeParse]);
+  }, [router, adminMode, demoMode]);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE AND THEME
   useEffect(() => {
@@ -515,7 +575,7 @@ export default function Index() {
     } finally {
       setLoadingDiveLogs(false);
     }
-  }, [getUserIdentifier, user?.email, safeParse, storageKey]);
+  }, [getUserIdentifier, user?.email]);
 
   // ✅ INITIAL DIVE LOGS LOADING - Runs after loadDiveLogs is defined
   useEffect(() => {
@@ -621,7 +681,7 @@ export default function Index() {
         }
       }
     },
-    [profile, diveLogs, getUserIdentifier, safeParse, storageKey],
+    [profile, diveLogs, getUserIdentifier],
   );
 
   // ✅ DELETE DIVE LOG (for future use)
