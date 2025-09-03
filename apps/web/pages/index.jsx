@@ -130,15 +130,53 @@ export default function Index() {
     const isDemo = urlParams.get('demo') === 'true';
 
     if (isAdmin) {
+      console.log("🎯 Admin mode activated");
       setAdminMode(true);
+      
+      // Set up admin user data immediately
+      const adminId = getAdminUserId();
+      setUserId(adminId);
+      setProfile({
+        userId: adminId,
+        firstName: 'Daniel',
+        lastName: 'Koval',
+        nickname: 'Daniel Koval (Admin)',
+        email: 'danielkoval@admin.com',
+        source: 'admin'
+      });
+      
+      console.log("✅ Admin user set up:", adminId);
     } else if (isDemo) {
+      console.log("🎯 Demo mode activated");
       setDemoMode(true);
+      
+      // Set up demo user data
+      const demoId = 'demo-user-id';
+      setUserId(demoId);
+      setProfile({
+        userId: demoId,
+        firstName: 'Demo',
+        lastName: 'User',
+        nickname: 'Demo User',
+        email: 'demo@example.com',
+        source: 'demo'
+      });
+      
+      console.log("✅ Demo user set up:", demoId);
     }
   }, []);
 
   // ✅ Redirect to login if not authenticated (unless admin/demo mode)
   useEffect(() => {
-    if (!authLoading && !user && !adminMode && !demoMode) {
+    // Skip redirect if in admin or demo mode
+    if (adminMode || demoMode) {
+      console.log("🎯 Admin/Demo mode active - skipping login redirect");
+      return;
+    }
+    
+    // Only redirect if not loading and no user
+    if (!authLoading && !user) {
+      console.log("❌ No authentication found, redirecting to login");
       router.push('/auth/login');
     }
   }, [authLoading, user, adminMode, demoMode, router]);
