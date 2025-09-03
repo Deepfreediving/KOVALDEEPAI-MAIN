@@ -11,8 +11,8 @@ import { useAuth } from "@/src/providers/AuthProvider";
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
   // ✅ Use OpenAI chat directly since Supabase chat is admin-only
-  CHAT: "/api/openai/chat",
-  CHAT_FALLBACK: "/api/openai/chat",
+  CHAT: "/api/chat/general",
+  CHAT_FALLBACK: "/api/chat/general",
   GET_DIVE_LOGS: "/api/supabase/dive-logs-optimized",
   GET_DIVE_LOGS_FALLBACK: "/api/supabase/get-dive-logs",
   GET_USER_PROFILE: "/api/supabase/user-profile",
@@ -60,8 +60,8 @@ export default function Index() {
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
-  const [localUser, setUser] = useState(null);
-  const [localSession, setSession] = useState(null);
+  const [localUser, setUser] = useState(null); // eslint-disable-line no-unused-vars
+  const [localSession, setSession] = useState(null); // eslint-disable-line no-unused-vars
   const [diveJournalOpen, setDiveJournalOpen] = useState(false);
 
   const bottomRef = useRef(null);
