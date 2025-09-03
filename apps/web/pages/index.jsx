@@ -33,12 +33,20 @@ export default function Index() {
   // ✅ DETECT ADMIN/DEMO MODE IMMEDIATELY (before any state)
   const isAdminMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get('admin') === 'true';
   const isDemoMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get('demo') === 'true';
+  
+  // Debug logging
+  if (typeof window !== "undefined") {
+    console.log("🔍 Admin mode detection:", { isAdminMode, isDemoMode, url: window.location.href });
+  }
 
   // ✅ INITIALIZE ADMIN DATA IMMEDIATELY
   const getInitialUserId = () => {
     if (isAdminMode) {
-      return getAdminUserId();
+      const adminId = getAdminUserId();
+      console.log("🎯 Setting admin userId:", adminId);
+      return adminId;
     } else if (isDemoMode) {
+      console.log("🎯 Setting demo userId: demo-user-id");
       return 'demo-user-id';
     }
     return "";
@@ -69,8 +77,8 @@ export default function Index() {
   };
 
   // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
-  const [adminMode, setAdminMode] = useState(isAdminMode);
-  const [demoMode, setDemoMode] = useState(isDemoMode);
+  const [adminMode] = useState(isAdminMode);
+  const [demoMode] = useState(isDemoMode);
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -171,6 +179,14 @@ export default function Index() {
 
   // ✅ Redirect to login if not authenticated (unless admin/demo mode)
   useEffect(() => {
+    console.log("🔄 Auth redirect check:", { 
+      adminMode, 
+      demoMode, 
+      authLoading, 
+      hasUser: !!user,
+      userEmail: user?.email 
+    });
+    
     // Skip redirect if in admin or demo mode
     if (adminMode || demoMode) {
       console.log("🎯 Admin/Demo mode active - skipping login redirect");
