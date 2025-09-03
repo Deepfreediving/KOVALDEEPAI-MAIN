@@ -30,51 +30,48 @@ export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
-  // ✅ DETECT ADMIN/DEMO MODE IMMEDIATELY (before any state)
-  const isAdminMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get('admin') === 'true';
-  const isDemoMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get('demo') === 'true';
-  
-  // Debug logging
-  if (typeof window !== "undefined") {
-    console.log("🔍 Admin mode detection:", { isAdminMode, isDemoMode, url: window.location.href });
-  }
+  // ✅ MEMOIZE ADMIN/DEMO MODE DETECTION (prevent re-renders)
+  const modeDetection = useMemo(() => {
+    if (typeof window === "undefined") return { isAdminMode: false, isDemoMode: false };
+    const params = new URLSearchParams(window.location.search);
+    return {
+      isAdminMode: params.get('admin') === 'true',
+      isDemoMode: params.get('demo') === 'true'
+    };
+  }, []);
 
-  // ✅ INITIALIZE ADMIN DATA IMMEDIATELY
-  const getInitialUserId = () => {
-    if (isAdminMode) {
-      const adminId = getAdminUserId();
-      console.log("🎯 Setting admin userId:", adminId);
-      return adminId;
-    } else if (isDemoMode) {
-      console.log("🎯 Setting demo userId: demo-user-id");
-      return 'demo-user-id';
-    }
-    return "";
-  };
+  const { isAdminMode, isDemoMode } = modeDetection;
 
-  const getInitialProfile = () => {
+  // ✅ MEMOIZE INITIAL DATA (prevent recalculation)
+  const initialData = useMemo(() => {
     if (isAdminMode) {
       const adminId = getAdminUserId();
       return {
         userId: adminId,
-        firstName: 'Daniel',
-        lastName: 'Koval',
-        nickname: 'Daniel Koval (Admin)',
-        email: 'danielkoval@admin.com',
-        source: 'admin'
+        profile: {
+          userId: adminId,
+          firstName: 'Daniel',
+          lastName: 'Koval',
+          nickname: 'Daniel Koval (Admin)',
+          email: 'danielkoval@admin.com',
+          source: 'admin'
+        }
       };
     } else if (isDemoMode) {
       return {
         userId: 'demo-user-id',
-        firstName: 'Demo',
-        lastName: 'User',
-        nickname: 'Demo User',
-        email: 'demo@example.com',
-        source: 'demo'
+        profile: {
+          userId: 'demo-user-id',
+          firstName: 'Demo',
+          lastName: 'User',
+          nickname: 'Demo User',
+          email: 'demo@example.com',
+          source: 'demo'
+        }
       };
     }
-    return {};
-  };
+    return { userId: "", profile: {} };
+  }, [isAdminMode, isDemoMode]);
 
   // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
   const [adminMode] = useState(isAdminMode);
@@ -97,8 +94,8 @@ export default function Index() {
       ? localStorage.getItem("kovalDarkMode") === "true"
       : false,
   );
-  const [userId, setUserId] = useState(getInitialUserId());
-  const [profile, setProfile] = useState(getInitialProfile());
+  const [userId, setUserId] = useState(initialData.userId);
+  const [profile, setProfile] = useState(initialData.profile);
   const [diveLogs, setDiveLogs] = useState([]);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(!isAdminMode && !isDemoMode); // Skip auth for admin/demo
@@ -124,15 +121,6 @@ export default function Index() {
   const storageKey = useCallback((userIdentifier) => `diveLogs_${userIdentifier}`, []);
 
   const getDisplayName = useCallback(() => {
-    console.log(
-      "🔍 getDisplayName called, profile:",
-      profile,
-      "userId:",
-      userId,
-      "user:",
-      user,
-    );
-
     // ✅ Use actual user data if available
     if (user) {
       return user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
@@ -140,7 +128,7 @@ export default function Index() {
 
     // ✅ Fallback to profile data
     return profile?.firstName || profile?.nickname || "User";
-  }, [profile, userId, user]);
+  }, [profile, user]);
 
   const getUserIdentifier = useCallback(() => {
     // Use the actual authenticated user's ID if available
@@ -179,23 +167,13 @@ export default function Index() {
 
   // ✅ Redirect to login if not authenticated (unless admin/demo mode)
   useEffect(() => {
-    console.log("🔄 Auth redirect check:", { 
-      adminMode, 
-      demoMode, 
-      authLoading, 
-      hasUser: !!user,
-      userEmail: user?.email 
-    });
-    
     // Skip redirect if in admin or demo mode
     if (adminMode || demoMode) {
-      console.log("🎯 Admin/Demo mode active - skipping login redirect");
       return;
     }
     
     // Only redirect if not loading and no user
     if (!authLoading && !user) {
-      console.log("❌ No authentication found, redirecting to login");
       router.push('/auth/login');
     }
   }, [authLoading, user, adminMode, demoMode, router]);
@@ -964,7 +942,10 @@ export default function Index() {
           break;
 
         default:
-          console.log("❓ Index: Unknown message type:", event.data?.type);
+          // ✅ Only log if there's actually a message type (reduce noise)
+          if (event.data?.type) {
+            console.log("❓ Index: Unknown message type:", event.data?.type);
+          }
       }
     };
 

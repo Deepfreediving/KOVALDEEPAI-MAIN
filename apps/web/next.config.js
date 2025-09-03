@@ -8,6 +8,31 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   swcMinify: true,
+  // Disable file system polling to prevent path issues
+  experimental: {
+    turbo: false,
+  },
+  // Add explicit webpack configuration to handle path resolution
+  webpack: (config, { isServer }) => {
+    // Ensure all required paths are properly resolved
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+    
+    // Fix watchpack path resolution issues
+    if (!isServer) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: ['**/.git/**', '**/node_modules/**', '**/.next/**', '**/dist/**'],
+        poll: false,
+      };
+    }
+    
+    return config;
+  },
   env: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_ASSISTANT_ID: process.env.OPENAI_ASSISTANT_ID,

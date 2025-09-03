@@ -15,8 +15,8 @@ export default class MyDocument extends Document {
           <meta name="description" content="Koval AI - Your freediving coach" />
           <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
 
-          {/* ✅ Preload critical resources with proper attributes */}
-          <link rel="preload" href="/koval-logo.png" as="image" type="image/png" crossOrigin="anonymous" />
+          {/* ✅ Preload critical resources - remove crossOrigin for same-origin images */}
+          <link rel="preload" href="/koval-logo.png" as="image" type="image/png" />
 
           {/* ✅ DNS prefetch for external APIs */}
           <link rel="dns-prefetch" href="//openai.com" />

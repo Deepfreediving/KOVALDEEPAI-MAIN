@@ -123,6 +123,13 @@ async function queryPinecone(query: string): Promise<string[]> {
     console.log(
       `✅ Pinecone returned ${result.chunks?.length || 0} knowledge chunks`,
     );
+    
+    // ✅ Log sample of Pinecone content to verify RAG is working
+    if (result.chunks && result.chunks.length > 0) {
+      console.log("🔍 Sample Pinecone content (first chunk):", 
+        result.chunks[0].substring(0, 200) + "..."
+      );
+    }
 
     // ✅ FIX: The endpoint returns `chunks`, not `matches`
     return result.chunks || [];
@@ -228,6 +235,20 @@ async function askWithContext(
   const enhancedContext = diveLogContext
     ? `${context}\n\n${diveLogContext}`
     : context;
+
+  // ✅ Log context usage for debugging RAG
+  console.log(`🧠 RAG Context Summary:
+- Pinecone chunks: ${contextChunks.length}
+- Context length: ${context.length} chars
+- Enhanced context length: ${enhancedContext.length} chars
+- Has dive logs: ${hasDiveLogs}
+- User level: ${userLevel}`);
+
+  if (contextChunks.length > 0) {
+    console.log("📖 Using Pinecone knowledge in OpenAI request");
+  } else {
+    console.log("⚠️ No Pinecone context - using fallback guidance");
+  }
 
   let retryCount = 0;
   const maxRetries = 3;

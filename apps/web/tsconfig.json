@@ -60,9 +60,7 @@
     "**/*.jsx",
     "next-env.d.ts",
     "types/**/*.d.ts",
-    ".next/types/**/*.ts",
-    "next.config.js",
-    "vercel.json"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
