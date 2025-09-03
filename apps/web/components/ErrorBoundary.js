@@ -2,7 +2,10 @@
 import React, { Component } from "react";
 
 class ErrorBoundary extends Component {
-  state = { hasError: false };
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
   static getDerivedStateFromError() {
     return { hasError: true };
@@ -12,12 +15,12 @@ class ErrorBoundary extends Component {
     console.error("Error caught by ErrorBoundary:", error, info);
   }
 
-  handleReset = () => {
+  handleReset() {
     this.setState({ hasError: false });
     if (typeof window !== "undefined") {
       window.location.reload(); // Optional: full page reload
     }
-  };
+  }
 
   render() {
     if (this.state.hasError) {
@@ -28,7 +31,7 @@ class ErrorBoundary extends Component {
             Please try again later or reload the page.
           </p>
           <button
-            onClick={this.handleReset}
+            onClick={this.handleReset.bind(this)}
             className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Reload
