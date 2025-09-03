@@ -7,6 +7,11 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Add these to fix the deployment issues
+  swcMinify: true,
+  experimental: {
+    forceSwcTransforms: true,
+  },
   env: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_ASSISTANT_ID: process.env.OPENAI_ASSISTANT_ID,
