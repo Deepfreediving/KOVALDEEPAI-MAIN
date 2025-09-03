@@ -437,6 +437,16 @@ export default async function handler(
 ) {
   const startTime = Date.now();
 
+  // ✅ DEBUG: Log environment state for Pinecone troubleshooting
+  console.log('🔍 CHAT API Environment Debug:', {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL_URL: process.env.VERCEL_URL || 'not set',
+    PINECONE_API_KEY: process.env.PINECONE_API_KEY ? 'SET' : 'MISSING',
+    PINECONE_INDEX: process.env.PINECONE_INDEX || 'MISSING',
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'SET' : 'MISSING',
+    BASE_URL: process.env.BASE_URL || 'not set'
+  });
+
   try {
     await handleCors(req, res);
     if (req.method === "OPTIONS") return;
