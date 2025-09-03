@@ -1,9 +1,9 @@
 // Supabase save dive log API endpoint - ADMIN ONLY
-import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
+import { getAdminClient } from '@/lib/supabase'
 
 export default async function handler(req, res) {
   // Initialize Supabase client with error handling
-  const supabase = getAdminSupabaseClient();
+  const supabase = getAdminClient();
   
   if (!supabase) {
     console.error('❌ Failed to initialize Supabase admin client');

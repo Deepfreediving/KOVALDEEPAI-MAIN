@@ -30,3 +30,10 @@ export default function PaymentsAdmin() {
     </div>
   );
 }
+
+// Force server-side rendering to avoid SSG router issues
+export async function getServerSideProps() {
+  return {
+    props: {}
+  };
+}

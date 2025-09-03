@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '@/lib/supabaseClient';
+import { getBrowserClient } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function Subscription() {
@@ -37,6 +37,7 @@ export default function Subscription() {
 
     // Check authentication (skip if in admin mode)
     const checkAuth = async () => {
+      const supabase = getBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUser(session.user);
@@ -52,6 +53,7 @@ export default function Subscription() {
 
     // Get subscription plans
     const getPlans = async () => {
+      const supabase = getBrowserClient();
       const { data: plansData, error } = await supabase
         .from('subscription_plans')
         .select('*')
@@ -83,6 +85,7 @@ export default function Subscription() {
     if (plan.tier === 'free') {
       // Handle free plan
       try {
+        const supabase = getBrowserClient();
         await supabase
           .from('user_profiles')
           .update({
@@ -289,4 +292,11 @@ export default function Subscription() {
       </div>
     </div>
   );
+}
+
+// Force server-side rendering to avoid SSG router issues
+export async function getServerSideProps() {
+  return {
+    props: {}
+  };
 }

@@ -1,6 +1,6 @@
 // ENCLOSE Diagnostic API - Analyzes dive performance using Daniel's methodology
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getAdminSupabaseClient } from '@/lib/supabaseServerClient';
+import { getAdminClient } from '@/lib/supabase';
 
 // Simplified ENCLOSE diagnostic for now - will import from core package once built
 interface DiveIssue {
@@ -90,33 +90,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // If diveLogId provided, fetch from database
     if (diveLogId) {
-      const supabase = getAdminSupabaseClient();
+      const supabase = getAdminClient();
       const { data: diveLog, error } = await supabase
         .from('dive_logs')
         .select('*')
         .eq('id', diveLogId)
         .single();
 
-      if (error) {
+      if (error || !diveLog) {
         return res.status(404).json({ error: 'Dive log not found' });
       }
 
-      // Map database fields to ENCLOSE format
+      // Map database fields to ENCLOSE format (cast to any for type safety)
+      const log = diveLog as any;
       diveData = {
-        targetDepthM: diveLog.target_depth || diveLog.reached_depth,
-        reachedDepthM: diveLog.reached_depth,
-        diveTimeSeconds: diveLog.total_dive_time ? 
-          parseTime(diveLog.total_dive_time) : 0,
+        targetDepthM: log.target_depth || log.reached_depth,
+        reachedDepthM: log.reached_depth,
+        diveTimeSeconds: log.total_dive_time ? 
+          parseTime(log.total_dive_time) : 0,
         discipline: 'CWT', // Default, could be stored in metadata
         
         // Extract issues from metadata or notes
-        eqFailureDepth: diveLog.issue_depth,
-        squeezeType: diveLog.squeeze ? 'unknown' : undefined,
-        mouthfillDepth: diveLog.mouthfill_depth,
+        eqFailureDepth: log.issue_depth,
+        squeezeType: log.squeeze ? 'unknown' : undefined,
+        mouthfillDepth: log.mouthfill_depth,
         
         // Parse notes for additional issues
-        ...parseNotesForIssues(diveLog.notes || ''),
-        ...parseMetadataForIssues(diveLog.metadata || {})
+        ...parseNotesForIssues(log.notes || ''),
+        ...parseMetadataForIssues(log.metadata || {})
       };
     }
 

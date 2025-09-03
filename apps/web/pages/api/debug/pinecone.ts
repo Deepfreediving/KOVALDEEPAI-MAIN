@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       diagnostics.tests.pineconeInit = '✅ SUCCESS';
     } catch (error) {
-      diagnostics.tests.pineconeInit = `❌ FAILED: ${error.message}`;
+      diagnostics.tests.pineconeInit = `❌ FAILED: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
 
     // Test 2: OpenAI client initialization
@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       diagnostics.tests.openaiInit = '✅ SUCCESS';
     } catch (error) {
-      diagnostics.tests.openaiInit = `❌ FAILED: ${error.message}`;
+      diagnostics.tests.openaiInit = `❌ FAILED: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
 
     // Test 3: Try to generate embedding
@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Test 4: Try to query Pinecone
     try {
-      const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+      const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
       const index = pinecone.index(process.env.PINECONE_INDEX || 'koval-deep-ai');
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       

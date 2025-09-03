@@ -1,5 +1,5 @@
 // Dive Log Audit API - Technical evaluation using E.N.C.L.O.S.E. framework
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
+import { getServerClient } from '@/lib/supabase';
 import handleCors from '@/utils/handleCors';
 
 // E.N.C.L.O.S.E. JSON Schema for consistent audit structure
@@ -288,7 +288,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'logId and userId are required' });
     }
 
-    const supabase = getServerSupabaseClient();
+    const supabase = getServerClient();
     
     // Create deterministic UUID for consistency (same as other APIs)
     const crypto = require('crypto');

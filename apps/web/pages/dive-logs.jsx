@@ -1,7 +1,19 @@
 import { useRouter } from 'next/router';
+import { useState, useEffect } from 'react';
 
 export default function DiveLogsAdmin() {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const handleBackToAdmin = () => {
+    if (isClient && router) {
+      router.push('/admin');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -10,7 +22,7 @@ export default function DiveLogsAdmin() {
           <div className="flex justify-between items-center py-6">
             <h1 className="text-2xl font-bold text-gray-900">Dive Logs Management</h1>
             <button
-              onClick={() => router.push('/admin')}
+              onClick={handleBackToAdmin}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
             >
               Back to Admin
@@ -29,4 +41,11 @@ export default function DiveLogsAdmin() {
       </div>
     </div>
   );
+}
+
+// Force server-side rendering to avoid SSG router issues
+export async function getServerSideProps() {
+  return {
+    props: {}
+  };
 }

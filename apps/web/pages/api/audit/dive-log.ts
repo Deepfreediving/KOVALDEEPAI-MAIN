@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
+import { getServerClient } from '@/lib/supabase';
 import handleCors from '@/utils/handleCors';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -183,7 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('🧮 Starting dive log audit for logId:', logId, 'userId:', userId);
 
-    const supabase = getServerSupabaseClient();
+    const supabase = getServerClient();
 
     // Use provided userId or try to get from auth
     let finalUserId = userId;

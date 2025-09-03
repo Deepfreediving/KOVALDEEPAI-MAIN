@@ -1,5 +1,5 @@
 // PayPal payment creation endpoint
-import { supabase } from '@/lib/supabaseClient';
+import { getServerClient } from '@/lib/supabase';
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
@@ -36,6 +36,7 @@ export default async function handler(req, res) {
     }
 
     // Get the subscription plan
+    const supabase = getServerClient();
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
       .select('*')

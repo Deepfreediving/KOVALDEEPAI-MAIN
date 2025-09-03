@@ -149,3 +149,10 @@ export default function IndexWorking() {
     </div>
   );
 }
+
+// Force server-side rendering to avoid SSG router issues
+export async function getServerSideProps() {
+  return {
+    props: {}
+  };
+}

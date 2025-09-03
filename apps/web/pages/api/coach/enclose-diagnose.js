@@ -1,5 +1,5 @@
 // ENCLOSE Diagnostic API - Analyze dive issues using your methodology
-import { getAdminSupabaseClient } from '../../../lib/supabaseServerClient.js';
+import { getAdminClient } from '../../../lib/supabase/index.js';
 
 // ENCLOSE diagnostic categories from your methodology
 const ENCLOSE_CATEGORIES = {
@@ -154,7 +154,7 @@ export default async function handler(req, res) {
     // Get dive log context if provided
     let diveContext = null;
     if (diveLogId) {
-      const supabase = getAdminSupabaseClient();
+      const supabase = getAdminClient();
       const { data: dive } = await supabase
         .from('dive_logs')
         .select('*')

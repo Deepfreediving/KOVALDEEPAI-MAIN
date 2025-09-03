@@ -1,7 +1,7 @@
 // Simple OpenAI-powered dive log analysis
 import OpenAI from 'openai';
 import handleCors from '@/utils/handleCors';
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
+import { getServerClient } from '@/lib/supabase';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -117,7 +117,7 @@ async function linkUploadedImages(supabase, userId, diveLogId) {
 // ✅ NEW: Function to save analysis to Supabase
 async function saveAnalysisToSupabase(userId, diveLogData, analysis) {
   try {
-    const supabase = getServerSupabaseClient();
+    const supabase = getServerClient();
     
     // Create deterministic UUID for consistency
     const crypto = require('crypto');

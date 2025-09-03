@@ -1,5 +1,5 @@
 // Enhanced Chat API with RAG knowledge retrieval and coaching logic
-import { getAdminSupabaseClient } from '../../../lib/supabaseServerClient.js';
+import { getAdminClient } from '../../../lib/supabase/index.js';
 import OpenAI from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 
@@ -43,7 +43,7 @@ async function getUserDiveContext(userId) {
   if (!userId) return null;
 
   try {
-    const supabase = getAdminSupabaseClient();
+    const supabase = getAdminClient();
     
     // Get recent dive logs
     const { data: recentDives } = await supabase

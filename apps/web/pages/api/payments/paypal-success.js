@@ -1,5 +1,5 @@
 // PayPal payment success handler
-import { supabase } from '@/lib/supabaseClient';
+import { getServerClient } from '@/lib/supabase';
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
@@ -53,6 +53,9 @@ export default async function handler(req, res) {
     });
 
     const executedPayment = await executeResponse.json();
+
+    // Get Supabase client for database operations
+    const supabase = getServerClient();
 
     if (executedPayment.state === 'approved') {
       // Get the transaction from database

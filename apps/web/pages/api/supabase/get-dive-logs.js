@@ -1,9 +1,6 @@
 // Supabase-powered get dive logs API endpoint - ADMIN ONLY
-import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
+import { getAdminClient } from '@/lib/supabase'
 import handleCors from "@/utils/handleCors";
-
-// Use admin client for elevated access
-const supabase = getAdminSupabaseClient();
 
 export default async function handler(req, res) {
   try {
@@ -13,6 +10,9 @@ export default async function handler(req, res) {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
     }
+
+    // Use admin client for elevated access
+    const supabase = getAdminClient();
 
     // ✅ ADMIN ONLY: Use fixed admin user ID
     const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479' // Fixed admin UUID

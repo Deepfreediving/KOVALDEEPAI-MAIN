@@ -1,11 +1,11 @@
 // Delete dive log API endpoint - ADMIN ONLY
-import { getAdminSupabaseClient } from '@/lib/supabaseServerClient'
-
-// Use admin client for delete operations
-const supabase = getAdminSupabaseClient();
+import { getAdminClient } from '@/lib/supabase'
 
 export default async function handler(req, res) {
   try {
+    // Use admin client for delete operations
+    const supabase = getAdminClient();
+    
     const { method } = req
 
     if (method === 'DELETE') {

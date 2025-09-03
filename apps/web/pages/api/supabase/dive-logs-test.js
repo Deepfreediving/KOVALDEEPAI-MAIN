@@ -1,21 +1,13 @@
-// Simple test endpoint to verify API routing works
+// TEST ENDPOINT - Uses unified handler with test mode
+import { diveLogsHandler } from '@/lib/api/handlers/diveLogsHandler'
+
 export default async function handler(req, res) {
   console.log('🧪 Test endpoint called');
   
-  try {
-    const { userId } = req.query;
-    
-    return res.status(200).json({ 
-      success: true,
-      message: 'Test endpoint works',
-      userId,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ Test endpoint error:', error);
-    return res.status(500).json({ 
-      error: 'Test endpoint failed',
-      details: error.message
-    });
-  }
+  // Add test mode headers
+  res.setHeader('X-Test-Mode', 'true');
+  res.setHeader('X-Test-Timestamp', new Date().toISOString());
+  
+  // Use the unified handler for actual functionality
+  return diveLogsHandler(req, res);
 }

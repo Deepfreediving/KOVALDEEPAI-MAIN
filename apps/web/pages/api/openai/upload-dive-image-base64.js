@@ -1,5 +1,5 @@
 // Alternative image upload API with better Vercel compatibility
-import { getAdminSupabaseClient } from '@/lib/supabaseServerClient';
+import { getAdminClient } from '@/lib/supabase';
 import OpenAI from 'openai';
 import sharp from 'sharp';
 
@@ -128,7 +128,7 @@ export default async function handler(req, res) {
     console.log('📊 Extracted metrics:', metrics);
 
     // Upload to Supabase Storage
-    const supabase = getAdminSupabaseClient();
+    const supabase = getAdminClient();
     const timestamp = Date.now();
     const fileExtension = 'jpg';
     const storagePath = `${userId}/${timestamp}.${fileExtension}`;

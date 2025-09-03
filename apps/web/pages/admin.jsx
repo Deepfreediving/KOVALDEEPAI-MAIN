@@ -1,22 +1,60 @@
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalDiveLogs: 0,
+    activeSubscriptions: 0,
+  });
 
   // Simple admin authentication - in production, use proper JWT/Supabase auth
   const ADMIN_ACCESS_CODE = 'koval2024admin'; // Change this in production!
 
   useEffect(() => {
     // Check if already authenticated in session
-    const adminAuth = sessionStorage.getItem('koval-admin-auth');
-    if (adminAuth === 'true') {
-      setIsAuthenticated(true);
+    if (typeof window !== 'undefined') {
+      const adminAuth = sessionStorage.getItem('koval-admin-auth');
+      if (adminAuth === 'true') {
+        setIsAuthenticated(true);
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Admin dashboard logic
+      const loadAdminData = async () => {
+        try {
+          // Dynamically import supabase only on client side
+          if (typeof window !== 'undefined') {
+            const { supabase } = await import('../lib/supabase');
+            
+            // Get basic stats
+            const { data: users } = await supabase.from('user_profiles').select('id');
+            const { data: diveLogs } = await supabase.from('dive_logs').select('id');
+            
+            setStats({
+              totalUsers: users?.length || 0,
+              totalDiveLogs: diveLogs?.length || 0,
+              activeSubscriptions: 0, // Placeholder
+            });
+          }
+        } catch (error) {
+          console.error('Error loading admin data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadAdminData();
+    }
+  }, [isAuthenticated]);
 
   const handleAdminLogin = () => {
     setIsVerifying(true);
@@ -97,6 +135,14 @@ export default function AdminDashboard() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading admin dashboard...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow">
@@ -143,7 +189,7 @@ export default function AdminDashboard() {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
-                    <dd className="text-lg font-medium text-gray-900">Loading...</dd>
+                    <dd className="text-lg font-medium text-gray-900">{stats.totalUsers}</dd>
                   </dl>
                 </div>
               </div>
@@ -161,7 +207,7 @@ export default function AdminDashboard() {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Dive Logs</dt>
-                    <dd className="text-lg font-medium text-gray-900">Loading...</dd>
+                    <dd className="text-lg font-medium text-gray-900">{stats.totalDiveLogs}</dd>
                   </dl>
                 </div>
               </div>
@@ -179,7 +225,7 @@ export default function AdminDashboard() {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Active Subscriptions</dt>
-                    <dd className="text-lg font-medium text-gray-900">Coming Soon</dd>
+                    <dd className="text-lg font-medium text-gray-900">{stats.activeSubscriptions}</dd>
                   </dl>
                 </div>
               </div>
@@ -264,4 +310,11 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+}
+
+// Force server-side rendering to avoid SSG router issues
+export async function getServerSideProps() {
+  return {
+    props: {}
+  };
 }

@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 
-export default function UsersAdmin() {
+function UsersAdmin() {
   const router = useRouter();
 
   return (
@@ -30,3 +31,8 @@ export default function UsersAdmin() {
     </div>
   );
 }
+
+// Export as dynamic with no SSR to avoid router issues
+export default dynamic(() => Promise.resolve(UsersAdmin), {
+  ssr: false
+});

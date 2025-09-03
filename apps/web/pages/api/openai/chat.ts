@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
 import handleCors from "@/utils/handleCors";
-import { getServerSupabaseClient } from '@/lib/supabaseServerClient';
+import { getServerClient } from '@/lib/supabase';
 // import { fetchUserMemory, saveUserMemory } from "@/lib/userMemoryManager"; // Disabled for now - using admin-only auth
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -32,7 +32,7 @@ function getDepthRange(depth: number): string {
 // ✅ NEW: Function to get latest analyzed dive from Supabase
 async function getLatestAnalyzedDive(userId: string) {
   try {
-    const supabase = getServerSupabaseClient();
+    const supabase = getServerClient();
     
     // Create deterministic UUID for consistency (same as dive-logs.js)
     const crypto = require('crypto');
@@ -492,7 +492,7 @@ export default async function handler(
     const diveContext = await queryDiveLogs(userId);
 
     // ✅ Load analyzed dive logs from Supabase first
-    let analyzedDiveLogs = [];
+    let analyzedDiveLogs: any[] = [];
     try {
       analyzedDiveLogs = await getLatestAnalyzedDive(userIdentifier);
       console.log(`📊 Found ${analyzedDiveLogs.length} analyzed dives in Supabase`);
@@ -501,7 +501,7 @@ export default async function handler(
     }
 
     // ✅ Load actual dive logs for detailed analysis
-    let localDiveLogs = [];
+    let localDiveLogs: any[] = [];
     try {
       // ✅ FIX: Use runtime port detection for internal API calls
       const baseUrl = `http://localhost:3000`;

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function Login() {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,15 +13,21 @@ export default function Login() {
   const [mode, setMode] = useState('signin'); // 'signin' or 'signup'
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
+      if (!isClient || !router) return;
+      
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && router) {
         router.push('/');
       }
     };
     checkUser();
-  }, [router]);
+  }, [router, isClient]);
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -56,7 +63,9 @@ export default function Login() {
       }
 
       // Redirect to main app
-      router.push('/');
+      if (isClient && router) {
+        router.push('/');
+      }
     } catch (error) {
       setError(error.message);
     } finally {
@@ -82,14 +91,18 @@ export default function Login() {
 
   const handleDemoAccess = () => {
     // Provide demo access for testing
-    router.push('/?demo=true&userId=f47ac10b-58cc-4372-a567-0e02b2c3d479&userName=Demo%20User');
+    if (isClient && router) {
+      router.push('/?demo=true&userId=f47ac10b-58cc-4372-a567-0e02b2c3d479&userName=Demo%20User');
+    }
   };
 
   const handleAdminLogin = async () => {
     setLoading(true);
     try {
       // Direct admin access - no credential check needed
-      router.push('/admin');
+      if (isClient && router) {
+        router.push('/admin');
+      }
     } catch (error) {
       setError('Admin access failed');
     } finally {

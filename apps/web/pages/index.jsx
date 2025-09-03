@@ -5,7 +5,7 @@ import ChatInput from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
 import DiveJournalDisplay from "@/components/DiveJournalDisplay";
 import { getAdminUserId } from "@/utils/adminAuth";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/src/providers/AuthProvider";
 
 const API_ROUTES = {
@@ -30,15 +30,22 @@ export default function Index() {
   const BOT_NAME = "Koval AI";
   const defaultSessionName = `Session – ${new Date().toLocaleDateString("en-US")}`;
 
+  // ✅ SSG GUARD: Prevent router access during SSG
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // ✅ MEMOIZE ADMIN/DEMO MODE DETECTION (prevent re-renders)
   const modeDetection = useMemo(() => {
-    if (typeof window === "undefined") return { isAdminMode: false, isDemoMode: false };
+    if (typeof window === "undefined" || !isClient) return { isAdminMode: false, isDemoMode: false };
     const params = new URLSearchParams(window.location.search);
     return {
       isAdminMode: params.get('admin') === 'true',
       isDemoMode: params.get('demo') === 'true'
     };
-  }, []);
+  }, [isClient]);
 
   const { isAdminMode, isDemoMode } = modeDetection;
 
@@ -150,11 +157,13 @@ export default function Index() {
   const handleLogout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
-      router.push('/auth/login');
+      if (isClient && router) {
+        router.push('/auth/login');
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }
-  }, [router]);
+  }, [router, isClient]);
 
   // ✅ Log admin/demo mode status immediately
   useEffect(() => {
@@ -167,16 +176,16 @@ export default function Index() {
 
   // ✅ Redirect to login if not authenticated (unless admin/demo mode)
   useEffect(() => {
-    // Skip redirect if in admin or demo mode
-    if (adminMode || demoMode) {
+    // Skip redirect if not client-side or in admin/demo mode
+    if (!isClient || adminMode || demoMode) {
       return;
     }
     
     // Only redirect if not loading and no user
-    if (!authLoading && !user) {
+    if (!authLoading && !user && router) {
       router.push('/auth/login');
     }
-  }, [authLoading, user, adminMode, demoMode, router]);
+  }, [authLoading, user, adminMode, demoMode, router, isClient]);
 
   // ✅ SUPABASE AUTHENTICATION (Modified to handle demo mode)
   useEffect(() => {
@@ -224,7 +233,9 @@ export default function Index() {
             // No session - redirect to login
             console.log("❌ No session found, redirecting to login");
             setIsAuthenticating(false);
-            router.push('/auth/login');
+            if (isClient && router) {
+              router.push('/auth/login');
+            }
             return;
           }
         }
@@ -252,7 +263,9 @@ export default function Index() {
             } else {
               setSession(null);
               setUser(null);
-              router.push('/auth/login');
+              if (isClient && router) {
+                router.push('/auth/login');
+              }
             }
           }
         );
@@ -268,7 +281,7 @@ export default function Index() {
       }
     };
     
-    if (typeof window !== "undefined" && router.isReady) {
+    if (typeof window !== "undefined" && isClient && router?.isReady) {
       setSessionsList(safeParse("kovalSessionsList", []));
       initAuth();
     }
@@ -276,11 +289,11 @@ export default function Index() {
     return () => {
       isMounted = false;
     };
-  }, [router, adminMode, demoMode, safeParse]);
+  }, [router, adminMode, demoMode, safeParse, isClient]);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE AND THEME
   useEffect(() => {
-    if (router.isReady) {
+    if (router?.isReady && isClient) {
       const { theme, embedded } = router.query;
 
       // Check if we're embedded
@@ -311,7 +324,7 @@ export default function Index() {
         embedded,
       });
     }
-  }, [router.isReady, router.query]);
+  }, [router.isReady, router.query, isClient]);
 
   // ✅ THEME SYNC
   useEffect(() => {
