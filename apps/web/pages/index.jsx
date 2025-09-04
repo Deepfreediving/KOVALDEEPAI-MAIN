@@ -17,7 +17,7 @@ const API_ROUTES = {
   GET_USER_PROFILE: "/api/supabase/user-profile",
   SAVE_DIVE_LOG: "/api/supabase/save-dive-log",
   DELETE_DIVE_LOG: "/api/supabase/delete-dive-log",
-  UPLOAD_DIVE_IMAGE: "/api/openai/upload-dive-image-simple",
+  UPLOAD_DIVE_IMAGE: "/api/dive/upload-image",
   READ_MEMORY: "/api/analyze/read-memory",
   QUERY_DATA: "/api/supabase/query-data",
   HEALTH_CHECK: "/api/system/health-check",

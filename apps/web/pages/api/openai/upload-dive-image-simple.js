@@ -172,46 +172,137 @@ export default async function handler(req, res) {
       console.warn('⚠️ OCR extraction failed, will rely on OpenAI Vision:', ocrError.message);
     }
 
-    // Step 2: Enhanced analysis with OpenAI Vision
-    console.log('🤖 Analyzing image with OpenAI Vision...');
+    // Step 2: Enhanced analysis with OpenAI Vision using enhanced prompt
+    console.log('🤖 Analyzing image with Enhanced Vision API...');
 
-    // Use OpenAI Vision to extract text and analyze the dive profile
+    // Enhanced prompt for dive computer analysis with coaching insights
+    const analysisPrompt = `You are an expert freediving computer analyst. Analyze this dive computer display image and extract ALL visible data in a structured format.
+
+EXTRACT THE FOLLOWING DATA:
+1. Max Depth (in meters)
+2. Dive Time (in minutes:seconds format)
+3. Temperature (at max depth)
+4. Date and Time of dive
+5. Dive Mode (Free, Apnea, etc.)
+6. Surface interval time
+7. Any safety warnings or alerts
+8. Battery status if visible
+9. Any other numeric readings
+
+ANALYZE THE DIVE PROFILE:
+- Describe the descent/ascent pattern
+- Note any safety concerns from the profile
+- Identify if there are any rapid ascents
+- Comment on bottom time if visible
+
+PROVIDE COACHING INSIGHTS:
+- Assess dive safety based on visible data
+- Comment on depth progression appropriateness
+- Note any concerning patterns
+- Suggest improvements if applicable
+
+${ocrText ? `OCR detected this text: "${ocrText}". Use this to supplement your visual analysis.` : ''}
+
+Return your response as valid JSON with this structure:
+{
+  "extractedData": {
+    "maxDepth": number,
+    "diveTime": "MM:SS",
+    "diveTimeSeconds": number,
+    "temperature": number,
+    "date": "YYYY-MM-DD",
+    "time": "HH:MM:SS",
+    "diveMode": "string",
+    "surfaceInterval": "HH:MM",
+    "batteryStatus": "string",
+    "additionalReadings": {}
+  },
+  "profileAnalysis": {
+    "descentPattern": "string",
+    "ascentPattern": "string",
+    "bottomTime": "string",
+    "safetyConcerns": ["string"],
+    "profileQuality": "string"
+  },
+  "coachingInsights": {
+    "safetyAssessment": "string",
+    "depthProgression": "string",
+    "recommendations": ["string"],
+    "overallPerformance": "string"
+  },
+  "confidence": "high|medium|low"
+}`;
+
+    // Call OpenAI Vision API with enhanced prompt
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: "gpt-4o",
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: [
+            { type: "text", text: analysisPrompt },
             {
-              type: 'text',
-              text: `Please analyze this dive computer profile image. ${ocrText ? `OCR detected this text: "${ocrText}". ` : ''}Extract all readable text and data, including:
-- Dive time/duration (in MM:SS format or total seconds)
-- Maximum depth reached (in meters or feet)
-- Temperature readings
-- Descent and ascent times if visible
-- Surface intervals
-- Any numerical data visible on the display
-
-Please be specific about the numbers you can read. Return the extracted data in a clear format with specific values.`
-            },
-            {
-              type: 'image_url',
+              type: "image_url",
               image_url: {
-                url: `data:${imageFile.mimetype};base64,${base64Image}`
+                url: `data:${imageFile.mimetype};base64,${base64Image}`,
+                detail: "high"
               }
             }
           ]
         }
       ],
-      max_tokens: 1000
+      max_tokens: 1500,
+      temperature: 0.1 // Low temperature for accurate data extraction
     });
 
-    const analysis = response.choices[0].message.content;
-    console.log('✅ OpenAI Vision analysis complete');
+    const analysisText = response.choices[0].message.content;
+    console.log('🤖 Raw Enhanced Vision API response:', analysisText);
 
-    // Extract structured metrics from the analysis
-    const extractedMetrics = extractMetricsFromAnalysis(analysis);
-    console.log('📊 Extracted metrics:', extractedMetrics);
+    // Try to parse as JSON, fallback to text if it fails
+    let structuredAnalysis;
+    let analysis; // Keep for backward compatibility
+    try {
+      structuredAnalysis = JSON.parse(analysisText);
+      analysis = `Enhanced Dive Computer Analysis:
+Max Depth: ${structuredAnalysis.extractedData?.maxDepth || 'Not detected'}m
+Dive Time: ${structuredAnalysis.extractedData?.diveTime || 'Not detected'}
+Safety Assessment: ${structuredAnalysis.coachingInsights?.safetyAssessment || 'Not available'}
+Recommendations: ${structuredAnalysis.coachingInsights?.recommendations?.join(', ') || 'None'}`;
+      console.log('✅ Enhanced Vision analysis parsed successfully');
+    } catch (parseError) {
+      console.log('📝 Response is not JSON, using text analysis');
+      structuredAnalysis = {
+        extractedData: {},
+        profileAnalysis: { safetyConcerns: [] },
+        coachingInsights: { recommendations: [] },
+        rawAnalysis: analysisText,
+        confidence: "medium"
+      };
+      analysis = analysisText;
+    }
+
+    console.log('✅ Enhanced OpenAI Vision analysis complete');
+
+    // Extract structured metrics from the enhanced analysis
+    let extractedMetrics = {};
+    
+    if (structuredAnalysis && structuredAnalysis.extractedData) {
+      // Use structured data from enhanced analysis
+      const data = structuredAnalysis.extractedData;
+      
+      if (data.maxDepth) extractedMetrics.max_depth = data.maxDepth;
+      if (data.diveTimeSeconds) extractedMetrics.dive_time_seconds = data.diveTimeSeconds;
+      if (data.temperature) extractedMetrics.temperature = data.temperature;
+      if (data.diveTime) extractedMetrics.dive_time_formatted = data.diveTime;
+      if (data.date) extractedMetrics.dive_date = data.date;
+      if (data.diveMode) extractedMetrics.dive_mode = data.diveMode;
+      
+      console.log('📊 Enhanced metrics extracted:', extractedMetrics);
+    } else {
+      // Fallback to legacy extraction method
+      extractedMetrics = extractMetricsFromAnalysis(analysis);
+      console.log('📊 Legacy metrics extracted:', extractedMetrics);
+    }
 
     // Initialize Supabase admin client (needed for storage operations)
     const supabase = getAdminClient();
@@ -252,25 +343,26 @@ Please be specific about the numbers you can read. Return the extracted data in 
     // Save image metadata and extracted metrics to database
     console.log('💾 Saving to dive_log_image table...');
     
-    // Compress the extracted data for efficient storage
+    // Compress the extracted data for efficient storage - now with enhanced analysis
     const compressedData = {
       analysis,
+      structuredAnalysis, // Include the enhanced structured analysis
       extractedMetrics,
       ocrText: ocrText || null,
       extractedAt: new Date().toISOString(),
-      confidence: Object.keys(extractedMetrics).length > 0 ? 'high' : 'medium'
+      confidence: structuredAnalysis?.confidence || (Object.keys(extractedMetrics).length > 0 ? 'high' : 'medium'),
+      enhancedAnalysis: true // Flag to indicate this uses the enhanced analysis
     };
 
     const imageRecord = {
       user_id: userId,
       dive_log_id: diveLogId || null, // Link to dive log if provided
       bucket: 'dive-images',
-      path: uploadData.path,
-      original_filename: imageFile.originalFilename,
-      file_size: compressedBuffer.length,
+      path_original: uploadData.path,
+      path_compressed: uploadData.path, // Same as original for now
       mime_type: 'image/jpeg',
-      ai_analysis: JSON.stringify(compressedData), // Store comprehensive analysis
-      extracted_metrics: extractedMetrics,
+      bytes: compressedBuffer.length,
+      ai_analysis: compressedData, // Store comprehensive analysis as JSONB
       created_at: new Date().toISOString()
     };
 
@@ -312,6 +404,13 @@ Please be specific about the numbers you can read. Return the extracted data in 
         ocrText: ocrText || null, // Include raw OCR text
         extractedMetrics: extractedMetrics,
         imageAnalysis: analysis,
+        // Enhanced analysis data
+        enhancedAnalysis: structuredAnalysis, // Full structured analysis
+        coachingInsights: structuredAnalysis?.coachingInsights || null,
+        profileAnalysis: structuredAnalysis?.profileAnalysis || null,
+        safetyAssessment: structuredAnalysis?.coachingInsights?.safetyAssessment || null,
+        recommendations: structuredAnalysis?.coachingInsights?.recommendations || [],
+        // Legacy data for backward compatibility
         fileName: imageFile.originalFilename,
         storagePath: uploadData.path,
         originalSize: imageBuffer.length,
@@ -320,9 +419,10 @@ Please be specific about the numbers you can read. Return the extracted data in 
         mimeType: 'image/jpeg',
         processedAt: new Date().toISOString(),
         diveLogId: diveLogId, // Include for linking reference
-        confidence: Object.keys(extractedMetrics).length > 0 ? 'high' : 'medium'
+        confidence: structuredAnalysis?.confidence || (Object.keys(extractedMetrics).length > 0 ? 'high' : 'medium'),
+        enhancedAnalysisAvailable: !!structuredAnalysis?.extractedData
       },
-      message: 'Image analyzed and saved successfully with OCR + AI Vision'
+      message: 'Image analyzed with Enhanced AI Vision + Coaching Insights'
     };
 
     console.log('📊 Image processing complete:', {

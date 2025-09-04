@@ -188,7 +188,7 @@ export async function uploadImage(
     formData.append("image", file);
     if (userId) formData.append("userId", userId);
 
-    const response = await fetch("/api/openai/upload-dive-image", {
+    const response = await fetch("/api/dive/upload-image", {
       method: "POST",
       body: formData,
     });

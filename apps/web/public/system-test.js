@@ -10,7 +10,7 @@ async function testDiveLogImageProcessing() {
   const testImagePath = '/freedive log/100m 71318 cwt best dive off training dbh.JPG';
   
   try {
-    const response = await fetch('/api/openai/upload-dive-image-simple', {
+    const response = await fetch('/api/dive/upload-image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

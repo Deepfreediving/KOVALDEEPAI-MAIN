@@ -10,7 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [mode, setMode] = useState('signin'); // 'signin' or 'signup'
+  // Removed mode state - only sign-in allowed
 
   useEffect(() => {
     setIsClient(true);
@@ -56,32 +56,13 @@ export default function Login() {
     }
 
     try {
-      if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: email.split('@')[0], // Use email prefix as default name
-            }
-          }
-        });
+      // Only allow sign-in for existing users
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-        if (error) throw error;
-
-        if (data.user && !data.session) {
-          setError('Please check your email for the confirmation link!');
-          setLoading(false);
-          return;
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       // Redirect to main app
       if (isClient && router) {
@@ -130,18 +111,6 @@ export default function Login() {
     }
   };
 
-  const handleAdminLogin = () => {
-    if (isClient && router) {
-      router.push('/?admin=true');
-    }
-  };
-
-  const handleDemoAccess = () => {
-    if (isClient && router) {
-      router.push('/?demo=true');
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -154,7 +123,7 @@ export default function Login() {
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
+            Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Your AI-powered freediving coach
@@ -189,7 +158,7 @@ export default function Login() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -208,18 +177,8 @@ export default function Login() {
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
-                mode === 'signin' ? 'Sign in' : 'Sign up'
+                'Sign in'
               )}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-              className="text-blue-600 hover:text-blue-500 text-sm"
-            >
-              {mode === 'signin' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
           </div>
 
@@ -251,26 +210,6 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={handleAdminLogin}
-              className="w-full text-center py-2 px-4 border border-red-300 rounded-md shadow-sm bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 mb-3"
-            >
-              🔑 Admin Access
-            </button>
-            
-            <button
-              type="button"
-              onClick={handleDemoAccess}
-              className="w-full text-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
-              🚀 Try Demo Mode (No signup required)
-            </button>
-            <p className="mt-2 text-xs text-gray-500 text-center">
-              Demo mode has limited features. Sign up for full access.
-            </p>
-          </div>
         </form>
 
         <div className="mt-8 text-center">

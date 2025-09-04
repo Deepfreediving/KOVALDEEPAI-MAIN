@@ -19,6 +19,8 @@
     "dev:all": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:upload": "node test-unified-upload.js",
+    "test:upload:prod": "node test-unified-upload.js --production",
     "type-check": "turbo run type-check",
     "clean": "turbo run clean",
     "web": "turbo run dev --filter=@koval-ai/web",

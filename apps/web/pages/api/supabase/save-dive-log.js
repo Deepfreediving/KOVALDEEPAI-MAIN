@@ -1,5 +1,6 @@
 // Supabase save dive log API endpoint - ADMIN ONLY
 import { getAdminClient } from '@/lib/supabase'
+import AssistantTrainingService from '@/lib/ai/assistantTrainingService'
 
 export default async function handler(req, res) {
   // Initialize Supabase client with error handling
@@ -36,10 +37,14 @@ export default async function handler(req, res) {
       // ✅ Handle both formats: direct dive log data or wrapped in diveLogData
       let diveLogData = req.body.diveLogData || req.body;
       
-      // ✅ ADMIN ONLY: Use fixed admin user ID
-      const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479' // Fixed admin UUID
+      // ✅ Use the actual user ID from the request
+      const userId = diveLogData.user_id || req.body.user_id;
       
-      console.log(`💾 Saving dive log for admin user: ${ADMIN_USER_ID}`)
+      if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+      }
+      
+      console.log(`💾 Saving dive log for user: ${userId}`)
       console.log('📝 Dive log data received:', diveLogData)
 
       if (!diveLogData) {
@@ -50,12 +55,30 @@ export default async function handler(req, res) {
       const toNum = (v) => v === '' || v == null ? null : Number(v)
       const toBool = (v) => Boolean(v)
       const toStr = (v) => v === '' || v == null ? null : String(v)
+      
+      // Helper function to convert time format to seconds
+      const timeToSeconds = (timeStr) => {
+        if (!timeStr || timeStr === '') return null
+        
+        // Handle "MM:SS" format like "2:30"
+        if (typeof timeStr === 'string' && timeStr.includes(':')) {
+          const [minutes, seconds] = timeStr.split(':').map(Number)
+          return (minutes * 60) + (seconds || 0)
+        }
+        
+        // If already a number, return as is
+        if (typeof timeStr === 'number') return timeStr
+        
+        // Try to parse as number (seconds)
+        const parsed = Number(timeStr)
+        return isNaN(parsed) ? null : parsed
+      }
 
       // ✅ COMPLETE FIELD MAPPING - MATCHES EXACT DIVE_LOGS SCHEMA
       const diveLogId = generateUUID(); // Generate UUID for linking
       const supabaseDiveLog = {
         id: diveLogId, // Use generated UUID for linking
-        user_id: ADMIN_USER_ID,
+        user_id: userId,
         
         // Basic dive information
         date: diveLogData.date,
@@ -69,14 +92,14 @@ export default async function handler(req, res) {
         issue_depth: toNum(diveLogData.issueDepth || diveLogData.issue_depth), // ⚠️ CRITICAL FOR SAFETY
         
         // Time measurements
-        total_dive_time: toStr(diveLogData.totalDiveTime || diveLogData.total_dive_time),
+        total_dive_time: timeToSeconds(diveLogData.totalDiveTime || diveLogData.total_dive_time),
         
         // Safety and issues - ESSENTIAL FOR COACHING
         squeeze: toBool(diveLogData.squeeze), // ⚠️ CRITICAL SAFETY INDICATOR
         issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment), // ⚠️ DETAILED PROBLEM DESCRIPTION
         
         // Performance data
-        exit: toStr(diveLogData.exit), // Clean/messy exit for performance analysis
+        exit_protocol: toStr(diveLogData.exit || diveLogData.exitProtocol), // Clean/messy exit for performance analysis
         attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type), // Training/competition/fun
         surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol), // Recovery analysis
         
@@ -88,7 +111,7 @@ export default async function handler(req, res) {
         updated_at: new Date().toISOString(),
         
         // Store additional coaching metadata in JSONB field
-        metadata: {
+        ai_analysis: {
           disciplineType: diveLogData.disciplineType,
           durationOrDistance: diveLogData.durationOrDistance,
           bottomTime: diveLogData.bottomTime, // Store here since no column exists
@@ -160,9 +183,9 @@ export default async function handler(req, res) {
           console.log(`⏱️ Setting total_dive_time from image: ${metricsUpdate.total_dive_time}`);
         }
         
-        // Update metadata with full extracted metrics
+        // Update ai_analysis with full extracted metrics
         const updatedMetadata = {
-          ...savedLog.metadata,
+          ...savedLog.ai_analysis,
           extractedMetrics: diveLogData.extractedMetrics,
           imageAnalysis: diveLogData.imageAnalysis,
           autoExtractedData: {
@@ -171,7 +194,7 @@ export default async function handler(req, res) {
             confidence: 'high' // Could be determined by AI analysis quality
           }
         };
-        metricsUpdate.metadata = updatedMetadata;
+        metricsUpdate.ai_analysis = updatedMetadata;
         
         if (Object.keys(metricsUpdate).length > 0) {
           const { error: updateError } = await supabase
@@ -187,6 +210,49 @@ export default async function handler(req, res) {
             Object.assign(savedLog, metricsUpdate);
           }
         }
+      }
+
+      // 🧠 AI ASSISTANT TRAINING - Train user's personal assistant
+      try {
+        console.log('🧠 Starting AI assistant training...');
+        
+        // Get user profile to check for existing assistant
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('openai_assistant_id, full_name, certification_level, years_experience, personal_best_depth')
+          .eq('user_id', userId)
+          .single();
+        
+        let assistantId = userProfile?.openai_assistant_id;
+        
+        // Create assistant if user doesn't have one
+        if (!assistantId) {
+          console.log('🆕 Creating new AI assistant for user...');
+          const assistant = await AssistantTrainingService.createUserAssistant(userId, userProfile || {});
+          assistantId = assistant.id;
+          
+          // Save assistant ID to user profile
+          await supabase
+            .from('user_profiles')
+            .update({ openai_assistant_id: assistantId })
+            .eq('user_id', userId);
+          
+          console.log(`✅ Assistant created and saved: ${assistantId}`);
+        }
+        
+        // Train the assistant with this dive log
+        if (assistantId) {
+          await AssistantTrainingService.trainWithDiveLog(
+            assistantId, 
+            savedLog, 
+            diveLogData.extractedMetrics || {}
+          );
+          console.log('✅ AI assistant trained with new dive log');
+        }
+        
+      } catch (aiError) {
+        console.error('⚠️ AI training failed (non-critical):', aiError);
+        // Don't fail the whole request if AI training fails
       }
 
       return res.status(200).json({ 
@@ -214,8 +280,14 @@ async function handleUpdateDiveLog(req, res, supabase) {
       return res.status(400).json({ error: 'Dive log ID is required for updates' });
     }
 
-    const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
-    console.log(`🔄 Updating dive log ${id} with data:`, diveLogData);
+    // Get user ID from request
+    const userId = diveLogData.user_id || req.body.user_id;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required for updates' });
+    }
+    
+    console.log(`🔄 Updating dive log ${id} for user ${userId} with data:`, diveLogData);
 
     // Helper functions
     const toNum = (v) => v === '' || v == null ? null : Number(v);
@@ -234,12 +306,12 @@ async function handleUpdateDiveLog(req, res, supabase) {
       total_dive_time: toStr(diveLogData.totalDiveTime || diveLogData.total_dive_time),
       squeeze: toBool(diveLogData.squeeze),
       issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment),
-      exit: toStr(diveLogData.exit),
+      exit_protocol: toStr(diveLogData.exit || diveLogData.exitProtocol),
       attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type),
       surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol),
       notes: toStr(diveLogData.notes),
       updated_at: new Date().toISOString(),
-      metadata: {
+      ai_analysis: {
         ...diveLogData.metadata,
         imageAnalysis,
         extractedMetrics,
@@ -254,7 +326,7 @@ async function handleUpdateDiveLog(req, res, supabase) {
       .from('dive_logs')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', ADMIN_USER_ID) // Ensure user can only update their own logs
+      .eq('user_id', userId) // Ensure user can only update their own logs
       .select()
       .single();
 

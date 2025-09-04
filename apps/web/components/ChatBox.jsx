@@ -116,7 +116,7 @@ export default function ChatBox({
           formData.append("userId", userId);
           formData.append("diveLogId", `dive-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
-          const res = await fetch("/api/openai/upload-dive-image-simple", {
+          const res = await fetch("/api/dive/upload-image", {
             method: "POST",
             body: formData,
           });

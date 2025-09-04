@@ -116,7 +116,7 @@
                 formData.append('imageFile', fileInput.files[0]);
                 formData.append('userId', 'test-user-image');
                 
-                const response = await fetch('/api/openai/upload-dive-image-simple', {
+                const response = await fetch('/api/dive/upload-image', {
                     method: 'POST',
                     body: formData
                 });

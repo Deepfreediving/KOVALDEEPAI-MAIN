@@ -81,7 +81,7 @@ ${optimisticEntry.hasImage ? '🔄 Processing dive computer image in background.
 
       setProcessingStatus('Analyzing dive computer data...');
 
-      const imageResponse = await fetch('/api/openai/upload-dive-image-simple', {
+      const imageResponse = await fetch('/api/dive/upload-image', {
         method: 'POST',
         body: formData,
       });

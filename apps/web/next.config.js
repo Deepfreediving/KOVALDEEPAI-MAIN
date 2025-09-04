@@ -1,22 +1,40 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
-  swcMinify: false,
+  reactStrictMode: true,
+  swcMinify: true,
   images: {
-    unoptimized: true,
+    domains: ['kovaldeepai-main.vercel.app'],
+    unoptimized: true, // Simplified for development
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'kovaldeepai-main.vercel.app',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
+  // Remove experimental features that might cause issues
   experimental: {
     esmExternals: false,
   },
-  // Minimal webpack config to avoid path issues
-  webpack: (config) => {
-    // Remove any undefined entries from resolve plugins
+  // Add webpack config to handle potential path issues
+  webpack: (config, { isServer }) => {
+    // Ensure resolve fallback is properly set
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        path: false,
+      };
+    }
+    
+    // Filter out any undefined plugins
     if (config.resolve.plugins) {
       config.resolve.plugins = config.resolve.plugins.filter(plugin => plugin != null);
     }
-    
-    // Ensure fallback is defined
-    config.resolve.fallback = config.resolve.fallback || {};
     
     return config;
   },
