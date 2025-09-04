@@ -3,12 +3,13 @@
  * Analyzes dive images and extracts metrics
  */
 
-import { getAdminClient } from '@/lib/supabase'
-
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const { imageData, diveLogId } = req.body;
+      
+      // Log inputs for debugging (remove unused variable warning)
+      console.log('Analyzing image for dive log:', diveLogId, 'with data length:', imageData?.length);
       
       // Mock AI analysis - in real app this would use OpenAI Vision API
       const mockAnalysis = {

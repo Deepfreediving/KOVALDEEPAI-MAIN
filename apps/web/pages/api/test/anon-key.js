@@ -37,12 +37,12 @@ export default async function handler(req, res) {
     } else {
       results.anonKeyTest = 'SUCCESS'
       results.canReadDiveLogs = true
-      console.log('✅ Anon key works for dive_logs')
+      console.log('✅ Anon key works for dive_logs, records found:', data?.length || 0)
     }
     
     // Test auth session
     const { data: authData, error: authError } = await anonClient.auth.getSession()
-    if (!authError) {
+    if (!authError && authData) {
       results.canCheckAuth = true
       console.log('✅ Anon key works for auth')
     }

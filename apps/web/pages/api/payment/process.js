@@ -2,8 +2,6 @@
  * PayPal Payment Processing API (Free Trial Support)
  */
 
-import { getAdminClient } from '@/lib/supabase'
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -17,6 +15,9 @@ export default async function handler(req, res) {
         error: 'User ID and plan type are required' 
       })
     }
+
+    // Log for debugging
+    console.log('Processing payment:', { userId, planType, amount, paypalOrderId });
 
     // For free trial, skip PayPal and just return success (no database update needed for now)
     if (amount === 0 || planType === 'trial') {

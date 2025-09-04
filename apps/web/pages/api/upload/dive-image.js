@@ -70,7 +70,8 @@ export default async function handler(req, res) {
       success: true,
       message: 'Image uploaded and analyzed successfully',
       image: imageRecord || { id: 'mock-image-id', filename: fileName },
-      analysis: mockAnalysis
+      analysis: mockAnalysis,
+      analysisRecord: analysisRecord || { id: 'mock-analysis-id' }
     })
 
   } catch (error) {

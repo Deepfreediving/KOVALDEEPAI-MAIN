@@ -82,9 +82,13 @@ export default async function handler(req, res) {
         id: userId,
         email,
         fullName,
-        certificationLevel
+        certificationLevel: certificationLevel || 'beginner'
       },
-      message: 'User registered successfully with 30-day trial'
+      message: 'User registered successfully with 30-day trial',
+      additionalInfo: {
+        medicalHistory: medicalHistory ? 'provided' : 'not provided',
+        emergencyContact: emergencyContact ? 'provided' : 'not provided'
+      }
     })
 
   } catch (error) {

@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       console.log('❌ Anon key error:', error.message)
     } else {
       results.anonKeyValid = true
-      console.log('✅ Anon key works')
+      console.log('✅ Anon key works, found records:', data?.length || 0)
     }
   } catch (err) {
     results.anonError = err.message
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       console.log('❌ Service role key error:', error.message)
     } else {
       results.serviceRoleKeyValid = true
-      console.log('✅ Service role key works')
+      console.log('✅ Service role key works, found records:', data?.length || 0)
     }
   } catch (err) {
     results.serviceRoleError = err.message
