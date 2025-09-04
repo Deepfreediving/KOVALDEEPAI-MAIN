@@ -83,8 +83,10 @@ export default async function handler(
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
 
       const updatedRun = await openai.beta.threads.runs.retrieve(
-        thread.id,
-        run.id
+        run.id,
+        { 
+          thread_id: thread.id 
+        }
       );
 
       runStatus = updatedRun.status;
