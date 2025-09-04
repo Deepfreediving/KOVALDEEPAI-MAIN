@@ -1,13 +1,12 @@
-import { getSupabaseClient, UserMemory } from "@/lib/supabaseClient";
-
-// Initialize Supabase client
-const supabase = getSupabaseClient();
+import { getBrowserClient } from "@/lib/supabase";
+import type { UserMemory } from "@/types/supabase";
 
 /**
  * Fetch UserMemory document for a specific userId
  */
 export async function fetchUserMemory(userId: string) {
   try {
+    const supabase = getBrowserClient();
     if (!supabase) {
       console.warn('Supabase not available for memory fetch');
       return null;
@@ -52,6 +51,7 @@ export async function fetchUserMemory(userId: string) {
  */
 export async function saveUserMemory(userId: string, newData: any) {
   try {
+    const supabase = getBrowserClient();
     if (!supabase) {
       console.warn('Supabase not available for memory save');
       return false;

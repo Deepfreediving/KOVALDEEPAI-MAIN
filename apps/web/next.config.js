@@ -8,11 +8,18 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   swcMinify: true,
-  // Disable file system polling to prevent path issues
-  experimental: {
-    turbo: false,
+  images: {
+    domains: ['kovaldeepai-main.vercel.app'],
+    unoptimized: false,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'kovaldeepai-main.vercel.app',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
-  // Add explicit webpack configuration to handle path resolution
   webpack: (config, { isServer }) => {
     // Ensure all required paths are properly resolved
     config.resolve.fallback = {

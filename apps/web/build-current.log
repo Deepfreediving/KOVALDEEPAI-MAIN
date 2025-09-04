@@ -1,0 +1,482 @@
+
+> @koval-ai/web@1.0.0 build
+> next build
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+   Generating static pages (0/19) ...
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at d (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/users.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/users". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at d (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/users.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at u (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/dive-logs.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/dive-logs". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at u (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/dive-logs.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at m (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/auth/subscription.js:1:577)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/auth/subscription". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at m (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/auth/subscription.js:1:577)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at x (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/index-working.js:1:554)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/index-working". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at x (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/index-working.js:1:554)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at d (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/simple.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/simple". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at d (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/simple.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+   Generating static pages (4/19) 
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at S (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/index-backup.js:1:782)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/index-backup". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at S (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/index-backup.js:1:782)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at u (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/chat.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/chat". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at u (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/chat.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at m (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/test-simple.js:1:548)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/test-simple". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at m (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/test-simple.js:1:548)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+   Generating static pages (9/19) 
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at d (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/payments.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/payments". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at d (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/payments.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at x (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/auth/login.js:1:577)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/auth/login". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at x (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/auth/login.js:1:577)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at u (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/admin.js:1:547)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/admin". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at u (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/admin.js:1:547)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at h (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/admin_simple.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/admin_simple". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at h (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/admin_simple.js:1:538)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at x (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/index.js:1:784)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at x (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/index.js:1:784)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+   Generating static pages (14/19) 
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/admin-simple". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at h (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/admin_fixed.js:1:548)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+
+Error occurred prerendering page "/admin_fixed". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: NextRouter was not mounted. https://nextjs.org/docs/messages/next-router-not-mounted
+    at p (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/8342.js:1:14820)
+    at h (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/pages/admin_fixed.js:1:548)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderContextProvider (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5931:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6028:11)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/404". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+
+Error occurred prerendering page "/500". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at Z (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js:16:5430)
+    at I (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web/.next/server/chunks/6859.js:6:1263)
+    at renderWithHooks (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderNodeDestructiveImpl (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at finishClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5688:3)
+    at renderClassComponent (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5696:3)
+    at renderElement (/Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5954:7)
+ ✓ Generating static pages (19/19)
+
+> Export encountered errors on following paths:
+	/
+	/_error: /404
+	/_error: /500
+	/admin
+	/admin-simple
+	/admin_fixed
+	/admin_simple
+	/auth/login
+	/auth/subscription
+	/chat
+	/dive-logs
+	/index-backup
+	/index-working
+	/payments
+	/simple
+	/test-simple
+	/users
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
+npm error workspace @koval-ai/web@1.0.0
+npm error location /Users/danielkoval/Documents/buildaiagent/KovalDeepAI-main/apps/web
+npm error command failed
+npm error command sh -c next build

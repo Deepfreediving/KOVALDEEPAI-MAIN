@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@/lib/supabaseClient';
+import { getBrowserClient } from '@/lib/supabase';
 
 interface FetchWithAuthOptions extends RequestInit {
   requireAuth?: boolean;
@@ -13,7 +13,7 @@ export async function fetchWithAuth(
 ): Promise<Response> {
   const { requireAuth = true, ...fetchOptions } = options;
   
-  const supabase = getSupabaseClient();
+  const supabase = getBrowserClient();
   
   if (!supabase) {
     throw new Error('Supabase client not available');
