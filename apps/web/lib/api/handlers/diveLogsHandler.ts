@@ -11,7 +11,7 @@ import { getDiveLogs, createDiveLog, updateDiveLog, deleteDiveLog } from '@/lib/
 /**
  * 🎯 MAIN HANDLER - Routes to appropriate method
  */
-export default async function diveLogsHandler(req: NextApiRequest, res: NextApiResponse) {
+async function diveLogsHandler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req
   
   // Add CORS headers
@@ -63,3 +63,8 @@ export default async function diveLogsHandler(req: NextApiRequest, res: NextApiR
     })
   }
 }
+
+// Named export for compatibility
+export { diveLogsHandler }
+// Default export for legacy usage
+export default diveLogsHandler

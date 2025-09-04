@@ -1,5 +1,5 @@
 // ENCLOSE Diagnostic API - Analyze dive issues using your methodology
-import { getAdminClient } from '../../../lib/supabase/index.js';
+import { getAdminClient } from '../../../lib/supabase/index';
 
 // ENCLOSE diagnostic categories from your methodology
 const ENCLOSE_CATEGORIES = {

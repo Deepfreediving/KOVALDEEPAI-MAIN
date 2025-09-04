@@ -19,7 +19,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { createServerClient, createBrowserClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { type Database } from '@/types/supabase'
 import type { TablesInsert, TablesUpdate } from '@/types/supabase'
 
@@ -86,35 +85,45 @@ export function getBrowserClient(): SupabaseClientType {
 /**
  * ✅ SERVER CLIENT - For SSR operations with user context
  * Replaces: supabaseServerClient.js
+ * Note: In Pages Router, use getAdminClient() for API routes
  */
-export function getServerClient() {
-  const cookieStore = cookies()
+export function getServerClient(cookieStore?: any) {
+  // For Pages Router compatibility, fallback to browser client if no cookies
+  if (!cookieStore && typeof window !== 'undefined') {
+    return getBrowserClient()
+  }
 
-  return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value
+  // If cookies provided (App Router), use server client
+  if (cookieStore) {
+    return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+        remove(name: string, options: any) {
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch (error) {
+            // The `delete` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
       },
-      set(name: string, value: string, options: any) {
-        try {
-          cookieStore.set({ name, value, ...options })
-        } catch (error) {
-          // The `set` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-        }
-      },
-      remove(name: string, options: any) {
-        try {
-          cookieStore.set({ name, value: '', ...options })
-        } catch (error) {
-          // The `delete` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-        }
-      },
-    },
-  })
+    })
+  }
+
+  // Fallback to admin client for API routes in Pages Router
+  return getAdminClient()
 }
 
 /**

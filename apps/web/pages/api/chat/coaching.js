@@ -17,7 +17,7 @@
  */
 
 // Enhanced Chat API with RAG knowledge retrieval and coaching logic
-import { getAdminClient } from '../../../lib/supabase/index.js';
+import { getAdminClient } from '../../../lib/supabase/index';
 import OpenAI from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 

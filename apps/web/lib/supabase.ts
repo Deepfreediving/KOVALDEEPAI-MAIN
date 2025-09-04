@@ -1,5 +1,6 @@
 // Compatibility layer for legacy imports - TypeScript version
 export { supabase } from './supabase/index'
+export { getBrowserClient } from './supabase/index'
 export { getBrowserClient as createClient } from './supabase/index'  
 export { getAdminClient } from './supabase/index'
 export { getServerClient } from './supabase/index'
