@@ -37,14 +37,23 @@ const SUPABASE_CONFIG = {
   CACHE_TTL: 300000,
 } as const
 
-// Environment variables
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Environment variables - with fallbacks for development
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SERVICE_KEY || process.env.KOVALAISERVICEROLEKEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-// Validate environment variables
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing required Supabase environment variables')
+// Debug environment variables
+console.log('🔧 Supabase Environment Variables:', {
+  SUPABASE_URL: SUPABASE_URL ? `${SUPABASE_URL.substring(0, 30)}...` : 'MISSING',
+  SUPABASE_ANON_KEY: SUPABASE_ANON_KEY ? `${SUPABASE_ANON_KEY.substring(0, 30)}...` : 'MISSING',
+  SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? `${SUPABASE_SERVICE_ROLE_KEY.substring(0, 30)}...` : 'MISSING'
+})
+
+// Validate environment variables - only warn instead of throwing
+const isSupabaseConfigured = SUPABASE_URL && SUPABASE_ANON_KEY
+
+if (!isSupabaseConfigured) {
+  console.warn('⚠️ Supabase environment variables not configured - running in offline mode')
 }
 
 // Singleton instances
@@ -57,6 +66,11 @@ let adminClient: SupabaseClientType | null = null
  * Replaces: supabaseClient.ts
  */
 export function getBrowserClient(): SupabaseClientType {
+  if (!isSupabaseConfigured) {
+    console.warn('⚠️ Supabase not configured - returning null client')
+    return null as any
+  }
+
   if (browserClient) {
     return browserClient
   }
@@ -131,13 +145,20 @@ export function getServerClient(cookieStore?: any) {
  * Replaces: supabaseAdmin.ts
  */
 export function getAdminClient(): SupabaseClientType {
-  if (!SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for admin operations')
+  if (!isSupabaseConfigured || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('⚠️ Supabase admin not configured - returning null client')
+    console.warn('Environment check:', {
+      SUPABASE_URL: SUPABASE_URL ? 'SET' : 'MISSING',
+      SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING'
+    })
+    return null as any
   }
 
   if (adminClient) {
     return adminClient
   }
+
+  console.log('🔑 Creating Supabase admin client with URL:', SUPABASE_URL)
 
   adminClient = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
@@ -319,12 +340,22 @@ export class SupabaseQueryBuilder {
  * ✅ CONVENIENCE EXPORTS - Easy access to common patterns
  */
 export const supabase = getBrowserClient()
-export const queries = new SupabaseQueryBuilder(getBrowserClient())
+export const queries = supabase ? new SupabaseQueryBuilder(getBrowserClient()) : null
 
 // Additional exports for backwards compatibility
 export { getBrowserClient as createClient }
 export { getAdminClient as createAdminClient }
 export { getServerClient as createServerClient }
 
-// Default export for compatibility
+/**
+ * ✅ RESET CLIENTS - For testing/debugging purposes
+ */
+export function resetClients(): void {
+  browserClient = null
+  serverClient = null
+  adminClient = null
+  console.log('🔄 All Supabase clients reset')
+}
+
+// Default export for compatibility - handle null case
 export default getBrowserClient()

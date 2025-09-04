@@ -39,6 +39,9 @@
       "@styles/*": [
         "./styles/*"
       ],
+      "@src/*": [
+        "./src/*"
+      ],
       "@types/*": [
         "./types/*"
       ]

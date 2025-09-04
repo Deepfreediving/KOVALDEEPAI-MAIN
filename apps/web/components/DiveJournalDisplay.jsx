@@ -171,7 +171,7 @@ export default function DiveJournalDisplay({
       total_time_seconds: toNum(newEntry.totalDiveTime),
       attempt_type: newEntry.attemptType || null,
       surface_protocol: newEntry.surfaceProtocol || null,
-      bottom_time_seconds: toNum(newEntry.bottomTime),
+      bottom_time: toNum(newEntry.bottomTime),
       ear_squeeze: newEntry.earSqueeze || null,
       lung_squeeze: newEntry.lungSqueeze || null,
       narcosis_level: toNum(newEntry.narcosisLevel),

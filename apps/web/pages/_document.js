@@ -5,8 +5,13 @@ export default class MyDocument extends Document {
     return (
       <Html lang="en">
         <Head>
-          {/* ✅ Move critical resources to head */}
+          {/* ✅ Comprehensive favicon configuration */}
           <link rel="icon" href="/favicon.ico" />
+          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+          <link rel="icon" type="image/png" sizes="32x32" href="/koval-logo.png" />
+          <link rel="icon" type="image/png" sizes="16x16" href="/koval-logo.png" />
+          
+          {/* ✅ Move critical resources to head */}
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://cdn.openai.com" />
 

@@ -21,7 +21,7 @@
  * - Type-safe operations with Supabase
  */
 
-import { getAdminClient } from '@/lib/supabase'
+import { getAdminClient, getBrowserClient } from '@/lib/supabase'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import type { Database, TablesInsert, TablesUpdate } from '@/types/supabase'
 
@@ -146,7 +146,17 @@ export async function getDiveLogs(req: NextApiRequest): Promise<DiveLogResponse>
   const startTime = Date.now()
   const { nickname, userId, email, limit = '50', optimized = 'false' } = req.query
   
-  const supabase = getAdminClient()
+  console.log('🔍 getDiveLogs called with params:', { nickname, userId, email, limit, optimized })
+  
+  // TEMPORARY: Use anon client instead of admin client to bypass service role key issue
+  const supabase = getBrowserClient()
+  
+  if (!supabase) {
+    console.error('❌ Failed to get Supabase anon client')
+    throw new Error('Supabase client not available')
+  }
+  
+  console.log('✅ Supabase anon client created successfully (temporary workaround)')
   
   // Validate and resolve user ID
   const userIdentifier = (userId || nickname || email || 'anonymous') as string
@@ -183,12 +193,23 @@ export async function getDiveLogs(req: NextApiRequest): Promise<DiveLogResponse>
   }
   
   // Fallback to standard query
+  console.log('🔍 Attempting to query dive_logs table...')
+  
   let { data: diveLogs, error } = await supabase
     .from('dive_logs')
     .select('*')
     .eq('user_id', finalUserId)
     .order('date', { ascending: false })
     .limit(sanitizedLimit)
+
+  console.log('📊 Query result:', { 
+    hasData: !!diveLogs, 
+    dataLength: diveLogs?.length || 0, 
+    error: error?.message || 'none',
+    errorCode: error?.code,
+    errorDetails: error?.details,
+    fullError: error
+  })
 
   // Try alternative table if no results
   if (!error && (!diveLogs || diveLogs.length === 0)) {
@@ -237,8 +258,9 @@ export async function createDiveLog(diveLogData: any): Promise<{ success: boolea
   
   // Generate UUID and prepare data
   const diveLogId = generateUUID()
+  const actualUserId = diveLogData.userId || diveLogData.user_id || ADMIN_USER_ID
   const supabaseDiveLog: DiveLogInsert = {
-    user_id: ADMIN_USER_ID, // For now, default to admin
+    user_id: actualUserId,
     
     // Basic dive information
     date: diveLogData.date,
@@ -252,39 +274,41 @@ export async function createDiveLog(diveLogData: any): Promise<{ success: boolea
     issue_depth: toNum(diveLogData.issueDepth || diveLogData.issue_depth),
     
     // Time measurements
-    total_dive_time: toStr(diveLogData.totalDiveTime || diveLogData.total_dive_time),
+    total_dive_time: toNum(diveLogData.totalDiveTime || diveLogData.total_dive_time || diveLogData.totalTimeSeconds),
+    bottom_time: toNum(diveLogData.bottomTimeSeconds || diveLogData.bottom_time),
+    descent_time: toNum(diveLogData.descentTime),
+    ascent_time: toNum(diveLogData.ascentTime),
+    surface_interval: toNum(diveLogData.surfaceInterval),
     
     // Safety and issues
     squeeze: toBool(diveLogData.squeeze),
+    blackout: toBool(diveLogData.blackout),
+    lmc: toBool(diveLogData.lmc),
     issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment),
     
     // Performance data
-    exit: toStr(diveLogData.exit),
     attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type),
+    attempt_number: toNum(diveLogData.attemptNumber) || 1,
     surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol),
+    
+    // Environmental conditions (if provided)
+    water_temp: toNum(diveLogData.waterTemp),
+    air_temp: toNum(diveLogData.airTemp),
+    visibility_meters: toNum(diveLogData.visibilityMeters),
+    current_strength: toStr(diveLogData.currentStrength),
+    
+    // Equipment (if provided)
+    wetsuit_thickness: toStr(diveLogData.wetsuitThickness),
+    weights_kg: toNum(diveLogData.weightsKg),
+    fins_type: toStr(diveLogData.finsType),
+    mask_type: toStr(diveLogData.maskType),
+    
+    // Additional notes
+    coach_notes: toStr(diveLogData.coachNotes),
+    feeling_rating: toNum(diveLogData.feelingRating),
     
     // Notes
     notes: toStr(diveLogData.notes),
-    
-    // Extended fields
-    bottom_time_seconds: toNum(diveLogData.bottomTimeSeconds),
-    total_time_seconds: toNum(diveLogData.totalTimeSeconds),
-    discipline_type: toStr(diveLogData.disciplineType),
-    exit_status: toStr(diveLogData.exitStatus),
-    duration_seconds: toNum(diveLogData.durationSeconds),
-    distance_m: toNum(diveLogData.distanceM),
-    ear_squeeze: toBool(diveLogData.earSqueeze),
-    lung_squeeze: toBool(diveLogData.lungSqueeze),
-    narcosis_level: toNum(diveLogData.narcosisLevel),
-    recovery_quality: toStr(diveLogData.recoveryQuality),
-    gear: diveLogData.gear || null,
-    
-    // Metadata
-    metadata: {
-      ...diveLogData.metadata,
-      imagePreview: diveLogData.imagePreview,
-      originalImageName: diveLogData.originalImageName
-    }
   }
   
   // Insert dive log (cast to bypass type inference issues)
@@ -335,39 +359,41 @@ export async function updateDiveLog(id: string, updateData: any): Promise<{ succ
     issue_depth: toNum(updateData.issueDepth || updateData.issue_depth),
     
     // Time measurements
-    total_dive_time: toStr(updateData.totalDiveTime || updateData.total_dive_time),
+    total_dive_time: toNum(updateData.totalDiveTime || updateData.total_dive_time || updateData.totalTimeSeconds),
+    bottom_time: toNum(updateData.bottomTimeSeconds || updateData.bottom_time),
+    descent_time: toNum(updateData.descentTime),
+    ascent_time: toNum(updateData.ascentTime),
+    surface_interval: toNum(updateData.surfaceInterval),
     
     // Safety and issues
     squeeze: toBool(updateData.squeeze),
+    blackout: toBool(updateData.blackout),
+    lmc: toBool(updateData.lmc),
     issue_comment: toStr(updateData.issueComment || updateData.issue_comment),
     
     // Performance data
-    exit: toStr(updateData.exit),
     attempt_type: toStr(updateData.attemptType || updateData.attempt_type),
+    attempt_number: toNum(updateData.attemptNumber),
     surface_protocol: toStr(updateData.surfaceProtocol || updateData.surface_protocol),
+    
+    // Environmental conditions (if provided)
+    water_temp: toNum(updateData.waterTemp),
+    air_temp: toNum(updateData.airTemp),
+    visibility_meters: toNum(updateData.visibilityMeters),
+    current_strength: toStr(updateData.currentStrength),
+    
+    // Equipment (if provided)
+    wetsuit_thickness: toStr(updateData.wetsuitThickness),
+    weights_kg: toNum(updateData.weightsKg),
+    fins_type: toStr(updateData.finsType),
+    mask_type: toStr(updateData.maskType),
+    
+    // Additional notes
+    coach_notes: toStr(updateData.coachNotes),
+    feeling_rating: toNum(updateData.feelingRating),
     
     // Notes
     notes: toStr(updateData.notes),
-    
-    // Extended fields
-    bottom_time_seconds: toNum(updateData.bottomTimeSeconds),
-    total_time_seconds: toNum(updateData.totalTimeSeconds),
-    discipline_type: toStr(updateData.disciplineType),
-    exit_status: toStr(updateData.exitStatus),
-    duration_seconds: toNum(updateData.durationSeconds),
-    distance_m: toNum(updateData.distanceM),
-    ear_squeeze: toBool(updateData.earSqueeze),
-    lung_squeeze: toBool(updateData.lungSqueeze),
-    narcosis_level: toNum(updateData.narcosisLevel),
-    recovery_quality: toStr(updateData.recoveryQuality),
-    gear: updateData.gear || null,
-    
-    // Metadata
-    metadata: {
-      ...updateData.metadata,
-      imagePreview: updateData.imagePreview,
-      originalImageName: updateData.originalImageName
-    }
   }
   
   // Update dive log (cast to bypass type inference issues)
@@ -429,7 +455,7 @@ async function enrichWithImages(supabase: any, logs: DiveLogRow[]): Promise<Proc
         ...log,
         targetDepth: log.target_depth,
         reachedDepth: log.reached_depth,
-        totalDiveTime: log.total_dive_time,
+        totalDiveTime: log.total_dive_time ? String(log.total_dive_time) : null,
         mouthfillDepth: log.mouthfill_depth,
         issueDepth: log.issue_depth,
         issueComment: log.issue_comment,

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KovalAI System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-button { background: #007cba; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .test-button:hover { background: #005a87; }
+        .results { margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 4px solid #007cba; border-radius: 4px; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 KovalAI System Test</h1>
+        <p>This will test the complete pipeline:</p>
+        <ul>
+            <li>✅ OpenAI + Pinecone knowledge retrieval</li>
+            <li>✅ Dive log saving to Supabase</li>
+            <li>✅ Dive log retrieval from Supabase</li>
+            <li>✅ Image OCR processing with OpenAI</li>
+        </ul>
+        
+        <button class="test-button" onclick="runTest()">🚀 Run Complete System Test</button>
+        
+        <div id="results" class="results" style="display: none;">
+            <h3>📊 Test Results:</h3>
+            <pre id="output"></pre>
+        </div>
+    </div>
+
+    <script>
+        async function runTest() {
+            const resultsDiv = document.getElementById('results');
+            const outputPre = document.getElementById('output');
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.className = 'results';
+            outputPre.textContent = '🚀 Starting comprehensive system test...\n';
+            
+            try {
+                // Test 1: Knowledge retrieval
+                outputPre.textContent += '\n📝 Test 1: OpenAI + Pinecone Knowledge Retrieval\n';
+                const knowledgeResult = await testOpenAIKnowledgeRetrieval();
+                outputPre.textContent += '✅ Knowledge retrieval test passed\n';
+                
+                // Test 2: Dive log saving
+                outputPre.textContent += '\n📝 Test 2: Dive Log Saving to Supabase\n';
+                const saveResult = await testDiveLogSaving();
+                outputPre.textContent += '✅ Dive log saving test passed\n';
+                
+                // Test 3: Dive log retrieval
+                outputPre.textContent += '\n📝 Test 3: Dive Log Retrieval from Supabase\n';
+                const retrievalResult = await testDiveLogRetrieval();
+                outputPre.textContent += '✅ Dive log retrieval test passed\n';
+                
+                // Test 4: Image processing
+                outputPre.textContent += '\n📝 Test 4: Dive Log Image Processing + OCR\n';
+                const imageResult = await testDiveLogImageProcessing();
+                outputPre.textContent += '✅ Image processing test passed\n';
+                
+                outputPre.textContent += '\n🎉 ALL TESTS PASSED!\n';
+                resultsDiv.className = 'results success';
+                
+                outputPre.textContent += '\n📊 Detailed Results:\n';
+                outputPre.textContent += JSON.stringify({
+                    knowledge: knowledgeResult,
+                    saving: saveResult,
+                    retrieval: retrievalResult,
+                    imageProcessing: imageResult
+                }, null, 2);
+                
+            } catch (error) {
+                outputPre.textContent += `\n❌ TEST FAILED: ${error.message}\n`;
+                outputPre.textContent += error.stack;
+                resultsDiv.className = 'results error';
+            }
+        }
+        
+        // Test functions
+        async function testOpenAIKnowledgeRetrieval() {
+            const response = await fetch('/api/chat/general', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'What is the proper technique for mouthfill equalization at depth?',
+                    userId: 'admin-daniel-koval',
+                    context: 'freediving training'
+                })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            return await response.json();
+        }
+        
+        async function testDiveLogSaving() {
+            const testDiveLog = {
+                userId: 'admin-daniel-koval',
+                date: new Date().toISOString().split('T')[0],
+                discipline: 'CWT',
+                location: 'Dean\'s Blue Hole',
+                reached_depth: 100,
+                target_depth: 100,
+                total_time_seconds: 180,
+                bottom_time: 15,
+                descent_seconds: 82,
+                ascent_seconds: 83,
+                mouthfill_depth: 30,
+                recovery_quality: 4,
+                gear: { fins: 'Carbon fins', wetsuit: '3mm', weight: '2kg' },
+                ai_summary: 'Test dive - 100m CWT with good technique'
+            };
+            
+            const response = await fetch('/api/supabase/save-dive-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ diveLogData: testDiveLog })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            return await response.json();
+        }
+        
+        async function testDiveLogRetrieval() {
+            const response = await fetch('/api/supabase/dive-logs-optimized?userId=admin-daniel-koval');
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            return await response.json();
+        }
+        
+        async function testDiveLogImageProcessing() {
+            const response = await fetch('/api/openai/upload-dive-image-simple', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    imageUrl: 'http://localhost:3000/freedive log/100m 71318 cwt best dive off training dbh.JPG',
+                    userId: 'admin-daniel-koval',
+                    fileName: '100m_71318_cwt_test.JPG'
+                })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            return await response.json();
+        }
+    </script>
+</body>
+</html>

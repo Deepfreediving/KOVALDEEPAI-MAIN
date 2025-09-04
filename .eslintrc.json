@@ -49,6 +49,11 @@
     "build/",
     "dist/",
     "*.config.js",
-    "package.json"
+    "package.json",
+    "*.tsbuildinfo",
+    "tsconfig.json",
+    "next-env.d.ts",
+    ".vercel/",
+    ".turbo/"
   ]
 }

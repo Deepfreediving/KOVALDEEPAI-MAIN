@@ -20,6 +20,10 @@ const nextConfig = {
   // Ensure static assets are properly handled
   assetPrefix: '',
   trailingSlash: false,
+  // Disable SSG for problematic pages during development
+  ...(process.env.NODE_ENV === 'development' && {
+    output: 'standalone',
+  }),
 }
 
 module.exports = nextConfig

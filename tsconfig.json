@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "es6",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
@@ -16,20 +20,37 @@
     "module": "esnext",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["apps/web/*"],
-      "@lib/*": ["apps/web/lib/*"],
-      "@utils/*": ["apps/web/utils/*"],
-      "@components/*": ["apps/web/components/*"],
-      "@pages/*": ["apps/web/pages/*"],
-      "@styles/*": ["apps/web/styles/*"],
-      "@types/*": ["apps/web/types/*"]
+      "@/*": [
+        "apps/web/*"
+      ],
+      "@lib/*": [
+        "apps/web/lib/*"
+      ],
+      "@utils/*": [
+        "apps/web/utils/*"
+      ],
+      "@components/*": [
+        "apps/web/components/*"
+      ],
+      "@pages/*": [
+        "apps/web/pages/*"
+      ],
+      "@styles/*": [
+        "apps/web/styles/*"
+      ],
+      "@types/*": [
+        "apps/web/types/*"
+      ]
     },
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    "strictNullChecks": true
   },
   "include": [
     "apps/web/**/*.ts",
@@ -37,12 +58,13 @@
     "apps/web/**/*.js",
     "apps/web/**/*.jsx",
     "packages/core/**/*.ts",
-    "packages/core/**/*.tsx"
+    "packages/core/**/*.tsx",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     ".next",
-    "out", 
+    "out",
     "apps/mobile/**",
     "packages/mobile/**",
     "**/node_modules/**",

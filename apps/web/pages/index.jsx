@@ -41,9 +41,18 @@ export default function Index() {
   const modeDetection = useMemo(() => {
     if (typeof window === "undefined" || !isClient) return { isAdminMode: false, isDemoMode: false };
     const params = new URLSearchParams(window.location.search);
+    const isAdminMode = params.get('admin') === 'true';
+    const isDemoMode = params.get('demo') === 'true';
+    console.log('🔍 Mode detection:', { 
+      url: window.location.href, 
+      search: window.location.search, 
+      admin: params.get('admin'), 
+      isAdminMode, 
+      isDemoMode 
+    });
     return {
-      isAdminMode: params.get('admin') === 'true',
-      isDemoMode: params.get('demo') === 'true'
+      isAdminMode,
+      isDemoMode
     };
   }, [isClient]);
 
@@ -81,8 +90,15 @@ export default function Index() {
   }, [isAdminMode, isDemoMode]);
 
   // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
-  const [adminMode] = useState(isAdminMode);
-  const [demoMode] = useState(isDemoMode);
+  const [adminMode, setAdminMode] = useState(isAdminMode);
+  const [demoMode, setDemoMode] = useState(isDemoMode);
+  
+  // ✅ Update admin/demo mode state when detection changes
+  useEffect(() => {
+    setAdminMode(isAdminMode);
+    setDemoMode(isDemoMode);
+  }, [isAdminMode, isDemoMode]);
+  
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [sessionName, setSessionName] = useState(defaultSessionName);
   const [sessionsList, setSessionsList] = useState([]);
@@ -230,13 +246,18 @@ export default function Index() {
             });
             setIsAuthenticating(false);
           } else {
-            // No session - redirect to login (but only if not in admin/demo mode)
-            console.log("❌ No session found, redirecting to login");
-            setIsAuthenticating(false);
-            if (isClient && router && !adminMode && !demoMode) {
-              router.push('/auth/login');
+            // No session - only redirect if not in admin/demo mode
+            if (!adminMode && !demoMode) {
+              console.log("❌ No session found, redirecting to login");
+              setIsAuthenticating(false);
+              if (isClient && router) {
+                router.push('/auth/login');
+              }
+              return;
+            } else {
+              console.log("🎯 No session but in admin/demo mode - continuing");
+              setIsAuthenticating(false);
             }
-            return;
           }
         }
         
@@ -263,7 +284,7 @@ export default function Index() {
             } else {
               setSession(null);
               setUser(null);
-              if (isClient && router && !adminMode && !demoMode) {
+              if (isClient && router) {
                 router.push('/auth/login');
               }
             }

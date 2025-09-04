@@ -20,7 +20,7 @@ async function quickVerification() {
       session_date: new Date().toISOString(),
       location: 'Test Location - Quick Verification',
       depth_achieved: 25,
-      bottom_time_seconds: 45,
+      bottom_time: 45,
       surface_interval_minutes: 3,
       water_temp_celsius: 22,
       visibility_meters: 15,

@@ -23,98 +23,127 @@ export interface Database {
           id: string
           user_id: string
           date: string
-          discipline: string
+          location: string | null
+          discipline: string | null
           target_depth: number | null
           reached_depth: number | null
-          location: string | null
+          total_dive_time: number | null
+          descent_time: number | null
+          bottom_time: number | null
+          ascent_time: number | null
+          descent_speed_mps: number | null
+          ascent_speed_mps: number | null
+          mouthfill_depth: number | null
+          surface_interval: number | null
+          attempt_number: number | null
+          attempt_type: string | null
+          squeeze: boolean | null
+          blackout: boolean | null
+          lmc: boolean | null
+          issue_depth: number | null
+          issue_comment: string | null
+          surface_protocol: string | null
+          exit_protocol: string | null
+          water_temp: number | null
+          air_temp: number | null
+          visibility_meters: number | null
+          current_strength: string | null
+          wetsuit_thickness: string | null
+          weights_kg: number | null
+          fins_type: string | null
+          mask_type: string | null
           notes: string | null
-          ai_analysis: string | null
-          ai_summary?: string | null
-          // Extended optional fields used across the app
-          mouthfill_depth?: number | null
-          issue_depth?: number | null
-          total_dive_time?: string | null // e.g., "MM:SS"
-          squeeze?: boolean | null
-          issue_comment?: string | null
-          exit?: string | null
-          attempt_type?: string | null
-          surface_protocol?: string | null
-          bottom_time_seconds?: number | null
-          total_time_seconds?: number | null
-          discipline_type?: string | null
-          exit_status?: string | null
-          duration_seconds?: number | null
-          distance_m?: number | null
-          ear_squeeze?: boolean | null
-          lung_squeeze?: boolean | null
-          narcosis_level?: number | null
-          recovery_quality?: string | null
-          gear?: Json | null
-          metadata?: Json | null
+          coach_notes: string | null
+          feeling_rating: number | null
+          ai_analysis: any | null
+          ai_analysis_timestamp: string | null
+          ai_risk_score: number | null
+          ai_summary: string | null
+          ai_suggestions: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           user_id: string
           date: string
-          discipline: string
+          location?: string | null
+          discipline?: string | null
           target_depth?: number | null
           reached_depth?: number | null
-          location?: string | null
-          notes?: string | null
-          ai_analysis?: string | null
-          ai_summary?: string | null
+          total_dive_time?: number | null
+          descent_time?: number | null
+          bottom_time?: number | null
+          ascent_time?: number | null
+          descent_speed_mps?: number | null
+          ascent_speed_mps?: number | null
           mouthfill_depth?: number | null
-          issue_depth?: number | null
-          total_dive_time?: string | null
-          squeeze?: boolean | null
-          issue_comment?: string | null
-          exit?: string | null
+          surface_interval?: number | null
+          attempt_number?: number | null
           attempt_type?: string | null
+          squeeze?: boolean | null
+          blackout?: boolean | null
+          lmc?: boolean | null
+          issue_depth?: number | null
+          issue_comment?: string | null
           surface_protocol?: string | null
-          bottom_time_seconds?: number | null
-          total_time_seconds?: number | null
-          discipline_type?: string | null
-          exit_status?: string | null
-          duration_seconds?: number | null
-          distance_m?: number | null
-          ear_squeeze?: boolean | null
-          lung_squeeze?: boolean | null
-          narcosis_level?: number | null
-          recovery_quality?: string | null
-          gear?: Json | null
-          metadata?: Json | null
+          exit_protocol?: string | null
+          water_temp?: number | null
+          air_temp?: number | null
+          visibility_meters?: number | null
+          current_strength?: string | null
+          wetsuit_thickness?: string | null
+          weights_kg?: number | null
+          fins_type?: string | null
+          mask_type?: string | null
+          notes?: string | null
+          coach_notes?: string | null
+          feeling_rating?: number | null
+          ai_analysis?: any | null
+          ai_analysis_timestamp?: string | null
+          ai_risk_score?: number | null
+          ai_summary?: string | null
+          ai_suggestions?: string | null
         }
         Update: {
           user_id?: string
           date?: string
-          discipline?: string
+          location?: string | null
+          discipline?: string | null
           target_depth?: number | null
           reached_depth?: number | null
-          location?: string | null
-          notes?: string | null
-          ai_analysis?: string | null
-          ai_summary?: string | null
+          total_dive_time?: number | null
+          descent_time?: number | null
+          bottom_time?: number | null
+          ascent_time?: number | null
+          descent_speed_mps?: number | null
+          ascent_speed_mps?: number | null
           mouthfill_depth?: number | null
-          issue_depth?: number | null
-          total_dive_time?: string | null
-          squeeze?: boolean | null
-          issue_comment?: string | null
-          exit?: string | null
+          surface_interval?: number | null
+          attempt_number?: number | null
           attempt_type?: string | null
+          squeeze?: boolean | null
+          blackout?: boolean | null
+          lmc?: boolean | null
+          issue_depth?: number | null
+          issue_comment?: string | null
           surface_protocol?: string | null
-          bottom_time_seconds?: number | null
-          total_time_seconds?: number | null
-          discipline_type?: string | null
-          exit_status?: string | null
-          duration_seconds?: number | null
-          distance_m?: number | null
-          ear_squeeze?: boolean | null
-          lung_squeeze?: boolean | null
-          narcosis_level?: number | null
-          recovery_quality?: string | null
-          gear?: Json | null
-          metadata?: Json | null
+          exit_protocol?: string | null
+          water_temp?: number | null
+          air_temp?: number | null
+          visibility_meters?: number | null
+          current_strength?: string | null
+          wetsuit_thickness?: string | null
+          weights_kg?: number | null
+          fins_type?: string | null
+          mask_type?: string | null
+          notes?: string | null
+          coach_notes?: string | null
+          feeling_rating?: number | null
+          ai_analysis?: any | null
+          ai_analysis_timestamp?: string | null
+          ai_risk_score?: number | null
+          ai_summary?: string | null
+          ai_suggestions?: string | null
         }
       }
       user_profiles: {

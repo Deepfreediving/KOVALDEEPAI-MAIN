@@ -6,7 +6,7 @@ function clamp(n, lo, hi) {
 }
 function deriveTimes(log) {
     const total = log.total_time_seconds ?? null;
-    const bottom = log.bottom_time_seconds ?? 0;
+    const bottom = log.bottom_time ?? 0;
     let descent = log.descent_seconds ?? null;
     let ascent = log.ascent_seconds ?? null;
     if (total && !descent && !ascent) {

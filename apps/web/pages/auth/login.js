@@ -19,11 +19,23 @@ export default function Login() {
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
-      if (!isClient || !router) return;
+      if (!isClient || !router?.isReady) return;
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && router) {
-        router.push('/');
+      // Handle case where Supabase is not configured
+      if (!supabase) {
+        console.log('🔌 Supabase not configured - redirecting to offline mode');
+        router.push('/?offline=true');
+        return;
+      }
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && router) {
+          router.push('/');
+        }
+      } catch (error) {
+        console.warn('Error checking session:', error);
+        // Don't block if session check fails
       }
     };
     checkUser();
@@ -33,6 +45,15 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Handle case where Supabase is not configured
+    if (!supabase) {
+      console.log('🔌 Supabase not configured - redirecting to offline mode');
+      if (isClient && router) {
+        router.push('/?offline=true');
+      }
+      return;
+    }
 
     try {
       if (mode === 'signup') {
@@ -249,4 +270,11 @@ export default function Login() {
       </div>
     </div>
   );
+}
+
+// Prevent SSG to avoid router issues
+export async function getServerSideProps() {
+  return {
+    props: {}
+  }
 }

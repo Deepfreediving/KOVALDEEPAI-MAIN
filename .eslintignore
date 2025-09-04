@@ -32,3 +32,14 @@ public/bot-widget.js
 
 # Exclude JSON files from ESLint (these should be parsed as JSON, not JavaScript)
 **/*.json
+
+# Exclude TypeScript build info files
+**/*.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
+# Exclude Next.js types
+next-env.d.ts
+
+# Exclude Vercel and deployment files
+.vercel/
+.turbo/
