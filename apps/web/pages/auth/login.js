@@ -96,6 +96,15 @@ export default function Login() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    setError('');
+    
+    // Handle case where Supabase is not configured
+    if (!supabase) {
+      setError('Authentication service is not available. Please try email/password login.');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -103,31 +112,33 @@ export default function Login() {
           redirectTo: `${window.location.origin}/`
         }
       });
-      if (error) throw error;
+      
+      if (error) {
+        // Handle specific OAuth errors
+        if (error.message.includes('provider is not enabled') || 
+            error.message.includes('Unsupported provider')) {
+          setError('Google sign-in is currently not available. Please use email/password to sign in.');
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
-      setError(error.message);
+      console.error('Google sign-in error:', error);
+      setError(error.message || 'Google sign-in failed. Please try email/password login.');
+    } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAdminLogin = () => {
+    if (isClient && router) {
+      router.push('/?admin=true');
     }
   };
 
   const handleDemoAccess = () => {
-    // Provide demo access for testing
     if (isClient && router) {
-      router.push('/?demo=true&userId=f47ac10b-58cc-4372-a567-0e02b2c3d479&userName=Demo%20User');
-    }
-  };
-
-  const handleAdminLogin = async () => {
-    setLoading(true);
-    try {
-      // Direct admin access - no credential check needed
-      if (isClient && router) {
-        router.push('/admin');
-      }
-    } catch (error) {
-      setError('Admin access failed');
-    } finally {
-      setLoading(false);
+      router.push('/?demo=true');
     }
   };
 

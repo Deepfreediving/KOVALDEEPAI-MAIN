@@ -4,7 +4,6 @@ import ChatMessages from "@/components/ChatMessages";
 import ChatInput from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
 import DiveJournalDisplay from "@/components/DiveJournalDisplay";
-import { getAdminUserId } from "@/utils/adminAuth";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/src/providers/AuthProvider";
 
@@ -37,67 +36,31 @@ export default function Index() {
     setIsClient(true);
   }, []);
 
-  // ✅ MEMOIZE ADMIN/DEMO MODE DETECTION (prevent re-renders)
-  const modeDetection = useMemo(() => {
-    if (typeof window === "undefined" || !isClient) return { isAdminMode: false, isDemoMode: false };
-    const params = new URLSearchParams(window.location.search);
-    const isAdminMode = params.get('admin') === 'true';
-    const isDemoMode = params.get('demo') === 'true';
-    console.log('🔍 Mode detection:', { 
-      url: window.location.href, 
-      search: window.location.search, 
-      admin: params.get('admin'), 
-      isAdminMode, 
-      isDemoMode 
-    });
-    return {
-      isAdminMode,
-      isDemoMode
-    };
-  }, [isClient]);
+  // ✅ PRODUCTION AUTH: Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user && isClient) {
+      console.log("❌ No authenticated user, redirecting to login");
+      router.push('/auth/login');
+    }
+  }, [authLoading, user, isClient, router]);
 
-  const { isAdminMode, isDemoMode } = modeDetection;
-
-  // ✅ MEMOIZE INITIAL DATA (prevent recalculation)
+  // ✅ INITIAL DATA: Use authenticated user data
   const initialData = useMemo(() => {
-    if (isAdminMode) {
-      const adminId = getAdminUserId();
+    if (user) {
       return {
-        userId: adminId,
+        userId: user.id,
         profile: {
-          userId: adminId,
-          firstName: 'Daniel',
-          lastName: 'Koval',
-          nickname: 'Daniel Koval (Admin)',
-          email: 'danielkoval@admin.com',
-          source: 'admin'
-        }
-      };
-    } else if (isDemoMode) {
-      return {
-        userId: 'demo-user-id',
-        profile: {
-          userId: 'demo-user-id',
-          firstName: 'Demo',
-          lastName: 'User',
-          nickname: 'Demo User',
-          email: 'demo@example.com',
-          source: 'demo'
+          userId: user.id,
+          firstName: user.user_metadata?.full_name?.split(' ')[0] || 'User',
+          lastName: user.user_metadata?.full_name?.split(' ')[1] || '',
+          nickname: user.user_metadata?.full_name || user.email?.split('@')[0],
+          email: user.email,
+          source: 'supabase'
         }
       };
     }
     return { userId: "", profile: {} };
-  }, [isAdminMode, isDemoMode]);
-
-  // ✅ ALL STATE DECLARATIONS MUST BE AT THE TOP (Rules of Hooks)
-  const [adminMode, setAdminMode] = useState(isAdminMode);
-  const [demoMode, setDemoMode] = useState(isDemoMode);
-  
-  // ✅ Update admin/demo mode state when detection changes
-  useEffect(() => {
-    setAdminMode(isAdminMode);
-    setDemoMode(isDemoMode);
-  }, [isAdminMode, isDemoMode]);
+  }, [user]);
   
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [sessionName, setSessionName] = useState(defaultSessionName);
@@ -121,10 +84,6 @@ export default function Index() {
   const [profile, setProfile] = useState(initialData.profile);
   const [diveLogs, setDiveLogs] = useState([]);
   const [loadingDiveLogs, setLoadingDiveLogs] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(!isAdminMode && !isDemoMode); // Skip auth for admin/demo
-  const [authTimeoutReached, setAuthTimeoutReached] = useState(false);
-  const [localUser, setUser] = useState(null); // eslint-disable-line no-unused-vars
-  const [localSession, setSession] = useState(null); // eslint-disable-line no-unused-vars
   const [diveJournalOpen, setDiveJournalOpen] = useState(false);
 
   // ✅ ALL REFS MUST BE AT THE TOP
@@ -154,7 +113,7 @@ export default function Index() {
   }, [profile, user]);
 
   const getUserIdentifier = useCallback(() => {
-    // Use the actual authenticated user's ID if available
+    // ✅ Use authenticated user ID
     if (user?.id) {
       console.log(`🆔 Using authenticated user ID: ${user.id}`);
       return user.id;
@@ -164,10 +123,9 @@ export default function Index() {
       console.log(`🆔 Using profile user ID: ${profile.userId}`);
       return profile.userId;
     }
-    // For development/demo purposes, always fall back to admin ID
-    const adminId = getAdminUserId();
-    console.log(`🆔 Using admin fallback ID: ${adminId}`);
-    return adminId;
+    // No fallback - return empty string
+    console.warn(`🆔 No user ID available`);
+    return "";
   }, [user, profile]);
 
   const handleLogout = useCallback(async () => {
@@ -181,136 +139,29 @@ export default function Index() {
     }
   }, [router, isClient]);
 
-  // ✅ Log admin/demo mode status immediately
+  // ✅ Update user data when authenticated user changes
   useEffect(() => {
-    if (adminMode) {
-      console.log("🎯 Admin mode activated with userId:", userId);
-    } else if (demoMode) {
-      console.log("🎯 Demo mode activated with userId:", userId);
+    if (user) {
+      const userData = {
+        userId: user.id,
+        firstName: user.user_metadata?.full_name?.split(' ')[0] || 'User',
+        lastName: user.user_metadata?.full_name?.split(' ')[1] || '',
+        nickname: user.user_metadata?.full_name || user.email?.split('@')[0],
+        email: user.email,
+        source: 'supabase'
+      };
+      console.log("✅ Setting authenticated user data:", userData);
+      setUserId(user.id);
+      setProfile(userData);
     }
-  }, [adminMode, demoMode, userId]);
+  }, [user]);
 
-  // ✅ Redirect to login if not authenticated (unless admin/demo mode)
+  // ✅ INITIALIZE SESSIONS LIST FROM STORAGE
   useEffect(() => {
-    // Skip redirect if not client-side or in admin/demo mode
-    if (!isClient || adminMode || demoMode) {
-      return;
-    }
-    
-    // Only redirect if not loading and no user
-    if (!authLoading && !user && router) {
-      router.push('/auth/login');
-    }
-  }, [authLoading, user, adminMode, demoMode, router, isClient]);
-
-  // ✅ SUPABASE AUTHENTICATION (Modified to handle demo mode)
-  useEffect(() => {
-    // Skip complex auth for admin/demo mode
-    if (adminMode || demoMode) {
-      console.log("🎯 Skipping complex auth for admin/demo mode");
-      setIsAuthenticating(false);
-      return;
-    }
-
-    // Only proceed with Supabase auth if not in admin/demo mode
-    if (!supabase) {
-      console.warn('Supabase not available - setting auth complete');
-      setIsAuthenticating(false);
-      return;
-    }
-
-    let isMounted = true;
-    
-    const initAuth = async () => {
-      try {
-        // Get initial session for real authentication
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error getting session:", error);
-        }
-        
-        if (isMounted) {
-          if (currentSession) {
-            console.log("✅ User authenticated:", currentSession.user.email);
-            setSession(currentSession);
-            setUser(currentSession.user);
-            setUserId(currentSession.user.id);
-            setProfile({
-              userId: currentSession.user.id,
-              firstName: currentSession.user.user_metadata?.full_name?.split(' ')[0] || 'User',
-              lastName: currentSession.user.user_metadata?.full_name?.split(' ')[1] || '',
-              nickname: currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0],
-              email: currentSession.user.email,
-              source: 'supabase'
-            });
-            setIsAuthenticating(false);
-          } else {
-            // No session - only redirect if not in admin/demo mode
-            if (!adminMode && !demoMode) {
-              console.log("❌ No session found, redirecting to login");
-              setIsAuthenticating(false);
-              if (isClient && router) {
-                router.push('/auth/login');
-              }
-              return;
-            } else {
-              console.log("🎯 No session but in admin/demo mode - continuing");
-              setIsAuthenticating(false);
-            }
-          }
-        }
-        
-        // Listen for auth changes (only for real Supabase auth)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            if (!isMounted) return;
-            
-            console.log("🔄 Auth state changed:", event, session?.user?.email);
-            
-            if (session) {
-              setSession(session);
-              setUser(session.user);
-              setUserId(session.user.id);
-              setProfile({
-                userId: session.user.id,
-                firstName: session.user.user_metadata?.full_name?.split(' ')[0] || 'User',
-                lastName: session.user.user_metadata?.full_name?.split(' ')[1] || '',
-                nickname: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-                email: session.user.email,
-                source: 'supabase'
-              });
-              setIsAuthenticating(false);
-            } else {
-              setSession(null);
-              setUser(null);
-              if (isClient && router) {
-                router.push('/auth/login');
-              }
-            }
-          }
-        );
-        
-        return () => {
-          subscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        if (isMounted) {
-          setIsAuthenticating(false);
-        }
-      }
-    };
-    
     if (typeof window !== "undefined" && isClient && router?.isReady) {
       setSessionsList(safeParse("kovalSessionsList", []));
-      initAuth();
     }
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [router, adminMode, demoMode, safeParse, isClient]);
+  }, [router?.isReady, safeParse, isClient]);
 
   // ✅ URL PARAMETER HANDLING FOR EMBEDDED MODE AND THEME
   useEffect(() => {
@@ -369,27 +220,18 @@ export default function Index() {
     setDiveJournalOpen(!diveJournalOpen);
   }, [diveJournalOpen]);
 
-  // ✅ WORKING CHAT SUBMISSION - Enhanced with authentication gating
+  // ✅ PRODUCTION CHAT SUBMISSION 
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
       if (!input.trim() || loading) return;
 
-      // ✅ PREVENT CHAT UNTIL AUTHENTICATED (unless timeout reached)
-      if (isAuthenticating) {
-        console.log("⏳ Still authenticating, chat disabled");
-        return;
-      }
-
-      // ✅ WARN IF USING GUEST ID
-      if (userId.startsWith("guest-") && !authTimeoutReached) {
-        console.warn(
-          "⚠️ Attempting to chat with guest ID, this should not happen",
-        );
+      // ✅ Ensure user is authenticated
+      if (!userId || !user) {
+        console.warn("⚠️ No authenticated user found");
         const errorMessage = {
           role: "assistant",
-          content:
-            "⏳ Please wait while we verify your authentication. You'll be able to chat in just a moment.",
+          content: "Please log in to continue chatting.",
         };
         setMessages((prev) => [...prev, errorMessage]);
         return;
@@ -498,7 +340,7 @@ export default function Index() {
         setLoading(false);
       }
     },
-    [input, loading, userId, profile, isAuthenticating, authTimeoutReached, diveLogs, files],
+    [input, loading, userId, user, profile, diveLogs, files],
   );
 
   const handleKeyDown = useCallback(
@@ -923,10 +765,7 @@ export default function Index() {
             setUserId(newUserId);
             localStorage.setItem("kovalUser", newUserId);
 
-            // ✅ AUTHENTICATION COMPLETE - Enable interactions
-            setIsAuthenticating(false);
-            setAuthTimeoutReached(false); // Reset timeout flag
-
+            // ✅ AUTHENTICATION COMPLETE
             console.log(
               "🎉 Authentication complete! Chat and AI features now enabled.",
             );
@@ -1096,8 +935,6 @@ export default function Index() {
               setFiles={setFiles}
               loading={loading}
               darkMode={darkMode}
-              isAuthenticating={isAuthenticating}
-              authTimeoutReached={authTimeoutReached}
             />
           </div>
         </div>

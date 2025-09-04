@@ -9,8 +9,6 @@ export default function ChatInput({
   files,
   setFiles,
   loading,
-  isAuthenticating,
-  authTimeoutReached,
   darkMode,
 }) {
   const [error, setError] = useState("");
@@ -95,12 +93,8 @@ export default function ChatInput({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={
-                isAuthenticating && !authTimeoutReached
-                  ? "Authenticating..."
-                  : "Message Koval AI..."
-              }
-              disabled={loading || (isAuthenticating && !authTimeoutReached)}
+              placeholder="Message Koval AI..."
+              disabled={loading}
               className={`flex-1 resize-none bg-transparent border-none outline-none max-h-32 ${
                 darkMode ? "text-white placeholder-gray-400" : "text-gray-900 placeholder-gray-500"
               } disabled:opacity-50`}
@@ -120,11 +114,10 @@ export default function ChatInput({
               type="submit"
               disabled={
                 loading ||
-                !input.trim() ||
-                (isAuthenticating && !authTimeoutReached)
+                !input.trim()
               }
               className={`ml-2 p-2 rounded-lg transition-all ${
-                input.trim() && !loading && (!isAuthenticating || authTimeoutReached)
+                input.trim() && !loading
                   ? darkMode
                     ? "bg-white text-black hover:bg-gray-100"
                     : "bg-black text-white hover:bg-gray-800"
