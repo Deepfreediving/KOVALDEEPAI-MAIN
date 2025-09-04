@@ -33,7 +33,7 @@ export default function AdminDashboard() {
         try {
           // Dynamically import supabase only on client side
           if (typeof window !== 'undefined') {
-            const { supabase } = await import('../lib/supabase');
+            const { supabase } = await import('@/lib/supabase');
             
             // Get basic stats
             const { data: users } = await supabase.from('user_profiles').select('id');

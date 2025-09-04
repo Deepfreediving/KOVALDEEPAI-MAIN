@@ -230,10 +230,10 @@ export default function Index() {
             });
             setIsAuthenticating(false);
           } else {
-            // No session - redirect to login
+            // No session - redirect to login (but only if not in admin/demo mode)
             console.log("❌ No session found, redirecting to login");
             setIsAuthenticating(false);
-            if (isClient && router) {
+            if (isClient && router && !adminMode && !demoMode) {
               router.push('/auth/login');
             }
             return;
@@ -263,7 +263,7 @@ export default function Index() {
             } else {
               setSession(null);
               setUser(null);
-              if (isClient && router) {
+              if (isClient && router && !adminMode && !demoMode) {
                 router.push('/auth/login');
               }
             }
