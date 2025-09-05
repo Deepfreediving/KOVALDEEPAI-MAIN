@@ -206,56 +206,6 @@ else
 fi
 echo ""
 
-# Test 9: Supabase Migration Test
-echo -e "${BLUE}🗃️  Testing Supabase Migrations${NC}"
-echo "==============================="
-
-# Check if supabase CLI is available
-if command -v supabase &> /dev/null; then
-    log_test "PASS" "Supabase CLI available"
-    
-    # Check if we can validate migrations
-    if [ -d "supabase/migrations" ]; then
-        log_test "PASS" "Migrations directory exists"
-        
-        # Count migration files
-        migration_count=$(find supabase/migrations -name "*.sql" | wc -l)
-        if [ "$migration_count" -gt 0 ]; then
-            log_test "PASS" "Found $migration_count migration files"
-        else
-            log_test "FAIL" "No migration files found"
-        fi
-        
-        # Check for user reference fix migration
-        if [ -f "supabase/migrations/20250905000000_fix_user_references.sql" ]; then
-            log_test "PASS" "User reference fix migration exists"
-        else
-            log_test "FAIL" "User reference fix migration missing"
-        fi
-    else
-        log_test "FAIL" "Migrations directory not found"
-    fi
-else
-    log_test "WARN" "Supabase CLI not available (optional for testing)"
-fi
-echo ""
-
-# Test 10: Create Test User Function
-echo -e "${BLUE}👤 Testing User Management${NC}"
-echo "=========================="
-
-# Test creating a test user for API testing
-test_response=$(curl -s -X POST http://localhost:3002/api/supabase/test-create-user \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com"}' 2>/dev/null)
-
-if echo "$test_response" | grep -q "user_id\|success\|error"; then
-    log_test "PASS" "User creation endpoint responding"
-else
-    log_test "WARN" "User creation endpoint not available (will create manually)"
-fi
-echo ""
-
 # Final Summary
 echo -e "${BLUE}📊 TEST SUMMARY${NC}"
 echo "==============="

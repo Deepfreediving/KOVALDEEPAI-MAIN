@@ -5,7 +5,7 @@
 • Packages in scope: @koval-ai/web
 • Running dev in 1 packages
 • Remote caching disabled
-@koval-ai/web:dev: cache bypass, force executing 74df58af95d8f247
+@koval-ai/web:dev: cache bypass, force executing 24c13103ca50552a
 @koval-ai/web:dev: 
 @koval-ai/web:dev: > @koval-ai/web@1.0.0 dev
 @koval-ai/web:dev: > next dev
@@ -17,4 +17,37 @@
 @koval-ai/web:dev:     · esmExternals
 @koval-ai/web:dev: 
 @koval-ai/web:dev:  ✓ Starting...
-@koval-ai/web:dev:  ✓ Ready in 2.2s
+@koval-ai/web:dev:  ✓ Ready in 1207ms
+@koval-ai/web:dev:  ✓ Compiled /middleware in 136ms (73 modules)
+@koval-ai/web:dev:  ○ Compiling / ...
+@koval-ai/web:dev:  ✓ Compiled / in 2.5s (472 modules)
+@koval-ai/web:dev: ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+@koval-ai/web:dev: 🔧 Supabase Environment Variables: {
+@koval-ai/web:dev:   SUPABASE_URL: 'https://zhlacqhzhwvkmyxsxevv.s...',
+@koval-ai/web:dev:   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...',
+@koval-ai/web:dev:   SUPABASE_SERVICE_ROLE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...'
+@koval-ai/web:dev: }
+@koval-ai/web:dev: Warning: viewport meta tags should not be used in _document.js's <Head>. https://nextjs.org/docs/messages/no-document-viewport-meta
+@koval-ai/web:dev:  GET / 200 in 2674ms
+@koval-ai/web:dev:  ○ Compiling /_not-found ...
+@koval-ai/web:dev:  ✓ Compiled /_not-found in 1605ms (871 modules)
+@koval-ai/web:dev:  GET /test-upload.html?id=ff88561d-3b8c-4fc0-b48d-52325422777c&vscodeBrowserReqId=1757043262680 404 in 1728ms
+@koval-ai/web:dev:  ✓ Compiled /api/dive/upload-image in 261ms (369 modules)
+@koval-ai/web:dev: 🔧 Supabase Environment Variables: {
+@koval-ai/web:dev:   SUPABASE_URL: 'https://zhlacqhzhwvkmyxsxevv.s...',
+@koval-ai/web:dev:   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...',
+@koval-ai/web:dev:   SUPABASE_SERVICE_ROLE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...'
+@koval-ai/web:dev: }
+@koval-ai/web:dev: 🚀 UNIFIED Dive Image Upload & Analysis starting...
+@koval-ai/web:dev: 📋 Content-Type: application/json
+@koval-ai/web:dev: 📱 Processing JSON/base64 upload...
+@koval-ai/web:dev: 📝 Processing image: {
+@koval-ai/web:dev:   filename: 'test-dive.png',
+@koval-ai/web:dev:   originalSize: '0KB',
+@koval-ai/web:dev:   userId: 'c92a32c8...',
+@koval-ai/web:dev:   diveLogId: 'none'
+@koval-ai/web:dev: }
+@koval-ai/web:dev: 📉 Image optimized: 0KB → 0KB (-617% reduction)
+@koval-ai/web:dev: 🤖 Starting Enhanced Vision Analysis...
+@koval-ai/web:dev: ✅ Enhanced Vision Analysis completed: { confidence: 'medium', metricsExtracted: 1, tokensUsed: 717 }
+@koval-ai/web:dev: 🔑 Creating Supabase admin client with URL: https://zhlacqhzhwvkmyxsxevv.supabase.co
