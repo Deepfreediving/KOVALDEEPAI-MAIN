@@ -1,0 +1,21 @@
+query,expected_category,must_terms,canonical_expected
+"4 rules of direct supervision",safety,"one up|one down|arm's reach|triple ok|30 second",true
+"one up one down",safety,"one up|one down|supervision",true
+"what are the 4 rules",safety,"one up|one down|arm's reach|triple ok",true
+"direct supervision rules",safety,"supervision|rules|safety",true
+"buddy supervision",safety,"one up|one down|supervision",true
+"LMC handling",safety,"lmc|surface|motor control|airway",true
+"loss of motor control",safety,"lmc|surface|motor control",true
+"surface blackout",safety,"lmc|surface|blackout",true
+"blackout at depth",safety,"blackout|depth|rescue",true
+"underwater blackout",safety,"blackout|depth|underwater",true
+"rescue protocol",safety,"rescue|blackout|depth",true
+"laryngospasm",safety,"laryngospasm|blackout|rescue",true
+"frenzel equalization",equalization,"frenzel|equalization|pressure",true
+"mouthfill technique",equalization,"mouthfill|equalization",true
+"reverse pack",equalization,"mouthfill|reverse|pack",true
+"enclose methodology",coaching,"enclose|methodology|coaching",true
+"clear dive",coaching,"enclose|clear|methodology",true
+"co2 management",physiology,"co2|carbon|dioxide",false
+"mammalian dive reflex",physiology,"mdr|mammalian|dive reflex",false
+"no packing dive",training,"npd|no packing|natural lung",false

@@ -195,27 +195,29 @@ function generateSystemPrompt(
 🎯 CRITICAL REQUIREMENTS:
 - ${hasDiveLogs ? "YOU CAN AND MUST ANALYZE their personal dive logs - the data is provided in the Knowledge Base section below. Reference specific dives, depths, dates, and progression patterns." : "ONLY use information from the provided knowledge base below"}
 - When you see dive log data, provide specific analysis of their performance, progression, and areas for improvement
-- If the knowledge base doesn't contain specific information, say "I don't have specific guidance on this in my training materials"
-- Never mix general freediving advice with Daniel's specific methods
+- NEVER provide generic freediving advice - only use Daniel Koval's specific methodologies and content
+- If the knowledge base contains "Bot Must Say" instructions, you MUST include that exact text verbatim in your response
+- If the knowledge base doesn't contain specific information, say "I don't have specific guidance on this in Daniel's training materials" and do not provide generic advice
 - Provide ${level}-level technical detail appropriate for the user's experience
 - Always prioritize safety and progressive training
 - Keep responses detailed but focused (under ${embedMode ? "600" : "800"} words)
 - Address the user personally as a valued member with access to exclusive training
 ${hasDiveLogs ? "- When dive log data is present, focus your response on analyzing their actual performance and providing personalized improvement recommendations" : ""}
 
-� DIVE LOG AUDIT FEATURE:
+🤿 DIVE LOG AUDIT FEATURE:
 - When appropriate (especially after discussing dive performance issues, patterns, or technical concerns), offer: "Do you want me to do a dive journal evaluation of patterns or issues that can be causing your problems for a more technical and in-depth evaluation? Just respond with 'yes' if you'd like me to proceed."
 - Only offer this for users who have dive logs and when it would be genuinely helpful
 - The audit provides technical analysis of speeds, risk factors, patterns, and detailed coaching suggestions
 - Wait for the user to explicitly respond "yes" before the audit will be triggered
 
-�🚫 FORBIDDEN:
+❌ STRICTLY FORBIDDEN:
 - Making up training protocols not in the knowledge base
 - Combining different methodologies
 - Providing generic freediving advice when Daniel's specific approach exists
 - Recommending techniques beyond the user's certification level
+- Ignoring "Bot Must Say" instructions when they appear in the knowledge base
 
-If information is lacking, be honest and provide general safety advice.`;
+📚 KNOWLEDGE BASE PRIORITY: Always prioritize Daniel Koval's canonical content. When safety topics like "4 Rules of Direct Supervision" are mentioned, quote the exact rules and include any "Bot Must Say" statements verbatim.`;
 }
 
 // ✅ FIX: Type userLevel correctly and add embed support
@@ -230,9 +232,11 @@ async function askWithContext(
   if (!OPENAI_API_KEY) return "⚠️ OpenAI API is not configured.";
 
   console.log("🔹 Sending request to OpenAI...");
+  
+  // ✅ ENHANCED: Never provide generic advice - always use Daniel's canonical content
   const context = contextChunks.length
     ? contextChunks.slice(0, 3).join("\n\n")
-    : "No specific knowledge found. Provide general freediving safety advice.";
+    : "CRITICAL: No specific knowledge found in Daniel Koval's training materials. You must inform the user that you don't have specific guidance on this topic from Daniel's materials and cannot provide generic freediving advice.";
 
   // ✅ Enhanced context with dive log data
   const enhancedContext = diveLogContext
