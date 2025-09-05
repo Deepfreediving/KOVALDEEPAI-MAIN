@@ -76,8 +76,10 @@ async function getLatestAnalyzedDive(userId: string) {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ FIX: Use runtime port detection for internal API calls
-    const baseUrl = `http://localhost:3000`;
+    // ✅ FIX: Use production URL for Vercel deployment
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://kovaldeepai-main.vercel.app'
+      : 'http://localhost:3000';
 
     console.log(
       `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,

@@ -3,7 +3,13 @@
  * 
  * PURPOSE: Main chat system for all authenticated users
  * FEATURES: 
- * - Full RAG integration with Pinecone knowledge base
+ * - Full RAG in  try {
+    // ✅ VERCEL PRODUCTION FIX: Use consistent URL construction
+    const baseUrl = 'https://kovaldeepai-main.vercel.app'; // Force production URL
+
+    console.log(
+      `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
+    ); with Pinecone knowledge base
  * - Personal dive log context from Supabase
  * - User level detection (expert/beginner) 
  * - Comprehensive error handling & retry logic
@@ -93,10 +99,8 @@ async function getLatestAnalyzedDive(userId: string) {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ VERCEL PRODUCTION FIX: Prioritize VERCEL_URL for production
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
+    // ✅ FIX: Use production URL directly for internal calls
+    const baseUrl = 'https://kovaldeepai-main.vercel.app';
 
     console.log(
       `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
@@ -147,10 +151,8 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string): Promise<string[]> {
   if (!userId || userId.startsWith("guest")) return [];
   try {
-    // ✅ VERCEL PRODUCTION FIX: Prioritize VERCEL_URL for production
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
+    // ✅ VERCEL PRODUCTION FIX: Use consistent URL
+    const baseUrl = 'https://kovaldeepai-main.vercel.app';
 
     console.log(
       `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
@@ -663,7 +665,7 @@ ${recentDiveLogs}
       
       try {
         // Call the audit request handler
-        const baseUrl = `http://localhost:3000`;
+        const baseUrl = 'https://kovaldeepai-main.vercel.app';
         const auditResponse = await fetch(`${baseUrl}/api/chat/audit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
