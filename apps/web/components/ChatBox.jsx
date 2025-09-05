@@ -27,10 +27,23 @@ export default function ChatBox({
   // ✅ Admin-only authentication
   const isAuthenticated = userId === ADMIN_USER_ID;
 
+  // ✅ Always call hooks before any conditional returns
   useEffect(() => {
     console.log("💬 ChatBox authentication status:", isAuthenticated ? "ADMIN AUTHENTICATED" : "UNAUTHORIZED");
     console.log("💬 ChatBox userId:", userId);
   }, [isAuthenticated, userId]);
+
+  // ✅ Smooth Auto-scroll - moved up to avoid conditional hook calls
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      150;
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loading]);
 
   // ✅ Show admin-only access banner if not authenticated
   if (!isAuthenticated) {
@@ -71,18 +84,6 @@ export default function ChatBox({
       </main>
     );
   }
-
-  // ✅ Smooth Auto-scroll
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight <
-      150;
-    if (isNearBottom) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, loading]);
 
   // ✅ File Change
   const handleFileChange = (e) => {

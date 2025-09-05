@@ -38,7 +38,7 @@ export default function Index() {
 
   // ✅ PRODUCTION AUTH: Redirect to login if not authenticated
   useEffect(() => {
-    if (!authLoading && !user && isClient) {
+    if (!authLoading && !user && isClient && router?.isReady) {
       console.log("❌ No authenticated user, redirecting to login");
       router.push('/auth/login');
     }
@@ -962,6 +962,16 @@ export default function Index() {
 
     </main>
   );
+}
+
+// ✅ Disable SSG for this page to prevent NextRouter issues
+export async function getServerSideProps() {
+  // This prevents static generation and ensures the page runs on the server
+  return {
+    props: {
+      timestamp: Date.now(), // Force server-side rendering
+    },
+  };
 }
 
 // Removed unused queryPinecone function

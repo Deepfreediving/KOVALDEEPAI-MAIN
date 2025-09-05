@@ -14,12 +14,12 @@ export default async function handler(req, res) {
     
     if (error) {
       // Fallback: try to query dive_logs to see what we can access
-      const { data: diveLogs, error: diveError } = await supabase
+      const { error: diveError } = await supabase
         .from('dive_logs')
         .select('*')
         .limit(1);
         
-      const { data: diveImages, error: imageError } = await supabase
+      const { error: imageError } = await supabase
         .from('dive_log_image')
         .select('*')
         .limit(1);

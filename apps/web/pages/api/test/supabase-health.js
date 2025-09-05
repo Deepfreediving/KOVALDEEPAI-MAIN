@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
     // Test 1: Admin Client Initialization
     try {
-      const supabase = getAdminClient();
+      getAdminClient(); // Test initialization without storing in unused variable
       addTest('Admin Client', 'PASS', 'Admin client created successfully');
     } catch (error) {
       addTest('Admin Client', 'FAIL', 'Failed to create admin client', error.message);

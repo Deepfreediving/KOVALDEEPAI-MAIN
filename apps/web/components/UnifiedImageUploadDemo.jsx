@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 
 // 🚀 Unified Dive Image Upload Demo Component
 // Shows how to use the new unified API with both file and base64 uploads
@@ -203,10 +204,13 @@ const UnifiedImageUploadDemo = ({ userId = 'demo-user' }) => {
             <div style={{ marginTop: '15px' }}>
               <strong>🖼️ Uploaded Image:</strong>
               <br />
-              <img 
+              <Image 
                 src={result.imageUrl} 
                 alt="Uploaded dive computer" 
+                width={200}
+                height={150}
                 style={{ maxWidth: '200px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '5px' }}
+                unoptimized
               />
             </div>
           )}

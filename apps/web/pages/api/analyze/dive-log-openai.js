@@ -14,8 +14,8 @@ function computeOrExtractSpeeds(maxDepthM, totalSeconds, bottomSeconds = 0, time
   if (extractedMetrics.descent_seconds && extractedMetrics.ascent_seconds) {
     console.log('✅ Using AI-extracted timing data');
     return {
-      descent_seconds: extractedMetrics.descent_seconds,
-      ascent_seconds: extractedMetrics.ascent_seconds,
+      descent_time: extractedMetrics.descent_seconds, // ✅ Map to correct column name
+      ascent_time: extractedMetrics.ascent_seconds,   // ✅ Map to correct column name
       descent_speed_mps: Number((maxDepthM / extractedMetrics.descent_seconds).toFixed(3)),
       ascent_speed_mps: Number((maxDepthM / extractedMetrics.ascent_seconds).toFixed(3)),
       source: 'ai_extracted'
@@ -27,8 +27,8 @@ function computeOrExtractSpeeds(maxDepthM, totalSeconds, bottomSeconds = 0, time
   const ascent = Math.max(1, totalSeconds - bottomSeconds - descent);
   
   return {
-    descent_seconds: descent,
-    ascent_seconds: ascent,
+    descent_time: descent,    // ✅ Map to correct column name
+    ascent_time: ascent,      // ✅ Map to correct column name
     descent_speed_mps: Number((maxDepthM / descent).toFixed(3)),
     ascent_speed_mps: Number((maxDepthM / ascent).toFixed(3)),
     source: 'computed'
@@ -177,15 +177,19 @@ async function saveAnalysisToSupabase(userId, diveLogData, analysis) {
       location: diveLogData.location || 'Unknown',
       target_depth: parseFloat(diveLogData.targetDepth || diveLogData.target_depth || 0),
       reached_depth: maxDepth,
-      total_time_seconds: totalSeconds,
+      total_dive_time: totalSeconds,
       mouthfill_depth: parseFloat(diveLogData.mouthfillDepth || diveLogData.mouthfill_depth || 0),
       issue_depth: parseFloat(diveLogData.issueDepth || diveLogData.issue_depth || 0),
       issue_comment: diveLogData.issueComment || diveLogData.issue_comment || null,
       notes: diveLogData.notes || null,
       ai_analysis: analysis,
       ai_summary: aiSummary,
-      ...computedSpeeds, // Add computed speeds
-      analyzed_at: new Date().toISOString(),
+      ai_analysis_timestamp: new Date().toISOString(),
+      // ✅ Only add valid database columns from computed speeds
+      ...(computedSpeeds.descent_time && { descent_time: computedSpeeds.descent_time }),
+      ...(computedSpeeds.ascent_time && { ascent_time: computedSpeeds.ascent_time }),
+      ...(computedSpeeds.descent_speed_mps && { descent_speed_mps: computedSpeeds.descent_speed_mps }),
+      ...(computedSpeeds.ascent_speed_mps && { ascent_speed_mps: computedSpeeds.ascent_speed_mps }),
     };
 
     // Insert or update dive log

@@ -263,7 +263,7 @@ export default function TestUpload() {
                         <h4>📝 Test Instructions:</h4>
                         <ol>
                             <li>Drag and drop one of your dive computer screenshots above</li>
-                            <li>Click "Upload & Analyze" to test the AI analysis</li>
+                            <li>Click &quot;Upload &amp; Analyze&quot; to test the AI analysis</li>
                             <li>Review the extracted dive data and coaching insights</li>
                             <li>Check that depth, time, and temperature are correctly identified</li>
                         </ol>

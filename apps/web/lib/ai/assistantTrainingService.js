@@ -109,7 +109,7 @@ export class AssistantTrainingService {
       });
       
       // Wait for completion
-      const completedRun = await this.waitForRunCompletion(thread.id, run.id);
+      await this.waitForRunCompletion(thread.id, run.id);
       
       // Get the response
       const messages = await openai.beta.threads.messages.list(thread.id);

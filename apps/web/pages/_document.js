@@ -34,39 +34,28 @@ export default class MyDocument extends Document {
 
           {/* ⛔ Removed all debug/hotfix scripts that interfere with React initialization */}
 
-          {/* ✅ Critical CSS inline for faster rendering */}
-          <style
-            dangerouslySetInnerHTML={{
-              __html: `
-              /* Critical CSS for initial render */
-              html, body { margin: 0; padding: 0; box-sizing: border-box; }
-              * { box-sizing: inherit; }
-              
-              /* Loading state optimization */
-              .loading-container {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                min-height: 100vh;
-                background: #000;
-              }
-              
-              /* Prevent layout shift */
-              #__next {
-                min-height: 100vh;
-                isolation: isolate;
-              }
-              
-              /* Optimize scrolling */
-              body {
-                overflow-y: auto;
-                overflow-x: hidden;
-                scroll-behavior: smooth;
-                -webkit-overflow-scrolling: touch;
-              }
-            `,
-            }}
-          />
+          {/* ✅ Critical CSS moved to globals.css to avoid build conflicts */}
+          <style>{`
+            html, body { margin: 0; padding: 0; box-sizing: border-box; }
+            * { box-sizing: inherit; }
+            .loading-container {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              background: #000;
+            }
+            #__next {
+              min-height: 100vh;
+              isolation: isolate;
+            }
+            body {
+              overflow-y: auto;
+              overflow-x: hidden;
+              scroll-behavior: smooth;
+              -webkit-overflow-scrolling: touch;
+            }
+          `}</style>
         </Head>
         <body className="bg-black text-white">
           {/* ✅ Main app container with proper isolation */}
