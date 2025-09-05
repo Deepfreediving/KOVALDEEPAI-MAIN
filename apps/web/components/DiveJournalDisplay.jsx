@@ -157,6 +157,7 @@ export default function DiveJournalDisplay({
       id: isEditMode ? editingLog.id : Date.now().toString(),
       timestamp: new Date().toISOString(),
       nickname: ADMIN_USER_ID, // ✅ Updated: Use ADMIN_USER_ID
+      user_id: ADMIN_USER_ID, // ✅ Add user_id for API
       imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
       imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
       // Convert form data to database schema
@@ -210,12 +211,14 @@ export default function DiveJournalDisplay({
           const formData = new FormData();
           formData.append('image', newEntry.imageFile);
           formData.append('diveLogId', newLog.id);
+          formData.append('userId', ADMIN_USER_ID); // Add userId for the upload
           
           console.log("📤 Uploading image file:", {
             name: newEntry.imageFile.name,
             size: newEntry.imageFile.size,
             type: newEntry.imageFile.type,
             diveLogId: newLog.id,
+            userId: ADMIN_USER_ID,
           });
           
           // Log FormData contents for debugging

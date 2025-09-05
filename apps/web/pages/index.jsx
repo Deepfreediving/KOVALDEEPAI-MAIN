@@ -12,8 +12,8 @@ const API_ROUTES = {
   // ✅ Use OpenAI chat directly since Supabase chat is admin-only
   CHAT: "/api/chat/general",
   CHAT_FALLBACK: "/api/chat/general",
-  GET_DIVE_LOGS: "/api/supabase/dive-logs-optimized",
-  GET_DIVE_LOGS_FALLBACK: "/api/supabase/get-dive-logs",
+  GET_DIVE_LOGS: "/api/supabase/dive-logs",
+  GET_DIVE_LOGS_FALLBACK: "/api/supabase/dive-logs",
   GET_USER_PROFILE: "/api/supabase/user-profile",
   SAVE_DIVE_LOG: "/api/supabase/save-dive-log",
   DELETE_DIVE_LOG: "/api/supabase/delete-dive-log",
@@ -461,6 +461,7 @@ export default function Index() {
           ...diveData,
           id: diveLogId,
           diveLogId: diveLogId, // Required by DiveLogs collection
+          user_id: getUserIdentifier(), // Add user_id for API
           timestamp: new Date().toISOString(),
           source: 'dive-journal-main-app',
           // User identification fields for localStorage

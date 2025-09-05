@@ -2,6 +2,12 @@
 import { getAdminClient } from '@/lib/supabase'
 import AssistantTrainingService from '@/lib/ai/assistantTrainingService'
 
+// Helper function to get user identifier from various sources
+function getUserIdentifier() {
+  // This is a fallback - in practice the userId should come from the request
+  return null;
+}
+
 export default async function handler(req, res) {
   // Initialize Supabase client with error handling
   const supabase = getAdminClient();
@@ -37,10 +43,15 @@ export default async function handler(req, res) {
       // ✅ Handle both formats: direct dive log data or wrapped in diveLogData
       let diveLogData = req.body.diveLogData || req.body;
       
-      // ✅ Use the actual user ID from the request
-      const userId = diveLogData.user_id || req.body.user_id;
+      // ✅ Use the actual user ID from the request - handle different field names
+      const userId = diveLogData.user_id || diveLogData.userId || getUserIdentifier() || req.body.user_id;
       
       if (!userId) {
+        console.error('❌ No user ID found in request:', { 
+          user_id: diveLogData.user_id, 
+          userId: diveLogData.userId, 
+          body_user_id: req.body.user_id 
+        });
         return res.status(400).json({ error: 'User ID is required' });
       }
       
@@ -74,37 +85,35 @@ export default async function handler(req, res) {
         return isNaN(parsed) ? null : parsed
       }
 
+      // Helper function to map frontend field names to database field names
+      const mapFields = (data) => {
+        return {
+          // Map frontend camelCase to database snake_case
+          date: data.date,
+          discipline: data.discipline,
+          location: toStr(data.location),
+          target_depth: toNum(data.targetDepth || data.target_depth),
+          reached_depth: toNum(data.reachedDepth || data.reached_depth),
+          mouthfill_depth: toNum(data.mouthfillDepth || data.mouthfill_depth),
+          issue_depth: toNum(data.issueDepth || data.issue_depth),
+          total_dive_time: timeToSeconds(data.totalDiveTime || data.total_dive_time),
+          squeeze: toBool(data.squeeze),
+          issue_comment: toStr(data.issueComment || data.issue_comment),
+          exit_protocol: toStr(data.exit || data.exitProtocol || data.exit_protocol),
+          attempt_type: toStr(data.attemptType || data.attempt_type),
+          surface_protocol: toStr(data.surfaceProtocol || data.surface_protocol),
+          notes: toStr(data.notes),
+          user_id: userId, // Always use the validated userId
+        };
+      };
+
       // ✅ COMPLETE FIELD MAPPING - MATCHES EXACT DIVE_LOGS SCHEMA
       const diveLogId = generateUUID(); // Generate UUID for linking
+      const mappedFields = mapFields(diveLogData);
+      
       const supabaseDiveLog = {
         id: diveLogId, // Use generated UUID for linking
-        user_id: userId,
-        
-        // Basic dive information
-        date: diveLogData.date,
-        discipline: diveLogData.discipline,
-        location: toStr(diveLogData.location),
-        
-        // Depth measurements - CRITICAL FOR COACHING
-        target_depth: toNum(diveLogData.targetDepth || diveLogData.target_depth),
-        reached_depth: toNum(diveLogData.reachedDepth || diveLogData.reached_depth),
-        mouthfill_depth: toNum(diveLogData.mouthfillDepth || diveLogData.mouthfill_depth), // ⚠️ ESSENTIAL
-        issue_depth: toNum(diveLogData.issueDepth || diveLogData.issue_depth), // ⚠️ CRITICAL FOR SAFETY
-        
-        // Time measurements
-        total_dive_time: timeToSeconds(diveLogData.totalDiveTime || diveLogData.total_dive_time),
-        
-        // Safety and issues - ESSENTIAL FOR COACHING
-        squeeze: toBool(diveLogData.squeeze), // ⚠️ CRITICAL SAFETY INDICATOR
-        issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment), // ⚠️ DETAILED PROBLEM DESCRIPTION
-        
-        // Performance data
-        exit_protocol: toStr(diveLogData.exit || diveLogData.exitProtocol), // Clean/messy exit for performance analysis
-        attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type), // Training/competition/fun
-        surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol), // Recovery analysis
-        
-        // Training notes - ESSENTIAL FOR COACHING PROGRESSION
-        notes: toStr(diveLogData.notes), // Detailed coaching observations
+        ...mappedFields,
         
         // Timestamps
         created_at: new Date().toISOString(),
@@ -114,9 +123,9 @@ export default async function handler(req, res) {
         ai_analysis: {
           disciplineType: diveLogData.disciplineType,
           durationOrDistance: diveLogData.durationOrDistance,
-          bottomTime: diveLogData.bottomTime, // Store here since no column exists
-          earSqueeze: toBool(diveLogData.earSqueeze), // Store here since no column exists
-          lungSqueeze: toBool(diveLogData.lungSqueeze), // Store here since no column exists
+          bottomTime: diveLogData.bottomTime,
+          earSqueeze: toBool(diveLogData.earSqueeze),
+          lungSqueeze: toBool(diveLogData.lungSqueeze),
           narcosisLevel: diveLogData.narcosisLevel,
           recoveryQuality: diveLogData.recoveryQuality,
           gear: diveLogData.gear || {},
@@ -126,9 +135,13 @@ export default async function handler(req, res) {
           imageAnalysis: diveLogData.imageAnalysis,
           extractedMetrics: diveLogData.extractedMetrics,
           imageUrl: diveLogData.imageUrl,
-          imageId: diveLogData.imageId
+          imageId: diveLogData.imageId,
+          coaching_notes: diveLogData.notes,
+          original_data: diveLogData, // Store original for debugging
+          entry_source: 'dive-journal-main-app',
+          processed_at: new Date().toISOString()
         }
-      }
+      };
       console.log('💾 Inserting dive log into Supabase:', supabaseDiveLog)
 
       // Insert new record (simplified - always insert for now)

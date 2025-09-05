@@ -2,8 +2,8 @@
 // 🧪 Unified Dive Image Upload API Test Script
 // Tests both file upload and base64 upload methods with enhanced analysis
 
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
