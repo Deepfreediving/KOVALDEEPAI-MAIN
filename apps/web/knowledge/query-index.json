@@ -1,0 +1,33 @@
+{
+  "defaults": {
+    "topK": 10,
+    "alpha": 0.5,
+    "confidence": 0.85
+  },
+  "items": [
+    {
+      "id": "rules.direct_supervision.v1",
+      "title": "4 Rules of Direct Supervision",
+      "category": "direct_supervision",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "4 rules of direct supervision",
+        "four rules direct supervision freediving",
+        "one up one down",
+        "1 up / 1 down supervision",
+        "buddy supervision rules",
+        "daniel koval direct supervision"
+      ],
+      "must_terms": [
+        "one up one down",
+        "arm's reach",
+        "arms reach",
+        "triple ok",
+        "30s",
+        "30 seconds"
+      ],
+      "bot_must_say_hint": "LMC and blackout may not be preventable so its mandatory to follow the 4 Rules of Direct Supervision."
+    }
+  ]
+}

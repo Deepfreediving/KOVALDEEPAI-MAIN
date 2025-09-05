@@ -1,0 +1,2283 @@
+{
+  "generated_at": "2025-09-05T18:38:53.108Z",
+  "version": "2.0.0",
+  "total_items": 94,
+  "defaults": {
+    "topK": 8,
+    "alpha": 0.5,
+    "confidence": 0.85
+  },
+  "categories": [
+    "safety",
+    "physiology",
+    "general",
+    "coaching",
+    "equipment",
+    "fundamentals",
+    "training",
+    "equalization"
+  ],
+  "items": [
+    {
+      "id": "safety_01_safety_core_logic_kovaldeepai_v2",
+      "title": "4 Rules of Direct Supervision",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "four rules",
+        "direct supervision",
+        "one up one down",
+        "arm's reach",
+        "triple ok",
+        "30 seconds"
+      ],
+      "must_terms": [
+        "one up",
+        "one down",
+        "arm's reach",
+        "triple ok",
+        "30 second"
+      ],
+      "bot_must_say": "“LMC and blackout may not be preventable so its mandatory to follow the 4 Rules of Direct Supervision.”",
+      "file_path": "data/Safety/01_Safety_Core_Logic_KovalDeepAI_v2.txt",
+      "chunk_ids": [
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_0",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_1",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_2",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_3",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_4",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_5",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_6",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_7",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_8",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_9",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_10",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_11",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_12",
+        "01_Safety_Core_Logic_KovalDeepAI_v2_chunk_13"
+      ],
+      "priority": 1,
+      "content_hash": "478f6056d685f6b5e1de238139d053a4"
+    },
+    {
+      "id": "safety_02_blackout_rescue_protocols",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/Safety/02_Blackout_Rescue_Protocols.txt",
+      "chunk_ids": [
+        "02_Blackout_Rescue_Protocols_chunk_0",
+        "02_Blackout_Rescue_Protocols_chunk_1",
+        "02_Blackout_Rescue_Protocols_chunk_2",
+        "02_Blackout_Rescue_Protocols_chunk_3",
+        "02_Blackout_Rescue_Protocols_chunk_4",
+        "02_Blackout_Rescue_Protocols_chunk_5",
+        "02_Blackout_Rescue_Protocols_chunk_6",
+        "02_Blackout_Rescue_Protocols_chunk_7",
+        "02_Blackout_Rescue_Protocols_chunk_8"
+      ],
+      "priority": 1,
+      "content_hash": "28e20d84e0079fba2d4844ccbc3a7e52"
+    },
+    {
+      "id": "safety_04_surface_interval_logic",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/Safety/04_Surface_Interval_Logic.txt",
+      "chunk_ids": [
+        "04_Surface_Interval_Logic_chunk_0",
+        "04_Surface_Interval_Logic_chunk_1"
+      ],
+      "priority": 1,
+      "content_hash": "4ac81a17cb9ca516b19a32024b877859"
+    },
+    {
+      "id": "safety_05_enclose_diagnostic_model",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/Safety/05_ENCLOSE_Diagnostic_Model.txt",
+      "chunk_ids": [
+        "05_ENCLOSE_Diagnostic_Model_chunk_0",
+        "05_ENCLOSE_Diagnostic_Model_chunk_1",
+        "05_ENCLOSE_Diagnostic_Model_chunk_2",
+        "05_ENCLOSE_Diagnostic_Model_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "1b4f236ca3fd6b4f95298bfbeb65bc7c"
+    },
+    {
+      "id": "safety_hyper_hypocapnia",
+      "title": "Blackout at Depth",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/Safety/hyper_hypocapnia.txt",
+      "chunk_ids": [
+        "hyper_hypocapnia_chunk_0",
+        "hyper_hypocapnia_chunk_1",
+        "hyper_hypocapnia_chunk_2",
+        "hyper_hypocapnia_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "c1909dac856e36b2e29a6110bb61d847"
+    },
+    {
+      "id": "safety_recovery_breathing",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/Safety/recovery_breathing.txt",
+      "chunk_ids": [
+        "recovery_breathing_chunk_0",
+        "recovery_breathing_chunk_1",
+        "recovery_breathing_chunk_2"
+      ],
+      "priority": 1,
+      "content_hash": "a04d203f90051fc24273dfb3b50eee74"
+    },
+    {
+      "id": "safety_vacuum_effect",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/Safety/vacuum_effect.txt",
+      "chunk_ids": [
+        "vacuum_effect_chunk_0",
+        "vacuum_effect_chunk_1"
+      ],
+      "priority": 1,
+      "content_hash": "378f31d924975dbb6bb7f90d893e5b97"
+    },
+    {
+      "id": "co2_and_o2_02_o2_co2_dynamics_and_blackout_clean",
+      "title": "Blackout at Depth",
+      "category": "physiology",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/co2 and o2/02_O2_CO2_Dynamics_and_Blackout_CLEAN.txt",
+      "chunk_ids": [
+        "02_O2_CO2_Dynamics_and_Blackout_CLEAN_chunk_0",
+        "02_O2_CO2_Dynamics_and_Blackout_CLEAN_chunk_1",
+        "02_O2_CO2_Dynamics_and_Blackout_CLEAN_chunk_2"
+      ],
+      "priority": 1,
+      "content_hash": "34a7c8f78daf67fbf173ae48232178dc"
+    },
+    {
+      "id": "coaching_enclose_routing",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/coaching/ENCLOSE-routing.txt",
+      "chunk_ids": [
+        "ENCLOSE-routing_chunk_0",
+        "ENCLOSE-routing_chunk_1",
+        "ENCLOSE-routing_chunk_2",
+        "ENCLOSE-routing_chunk_3",
+        "ENCLOSE-routing_chunk_4"
+      ],
+      "priority": 1,
+      "content_hash": "b925a531a8e96d6f477ff6c6f97c2029"
+    },
+    {
+      "id": "enclose_10_enclose_diagnostic_routing",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/enclose/10_ENCLOSE_Diagnostic_Routing.txt",
+      "chunk_ids": [
+        "10_ENCLOSE_Diagnostic_Routing_chunk_0",
+        "10_ENCLOSE_Diagnostic_Routing_chunk_1",
+        "10_ENCLOSE_Diagnostic_Routing_chunk_2",
+        "10_ENCLOSE_Diagnostic_Routing_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "a37b8e70558e91e160322ad06f028d04"
+    },
+    {
+      "id": "enclose_rulesfixingdiveeval",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/enclose/rulesfixingdiveeval.txt",
+      "chunk_ids": [
+        "rulesfixingdiveeval_chunk_0",
+        "rulesfixingdiveeval_chunk_1",
+        "rulesfixingdiveeval_chunk_2"
+      ],
+      "priority": 1,
+      "content_hash": "43e6b6a6bdaa901068e9d68f25c206ea"
+    },
+    {
+      "id": "enclose_and_clear_10_enclose_diagnostic_routing",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/enclose and clear/10_ENCLOSE_Diagnostic_Routing.txt",
+      "chunk_ids": [
+        "10_ENCLOSE_Diagnostic_Routing_chunk_0",
+        "10_ENCLOSE_Diagnostic_Routing_chunk_1",
+        "10_ENCLOSE_Diagnostic_Routing_chunk_2",
+        "10_ENCLOSE_Diagnostic_Routing_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "a37b8e70558e91e160322ad06f028d04"
+    },
+    {
+      "id": "enclose_and_clear_rulesfixingdiveeval",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/enclose and clear/rulesfixingdiveeval.txt",
+      "chunk_ids": [
+        "rulesfixingdiveeval_chunk_0",
+        "rulesfixingdiveeval_chunk_1",
+        "rulesfixingdiveeval_chunk_2"
+      ],
+      "priority": 1,
+      "content_hash": "43e6b6a6bdaa901068e9d68f25c206ea"
+    },
+    {
+      "id": "enclose_and_clear_safety_clear_dive_bailout_v1",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/enclose and clear/safety_clear_dive_bailout_v1.txt",
+      "chunk_ids": [
+        "safety_clear_dive_bailout_v1_chunk_0",
+        "safety_clear_dive_bailout_v1_chunk_1",
+        "safety_clear_dive_bailout_v1_chunk_2",
+        "safety_clear_dive_bailout_v1_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "ed080ed1c5c8954f29ca79fdbc285119"
+    },
+    {
+      "id": "equipment_core_logic_basic_freediving_equipment",
+      "title": "Blackout at Depth",
+      "category": "equipment",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/equipment/core_logic_basic_freediving_equipment.txt",
+      "chunk_ids": [
+        "core_logic_basic_freediving_equipment_chunk_0",
+        "core_logic_basic_freediving_equipment_chunk_1",
+        "core_logic_basic_freediving_equipment_chunk_2",
+        "core_logic_basic_freediving_equipment_chunk_3",
+        "core_logic_basic_freediving_equipment_chunk_4",
+        "core_logic_basic_freediving_equipment_chunk_5",
+        "core_logic_basic_freediving_equipment_chunk_6",
+        "core_logic_basic_freediving_equipment_chunk_7",
+        "core_logic_basic_freediving_equipment_chunk_8"
+      ],
+      "priority": 1,
+      "content_hash": "d3a646ced6c87ac32d3a76113a22c90c"
+    },
+    {
+      "id": "military_part_koval_deep_ai",
+      "title": "Blackout at Depth",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/military part/koval_deep_ai.txt",
+      "chunk_ids": [
+        "koval_deep_ai_chunk_0",
+        "koval_deep_ai_chunk_1",
+        "koval_deep_ai_chunk_2",
+        "koval_deep_ai_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "926f0f90bcae1ae645d2e46ec54be8d5"
+    },
+    {
+      "id": "military_part_military_mode_integration",
+      "title": "Blackout at Depth",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/military part/military_mode_integration.txt",
+      "chunk_ids": [
+        "military_mode_integration_chunk_0",
+        "military_mode_integration_chunk_1",
+        "military_mode_integration_chunk_2"
+      ],
+      "priority": 1,
+      "content_hash": "a4e9a09cd100fe45401c15e74d07865b"
+    },
+    {
+      "id": "military_part_tool_prescription_matrix",
+      "title": "Blackout at Depth",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/military part/tool_prescription_matrix.txt",
+      "chunk_ids": [
+        "tool_prescription_matrix_chunk_0",
+        "tool_prescription_matrix_chunk_1",
+        "tool_prescription_matrix_chunk_2",
+        "tool_prescription_matrix_chunk_3",
+        "tool_prescription_matrix_chunk_4",
+        "tool_prescription_matrix_chunk_5"
+      ],
+      "priority": 1,
+      "content_hash": "8affff6ab238d8db4f7f3ee6ef095c94"
+    },
+    {
+      "id": "physics_03_physics_of_gas_laws_and_pressure",
+      "title": "Blackout at Depth",
+      "category": "fundamentals",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/physics/03_Physics_of_Gas_Laws_and_Pressure.txt",
+      "chunk_ids": [
+        "03_Physics_of_Gas_Laws_and_Pressure_chunk_0",
+        "03_Physics_of_Gas_Laws_and_Pressure_chunk_1",
+        "03_Physics_of_Gas_Laws_and_Pressure_chunk_2",
+        "03_Physics_of_Gas_Laws_and_Pressure_chunk_3",
+        "03_Physics_of_Gas_Laws_and_Pressure_chunk_4"
+      ],
+      "priority": 1,
+      "content_hash": "6775904caeaf8fde752d7f3a4a4ccb32"
+    },
+    {
+      "id": "rules_decision_logic_refinement",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/rules/decision_logic_refinement.txt",
+      "chunk_ids": [
+        "decision_logic_refinement_chunk_0",
+        "decision_logic_refinement_chunk_1",
+        "decision_logic_refinement_chunk_2",
+        "decision_logic_refinement_chunk_3",
+        "decision_logic_refinement_chunk_4",
+        "decision_logic_refinement_chunk_5",
+        "decision_logic_refinement_chunk_6",
+        "decision_logic_refinement_chunk_7",
+        "decision_logic_refinement_chunk_8",
+        "decision_logic_refinement_chunk_9",
+        "decision_logic_refinement_chunk_10",
+        "decision_logic_refinement_chunk_11",
+        "decision_logic_refinement_chunk_12",
+        "decision_logic_refinement_chunk_13"
+      ],
+      "priority": 1,
+      "content_hash": "e63d26e287a78c15238921ad615c1f3d"
+    },
+    {
+      "id": "rules_logic_coaching_core_rules",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/rules/logic_coaching_core_rules.txt",
+      "chunk_ids": [
+        "logic_coaching_core_rules_chunk_0",
+        "logic_coaching_core_rules_chunk_1"
+      ],
+      "priority": 1,
+      "content_hash": "bad3b69839078e490f3b69b6e49d9fad"
+    },
+    {
+      "id": "rules_surface_intervals_and_o2",
+      "title": "Blackout at Depth",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/rules/surface_intervals_and_o2.txt",
+      "chunk_ids": [
+        "surface_intervals_and_o2_chunk_0",
+        "surface_intervals_and_o2_chunk_1"
+      ],
+      "priority": 1,
+      "content_hash": "08df85ec4d1c0a65b825930c1fa887db"
+    },
+    {
+      "id": "tool_lists_clear_dive_bailout_triggers",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/tool lists/clear_dive_bailout_triggers.txt",
+      "chunk_ids": [
+        "clear_dive_bailout_triggers_chunk_0",
+        "clear_dive_bailout_triggers_chunk_1",
+        "clear_dive_bailout_triggers_chunk_2",
+        "clear_dive_bailout_triggers_chunk_3"
+      ],
+      "priority": 1,
+      "content_hash": "41d57edc9e1dcb826c403583788bf8ee"
+    },
+    {
+      "id": "tool_lists_co2_and_o2_tables_full",
+      "title": "Blackout at Depth",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/tool lists/co2_and_o2_tables_FULL.txt",
+      "chunk_ids": [
+        "co2_and_o2_tables_FULL_chunk_0",
+        "co2_and_o2_tables_FULL_chunk_1",
+        "co2_and_o2_tables_FULL_chunk_2",
+        "co2_and_o2_tables_FULL_chunk_3",
+        "co2_and_o2_tables_FULL_chunk_4",
+        "co2_and_o2_tables_FULL_chunk_5",
+        "co2_and_o2_tables_FULL_chunk_6",
+        "co2_and_o2_tables_FULL_chunk_7"
+      ],
+      "priority": 1,
+      "content_hash": "8431c424e8239136489051a4a9eabaa3"
+    },
+    {
+      "id": "training_plan_structure_competition_vs_training",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/training plan structure/competition_vs_training.txt",
+      "chunk_ids": [
+        "competition_vs_training_chunk_0",
+        "competition_vs_training_chunk_1"
+      ],
+      "priority": 1,
+      "content_hash": "c75984d052801a6a62a6b8ca9207efee"
+    },
+    {
+      "id": "training_plan_structure_sink_phase_protocol",
+      "title": "Blackout at Depth",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "underwater blackout",
+        "depth blackout",
+        "laryngospasm",
+        "rescue protocol"
+      ],
+      "must_terms": [
+        "blackout",
+        "depth",
+        "rescue"
+      ],
+      "file_path": "data/training plan structure/sink_phase_protocol.txt",
+      "chunk_ids": [
+        "sink_phase_protocol_chunk_0",
+        "sink_phase_protocol_chunk_1"
+      ],
+      "priority": 1,
+      "content_hash": "474cad767abf72174dbd5a4e5e5eac4b"
+    },
+    {
+      "id": "user_logic_current_persona_kdai1",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/user logic/current_persona_kdai1.txt",
+      "chunk_ids": [
+        "current_persona_kdai1_chunk_0",
+        "current_persona_kdai1_chunk_1",
+        "current_persona_kdai1_chunk_2",
+        "current_persona_kdai1_chunk_3",
+        "current_persona_kdai1_chunk_4",
+        "current_persona_kdai1_chunk_5"
+      ],
+      "priority": 1,
+      "content_hash": "107c9ba60b169f4cb375afe314157101"
+    },
+    {
+      "id": "user_logic_logic_training_tool_rules",
+      "title": "Loss of Motor Control (LMC)",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "lmc",
+        "loss of motor control",
+        "surface blackout",
+        "seizure spasms"
+      ],
+      "must_terms": [
+        "lmc",
+        "surface",
+        "motor control"
+      ],
+      "file_path": "data/user logic/logic_training_tool_rules.txt",
+      "chunk_ids": [
+        "logic_training_tool_rules_chunk_0",
+        "logic_training_tool_rules_chunk_1",
+        "logic_training_tool_rules_chunk_2",
+        "logic_training_tool_rules_chunk_3",
+        "logic_training_tool_rules_chunk_4"
+      ],
+      "priority": 1,
+      "content_hash": "b79ecd66488001e95e9195383034a776"
+    },
+    {
+      "id": "equalization_btv_limitations_and_training",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Equalization/btv-limitations-and-training.txt",
+      "chunk_ids": [
+        "btv-limitations-and-training_chunk_0",
+        "btv-limitations-and-training_chunk_1",
+        "btv-limitations-and-training_chunk_2",
+        "btv-limitations-and-training_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "ae4c793efb0120d9a86bd1a7370c64ab"
+    },
+    {
+      "id": "equalization_btv",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Equalization/btv.txt",
+      "chunk_ids": [
+        "btv_chunk_0",
+        "btv_chunk_1",
+        "btv_chunk_2",
+        "btv_chunk_3",
+        "btv_chunk_4",
+        "btv_chunk_5",
+        "btv_chunk_6"
+      ],
+      "priority": 2,
+      "content_hash": "d87811018b023813a3407fdfe3743ec7"
+    },
+    {
+      "id": "equalization_logic_basic_frenzel_lvl1",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Equalization/logic_basic_frenzel_lvl1.txt",
+      "chunk_ids": [
+        "logic_basic_frenzel_lvl1_chunk_0",
+        "logic_basic_frenzel_lvl1_chunk_1",
+        "logic_basic_frenzel_lvl1_chunk_2",
+        "logic_basic_frenzel_lvl1_chunk_3",
+        "logic_basic_frenzel_lvl1_chunk_4",
+        "logic_basic_frenzel_lvl1_chunk_5",
+        "logic_basic_frenzel_lvl1_chunk_6",
+        "logic_basic_frenzel_lvl1_chunk_7",
+        "logic_basic_frenzel_lvl1_chunk_8",
+        "logic_basic_frenzel_lvl1_chunk_9",
+        "logic_basic_frenzel_lvl1_chunk_10"
+      ],
+      "priority": 2,
+      "content_hash": "45f0903b32702843844ebea25fe7dda0"
+    },
+    {
+      "id": "equalization_logic_tkh",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Equalization/logic_tkh.txt",
+      "chunk_ids": [
+        "logic_tkh_chunk_0",
+        "logic_tkh_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "761bd59affaa22f9d4875db5ed124564"
+    },
+    {
+      "id": "equalization_mouthfill_sequencing_levels",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Equalization/mouthfill-sequencing-levels.txt",
+      "chunk_ids": [
+        "mouthfill-sequencing-levels_chunk_0",
+        "mouthfill-sequencing-levels_chunk_1",
+        "mouthfill-sequencing-levels_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "656fa2cf9e5e74274be06863f9055ba1"
+    },
+    {
+      "id": "fii_level_1_progression_07_level1_progression_to_level2",
+      "title": "Frenzel Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Fii level 1 progression/07_Level1_Progression_to_Level2.txt",
+      "chunk_ids": [
+        "07_Level1_Progression_to_Level2_chunk_0",
+        "07_Level1_Progression_to_Level2_chunk_1",
+        "07_Level1_Progression_to_Level2_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "25c737066f10bdfc5038c958c02d5a8c"
+    },
+    {
+      "id": "fii_level_1_progression_08_cant_equalize_head_down",
+      "title": "Frenzel Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/Fii level 1 progression/08_Cant_Equalize_Head_Down.txt",
+      "chunk_ids": [
+        "08_Cant_Equalize_Head_Down_chunk_0",
+        "08_Cant_Equalize_Head_Down_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "55c3b141e48141eb55d3af1f40deda9e"
+    },
+    {
+      "id": "safety_clear_dive_bailout",
+      "title": "Mouthfill Equalization",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/Safety/CLEAR-DIVE-bailout.txt",
+      "chunk_ids": [
+        "CLEAR-DIVE-bailout_chunk_0",
+        "CLEAR-DIVE-bailout_chunk_1",
+        "CLEAR-DIVE-bailout_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "d93de969873ce7004ff4b449ef46dad3"
+    },
+    {
+      "id": "safety_npd_squeeze",
+      "title": "Mouthfill Equalization",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/Safety/npd_squeeze.txt",
+      "chunk_ids": [
+        "npd_squeeze_chunk_0",
+        "npd_squeeze_chunk_1",
+        "npd_squeeze_chunk_2",
+        "npd_squeeze_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "a68554a5333c81fc721a5eeb8ecf55d2"
+    },
+    {
+      "id": "fundamentals_physics_boyle_dalton_archimedes",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/fundamentals/physics-boyle-dalton-archimedes.txt",
+      "chunk_ids": [
+        "physics-boyle-dalton-archimedes_chunk_0",
+        "physics-boyle-dalton-archimedes_chunk_1",
+        "physics-boyle-dalton-archimedes_chunk_2",
+        "physics-boyle-dalton-archimedes_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "f8fad4006bd44603458e2a427260cdca"
+    },
+    {
+      "id": "meditation_deconcentration_freediving",
+      "title": "Frenzel Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/meditation/deconcentration_freediving.txt",
+      "chunk_ids": [
+        "deconcentration_freediving_chunk_0",
+        "deconcentration_freediving_chunk_1",
+        "deconcentration_freediving_chunk_2",
+        "deconcentration_freediving_chunk_3",
+        "deconcentration_freediving_chunk_4",
+        "deconcentration_freediving_chunk_5",
+        "deconcentration_freediving_chunk_6",
+        "deconcentration_freediving_chunk_7",
+        "deconcentration_freediving_chunk_8"
+      ],
+      "priority": 2,
+      "content_hash": "8bd63d50985de4928083a8888e2aa85d"
+    },
+    {
+      "id": "mouthfill_added_mouthfill_tools",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/added_mouthfill_tools.txt",
+      "chunk_ids": [
+        "added_mouthfill_tools_chunk_0",
+        "added_mouthfill_tools_chunk_1",
+        "added_mouthfill_tools_chunk_2",
+        "added_mouthfill_tools_chunk_3",
+        "added_mouthfill_tools_chunk_4"
+      ],
+      "priority": 2,
+      "content_hash": "ff4e166ee4e5ed52b6b524632795cf63"
+    },
+    {
+      "id": "mouthfill_bot_logic_mouthfill_clarification",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/bot_logic_mouthfill_clarification.txt",
+      "chunk_ids": [
+        "bot_logic_mouthfill_clarification_chunk_0",
+        "bot_logic_mouthfill_clarification_chunk_1",
+        "bot_logic_mouthfill_clarification_chunk_2",
+        "bot_logic_mouthfill_clarification_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "6df2345722e623db96d7a2f14daa3dd5"
+    },
+    {
+      "id": "mouthfill_core_logic_mouthfill_philosophy",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/core_logic_mouthfill_philosophy.txt",
+      "chunk_ids": [
+        "core_logic_mouthfill_philosophy_chunk_0",
+        "core_logic_mouthfill_philosophy_chunk_1",
+        "core_logic_mouthfill_philosophy_chunk_2",
+        "core_logic_mouthfill_philosophy_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "c5c7de563adde25501ea144f4eb04fb3"
+    },
+    {
+      "id": "mouthfill_initial_mouthfill_assessment",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/mouthfill/initial_mouthfill_assessment.txt",
+      "chunk_ids": [
+        "initial_mouthfill_assessment_chunk_0",
+        "initial_mouthfill_assessment_chunk_1",
+        "initial_mouthfill_assessment_chunk_2",
+        "initial_mouthfill_assessment_chunk_3",
+        "initial_mouthfill_assessment_chunk_4",
+        "initial_mouthfill_assessment_chunk_5",
+        "initial_mouthfill_assessment_chunk_6"
+      ],
+      "priority": 2,
+      "content_hash": "b4da711a1d4a24b81e6c5029e2751003"
+    },
+    {
+      "id": "mouthfill_logic_mouthfill_rp_protocol_2",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/mouthfill/logic_mouthfill_rp_protocol_2.txt",
+      "chunk_ids": [
+        "logic_mouthfill_rp_protocol_2_chunk_0",
+        "logic_mouthfill_rp_protocol_2_chunk_1",
+        "logic_mouthfill_rp_protocol_2_chunk_2",
+        "logic_mouthfill_rp_protocol_2_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "1cf3fd3004e1260c78d8288dfb78ecd1"
+    },
+    {
+      "id": "mouthfill_logic_protocol_final",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/logic_protocol_final.txt",
+      "chunk_ids": [
+        "logic_protocol_final_chunk_0",
+        "logic_protocol_final_chunk_1",
+        "logic_protocol_final_chunk_2",
+        "logic_protocol_final_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "d5c19b7991fb70d5f4f4646129aceaa2"
+    },
+    {
+      "id": "mouthfill_logic_protocol_transcoded",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/logic_protocol_transcoded.txt",
+      "chunk_ids": [
+        "logic_protocol_transcoded_chunk_0",
+        "logic_protocol_transcoded_chunk_1",
+        "logic_protocol_transcoded_chunk_2",
+        "logic_protocol_transcoded_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "ef71692a9058820a1ffd0671c0fa177f"
+    },
+    {
+      "id": "mouthfill_mouthfill_coaching_protocol",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/mouthfill_coaching_protocol.txt",
+      "chunk_ids": [
+        "mouthfill_coaching_protocol_chunk_0",
+        "mouthfill_coaching_protocol_chunk_1",
+        "mouthfill_coaching_protocol_chunk_2",
+        "mouthfill_coaching_protocol_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "075572da878fafca01baa58b9d96235b"
+    },
+    {
+      "id": "mouthfill_mouthfill_evaluation_logic",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/mouthfill_evaluation_logic.txt",
+      "chunk_ids": [
+        "mouthfill_evaluation_logic_chunk_0",
+        "mouthfill_evaluation_logic_chunk_1",
+        "mouthfill_evaluation_logic_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "37c00eab527e7f172b50b3b615b4b2ef"
+    },
+    {
+      "id": "mouthfill_mouthfill_experiment_logic",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/mouthfill_experiment_logic.txt",
+      "chunk_ids": [
+        "mouthfill_experiment_logic_chunk_0",
+        "mouthfill_experiment_logic_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "ad3812214cf0a7f7474dde5f3266c078"
+    },
+    {
+      "id": "mouthfill_mouthfill_mastery_sp_and_g",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/mouthfill_mastery_sp_and_g.txt",
+      "chunk_ids": [
+        "mouthfill_mastery_sp_and_g_chunk_0",
+        "mouthfill_mastery_sp_and_g_chunk_1",
+        "mouthfill_mastery_sp_and_g_chunk_2",
+        "mouthfill_mastery_sp_and_g_chunk_3",
+        "mouthfill_mastery_sp_and_g_chunk_4",
+        "mouthfill_mastery_sp_and_g_chunk_5",
+        "mouthfill_mastery_sp_and_g_chunk_6",
+        "mouthfill_mastery_sp_and_g_chunk_7",
+        "mouthfill_mastery_sp_and_g_chunk_8"
+      ],
+      "priority": 2,
+      "content_hash": "e94779ddf9ba579f61e96f88a2e3cc2c"
+    },
+    {
+      "id": "mouthfill_mouthfill_reverse_pack_logic",
+      "title": "Mouthfill Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/mouthfill/mouthfill_reverse_pack_logic.txt",
+      "chunk_ids": [
+        "mouthfill_reverse_pack_logic_chunk_0",
+        "mouthfill_reverse_pack_logic_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "3f5fcda0868116e05a8a12b739ff7dc8"
+    },
+    {
+      "id": "mouthfill_reverse_packing_vs_mouthfill",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/mouthfill/reverse_packing_vs_mouthfill.txt",
+      "chunk_ids": [
+        "reverse_packing_vs_mouthfill_chunk_0",
+        "reverse_packing_vs_mouthfill_chunk_1",
+        "reverse_packing_vs_mouthfill_chunk_2",
+        "reverse_packing_vs_mouthfill_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "4ff0fd9019170bcaf3cf4cdd7b10df7a"
+    },
+    {
+      "id": "mouthfill_soft_palate_locking_sink_phase",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/mouthfill/soft_palate_locking_sink_phase.txt",
+      "chunk_ids": [
+        "soft_palate_locking_sink_phase_chunk_0",
+        "soft_palate_locking_sink_phase_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "589096f08dfe0e8badddefa20f33266a"
+    },
+    {
+      "id": "mouthfill_update_mouthfill_compressed",
+      "title": "Frenzel Equalization",
+      "category": "equalization",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/mouthfill/update_mouthfill_compressed.txt",
+      "chunk_ids": [
+        "update_mouthfill_compressed_chunk_0",
+        "update_mouthfill_compressed_chunk_1",
+        "update_mouthfill_compressed_chunk_2",
+        "update_mouthfill_compressed_chunk_3",
+        "update_mouthfill_compressed_chunk_4",
+        "update_mouthfill_compressed_chunk_5",
+        "update_mouthfill_compressed_chunk_6",
+        "update_mouthfill_compressed_chunk_7",
+        "update_mouthfill_compressed_chunk_8"
+      ],
+      "priority": 2,
+      "content_hash": "edf9c5d309ce6d69b92af5d9ffc371fc"
+    },
+    {
+      "id": "npd_01_npd_pool_technique_and_coaching",
+      "title": "Frenzel Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/npd/01_NPD_Pool_Technique_and_Coaching.txt",
+      "chunk_ids": [
+        "01_NPD_Pool_Technique_and_Coaching_chunk_0",
+        "01_NPD_Pool_Technique_and_Coaching_chunk_1",
+        "01_NPD_Pool_Technique_and_Coaching_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "cb0e598fb121aa46ef9cc4d260cd9979"
+    },
+    {
+      "id": "npd_02_npd_deep_warmup_protocol",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/npd/02_NPD_Deep_Warmup_Protocol.txt",
+      "chunk_ids": [
+        "02_NPD_Deep_Warmup_Protocol_chunk_0",
+        "02_NPD_Deep_Warmup_Protocol_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "d60301cf3a8b31c5310fbb6067c50349"
+    },
+    {
+      "id": "npd_03_npd_reverse_pack_progression",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/npd/03_NPD_Reverse_Pack_Progression.txt",
+      "chunk_ids": [
+        "03_NPD_Reverse_Pack_Progression_chunk_0",
+        "03_NPD_Reverse_Pack_Progression_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "62a250f41a7e82314dc3110e001e788d"
+    },
+    {
+      "id": "npd_04_npd_mouthfill_management_protocol",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/npd/04_NPD_Mouthfill_Management_Protocol.txt",
+      "chunk_ids": [
+        "04_NPD_Mouthfill_Management_Protocol_chunk_0",
+        "04_NPD_Mouthfill_Management_Protocol_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "2baf6ccba7b9f8838d8d9baf89aeabc7"
+    },
+    {
+      "id": "physics_boyles_law",
+      "title": "Mouthfill Equalization",
+      "category": "fundamentals",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/physics/boyles_law.txt",
+      "chunk_ids": [
+        "boyles_law_chunk_0",
+        "boyles_law_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "b8be5601c1ae004bb4f52578c655cbf2"
+    },
+    {
+      "id": "rules_access_instructions_pool",
+      "title": "Mouthfill Equalization",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/rules/access_instructions_pool.txt",
+      "chunk_ids": [
+        "access_instructions_pool_chunk_0",
+        "access_instructions_pool_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "563793cfc6c382ead44f0b2dd267b2af"
+    },
+    {
+      "id": "rules_koval_deep_ai_profile_logic_guide",
+      "title": "Mouthfill Equalization",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/rules/koval_deep_ai_profile_logic_guide.txt",
+      "chunk_ids": [
+        "koval_deep_ai_profile_logic_guide_chunk_0",
+        "koval_deep_ai_profile_logic_guide_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "c227fa2e256a138d45ac15226fb09fe1"
+    },
+    {
+      "id": "rules_kovaldeepai_intake_logic_2",
+      "title": "Mouthfill Equalization",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/rules/kovaldeepai_intake_logic_2.txt",
+      "chunk_ids": [
+        "kovaldeepai_intake_logic_2_chunk_0",
+        "kovaldeepai_intake_logic_2_chunk_1",
+        "kovaldeepai_intake_logic_2_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "87f08931e6780c2e82423084fc378317"
+    },
+    {
+      "id": "rules_rules",
+      "title": "Frenzel Equalization",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/rules/rules.txt",
+      "chunk_ids": [
+        "rules_chunk_0",
+        "rules_chunk_1",
+        "rules_chunk_2",
+        "rules_chunk_3",
+        "rules_chunk_4",
+        "rules_chunk_5",
+        "rules_chunk_6"
+      ],
+      "priority": 2,
+      "content_hash": "0378bdcc5f803f49797709c4ebb0055d"
+    },
+    {
+      "id": "tool_lists_key_concepts",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/tool lists/key_concepts.txt",
+      "chunk_ids": [
+        "key_concepts_chunk_0",
+        "key_concepts_chunk_1",
+        "key_concepts_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "bccf23036ddd32b8fa57d9534e11591c"
+    },
+    {
+      "id": "tool_lists_mouthfill_tools",
+      "title": "Frenzel Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/tool lists/mouthfill_tools.txt",
+      "chunk_ids": [
+        "mouthfill_tools_chunk_0",
+        "mouthfill_tools_chunk_1",
+        "mouthfill_tools_chunk_2",
+        "mouthfill_tools_chunk_3",
+        "mouthfill_tools_chunk_4",
+        "mouthfill_tools_chunk_5",
+        "mouthfill_tools_chunk_6"
+      ],
+      "priority": 2,
+      "content_hash": "957d1078dfd046ab1d4f635ffa1815a2"
+    },
+    {
+      "id": "tool_lists_pool_dry_workout_module",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/tool lists/pool_dry_workout_module.txt",
+      "chunk_ids": [
+        "pool_dry_workout_module_chunk_0",
+        "pool_dry_workout_module_chunk_1",
+        "pool_dry_workout_module_chunk_2",
+        "pool_dry_workout_module_chunk_3",
+        "pool_dry_workout_module_chunk_4",
+        "pool_dry_workout_module_chunk_5"
+      ],
+      "priority": 2,
+      "content_hash": "1df39f30abd3ee7927753e50bfa40c64"
+    },
+    {
+      "id": "tool_lists_stretch_receptors_structured",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/tool lists/stretch_receptors_structured.txt",
+      "chunk_ids": [
+        "stretch_receptors_structured_chunk_0",
+        "stretch_receptors_structured_chunk_1",
+        "stretch_receptors_structured_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "2839962fbc8c5c05dd4bc76afd098883"
+    },
+    {
+      "id": "tool_lists_warm_up_routine",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/tool lists/warm_up_routine.txt",
+      "chunk_ids": [
+        "warm_up_routine_chunk_0",
+        "warm_up_routine_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "0824451245666b41a3fb3c65b4729718"
+    },
+    {
+      "id": "training_plan_structure_comp_plan_taper",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/training plan structure/comp_plan_taper.txt",
+      "chunk_ids": [
+        "comp_plan_taper_chunk_0",
+        "comp_plan_taper_chunk_1",
+        "comp_plan_taper_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "1c779732464997bd0c9f6861ffb3321d"
+    },
+    {
+      "id": "training_plan_structure_core_logic_rules_structure",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/training plan structure/core_logic_rules_structure.txt",
+      "chunk_ids": [
+        "core_logic_rules_structure_chunk_0",
+        "core_logic_rules_structure_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "ac7260ef6b68a485beef947ad535fea4"
+    },
+    {
+      "id": "training_plan_structure_logic_training_plan_structure",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/training plan structure/logic_training_plan_structure.txt",
+      "chunk_ids": [
+        "logic_training_plan_structure_chunk_0",
+        "logic_training_plan_structure_chunk_1"
+      ],
+      "priority": 2,
+      "content_hash": "c07f0e5a5b57b9ff3fd1d38bec78b360"
+    },
+    {
+      "id": "training_plan_structure_structuredplanguidelines",
+      "title": "Mouthfill Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/training plan structure/structuredplanguidelines.txt",
+      "chunk_ids": [
+        "structuredplanguidelines_chunk_0",
+        "structuredplanguidelines_chunk_1",
+        "structuredplanguidelines_chunk_2",
+        "structuredplanguidelines_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "2ca342f38aca24ef89a85c2985031c1e"
+    },
+    {
+      "id": "training_plan_structure_tier_levels",
+      "title": "Frenzel Equalization",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/training plan structure/tier_levels.txt",
+      "chunk_ids": [
+        "tier_levels_chunk_0",
+        "tier_levels_chunk_1",
+        "tier_levels_chunk_2",
+        "tier_levels_chunk_3",
+        "tier_levels_chunk_4"
+      ],
+      "priority": 2,
+      "content_hash": "5877cfb5008d0503bda17a0c586e4b7f"
+    },
+    {
+      "id": "user_logic_adaptive_logic_user",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/adaptive_logic_user.txt",
+      "chunk_ids": [
+        "adaptive_logic_user_chunk_0",
+        "adaptive_logic_user_chunk_1",
+        "adaptive_logic_user_chunk_2",
+        "adaptive_logic_user_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "c8f0848141cfe4863ce3529dbf2b6247"
+    },
+    {
+      "id": "user_logic_bot_prompt_question_instructions_copy",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/bot_prompt_question_instructions copy.txt",
+      "chunk_ids": [
+        "bot_prompt_question_instructions copy_chunk_0",
+        "bot_prompt_question_instructions copy_chunk_1",
+        "bot_prompt_question_instructions copy_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "ca22e822500573a3498a9581d7f3c551"
+    },
+    {
+      "id": "user_logic_bot_prompt_question_instructions",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/bot_prompt_question_instructions.txt",
+      "chunk_ids": [
+        "bot_prompt_question_instructions_chunk_0",
+        "bot_prompt_question_instructions_chunk_1",
+        "bot_prompt_question_instructions_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "ca22e822500573a3498a9581d7f3c551"
+    },
+    {
+      "id": "user_logic_depth_limit_cert_prompt",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/depth_limit_cert_prompt.txt",
+      "chunk_ids": [
+        "depth_limit_cert_prompt_chunk_0",
+        "depth_limit_cert_prompt_chunk_1",
+        "depth_limit_cert_prompt_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "d0ee54f051d4966317eb225ce41d2641"
+    },
+    {
+      "id": "user_logic_eq_trigger_questions",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/eq_trigger_questions.txt",
+      "chunk_ids": [
+        "eq_trigger_questions_chunk_0"
+      ],
+      "priority": 2,
+      "content_hash": "8e1db2022be5f11e67a92172e4327fe0"
+    },
+    {
+      "id": "user_logic_freediving_diagnostic_checklist",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/freediving_diagnostic_checklist.txt",
+      "chunk_ids": [
+        "freediving_diagnostic_checklist_chunk_0",
+        "freediving_diagnostic_checklist_chunk_1",
+        "freediving_diagnostic_checklist_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "082794198d18ce9e3d661047b4b6cbe0"
+    },
+    {
+      "id": "user_logic_freediving_education_systems",
+      "title": "Frenzel Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "frenzel",
+        "frenzel equalization"
+      ],
+      "must_terms": [
+        "frenzel"
+      ],
+      "file_path": "data/user logic/freediving_education_systems.txt",
+      "chunk_ids": [
+        "freediving_education_systems_chunk_0",
+        "freediving_education_systems_chunk_1",
+        "freediving_education_systems_chunk_2",
+        "freediving_education_systems_chunk_3"
+      ],
+      "priority": 2,
+      "content_hash": "7a62df1ce4930f07977d5a8b36bda857"
+    },
+    {
+      "id": "user_logic_kdai_ux_flowchart_overview",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/kdai_ux_flowchart_overview.txt",
+      "chunk_ids": [
+        "kdai_ux_flowchart_overview_chunk_0",
+        "kdai_ux_flowchart_overview_chunk_1",
+        "kdai_ux_flowchart_overview_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "ba3d90dc3b4adc0bb4ae4f3293732cd3"
+    },
+    {
+      "id": "user_logic_logic_protocol_final",
+      "title": "Mouthfill Equalization",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": true,
+      "synonyms": [
+        "mouthfill",
+        "mouthfill equalization"
+      ],
+      "must_terms": [
+        "mouthfill"
+      ],
+      "file_path": "data/user logic/logic_protocol_final.txt",
+      "chunk_ids": [
+        "logic_protocol_final_chunk_0",
+        "logic_protocol_final_chunk_1",
+        "logic_protocol_final_chunk_2"
+      ],
+      "priority": 2,
+      "content_hash": "abf92019955b84be72c8a8268b593e82"
+    },
+    {
+      "id": "safety_understanding_plasma_fill",
+      "title": "Mammalian Dive Reflex",
+      "category": "safety",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "mdr",
+        "mammalian dive reflex"
+      ],
+      "must_terms": [
+        "mdr"
+      ],
+      "file_path": "data/Safety/understanding_plasma_fill.txt",
+      "chunk_ids": [
+        "understanding_plasma_fill_chunk_0",
+        "understanding_plasma_fill_chunk_1"
+      ],
+      "priority": 3,
+      "content_hash": "334c64175870a4c45a8cfa45cf7f5f97"
+    },
+    {
+      "id": "about_koval_about_the_coach",
+      "title": "No Packing Dive",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "npd",
+        "no packing dive"
+      ],
+      "must_terms": [
+        "npd"
+      ],
+      "file_path": "data/about Koval/about_the_coach.txt",
+      "chunk_ids": [
+        "about_the_coach_chunk_0",
+        "about_the_coach_chunk_1",
+        "about_the_coach_chunk_2"
+      ],
+      "priority": 3,
+      "content_hash": "3689f90f5894eca88e007abc2c7eff51"
+    },
+    {
+      "id": "mdr_01_mammalian_dive_reflex_module",
+      "title": "Mammalian Dive Reflex",
+      "category": "physiology",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "mdr",
+        "mammalian dive reflex"
+      ],
+      "must_terms": [
+        "mdr"
+      ],
+      "file_path": "data/mdr/01_Mammalian_Dive_Reflex_Module.txt",
+      "chunk_ids": [
+        "01_Mammalian_Dive_Reflex_Module_chunk_0",
+        "01_Mammalian_Dive_Reflex_Module_chunk_1",
+        "01_Mammalian_Dive_Reflex_Module_chunk_2",
+        "01_Mammalian_Dive_Reflex_Module_chunk_3"
+      ],
+      "priority": 3,
+      "content_hash": "9d745b2fb185592972120d5dc45135d3"
+    },
+    {
+      "id": "military_part_military_tools",
+      "title": "Mammalian Dive Reflex",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "mdr",
+        "mammalian dive reflex"
+      ],
+      "must_terms": [
+        "mdr"
+      ],
+      "file_path": "data/military part/military_tools.txt",
+      "chunk_ids": [
+        "military_tools_chunk_0",
+        "military_tools_chunk_1",
+        "military_tools_chunk_2",
+        "military_tools_chunk_3"
+      ],
+      "priority": 3,
+      "content_hash": "8d0cf3fad3d25399e379e6961437f344"
+    },
+    {
+      "id": "npd_05_npd_safety_and_recovery_rules",
+      "title": "No Packing Dive",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "npd",
+        "no packing dive"
+      ],
+      "must_terms": [
+        "npd"
+      ],
+      "file_path": "data/npd/05_NPD_Safety_and_Recovery_Rules.txt",
+      "chunk_ids": [
+        "05_NPD_Safety_and_Recovery_Rules_chunk_0"
+      ],
+      "priority": 3,
+      "content_hash": "76ec429e0079ae9c3dcb4ccbaf376bd1"
+    },
+    {
+      "id": "npd_06_nds_and_warmup_logic",
+      "title": "Mammalian Dive Reflex",
+      "category": "training",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "mdr",
+        "mammalian dive reflex"
+      ],
+      "must_terms": [
+        "mdr"
+      ],
+      "file_path": "data/npd/06_NDS_and_Warmup_Logic.txt",
+      "chunk_ids": [
+        "06_NDS_and_Warmup_Logic_chunk_0",
+        "06_NDS_and_Warmup_Logic_chunk_1",
+        "06_NDS_and_Warmup_Logic_chunk_2"
+      ],
+      "priority": 3,
+      "content_hash": "5c5fa4495c68831960bc6a1e037e867c"
+    },
+    {
+      "id": "rules_packing_stretching_logic_module__1_",
+      "title": "packing stretching logic module (1)",
+      "category": "coaching",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "packing stretching logic module (1)"
+      ],
+      "must_terms": [],
+      "file_path": "data/rules/packing_stretching_logic_module (1).txt",
+      "chunk_ids": [
+        "packing_stretching_logic_module (1)_chunk_0",
+        "packing_stretching_logic_module (1)_chunk_1",
+        "packing_stretching_logic_module (1)_chunk_2"
+      ],
+      "priority": 5,
+      "content_hash": "c72062b9d76610e75ab673900badb5b5"
+    },
+    {
+      "id": "tool_lists_logic_seasonal_workouts",
+      "title": "logic seasonal workouts",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "logic seasonal workouts"
+      ],
+      "must_terms": [],
+      "file_path": "data/tool lists/logic_seasonal_workouts.txt",
+      "chunk_ids": [
+        "logic_seasonal_workouts_chunk_0",
+        "logic_seasonal_workouts_chunk_1"
+      ],
+      "priority": 5,
+      "content_hash": "bbb536caaf4230711e0e576088598f9e"
+    },
+    {
+      "id": "tool_lists_packing_stretching_logic_module",
+      "title": "packing stretching logic module",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "packing stretching logic module"
+      ],
+      "must_terms": [],
+      "file_path": "data/tool lists/packing_stretching_logic_module.txt",
+      "chunk_ids": [
+        "packing_stretching_logic_module_chunk_0",
+        "packing_stretching_logic_module_chunk_1",
+        "packing_stretching_logic_module_chunk_2"
+      ],
+      "priority": 5,
+      "content_hash": "c72062b9d76610e75ab673900badb5b5"
+    },
+    {
+      "id": "tool_lists_seasonal_workouts",
+      "title": "seasonal workouts",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "seasonal workouts"
+      ],
+      "must_terms": [],
+      "file_path": "data/tool lists/seasonal_workouts.txt",
+      "chunk_ids": [
+        "seasonal_workouts_chunk_0",
+        "seasonal_workouts_chunk_1"
+      ],
+      "priority": 5,
+      "content_hash": "29fbff18b67319d794db6d40aa2a93c9"
+    },
+    {
+      "id": "tool_lists_updated_tool_clarification_flow",
+      "title": "updated tool clarification flow",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "updated tool clarification flow"
+      ],
+      "must_terms": [],
+      "file_path": "data/tool lists/updated_tool_clarification_flow.txt",
+      "chunk_ids": [
+        "updated_tool_clarification_flow_chunk_0"
+      ],
+      "priority": 5,
+      "content_hash": "46ec197870f5c83499a04bf2a8c7fb7a"
+    },
+    {
+      "id": "user_logic_memory_interface",
+      "title": "memory interface",
+      "category": "general",
+      "author": "Daniel Koval",
+      "canonical": false,
+      "synonyms": [
+        "memory interface"
+      ],
+      "must_terms": [],
+      "file_path": "data/user logic/memory_interface.txt",
+      "chunk_ids": [
+        "memory_interface_chunk_0",
+        "memory_interface_chunk_1",
+        "memory_interface_chunk_2",
+        "memory_interface_chunk_3"
+      ],
+      "priority": 5,
+      "content_hash": "6695a3e4ab37d9efa48567de34a9d44a"
+    }
+  ]
+}
