@@ -110,51 +110,35 @@ async function getLatestAnalyzedDive(userId: string) {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
-    // ✅ VERCEL PRODUCTION FIX: Use the actual VERCEL_URL to avoid 401 errors
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://kovaldeepai-main.vercel.app';
-
-    console.log(
-      `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
-    );
-    console.log(`📝 Query: "${query}"`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV}, VERCEL_URL: ${process.env.VERCEL_URL || 'not set'}`);
-
-    // ✅ Use pineconequery-gpt endpoint
-    const response = await fetch(`${baseUrl}/api/pinecone/pineconequery-gpt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query,
-        returnChunks: true,
-      }),
-    });
-
-    console.log(`📡 Pinecone API response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn(`⚠️ Pinecone query failed with status ${response.status}: ${errorText}`);
+    if (!PINECONE_API_KEY || !pinecone) {
+      console.log("⚠️ Pinecone not configured, skipping knowledge retrieval");
       return [];
     }
 
-    const result = await response.json();
-    console.log(
-      `✅ Pinecone returned ${result.chunks?.length || 0} knowledge chunks`,
-    );
+    // ✅ Direct Pinecone query instead of internal API call
+    const index = pinecone.index(PINECONE_INDEX || "koval-freediving");
     
-    // ✅ Log sample of Pinecone content to verify RAG is working
-    if (result.chunks && result.chunks.length > 0) {
-      console.log("🔍 Sample Pinecone content (first chunk):", 
-        result.chunks[0].substring(0, 200) + "..."
-      );
-    } else {
-      console.log("⚠️ No chunks returned from Pinecone - knowledge base may be empty or query didn't match");
-    }
+    // Create embedding for the query
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: query,
+    });
+    
+    const queryEmbedding = embeddingResponse.data[0].embedding;
+    
+    // Query Pinecone directly
+    const queryResponse = await index.query({
+      vector: queryEmbedding,
+      topK: 3,
+      includeMetadata: true,
+    });
 
-    // ✅ FIX: The endpoint returns `chunks`, not `matches`
-    return result.chunks || [];
+    const chunks = queryResponse.matches?.map(match => 
+      match.metadata?.text || match.metadata?.content || ""
+    ).filter(Boolean) || [];
+
+    console.log(`✅ Pinecone returned ${chunks.length} knowledge chunks`);
+    return chunks;
   } catch (error: any) {
     console.error("❌ Pinecone error:", error.message);
     return [];
@@ -164,30 +148,24 @@ async function queryPinecone(query: string): Promise<string[]> {
 async function queryDiveLogs(userId: string): Promise<string[]> {
   if (!userId || userId.startsWith("guest")) return [];
   try {
-    // ✅ VERCEL PRODUCTION FIX: Use the actual VERCEL_URL
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://kovaldeepai-main.vercel.app';
+    // ✅ Direct Supabase query instead of internal API call
+    const supabase = getServerClient();
+    const { data: logs, error } = await supabase
+      .from('dive_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
 
-    console.log(
-      `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-    );
-
-    const response = await fetch(
-      `${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-    );
-    if (response.ok) {
-      const data = await response.json();
-      return (
-        data.logs
-          ?.slice(0, 5)
-          .map(
-            (log: any) =>
-              `Personal dive: ${log.reachedDepth || log.targetDepth}m ${log.discipline || "freedive"} at ${log.location || "unknown"} - ${log.notes || "no notes"}`,
-          ) || []
-      );
+    if (error) {
+      console.warn("⚠️ Dive log query failed:", error);
+      return [];
     }
-    return [];
+
+    return (logs || []).map(
+      (log: any) =>
+        `Personal dive: ${log.reached_depth || log.target_depth}m ${log.discipline || "freedive"} at ${log.location || "unknown"} - ${log.notes || "no notes"}`,
+    );
   } catch (err) {
     console.warn("⚠️ Dive log query failed:", err);
     return [];
@@ -571,43 +549,26 @@ export default async function handler(
     const contextChunks = await queryPinecone(message);
     const diveContext = await queryDiveLogs(userId);
 
-    // ✅ Load analyzed dive logs from Supabase first
-    let analyzedDiveLogs: any[] = [];
+    // ✅ Load dive logs directly from Supabase
+    let allDiveLogs: any[] = [];
     try {
-      analyzedDiveLogs = await getLatestAnalyzedDive(userIdentifier);
-      console.log(`📊 Found ${analyzedDiveLogs.length} analyzed dives in Supabase`);
-    } catch (err) {
-      console.warn("⚠️ Could not load analyzed dive logs from Supabase:", err);
-    }
+      const supabase = getServerClient();
+      const { data: logs, error } = await supabase
+        .from('dive_logs')
+        .select('*')
+        .eq('user_id', userIdentifier)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-    // ✅ Load actual dive logs for detailed analysis
-    let localDiveLogs = [];
-    try {
-      // ✅ FIX: Use runtime port detection for internal API calls
-      const baseUrl = `http://localhost:3000`;
-
-      console.log(
-        `🗃️ Loading detailed dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-      );
-
-      const response = await fetch(
-        `${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-      );
-      if (response.ok) {
-        const data = await response.json();
-        localDiveLogs = data.logs || [];
-        console.log(
-          `🗃️ Loaded ${localDiveLogs.length} local dive logs for detailed analysis`,
-        );
+      if (!error && logs) {
+        allDiveLogs = logs;
+        console.log(`� Loaded ${allDiveLogs.length} dive logs from Supabase`);
       }
     } catch (err) {
-      console.warn("⚠️ Could not load detailed dive logs:", err);
+      console.warn("⚠️ Could not load dive logs from Supabase:", err);
+      // Fallback to request dive logs
+      allDiveLogs = diveLogs || [];
     }
-
-    // ✅ Prioritize analyzed dive logs from Supabase, fallback to local/request
-    const allDiveLogs = analyzedDiveLogs.length > 0 ? analyzedDiveLogs : 
-                       localDiveLogs.length > 0 ? localDiveLogs : 
-                       diveLogs || [];
 
     // ✅ Process dive logs for context (using both local and request dive logs)
     let diveLogContext = "";
@@ -663,60 +624,8 @@ ${recentDiveLogs}
       `📊 Has dive logs flag: ${!!(allDiveLogs && allDiveLogs.length > 0)}`,
     );
 
-    // ✅ NEW: Check if user is responding "yes" to audit offer
-    const lowerMessage = message.toLowerCase().trim();
-    const isAuditResponse = (lowerMessage === 'yes' || 
-                           (lowerMessage.includes('yes') && (
-                             lowerMessage.includes('audit') || 
-                             lowerMessage.includes('evaluation') ||
-                             lowerMessage.includes('journal') ||
-                             lowerMessage.includes('analyze') ||
-                             lowerMessage.includes('technical')
-                           ))) && 
-                           (allDiveLogs && allDiveLogs.length > 0);
-
-    if (isAuditResponse) {
-      console.log('🔍 User requesting dive log audit - processing...');
-      
-      try {
-        // Call the audit request handler
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}`
-          : 'https://kovaldeepai-main.vercel.app';
-        const auditResponse = await fetch(`${baseUrl}/api/chat/audit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            userId: userIdentifier,
-            message: message
-          }),
-        });
-
-        if (auditResponse.ok) {
-          const auditData = await auditResponse.json();
-          
-          if (auditData.success && auditData.auditMessage) {
-            console.log('✅ Audit completed successfully');
-            return res.status(200).json({
-              assistantMessage: { role: "assistant", content: auditData.auditMessage },
-              metadata: {
-                userLevel,
-                depthRange,
-                contextChunks: contextChunks.length,
-                diveContext: diveContext.length,
-                processingTime: Date.now() - startTime,
-                embedMode,
-                auditPerformed: true,
-              },
-            });
-          }
-        }
-        
-        console.warn('⚠️ Audit request failed, falling back to normal chat');
-      } catch (auditError) {
-        console.warn('⚠️ Audit error, falling back to normal chat:', auditError);
-      }
-    }
+    // ✅ Skip audit for now to prevent API call loops
+    // Audit functionality can be re-enabled later with direct logic
 
     const assistantReply = await askWithContext(
       [...contextChunks, ...diveContext],
