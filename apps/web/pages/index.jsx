@@ -970,6 +970,8 @@ export default function Index() {
           onRefreshDiveLogs={loadDiveLogs}
           diveLogs={diveLogs}
           loadingDiveLogs={loadingDiveLogs}
+          currentUser={user}
+          userProfile={profile}
         />
       )}
       {/* Debug: Log diveLogs state when passing to component */}

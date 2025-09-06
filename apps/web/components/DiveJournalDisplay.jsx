@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ADMIN_USER_ID } from "@/utils/adminAuth";
+import { createClient } from "@/lib/supabase";
 
 export default function DiveJournalDisplay({
   darkMode,
@@ -14,12 +14,31 @@ export default function DiveJournalDisplay({
   editingLog = null, // 🚀 NEW: Log to edit (pre-fills form)
   diveLogs = [], // 🚀 NEW: Dive logs passed from parent
   loadingDiveLogs = false, // 🚀 NEW: Loading state from parent
+  currentUser = null, // 🚀 NEW: Pass user from parent
+  userProfile = null, // 🚀 NEW: Pass profile from parent
   // onEditDiveLog is available but not currently used in this component
 }) {
   const [logs, setLogs] = useState([]);
   const [sortBy, setSortBy] = useState("date");
   const [activeTab, setActiveTab] = useState("saved-logs"); // Tab navigation: saved-logs, add-new
   const [isSaving, setIsSaving] = useState(false); // Loading state for save operation
+  
+  // 🚀 Get authenticated user data  
+  // Get current user ID - prefer authenticated user, fallback to profile
+  const getCurrentUserId = () => {
+    if (currentUser?.id) {
+      console.log(`🔐 Using authenticated user ID: ${currentUser.id}`);
+      return currentUser.id;
+    }
+    if (userProfile?.userId) {
+      console.log(`👤 Using profile user ID: ${userProfile.userId}`);  
+      return userProfile.userId;
+    }
+    console.warn("⚠️ No user ID available - using test user");
+    return "test-user-development-only";
+  };
+  
+  const currentUserId = getCurrentUserId();
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
     disciplineType: "depth",
@@ -156,8 +175,8 @@ export default function DiveJournalDisplay({
       ...newEntry,
       id: isEditMode ? editingLog.id : Date.now().toString(),
       timestamp: new Date().toISOString(),
-      nickname: ADMIN_USER_ID, // ✅ Updated: Use ADMIN_USER_ID
-      user_id: ADMIN_USER_ID, // ✅ Add user_id for API
+      nickname: userProfile?.nickname || currentUser?.email?.split('@')[0] || "User",
+      user_id: currentUserId, // ✅ Use real user ID
       imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
       imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
       // Convert form data to database schema
@@ -211,14 +230,14 @@ export default function DiveJournalDisplay({
           const formData = new FormData();
           formData.append('image', newEntry.imageFile);
           formData.append('diveLogId', newLog.id);
-          formData.append('userId', ADMIN_USER_ID); // Add userId for the upload
+          formData.append('userId', currentUserId); // ✅ Use real user ID
           
           console.log("📤 Uploading image file:", {
             name: newEntry.imageFile.name,
             size: newEntry.imageFile.size,
             type: newEntry.imageFile.type,
             diveLogId: newLog.id,
-            userId: ADMIN_USER_ID,
+            userId: currentUserId,
           });
           
           // Log FormData contents for debugging
@@ -368,7 +387,7 @@ export default function DiveJournalDisplay({
 
         // 🚀 STEP 3: Update localStorage IMMEDIATELY with deduplication
         try {
-          const storageKey = `diveLogs_${ADMIN_USER_ID}`; // ✅ Updated: Use nickname instead of userId
+          const storageKey = `diveLogs_${currentUserId}`; // ✅ Use real user ID
           console.log(
             "💾 DiveJournalDisplay: Updating localStorage with key:",
             storageKey,
@@ -432,8 +451,8 @@ export default function DiveJournalDisplay({
             "❌ DiveJournalDisplay: Failed to update localStorage:",
             storageError,
           );
-          console.log("   • Storage key attempted:", `diveLogs_${ADMIN_USER_ID}`); // ✅ Fixed: Use nickname
-          console.log("   • admin user ID:", ADMIN_USER_ID);
+          console.log("   • Storage key attempted:", `diveLogs_${currentUserId}`); // ✅ Fixed: Use real user ID
+          console.log("   • Current user ID:", currentUserId);
           console.log(
             "   • Browser storage available:",
             typeof localStorage !== "undefined",
@@ -458,8 +477,8 @@ export default function DiveJournalDisplay({
         // 🚀 ADDITIONAL: Force sidebar refresh by dispatching storage event
         try {
           window.dispatchEvent(new StorageEvent('storage', {
-            key: `diveLogs_${ADMIN_USER_ID}`, // ✅ FIXED: Use nickname consistently
-            newValue: localStorage.getItem(`diveLogs_${ADMIN_USER_ID}`), // ✅ FIXED: Use nickname consistently
+            key: `diveLogs_${currentUserId}`, // ✅ FIXED: Use real user ID consistently
+            newValue: localStorage.getItem(`diveLogs_${currentUserId}`), // ✅ FIXED: Use real user ID consistently
             storageArea: localStorage
           }));
           console.log("📡 DiveJournalDisplay: Dispatched storage event for sidebar refresh");
@@ -509,8 +528,8 @@ export default function DiveJournalDisplay({
 ${imageAnalysis ? `📸 **Vision Analysis Available:** Image analysis data included` : ''}
 
 Please provide specific coaching feedback using Daniel Koval's methodology and safety protocols.`,
-                  userId: ADMIN_USER_ID,
-                  nickname: 'User',
+                  userId: currentUserId, // ✅ Use real user ID
+                  nickname: userProfile?.nickname || currentUser?.email?.split('@')[0] || 'User',
                   embedMode: false,
                   diveLogs: [newLog],
                 }),
@@ -621,8 +640,8 @@ Please provide specific coaching feedback using Daniel Koval's methodology and s
 
   // ✅ Reworked analyze handler - fire-and-forget pattern
   const handleAnalyzeDiveLog = async (log) => {
-    if (!log || !ADMIN_USER_ID) {
-      console.warn("⚠️ Missing log or ADMIN_USER_ID for analysis", { log, ADMIN_USER_ID });
+    if (!log || !currentUserId) {
+      console.warn("⚠️ Missing log or currentUserId for analysis", { log, currentUserId });
       if (setMessages) {
         setMessages(prev => [
           ...prev,
@@ -653,8 +672,8 @@ Please provide specific coaching feedback using Daniel Koval's methodology and s
 
     // Fire the request (do not block UI). We still handle the response to post results.
     const payload = {
-      adminUserId: ADMIN_USER_ID,   // ✅ new field your API should use
-      nickname: ADMIN_USER_ID,      // ↙ keep for backward-compat if your API still reads `nickname`
+      adminUserId: currentUserId,   // ✅ Use real user ID
+      nickname: userProfile?.nickname || currentUser?.email?.split('@')[0] || "User",      // ✅ Use real nickname
       diveLogId: log.id,
       diveLogData: log,
     };
@@ -679,7 +698,7 @@ Please provide specific coaching feedback using Daniel Koval's methodology and s
           const updated = prev.map(l => (l.id === log.id ? { ...l, analysis: result.analysis, analyzed: true } : l));
           try {
             if (typeof window !== "undefined") {
-              localStorage.setItem(`diveLogs_${ADMIN_USER_ID}`, JSON.stringify(updated));
+              localStorage.setItem(`diveLogs_${currentUserId}`, JSON.stringify(updated));
             }
           } catch (storageError) {
             console.warn("⚠️ Failed to update localStorage:", storageError);
@@ -745,8 +764,8 @@ Please provide specific coaching feedback using Daniel Koval's methodology and s
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          adminUserId: ADMIN_USER_ID,
-          nickname: ADMIN_USER_ID, // backward compatibility
+          adminUserId: currentUserId,
+          nickname: userProfile?.nickname || currentUser?.email?.split('@')[0] || "User", // Use real nickname
           logId: logToDelete.id,
           source: "dive-journal-display",
         }),
@@ -768,7 +787,7 @@ Please provide specific coaching feedback using Daniel Koval's methodology and s
         // 🚀 STEP 3: Update localStorage
         try {
           localStorage.setItem(
-            `diveLogs_${ADMIN_USER_ID}`, // ✅ Fixed: Use ADMIN_USER_ID
+            `diveLogs_${currentUserId}`, // ✅ Fixed: Use real user ID
             JSON.stringify(updatedLogs),
           );
           console.log(
