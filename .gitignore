@@ -17,12 +17,15 @@ node_modules/
 # Turborepo cache
 .turbo/
 
-# 🔒 SECURE KNOWLEDGE INDEX - NEVER COMMIT TO PROTECT IP
+# 🔒 SECURE KNOWLEDGE INDEX - Exclude private but allow deployable index
 private/
 private/**
 /private/knowledge/**
 **/private/knowledge/**
-koval-knowledge-index.json
+# Allow specific knowledge index for deployment
+!apps/web/private/
+!apps/web/private/knowledge/
+!apps/web/private/knowledge/koval-knowledge-index.json
 
 # Archived legacy files (to prevent conflicts)
 
