@@ -23,7 +23,7 @@ interface IndexItem {
   content_hash: string;
 }
 
-interface KnowledgeIndex {
+export interface KnowledgeIndex {
   generated_at: string;
   version: string;
   total_items: number;
@@ -54,21 +54,32 @@ let knowledgeIndex: KnowledgeIndex | null = null;
 function loadKnowledgeIndex(): KnowledgeIndex | null {
   if (knowledgeIndex) return knowledgeIndex;
   
-  const indexPath = path.join(process.cwd(), 'knowledge', 'koval-knowledge-index.json');
+  // ✅ SECURITY FIX: Load from private knowledge folder (not public)
+  // Try multiple paths for different deployment environments
+  const possiblePaths = [
+    path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json'), // Local dev
+    path.join(process.cwd(), 'knowledge', 'koval-knowledge-index.json'), // Vercel build
+    path.join(__dirname, '..', 'knowledge', 'koval-knowledge-index.json'), // Relative to lib
+    path.join(__dirname, '..', '..', 'knowledge', 'koval-knowledge-index.json'), // Alternative relative
+  ];
   
-  try {
-    if (fs.existsSync(indexPath)) {
-      const indexData = fs.readFileSync(indexPath, 'utf-8');
-      knowledgeIndex = JSON.parse(indexData) as KnowledgeIndex;
-      console.log(`✅ Loaded knowledge index with ${knowledgeIndex?.total_items} items`);
-      return knowledgeIndex;
-    } else {
-      console.log(`⚠️ Knowledge index not found at: ${indexPath}`);
+  for (const indexPath of possiblePaths) {
+    try {
+      if (fs.existsSync(indexPath)) {
+        console.log(`✅ Found knowledge index at: ${indexPath}`);
+        const indexData = fs.readFileSync(indexPath, 'utf-8');
+        knowledgeIndex = JSON.parse(indexData) as KnowledgeIndex;
+        console.log(`✅ Loaded knowledge index with ${knowledgeIndex?.total_items} items`);
+        return knowledgeIndex;
+      } else {
+        console.log(`⚠️ Knowledge index not found at: ${indexPath}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load knowledge index from ${indexPath}:`, error);
     }
-  } catch (error) {
-    console.error('❌ Failed to load knowledge index:', error);
   }
   
+  console.error('❌ Knowledge index not found in any expected location');
   return null;
 }
 
