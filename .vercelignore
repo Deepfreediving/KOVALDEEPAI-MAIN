@@ -2,9 +2,10 @@
 # Exclude private directory but allow knowledge index
 private/
 private/**
-# Allow knowledge index specifically
-!private/knowledge/
-!private/knowledge/koval-knowledge-index.json
+# Allow knowledge index specifically in apps/web
+!apps/web/private/
+!apps/web/private/knowledge/
+!apps/web/private/knowledge/koval-knowledge-index.json
 
 # Exclude development files
 .env.local

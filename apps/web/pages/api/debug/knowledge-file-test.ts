@@ -25,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const possiblePaths = [
       path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json'),
       path.join(process.cwd(), 'apps', 'web', 'private', 'knowledge', 'koval-knowledge-index.json'),
+      path.join(__dirname, '..', 'private', 'knowledge', 'koval-knowledge-index.json'),
       path.join(__dirname, '..', '..', '..', 'private', 'knowledge', 'koval-knowledge-index.json'),
     ];
     

@@ -24,7 +24,9 @@ export async function getSecureKnowledgeIndex(): Promise<KnowledgeIndex | null> 
     
     // Try multiple possible locations in deployment - SECURE FIRST
     const possiblePaths = [
-      path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json'), // SECURE primary
+      path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json'), // SECURE primary (apps/web build context)
+      path.join(process.cwd(), 'apps', 'web', 'private', 'knowledge', 'koval-knowledge-index.json'), // Cross-directory access
+      path.join(__dirname, '..', 'private', 'knowledge', 'koval-knowledge-index.json'), // Relative to lib
       path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json'), // Legacy fallback
       path.join(__dirname, '..', '..', '..', 'private', 'knowledge', 'koval-knowledge-index.json'), // Vercel relative
     ];
