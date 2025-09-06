@@ -172,7 +172,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       if (chatProxyResult.success) {
-      if (chatProxyResult.success) {
         diagnostics.journalSave.response = {
           success: chatProxyResult.data?.success,
           hasId: !!chatProxyResult.data?.id,
