@@ -312,6 +312,22 @@ export default function DiveJournalDisplay({
         const result = await response.json();
         console.log("✅ DiveJournalDisplay: Save successful:", result);
 
+        // 🎉 Show success message immediately
+        if (setMessages) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `✅ **Dive Log Saved Successfully!**\n\nYour ${result.diveLog?.discipline || 'dive'} to ${result.diveLog?.reached_depth || result.diveLog?.target_depth}m at ${result.diveLog?.location || 'unknown location'} has been saved.\n\n🧠 Analyzing your dive for coaching insights...`,
+            },
+          ]);
+        }
+
+        // Update dive log with server response data
+        const savedDiveLog = result.diveLog || result;
+        newLog.id = savedDiveLog.id || newLog.id;
+        newLog.created_at = savedDiveLog.created_at || new Date().toISOString();
+
         // 🚀 STEP 2: Update local state with proper deduplication
         let updatedLogs;
         if (isEditMode) {
@@ -475,29 +491,46 @@ export default function DiveJournalDisplay({
                 },
               ]);
 
-              const analysisResponse = await fetch("/api/analyze/dive-log-openai", {
+              // Use the main chat endpoint for better integration
+              const analysisResponse = await fetch("/api/openai/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  adminUserId: ADMIN_USER_ID,
-                  nickname: ADMIN_USER_ID, // backward compatibility
-                  diveLogData: newLog,
+                  message: `Please analyze my recent dive and provide coaching feedback:
+                  
+📊 **Dive Details:**
+- Discipline: ${newLog.discipline}
+- Target Depth: ${newLog.targetDepth}m 
+- Reached Depth: ${newLog.reachedDepth}m
+- Total Time: ${newLog.totalDiveTime}
+- Location: ${newLog.location}
+- Notes: ${newLog.notes || 'None'}
+
+${imageAnalysis ? `📸 **Vision Analysis Available:** Image analysis data included` : ''}
+
+Please provide specific coaching feedback using Daniel Koval's methodology and safety protocols.`,
+                  userId: ADMIN_USER_ID,
+                  nickname: 'User',
+                  embedMode: false,
+                  diveLogs: [newLog],
                 }),
               });
 
               if (analysisResponse.ok) {
                 const analysisResult = await analysisResponse.json();
-                if (analysisResult.success && analysisResult.analysis) {
+                const coachingFeedback = analysisResult.assistantMessage?.content;
+                
+                if (coachingFeedback) {
                   setMessages((prev) => [
                     ...prev,
                     {
                       role: "assistant",
-                      content: `📊 **Dive Analysis Complete**\n\n${analysisResult.analysis}`,
+                      content: `📊 **KovalAI Coaching Analysis**\n\n${coachingFeedback}`,
                     },
                   ]);
                   console.log("✅ DiveJournalDisplay: Auto-analysis completed");
                 } else {
-                  console.warn("⚠️ DiveJournalDisplay: Analysis failed:", analysisResult);
+                  console.warn("⚠️ DiveJournalDisplay: No coaching feedback received");
                 }
               }
             } catch (autoAnalysisError) {
@@ -509,12 +542,20 @@ export default function DiveJournalDisplay({
         // Reset form and close popup after successful save
         resetForm();
 
-        // 🚀 Close popup journal after save
+        // 🚀 FORCE CLOSE popup journal after save (with multiple attempts)
         if (onClose && !isEmbedded) {
-          console.log(
-            "🔒 DiveJournalDisplay: Closing popup journal after successful save",
-          );
+          console.log("🔒 DiveJournalDisplay: Closing popup journal after successful save");
+          
+          // Try immediate close
           onClose();
+          
+          // Backup close attempt after delay
+          setTimeout(() => {
+            if (onClose) {
+              console.log("🔒 DiveJournalDisplay: Backup close attempt");
+              onClose();
+            }
+          }, 500);
         }
 
         // 🚀 Switch back to saved logs tab if embedded
