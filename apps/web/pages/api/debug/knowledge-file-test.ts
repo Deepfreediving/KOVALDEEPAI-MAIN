@@ -5,6 +5,17 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 
+interface KnowledgeFileResult {
+  path: string;
+  exists: boolean;
+  size?: number;
+  totalItems?: number;
+  version?: string;
+  categories?: string[];
+  sampleItems?: any[];
+  error?: string;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const fs = require('fs');
@@ -17,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       path.join(__dirname, '..', '..', '..', 'private', 'knowledge', 'koval-knowledge-index.json'),
     ];
     
-    const results = [];
+    const results: KnowledgeFileResult[] = [];
     
     for (const filePath of possiblePaths) {
       try {
