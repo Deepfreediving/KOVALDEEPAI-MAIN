@@ -1,6 +1,5 @@
 // Supabase-powered chat API endpoint - ADMIN ONLY
 import { createClient } from '@supabase/supabase-js'
-import { getServerRequestUrl, getServerRequestHeaders } from '@/lib/vercelAuth';
 
 // Use service key for admin operations (bypasses RLS)
 const supabase = createClient(
@@ -49,12 +48,18 @@ export default async function handler(req, res) {
         .order('last_used_at', { ascending: false })
         .limit(5)
 
-      // Forward to main chat API (use relative path for internal calls)
-      const chatResponse = await fetch('/api/chat/general', {
+      // Forward to main chat API using proper internal URL construction
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host || 'kovaldeepai-main.vercel.app';
+      const baseUrl = `${protocol}://${host}`;
+      
+      const chatResponse = await fetch(`${baseUrl}/api/chat/general`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'KovalAI-Internal'
+          'User-Agent': 'KovalAI-Internal',
+          'x-forwarded-for': req.headers['x-forwarded-for'] || '',
+          'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET || ''
         },
         body: JSON.stringify({
           message,

@@ -95,38 +95,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userIdFormat: testDiveLogData.userId.length > 5 ? 'VALID_LENGTH' : 'TOO_SHORT'
       };
 
-      // Test actual save
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}`
-        : process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
+      // Test actual save using internal proxy to bypass Vercel protection
+      const proxyEndpoint = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}/api/internal/proxy`
+        : `https://kovaldeepai-main.vercel.app/api/internal/proxy`;
 
-      const diveLogEndpoint = `${baseUrl}/api/supabase/dive-logs`;
-      
-      const diveLogResponse = await fetch(diveLogEndpoint, {
+      const proxyResponse = await fetch(proxyEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testDiveLogData)
+        body: JSON.stringify({
+          endpoint: '/api/supabase/dive-logs',
+          method: 'POST',
+          body: testDiveLogData
+        })
       });
 
+      const proxyResult = await proxyResponse.json();
+
       diagnostics.diveLogSave.apiCall = {
-        endpoint: diveLogEndpoint,
-        status: diveLogResponse.status,
-        ok: diveLogResponse.ok,
-        statusText: diveLogResponse.statusText,
-        contentType: diveLogResponse.headers.get('content-type')
+        endpoint: proxyResult.originalUrl || '/api/supabase/dive-logs',
+        status: proxyResult.status || proxyResponse.status,
+        ok: proxyResult.success || false,
+        statusText: proxyResult.success ? 'OK' : 'Failed',
+        contentType: proxyResponse.headers.get('content-type')
       };
 
-      if (diveLogResponse.ok) {
-        const result = await diveLogResponse.json();
+      if (proxyResult.success) {
         diagnostics.diveLogSave.response = {
-          success: result.success,
-          hasId: !!result.id,
-          message: result.message
+          success: proxyResult.data?.success,
+          hasId: !!proxyResult.data?.id,
+          message: proxyResult.data?.message
         };
       } else {
-        const errorText = await diveLogResponse.text();
+        const errorText = JSON.stringify(proxyResult.data || proxyResult);
         diagnostics.diveLogSave.error = errorText;
-        diagnostics.errors.push(`Dive log save failed: ${diveLogResponse.status} - ${errorText}`);
+        diagnostics.errors.push(`Dive log save failed: ${proxyResult.status} - ${errorText}`);
       }
 
     } catch (diveLogError: any) {
@@ -147,32 +150,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? `https://${process.env.VERCEL_URL}`
         : process.env.BASE_URL || 'https://kovaldeepai-main.vercel.app';
 
-      const chatEndpoint = `${baseUrl}/api/supabase/chat`;
+      const proxyEndpoint = `${baseUrl}/api/internal/proxy`;
       
-      const chatResponse = await fetch(chatEndpoint, {
+      const chatProxyResponse = await fetch(proxyEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testChatData)
+        body: JSON.stringify({
+          endpoint: '/api/supabase/chat',
+          method: 'POST',
+          body: testChatData
+        })
       });
 
+      const chatProxyResult = await chatProxyResponse.json();
+
       diagnostics.journalSave.apiCall = {
-        endpoint: chatEndpoint,
-        status: chatResponse.status,
-        ok: chatResponse.ok,
-        statusText: chatResponse.statusText
+        endpoint: chatProxyResult.originalUrl || '/api/supabase/chat',
+        status: chatProxyResult.status || chatProxyResponse.status,
+        ok: chatProxyResult.success || false,
+        statusText: chatProxyResult.success ? 'OK' : 'Failed'
       };
 
-      if (chatResponse.ok) {
-        const result = await chatResponse.json();
+      if (chatProxyResult.success) {
+      if (chatProxyResult.success) {
         diagnostics.journalSave.response = {
-          success: result.success,
-          hasId: !!result.id,
-          message: result.message
+          success: chatProxyResult.data?.success,
+          hasId: !!chatProxyResult.data?.id,
+          message: chatProxyResult.data?.message
         };
       } else {
-        const errorText = await chatResponse.text();
+        const errorText = JSON.stringify(chatProxyResult.data || chatProxyResult);
         diagnostics.journalSave.error = errorText;
-        diagnostics.errors.push(`Journal save failed: ${chatResponse.status} - ${errorText}`);
+        diagnostics.errors.push(`Journal save failed: ${chatProxyResult.status} - ${errorText}`);
       }
 
     } catch (journalError: any) {
