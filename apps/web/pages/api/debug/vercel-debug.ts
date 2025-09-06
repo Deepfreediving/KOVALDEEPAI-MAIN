@@ -145,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "test message",
-          userId: "debug-test-user"
+          userId: "f47ac10b-58cc-4372-a567-0e02b2c3d480" // Valid test UUID
         }),
       });
 
@@ -175,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('🔍 Testing dive log save...');
     try {
       const testDiveLog = {
-        userId: 'debug-test-user-12345',
+        userId: 'f47ac10b-58cc-4372-a567-0e02b2c3d480', // Valid test UUID
         date: new Date().toISOString().split('T')[0],
         discipline: 'CWT',
         targetDepth: 50,

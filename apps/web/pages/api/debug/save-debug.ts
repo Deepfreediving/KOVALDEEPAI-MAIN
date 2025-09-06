@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 2. DIVE LOG SAVE TEST
     try {
       const testDiveLogData = {
-        userId: 'test-user-123',
+        userId: 'f47ac10b-58cc-4372-a567-0e02b2c3d480', // Valid test UUID
         date: new Date().toISOString().split('T')[0],
         discipline: 'CWT',
         targetDepth: 45,
