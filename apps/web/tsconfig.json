@@ -79,9 +79,6 @@
     "wix-site/**",
     "Wix App/**",
     "wix page/**",
-    "wix guides/**",
-    "app_backup/**",
-    ".backup/**",
-    "**/backup/**"
+    "wix guides/**"
   ]
 }

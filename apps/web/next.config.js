@@ -5,7 +5,7 @@ const nextConfig = {
   
   // ESLint configuration
   eslint: {
-    dirs: ['pages', 'components', 'lib'],
+    dirs: ['pages', 'components', 'lib', 'app'],
     ignoreDuringBuilds: true, // Temporarily disabled for critical fixes
   },
   
@@ -55,6 +55,7 @@ const nextConfig = {
   // Experimental features
   experimental: {
     esmExternals: false,
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
 
   // Build configuration to fix critical CSS issues
@@ -95,6 +96,9 @@ const nextConfig = {
     
     return config;
   },
+  
+  // Output configuration for different deployment targets
+  output: 'standalone', // Optimized for Docker deployments
   
   // Environment variables
   env: {
