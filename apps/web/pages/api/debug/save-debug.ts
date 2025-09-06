@@ -104,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          endpoint: '/api/supabase/dive-logs',
+          endpoint: '/api/supabase/save-dive-log',
           method: 'POST',
           body: testDiveLogData
         })
@@ -113,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const proxyResult = await proxyResponse.json();
 
       diagnostics.diveLogSave.apiCall = {
-        endpoint: proxyResult.originalUrl || '/api/supabase/dive-logs',
+        endpoint: proxyResult.originalUrl || '/api/supabase/save-dive-log',
         status: proxyResult.status || proxyResponse.status,
         ok: proxyResult.success || false,
         statusText: proxyResult.success ? 'OK' : 'Failed',

@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       constructedBaseUrl: baseUrl,
       chatEndpoint: `${baseUrl}/api/chat/general`,
       pineconeEndpoint: `${baseUrl}/api/pinecone/pineconequery-gpt`,
-      diveLogSaveEndpoint: `${baseUrl}/api/supabase/dive-logs`,
+      diveLogSaveEndpoint: `${baseUrl}/api/supabase/save-dive-log`,
       imageAnalysisEndpoint: `${baseUrl}/api/analyze/analyze-dive-image`,
       journalSaveEndpoint: `${baseUrl}/api/supabase/chat`
     };
