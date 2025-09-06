@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           personal_best_depth: 80,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        } as any)
 
       if (profileError) {
         console.error('Profile creation error:', profileError)
@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       userProfiles: {
         count: profiles?.length || 0,
-        profiles: profiles?.map(p => ({
+        profiles: (profiles as any[])?.map((p: any) => ({
           user_id: p.user_id,
           full_name: p.full_name,
           email: p.email

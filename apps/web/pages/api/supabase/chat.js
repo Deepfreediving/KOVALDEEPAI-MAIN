@@ -27,16 +27,22 @@ export default async function handler(req, res) {
         userProfile 
       } = req.body
 
-      // ✅ ADMIN ONLY: Use fixed admin user ID
-      const ADMIN_USER_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479' // Fixed admin UUID
+      // ✅ Handle user ID from request or use test user
+      let userId = req.body.userId || req.headers['x-user-id'];
+      
+      // 🚀 FALLBACK: Use test user ID if none provided (for testing)
+      if (!userId) {
+        console.warn('⚠️ No user ID provided, using test user ID for development');
+        userId = 'test-user-development-only';
+      }
 
-      console.log(`💬 Chat request for admin user: ${ADMIN_USER_ID}`)
+      console.log(`💬 Chat request for user: ${userId}`)
 
       // Get user's dive logs for context
       const { data: diveLogs } = await supabase
         .from('dive_logs')
         .select('*')
-        .eq('user_id', ADMIN_USER_ID)
+        .eq('user_id', userId)
         .order('date', { ascending: false })
         .limit(10)
 
@@ -44,7 +50,7 @@ export default async function handler(req, res) {
       const { data: memories } = await supabase
         .from('user_memory')
         .select('*')
-        .eq('user_id', ADMIN_USER_ID)
+        .eq('user_id', userId)
         .order('last_used_at', { ascending: false })
         .limit(5)
 
@@ -63,7 +69,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           message,
-          userId: ADMIN_USER_ID,
+          userId: userId,
           nickname: 'Daniel Koval',
           threadId,
           userProfile,

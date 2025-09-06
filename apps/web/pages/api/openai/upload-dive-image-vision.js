@@ -34,7 +34,13 @@ export default async function handler(req, res) {
     const [fields, files] = await form.parse(req);
     const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
     const diveLogId = Array.isArray(fields.diveLogId) ? fields.diveLogId[0] : fields.diveLogId;
-    const userId = req.headers['x-user-id'] || 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    let userId = req.headers['x-user-id'] || (Array.isArray(fields.userId) ? fields.userId[0] : fields.userId);
+    
+    // 🚀 FALLBACK: Use test user ID if none provided (for testing)
+    if (!userId) {
+      console.warn('⚠️ No user ID provided, using test user ID for development');
+      userId = 'test-user-development-only';
+    }
 
     if (!imageFile) {
       return res.status(400).json({ error: 'No image file provided' });
