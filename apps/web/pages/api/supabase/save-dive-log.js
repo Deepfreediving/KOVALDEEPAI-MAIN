@@ -2,12 +2,6 @@
 import { getAdminClient } from '@/lib/supabase'
 import AssistantTrainingService from '@/lib/ai/assistantTrainingService'
 
-// Helper function to get user identifier from various sources
-function getUserIdentifier() {
-  // This is a fallback - in practice the userId should come from the request
-  return null;
-}
-
 export default async function handler(req, res) {
   // Initialize Supabase client with error handling
   const supabase = getAdminClient();
@@ -44,13 +38,15 @@ export default async function handler(req, res) {
       let diveLogData = req.body.diveLogData || req.body;
       
       // ✅ Use the actual user ID from the request - handle different field names
-      let userId = diveLogData.user_id || diveLogData.userId || getUserIdentifier() || req.body.user_id;
+      let userId = diveLogData.user_id || diveLogData.userId || req.body.user_id || req.headers['x-user-id'];
       
       // 🚀 FALLBACK: Use a test user ID if none provided (for testing)
       if (!userId) {
         console.warn('⚠️ No user ID provided, using test user ID for development');
         userId = 'test-user-development-only';
       }
+      
+      console.log(`💾 Saving dive log for user: ${userId}`)
       
       // 🔧 DEVELOPMENT FIX: Create or ensure test user exists
       if (userId === 'test-user-development-only') {
