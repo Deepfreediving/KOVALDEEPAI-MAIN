@@ -415,7 +415,7 @@ export default async function handler(
 
     // ✅ REAL USER AUTH: Get user from Supabase session
     const supabase = getServerClient();
-    let authenticatedUser = null;
+    let authenticatedUser: any = null;
     let finalUserId = userId;
     let finalProfile = profile;
 
@@ -464,29 +464,11 @@ export default async function handler(
 
     // ✅ Use authenticated user data
     const userIdentifier = finalUserId;
-    const displayNickname = finalProfile.nickname || finalProfile.full_name || 'User';
+    const finalDisplayNickname = finalProfile.nickname || finalProfile.full_name || nickname || 'User';
 
     console.log(
       `🚀 Chat request: ✅ AUTHENTICATED | userId=${finalUserId} | embedMode=${embedMode}`,
     );
-
-    // ✅ Extract consistent user display name using member ID for fast recognition
-    const getUserNickname = (profile: any, userId: string): string => {
-      // ✅ PRIORITY: Use member ID format for consistent, fast recognition
-      if (userId && !userId.startsWith("guest")) {
-        return `User-${userId}`;
-      }
-
-      // Fallback for guest users
-      if (userId?.startsWith("guest")) {
-        return "Guest User";
-      }
-
-      // Final fallback
-      return "User";
-    };
-
-    const displayNickname = nickname || getUserNickname(profile, userId);
 
     // ✅ Enhanced validation
     if (!message || typeof message !== "string" || !message.trim()) {
@@ -500,13 +482,13 @@ export default async function handler(
     }
 
     console.log(
-      `🚀 Chat request received from ${displayNickname} (userIdentifier=${userIdentifier}, embedMode=${embedMode})`,
+      `🚀 Chat request received from ${finalDisplayNickname} (userIdentifier=${userIdentifier}, embedMode=${embedMode})`,
     );
     console.log(`📊 Profile data received:`, {
-      nickname: profile?.nickname,
-      displayName: profile?.displayName,
-      userName: profile?.userName,
-      source: profile?.source,
+      nickname: finalProfile?.nickname,
+      displayName: finalProfile?.displayName,
+      userName: finalProfile?.userName,
+      source: finalProfile?.source,
     });
 
     // ✅ FIX: Type memory correctly - Disabled for admin-only mode
@@ -525,9 +507,9 @@ export default async function handler(
     );
 
     console.log(
-      `👤 Processing request for ${nickname} (level: ${userLevel}, depth range: ${depthRange})`,
+      `👤 Processing request for ${finalDisplayNickname} (level: ${userLevel}, depth range: ${depthRange})`,
     );
-    console.log(`� Merged profile data:`, {
+    console.log(`🔧 Merged profile data:`, {
       pb: mergedProfile?.pb,
       currentDepth: mergedProfile?.currentDepth,
       isInstructor: mergedProfile?.isInstructor,
