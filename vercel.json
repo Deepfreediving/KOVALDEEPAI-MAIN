@@ -8,10 +8,10 @@
     "VERCEL_FORCE_NO_BUILD_CACHE": "1"
   },
   "functions": {
-    "pages/api/**/*.js": {
+    "apps/web/pages/api/**/*.js": {
       "maxDuration": 45
     },
-    "pages/api/**/*.ts": {
+    "apps/web/pages/api/**/*.ts": {
       "maxDuration": 45
     }
   },
