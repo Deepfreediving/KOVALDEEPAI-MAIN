@@ -1,8 +1,10 @@
 # Vercel ignore file
-# Exclude private knowledge index from deployment
+# Exclude private directory but allow knowledge index
 private/
 private/**
-/private/knowledge/**
+# Allow knowledge index specifically
+!private/knowledge/
+!private/knowledge/koval-knowledge-index.json
 
 # Exclude development files
 .env.local
