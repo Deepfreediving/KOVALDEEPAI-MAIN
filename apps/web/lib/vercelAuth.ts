@@ -56,3 +56,14 @@ export function isInternalServerRequest(req: NextApiRequest): boolean {
     !userAgent // Internal fetch calls often have no user-agent
   );
 }
+
+/**
+ * Handle Vercel authentication protection for API routes
+ * This is a helper to maintain compatibility while deployment protection is disabled
+ */
+export function handleVercelAuth(req: NextApiRequest, res: NextApiResponse): void {
+  // Currently a no-op since deployment protection is disabled
+  // In the future, this could implement additional security checks
+  // when re-enabling deployment protection with automation bypass
+  return;
+}

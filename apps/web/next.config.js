@@ -58,12 +58,6 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
 
-  // Static generation configuration
-  generateStaticParams: {
-    // Disable static generation for dynamic routes
-    dynamic: true,
-  },
-
   // Build configuration to fix critical CSS issues
   compiler: {
     // Remove console logs in production
