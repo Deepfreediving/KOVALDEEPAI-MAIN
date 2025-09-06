@@ -37,48 +37,36 @@ export default async function handler(req, res) {
       // ✅ Handle both formats: direct dive log data or wrapped in diveLogData
       let diveLogData = req.body.diveLogData || req.body;
       
-      // ✅ Use the actual user ID from the request - handle different field names
+      // ✅ REAL USER AUTH: Get user from Supabase session
+      let authenticatedUser = null;
       let userId = diveLogData.user_id || diveLogData.userId || req.body.user_id || req.headers['x-user-id'];
-      
-      // 🚀 FALLBACK: Use a test user ID if none provided (for testing)
-      if (!userId) {
-        console.warn('⚠️ No user ID provided, using test user ID for development');
-        userId = 'test-user-development-only';
+
+      // Try to get user from session token in Authorization header
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+          const { data: { user }, error } = await supabase.auth.getUser(token);
+          if (user && !error) {
+            authenticatedUser = user;
+            userId = user.id;
+            console.log(`🔐 Authenticated user for dive log: ${user.email} (${user.id})`);
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to validate session token for dive log:', error);
+        }
+      }
+
+      // 🚀 DEVELOPMENT FIX: Use a test user that exists in auth.users (only if no real user found)
+      if (!userId || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        if (!authenticatedUser) {
+          // Use a development test user ID that should work
+          console.warn('⚠️ Invalid or missing user ID, using development test user');
+          userId = '00000000-0000-0000-0000-000000000001'; // Simple test UUID
+        }
       }
       
       console.log(`💾 Saving dive log for user: ${userId}`)
-      
-      // 🔧 DEVELOPMENT FIX: Create or ensure test user exists
-      if (userId === 'test-user-development-only') {
-        // Check if test user profile exists, create if not
-        const { data: existingProfile } = await supabase
-          .from('user_profiles')
-          .select('user_id')
-          .eq('user_id', userId)
-          .single();
-          
-        if (!existingProfile) {
-          console.log('📝 Creating test user profile...');
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              user_id: userId,
-              full_name: 'Test User (Development)',
-              email: 'test@kovaldeepai.com',
-              certification_level: 'Advanced',
-              years_experience: 5,
-              personal_best_depth: 40,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-            
-          if (profileError) {
-            console.error('❌ Failed to create test profile:', profileError);
-          } else {
-            console.log('✅ Test user profile created');
-          }
-        }
-      }
       
       console.log(`💾 Saving dive log for user: ${userId}`)
       console.log('📝 Dive log data received:', diveLogData)

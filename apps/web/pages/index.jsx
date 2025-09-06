@@ -291,10 +291,25 @@ export default function Index() {
           setFiles([]);
         }
 
+        // ✅ Get the user's session token for authentication
+        let authHeaders = { "Content-Type": "application/json" };
+        
+        if (user) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              authHeaders.Authorization = `Bearer ${session.access_token}`;
+              console.log("🔐 Including auth token in request");
+            }
+          } catch (error) {
+            console.warn("⚠️ Could not get session token:", error);
+          }
+        }
+
         // ✅ Use OpenAI chat API directly with correct format
         const response = await fetch(API_ROUTES.CHAT, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify(messageData),
         });
 

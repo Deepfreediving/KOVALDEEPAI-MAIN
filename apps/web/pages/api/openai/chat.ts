@@ -413,25 +413,61 @@ export default async function handler(
       diveLogs = [],
     } = req.body;
 
-    // ✅ UPDATED: Support anonymous users with Supabase migration
-    // Allow guests and anonymous users
-    if (!userId && !nickname) {
-      console.warn("🚫 REJECTED: No userId or nickname provided:", { origin: req.headers.origin });
+    // ✅ REAL USER AUTH: Get user from Supabase session
+    const supabase = getServerClient();
+    let authenticatedUser = null;
+    let finalUserId = userId;
+    let finalProfile = profile;
+
+    // Try to get user from session token in Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (user && !error) {
+          authenticatedUser = user;
+          finalUserId = user.id;
+          finalProfile = {
+            ...profile,
+            userId: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name,
+            nickname: user.user_metadata?.full_name || user.email?.split('@')[0],
+            source: 'supabase-auth'
+          };
+          console.log(`🔐 Authenticated user: ${user.email} (${user.id})`);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to validate session token:', error);
+      }
+    }
+
+    // Fallback: Use userId from request if provided
+    if (!authenticatedUser && userId) {
+      console.log(`👤 Using provided userId: ${userId}`);
+      finalUserId = userId;
+    }
+
+    // ✅ Require user identification
+    if (!finalUserId) {
+      console.warn("🚫 REJECTED: No user identification provided");
       return res.status(401).json({
-        error: "User identifier required",
-        code: "USER_IDENTIFIER_REQUIRED", 
+        error: "Authentication required",
+        code: "USER_AUTHENTICATION_REQUIRED", 
         assistantMessage: {
           role: "assistant",
-          content: "🔒 Please provide a user identifier to access the AI coaching system.",
+          content: "🔒 Please log in to access the AI coaching system.",
         },
       });
     }
 
-    // ✅ Use nickname or userId for user identification
-    const userIdentifier = nickname || userId;
+    // ✅ Use authenticated user data
+    const userIdentifier = finalUserId;
+    const displayNickname = finalProfile.nickname || finalProfile.full_name || 'User';
 
     console.log(
-      `🚀 Chat request: ✅ AUTHENTICATED | userId=${userId} | embedMode=${embedMode}`,
+      `🚀 Chat request: ✅ AUTHENTICATED | userId=${finalUserId} | embedMode=${embedMode}`,
     );
 
     // ✅ Extract consistent user display name using member ID for fast recognition
@@ -510,25 +546,23 @@ export default async function handler(
       console.warn("⚠️ Could not load analyzed dive logs from Supabase:", err);
     }
 
-    // ✅ Load actual dive logs for detailed analysis
+    // ✅ Load actual dive logs for detailed analysis  
     let localDiveLogs: any[] = [];
     try {
-      // ✅ FIX: Use runtime port detection for internal API calls
-      const baseUrl = `http://localhost:3000`;
+      // ✅ Query user's dive logs from Supabase directly
+      const supabase = getServerClient();
+      const { data: userDiveLogs, error } = await supabase
+        .from('dive_logs')
+        .select('*')
+        .eq('user_id', userIdentifier)
+        .order('date', { ascending: false })
+        .limit(10);
 
-      console.log(
-        `🗃️ Loading detailed dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-      );
-
-      const response = await fetch(
-        `${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-      );
-      if (response.ok) {
-        const data = await response.json();
-        localDiveLogs = data.logs || [];
-        console.log(
-          `🗃️ Loaded ${localDiveLogs.length} local dive logs for detailed analysis`,
-        );
+      if (userDiveLogs && !error) {
+        localDiveLogs = userDiveLogs;
+        console.log(`🗃️ Loaded ${localDiveLogs.length} dive logs from Supabase for user: ${userIdentifier}`);
+      } else if (error) {
+        console.warn("⚠️ Error loading dive logs from Supabase:", error);
       }
     } catch (err) {
       console.warn("⚠️ Could not load detailed dive logs:", err);
