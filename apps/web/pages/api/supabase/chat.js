@@ -64,8 +64,7 @@ export default async function handler(req, res) {
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'KovalAI-Internal',
-          'x-forwarded-for': req.headers['x-forwarded-for'] || '',
-          'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET || ''
+          'x-forwarded-for': req.headers['x-forwarded-for'] || ''
         },
         body: JSON.stringify({
           message,

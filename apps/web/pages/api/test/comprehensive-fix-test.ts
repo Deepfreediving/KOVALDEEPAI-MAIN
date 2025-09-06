@@ -60,10 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Test 3: Basic functionality check
     console.log('🔍 Testing basic endpoints...')
     const debugResponse = await fetch(`${baseUrl}/api/debug/index`, {
-      method: 'GET',
-      headers: {
-        'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET || ''
-      }
+      method: 'GET'
     })
 
     const debugResult = await debugResponse.text()
