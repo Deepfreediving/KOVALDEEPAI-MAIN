@@ -10,10 +10,15 @@ private/**
 dev.log
 *.log
 
-# Exclude test files  
+# Exclude test files - but allow API debug endpoints
 test-*
-**/test-*
-**/*test*
+**/test-*.js
+**/test-*.jsx
+**/test-*.ts
+**/test-*.tsx
+# Allow API debug endpoints
+!apps/web/pages/api/debug/**
+!apps/web/pages/api/test/**
 
 # Exclude archive files
 archive/
