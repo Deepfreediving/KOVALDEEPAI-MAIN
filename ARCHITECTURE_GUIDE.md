@@ -207,43 +207,115 @@ async function handleSubscriptionActivated(resource: any) {
 
 ## 🧠 AI Integration Architecture
 
-### Four-Tier AI Analysis System
+### ACTUAL DIVE LOG & IMAGE ANALYSIS PIPELINE (Current Implementation)
+
+**🚨 CRITICAL DISCONNECT IDENTIFIED**: The OpenAI Vision API pipeline for dive log and image analysis has workflow breaks that prevent proper completion.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     USER INTERFACE                          │
+│                    DIVE JOURNAL UI FLOW                     │
 ├─────────────────────────────────────────────────────────────┤
-│  Dive Upload (App)       │  Analysis Results (App)         │
-│  - Log entry form        │  - E.N.C.L.O.S.E. feedback     │
-│  - Image upload          │  - Depth-specific coaching      │
-│  - Save trigger          │  - Pattern visualization        │
-└─────────────────┬───────────────────────────────┬───────────┘
-                  │                               │
-┌─────────────────▼───────────────────────────────▼───────────┐
-│                 ANALYSIS ORCHESTRATION                      │
+│  1. User fills out dive log form (DiveJournalDisplay.jsx)   │
+│  2. User uploads dive computer image                         │
+│  3. User clicks "Save Entry" button                         │
+│  4. handleSubmit() function triggers                        │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────────────────────┐
+│                IMAGE ANALYSIS STEP                          │
 ├─────────────────────────────────────────────────────────────┤
-│  Job Queue System     │  Progress Tracking   │  Retry Logic │
-│  - analysis_jobs table│  - Real-time updates │  - Error handling│
-│  - Async processing   │  - User notifications│  - Backoff strategy│
-└─────────────────┬───────────────────────────────┬───────────┘
-                  │                               │
-┌─────────────────▼───────────────────────────────▼───────────┐
-│                    AI SERVICES LAYER                        │
+│  📸 STEP 1: Image Upload & Analysis                        │
+│  - FormData sent to /api/dive/upload-image                 │
+│  - OpenAI Vision API analyzes dive computer image          │
+│  - Extracts: depth, time, temperature, safety warnings     │
+│  - Returns: imageId, imageUrl, extractedMetrics, analysis  │
+│                                                             │
+│  🚨 POTENTIAL ISSUE: Upload endpoint may fail or timeout   │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────────────────────┐
+│                 DIVE LOG SAVE STEP                          │
 ├─────────────────────────────────────────────────────────────┤
-│   GPT Vision API       │   Pinecone Search    │   OCR Engine │
-│   - Image analysis     │   - E.N.C.L.O.S.E.   │   - Text extraction│
-│   - Metric extraction  │   - Depth mappings   │   - Data parsing│
-│   - Safety assessment  │   - Knowledge base   │   - Validation│
-└─────────────────┬───────────────────────────────┬───────────┘
-                  │                               │
-┌─────────────────▼───────────────────────────────▼───────────┐
-│                    DATA PERSISTENCE                         │
+│  💾 STEP 2: Save to Supabase                              │
+│  - POST to /api/supabase/save-dive-log                    │
+│  - Includes: dive data + image analysis results           │
+│  - Saves to dive_logs table with ai_analysis JSONB        │
+│                                                             │
+│  🚨 KNOWN ISSUE: Foreign key constraint on user_id        │
+│  🚨 ISSUE: Save confirmation dialog not closing properly   │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────────────────────┐
+│                   AI COACHING STEP                          │
 ├─────────────────────────────────────────────────────────────┤
-│   Supabase Storage    │   Analysis Results   │   AI Feedback │
-│   - Dive log images   │   - Processed metrics│   - Coaching text│
-│   - RLS protection    │   - Safety flags     │   - Action items │
+│  🧠 STEP 3: KovalAI Analysis & Coaching                   │
+│  - Should trigger automatic AI coaching on saved log       │
+│  - Should analyze dive using Daniel's methodology          │
+│  - Should provide personalized feedback                    │
+│                                                             │
+│  🚨 CRITICAL DISCONNECT: This step is NOT happening!       │
+│  - No automatic coaching triggered after save              │
+│  - No AI analysis of the dive log data                     │
+│  - No integration with chat system for feedback            │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### MISSING INTEGRATION: Dive Log → AI Coaching Pipeline
+
+**Expected Flow After Save:**
+1. ✅ Dive log saved to Supabase with image analysis
+2. ❌ **MISSING**: Auto-trigger KovalAI coaching analysis  
+3. ❌ **MISSING**: Generate coaching feedback using OpenAI + Daniel's knowledge
+4. ❌ **MISSING**: Display coaching results in chat interface
+5. ❌ **MISSING**: Save coaching session to chat history
+
+**Required Components to Complete Pipeline:**
+
+```typescript
+// POST-SAVE COACHING TRIGGER (Missing Implementation)
+async function triggerPostSaveCoaching(diveLogId: string, userId: string) {
+  // 1. Load saved dive log with image analysis
+  const diveLog = await loadDiveLogWithAnalysis(diveLogId);
+  
+  // 2. Generate coaching prompt with dive data
+  const coachingPrompt = generateDiveCoachingPrompt(diveLog);
+  
+  // 3. Query Daniel's knowledge base for relevant guidance
+  const knowledgeContext = await queryDanielsKnowledge(diveLog);
+  
+  // 4. Send to OpenAI for coaching analysis
+  const coachingFeedback = await generateCoachingFeedback(
+    coachingPrompt, 
+    knowledgeContext, 
+    diveLog
+  );
+  
+  // 5. Save coaching session to chat history
+  await saveChatMessage(userId, coachingFeedback, 'dive_log_analysis');
+  
+  // 6. Notify UI to display coaching results
+  await notifyCoachingComplete(diveLogId, coachingFeedback);
+}
+
+// INTEGRATION POINTS NEEDED:
+// - DiveJournalDisplay.jsx: Call triggerPostSaveCoaching() after successful save
+// - Chat interface: Display coaching results automatically
+// - Supabase: Link coaching sessions to dive logs
+```
+
+### CURRENT ENDPOINTS STATUS:
+
+**✅ WORKING:**
+- `/api/dive/upload-image` - OpenAI Vision analysis of dive computer images
+- `/api/supabase/save-dive-log` - Saves dive logs to database (with foreign key fix needed)
+- `/api/openai/chat` - General chat with KovalAI
+
+**❌ MISSING/BROKEN:**
+- Post-save coaching trigger
+- Dive log → chat integration  
+- Automatic coaching analysis
+- Save confirmation UI feedback
+- User authentication integration
 
 ### Pinecone Knowledge Base Architecture
 

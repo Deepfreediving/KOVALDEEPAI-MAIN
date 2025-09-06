@@ -60,13 +60,39 @@ export default async function handler(req, res) {
       // 🚀 DEVELOPMENT FIX: Use a test user that exists in auth.users (only if no real user found)
       if (!userId || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         if (!authenticatedUser) {
-          // Use a development test user ID that should work
-          console.warn('⚠️ Invalid or missing user ID, using development test user');
-          userId = '00000000-0000-0000-0000-000000000001'; // Simple test UUID
+          // Create a deterministic UUID based on a simple string for testing
+          const crypto = require('crypto');
+          const testString = 'koval-test-user-development';
+          const hash = crypto.createHash('md5').update(testString).digest('hex');
+          userId = [
+            hash.substr(0, 8),
+            hash.substr(8, 4),
+            '4' + hash.substr(12, 3), // Version 4 UUID
+            hash.substr(16, 4),
+            hash.substr(20, 12)
+          ].join('-');
+          console.warn(`⚠️ Using development test user UUID: ${userId}`);
+          
+          // Try to create this user in auth.users if it doesn't exist
+          try {
+            const { data: existingUser, error: checkError } = await supabase.auth.admin.getUserById(userId);
+            if (checkError && checkError.message?.includes('User not found')) {
+              const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+                id: userId,
+                email: 'test@kovaldeepai.dev',
+                password: 'TempPassword123!',
+                email_confirm: true,
+                user_metadata: { full_name: 'Development Test User' }
+              });
+              if (!createError) {
+                console.log('✅ Created development auth user');
+              }
+            }
+          } catch (err) {
+            console.warn('⚠️ Could not create auth user, continuing anyway:', err);
+          }
         }
       }
-      
-      console.log(`💾 Saving dive log for user: ${userId}`)
       
       console.log(`💾 Saving dive log for user: ${userId}`)
       console.log('📝 Dive log data received:', diveLogData)
