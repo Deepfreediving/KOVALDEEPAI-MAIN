@@ -4,6 +4,9 @@
   "installCommand": "npm install",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)wix-site/**' ':(exclude)Wix App/**' ':(exclude)wix page/**' ':(exclude)wix guides/**'",
   "outputDirectory": "apps/web/.next",
+  "env": {
+    "VERCEL_FORCE_NO_BUILD_CACHE": "1"
+  },
   "functions": {
     "apps/web/pages/api/**/*.js": {
       "maxDuration": 45
@@ -31,6 +34,10 @@
         {
           "key": "Cache-Control",
           "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
         }
       ]
     }

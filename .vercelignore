@@ -1,0 +1,32 @@
+# Vercel ignore file
+# Exclude private knowledge index from deployment
+private/
+private/**
+/private/knowledge/**
+
+# Exclude development files
+.env.local
+.env.development
+dev.log
+*.log
+
+# Exclude test files  
+test-*
+**/test-*
+**/*test*
+
+# Exclude archive files
+archive/
+archive/**
+temp_backup/
+temp_backup/**
+
+# Exclude large data files that aren't needed in deployment
+data/
+analyze/nodejs.html
+
+# Exclude Wix files
+wix-site/**
+Wix App/**
+wix page/**
+wix guides/**

@@ -1,7 +1,11 @@
 // Simple dive logs retrieval API
 import { getAdminClient } from '@/lib/supabase';
+import { handleVercelAuth } from '@/lib/vercelAuth';
 
 export default async function handler(req, res) {
+  // Handle Vercel authentication protection for API routes
+  handleVercelAuth(req, res);
+  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

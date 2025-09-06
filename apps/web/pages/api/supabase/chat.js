@@ -1,5 +1,6 @@
 // Supabase-powered chat API endpoint - ADMIN ONLY
 import { createClient } from '@supabase/supabase-js'
+import { getServerRequestUrl, getServerRequestHeaders } from '@/lib/vercelAuth';
 
 // Use service key for admin operations (bypasses RLS)
 const supabase = createClient(
@@ -8,6 +9,15 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
+  // Set proper CORS headers for API routes
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   try {
     const { method } = req
 
@@ -39,11 +49,12 @@ export default async function handler(req, res) {
         .order('last_used_at', { ascending: false })
         .limit(5)
 
-      // Forward to OpenAI chat with Supabase context
-      const chatResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/openai/chat`, {
+      // Forward to main chat API (use relative path for internal calls)
+      const chatResponse = await fetch('/api/chat/general', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'User-Agent': 'KovalAI-Internal'
         },
         body: JSON.stringify({
           message,
