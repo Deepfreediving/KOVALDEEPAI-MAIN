@@ -202,7 +202,7 @@ async function askWithContext(
   
   // ✅ ENHANCED: Never provide generic advice - always use Daniel's canonical content
   const context = contextChunks.length
-    ? contextChunks.slice(0, 3).join("\n\n")
+    ? `🔥 CRITICAL: Use ONLY the following canonical Daniel Koval content - DO NOT improvise or add generic advice:\n\n${contextChunks.slice(0, 3).join("\n\n")}\n\n⚠️ MANDATORY: If this content contains "Bot Must Say" statements, you MUST include them verbatim in your response.`
     : "CRITICAL: No specific knowledge found in Daniel Koval's training materials. You must inform the user that you don't have specific guidance on this topic from Daniel's materials and cannot provide generic freediving advice.";
 
   // ✅ Enhanced context with dive log data
