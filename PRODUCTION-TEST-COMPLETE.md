@@ -9,10 +9,13 @@
 ### ✅ API ENDPOINTS VERIFIED
 
 #### 1. Health Check Endpoint
+
 ```bash
 curl -X GET "https://kovaldeepai-main-nie6g6tsp-kovaldeepais-projects.vercel.app/api/health"
 ```
+
 **Result**: ✅ PASSED
+
 ```json
 {
   "status": "healthy",
@@ -27,6 +30,7 @@ curl -X GET "https://kovaldeepai-main-nie6g6tsp-kovaldeepais-projects.vercel.app
 ```
 
 #### 2. Dive Log Save Endpoint
+
 ```bash
 curl -X POST ".../api/supabase/save-dive-log" \
   -H "Content-Type: application/json" \
@@ -40,7 +44,9 @@ curl -X POST ".../api/supabase/save-dive-log" \
     "notes": "Good dive, felt comfortable. Slight current at depth."
   }'
 ```
+
 **Result**: ✅ PASSED
+
 ```json
 {
   "success": true,
@@ -68,6 +74,7 @@ curl -X POST ".../api/supabase/save-dive-log" \
 ```
 
 #### 3. AI Coaching Chat Endpoint
+
 ```bash
 curl -X POST ".../api/openai/chat" \
   -H "Content-Type: application/json" \
@@ -76,7 +83,9 @@ curl -X POST ".../api/openai/chat" \
     "userId": "real-test-user-123"
   }'
 ```
+
 **Result**: ✅ PASSED
+
 ```json
 {
   "assistantMessage": {

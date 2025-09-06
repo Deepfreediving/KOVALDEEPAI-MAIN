@@ -37,12 +37,13 @@ Create a **subscription-based AI-powered freediving training assistant** that pr
 - **✅ Real User Auth**: System works with authenticated users (deterministic UUID handling)
 
 **Test Results Confirmed**:
+
 ```bash
 # API Health Check - ✅ PASSED
 curl /api/health
 {"status":"healthy","latency":574ms","auth":true,"database":true,"storage":true}
 
-# Dive Log Save - ✅ PASSED 
+# Dive Log Save - ✅ PASSED
 curl /api/supabase/save-dive-log
 {"success":true,"diveLog":{...},"message":"Dive log saved successfully"}
 
