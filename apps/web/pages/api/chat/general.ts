@@ -133,9 +133,10 @@ async function queryPinecone(query: string): Promise<string[]> {
       includeMetadata: true,
     });
 
-    const chunks = queryResponse.matches?.map(match => 
-      match.metadata?.text || match.metadata?.content || ""
-    ).filter(Boolean) || [];
+    const chunks = queryResponse.matches?.map(match => {
+      const text = match.metadata?.text || match.metadata?.content || "";
+      return typeof text === 'string' ? text : String(text);
+    }).filter(Boolean) || [];
 
     console.log(`✅ Pinecone returned ${chunks.length} knowledge chunks`);
     return chunks;
