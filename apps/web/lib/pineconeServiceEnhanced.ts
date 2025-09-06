@@ -54,13 +54,13 @@ let knowledgeIndex: KnowledgeIndex | null = null;
 function loadKnowledgeIndex(): KnowledgeIndex | null {
   if (knowledgeIndex) return knowledgeIndex;
   
-  // ✅ SECURITY FIX: Load from private knowledge folder (not public)
+  // ✅ SECURITY FIX: Load from SECURE private knowledge folder (not accessible via web)
   // Try multiple paths for different deployment environments
   const possiblePaths = [
-    path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json'), // Local dev
-    path.join(process.cwd(), 'knowledge', 'koval-knowledge-index.json'), // Vercel build
-    path.join(__dirname, '..', 'knowledge', 'koval-knowledge-index.json'), // Relative to lib
-    path.join(__dirname, '..', '..', 'knowledge', 'koval-knowledge-index.json'), // Alternative relative
+    path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json'), // SECURE primary location
+    path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json'), // Legacy fallback
+    path.join(__dirname, '..', '..', '..', 'private', 'knowledge', 'koval-knowledge-index.json'), // Vercel build relative
+    path.join(__dirname, '..', 'knowledge', 'koval-knowledge-index.json'), // Legacy relative
   ];
   
   for (const indexPath of possiblePaths) {

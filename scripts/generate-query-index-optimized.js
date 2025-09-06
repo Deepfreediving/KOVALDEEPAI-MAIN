@@ -176,9 +176,9 @@ async function generateKnowledgeIndex() {
   console.log('====================================================');
   
   const dataDir = path.join(process.cwd(), 'data');
-  const outputPath = path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json');
+  const outputPath = path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json');
   
-  // Ensure output directory exists
+  // Ensure SECURE output directory exists
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   
   const items = [];

@@ -4,6 +4,37 @@
   "installCommand": "npm install",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)wix-site/**' ':(exclude)Wix App/**' ':(exclude)wix page/**' ':(exclude)wix guides/**'",
   "outputDirectory": "apps/web/.next",
+  "functions": {
+    "apps/web/pages/api/**/*.js": {
+      "maxDuration": 45
+    },
+    "apps/web/pages/api/**/*.ts": {
+      "maxDuration": 45
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, x-vercel-protection-bypass"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

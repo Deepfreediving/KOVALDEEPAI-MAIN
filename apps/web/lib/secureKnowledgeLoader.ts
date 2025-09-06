@@ -22,11 +22,11 @@ export async function getSecureKnowledgeIndex(): Promise<KnowledgeIndex | null> 
     const fs = require('fs');
     const path = require('path');
     
-    // Try multiple possible locations in deployment
+    // Try multiple possible locations in deployment - SECURE FIRST
     const possiblePaths = [
-      path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json'),
-      path.join(process.cwd(), 'knowledge', 'koval-knowledge-index.json'),
-      path.join(__dirname, '..', 'knowledge', 'koval-knowledge-index.json'),
+      path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json'), // SECURE primary
+      path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json'), // Legacy fallback
+      path.join(__dirname, '..', '..', '..', 'private', 'knowledge', 'koval-knowledge-index.json'), // Vercel relative
     ];
     
     for (const indexPath of possiblePaths) {

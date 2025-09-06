@@ -219,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const path = require('path');
       
       // Check if knowledge index exists
-      const knowledgeIndexPath = path.join(process.cwd(), 'apps', 'web', 'knowledge', 'koval-knowledge-index.json');
+      const knowledgeIndexPath = path.join(process.cwd(), 'private', 'knowledge', 'koval-knowledge-index.json');
       const indexExists = fs.existsSync(knowledgeIndexPath);
       
       diagnostics.filesystem = {
