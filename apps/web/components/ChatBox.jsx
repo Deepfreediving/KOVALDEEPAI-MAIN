@@ -163,7 +163,7 @@ export default function ChatBox({
           console.warn(`⚠️ Supabase chat failed (${res.status}), trying OpenAI direct...`);
 
           // Fallback to direct OpenAI chat API
-          const fallbackRes = await fetch("/api/chat/general", {
+          const fallbackRes = await fetch("/api/openai/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

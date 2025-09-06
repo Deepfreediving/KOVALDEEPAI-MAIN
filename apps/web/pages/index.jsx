@@ -9,9 +9,9 @@ import { useAuth } from "@/src/providers/AuthProvider";
 
 const API_ROUTES = {
   CREATE_THREAD: "/api/openai/create-thread",
-  // ✅ Use OpenAI chat directly since Supabase chat is admin-only
-  CHAT: "/api/chat/general",
-  CHAT_FALLBACK: "/api/chat/general",
+  // ✅ Use working OpenAI chat endpoint instead of timeout-prone general endpoint
+  CHAT: "/api/openai/chat",
+  CHAT_FALLBACK: "/api/openai/chat",
   GET_DIVE_LOGS: "/api/supabase/dive-logs",
   GET_DIVE_LOGS_FALLBACK: "/api/supabase/dive-logs",
   GET_USER_PROFILE: "/api/supabase/user-profile",

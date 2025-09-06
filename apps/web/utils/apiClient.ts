@@ -60,7 +60,7 @@ export async function testOpenAI(): Promise<{
   message: string;
 }> {
   try {
-    const result = await sendRequest("/api/chat/general", {
+    const result = await sendRequest("/api/openai/chat", {
       message: "ping",
       userId: "test-user",
       profile: { nickname: "Test User" },
@@ -168,7 +168,7 @@ export async function sendChatMessage(
   userId: string = "guest",
   profile: any = {},
 ): Promise<ApiResponse> {
-  return await sendRequest("/api/chat/general", {
+  return await sendRequest("/api/openai/chat", {
     message,
     userId,
     profile,
