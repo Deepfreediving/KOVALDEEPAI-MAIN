@@ -36,11 +36,7 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api|_next|favicon.ico|koval-logo.png|apple-touch-icon.png|daniel-avatar.png).*)",
       "destination": "/"
     }
   ]
