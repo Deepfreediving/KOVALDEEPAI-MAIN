@@ -177,7 +177,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const testDiveLog = {
         userId: 'debug-test-user-12345',
         date: new Date().toISOString().split('T')[0],
-        discipline: 'Constant Weight',
+        discipline: 'CWT',
         targetDepth: 50,
         reachedDepth: 48,
         location: 'Test Location',

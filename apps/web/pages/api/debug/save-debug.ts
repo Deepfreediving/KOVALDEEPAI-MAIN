@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const testDiveLogData = {
         userId: 'test-user-123',
         date: new Date().toISOString().split('T')[0],
-        discipline: 'Constant Weight',
+        discipline: 'CWT',
         targetDepth: 45,
         reachedDepth: 42,
         diveTime: 120,
