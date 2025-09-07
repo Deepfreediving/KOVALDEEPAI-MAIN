@@ -77,7 +77,7 @@ export default function SavedDiveLogsViewer({
         ]);
       }
 
-      const response = await fetch("/api/analyze/single-dive-log", {
+      const response = await fetch("/api/analyze/dive-log-openai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -131,14 +131,13 @@ export default function SavedDiveLogsViewer({
     }
 
     try {
-      // Delete from API/Wix
-      const response = await fetch("/api/analyze/delete-dive-log", {
+      // Delete from API/Supabase
+      const response = await fetch("/api/supabase/delete-dive-log", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId,
           logId: logToDelete.id,
-          source: "saved-dive-logs-viewer",
+          userId: userId,
         }),
       });
 
