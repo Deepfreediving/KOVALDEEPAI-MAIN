@@ -86,9 +86,9 @@ export default async function handler(req, res) {
           
           // Try to create this user in auth.users if it doesn't exist
           try {
-            const { data: existingUser, error: checkError } = await supabase.auth.admin.getUserById(userId);
+            const { error: checkError } = await supabase.auth.admin.getUserById(userId);
             if (checkError && checkError.message?.includes('User not found')) {
-              const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+              const { error: createError } = await supabase.auth.admin.createUser({
                 id: userId,
                 email: 'test@kovaldeepai.dev',
                 password: 'TempPassword123!',

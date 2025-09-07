@@ -42,7 +42,7 @@ export default function Index() {
       console.log("❌ No authenticated user, redirecting to login");
       router.push('/auth/login');
     }
-  }, [authLoading, user, isClient, router?.isReady]);
+  }, [authLoading, user, isClient, router]);
 
   // ✅ INITIAL DATA: Use authenticated user data
   const initialData = useMemo(() => {

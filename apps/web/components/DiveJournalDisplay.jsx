@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase";
 
 export default function DiveJournalDisplay({
   darkMode,
@@ -15,8 +14,7 @@ export default function DiveJournalDisplay({
   diveLogs = [], // 🚀 NEW: Dive logs passed from parent
   loadingDiveLogs = false, // 🚀 NEW: Loading state from parent
   currentUser = null, // 🚀 NEW: Pass user from parent
-  userProfile = null, // 🚀 NEW: Pass profile from parent
-  // onEditDiveLog is available but not currently used in this component
+  userProfile = null // 🚀 NEW: Pass profile from parent
 }) {
   const [logs, setLogs] = useState([]);
   const [sortBy, setSortBy] = useState("date");
