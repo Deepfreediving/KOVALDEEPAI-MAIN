@@ -26,32 +26,19 @@ export default function DiveJournalDisplay({
   // 🚀 Get authenticated user data  
   // Get current user ID - prefer authenticated user, fallback to profile
   const getCurrentUserId = () => {
-    console.log('🔍 Debug getCurrentUserId:');
-    console.log('  currentUser:', currentUser);
-    console.log('  currentUser?.id:', currentUser?.id);
-    console.log('  userProfile:', userProfile);
-    console.log('  userProfile?.userId:', userProfile?.userId);
-    
     if (currentUser?.id) {
       // Validate that it's a UUID, not a timestamp
       const userId = currentUser.id;
       if (typeof userId === 'string' && userId.length > 20 && userId.includes('-')) {
-        console.log(`🔐 Using authenticated user ID: ${userId}`);
         return userId;
-      } else {
-        console.warn(`⚠️ currentUser.id looks like a timestamp: ${userId}`);
       }
     }
     if (userProfile?.userId) {
       const userId = userProfile.userId;
       if (typeof userId === 'string' && userId.length > 20 && userId.includes('-')) {
-        console.log(`👤 Using profile user ID: ${userId}`);  
         return userId;
-      } else {
-        console.warn(`⚠️ userProfile.userId looks like a timestamp: ${userId}`);
       }
     }
-    console.warn("⚠️ No valid UUID found - generating one");
     return "35b522f1-27d2-49de-ed2b-0d257d33ad7d"; // Use our test UUID
   };
   
@@ -117,8 +104,6 @@ export default function DiveJournalDisplay({
 
   // Update logs when parent passes new data
   useEffect(() => {
-    console.log("🔄 DiveJournalDisplay: Received dive logs from parent:", diveLogs.length);
-    console.log("🔍 DiveJournalDisplay: diveLogs data:", diveLogs);
     setLogs(diveLogs);
   }, [diveLogs]);
 

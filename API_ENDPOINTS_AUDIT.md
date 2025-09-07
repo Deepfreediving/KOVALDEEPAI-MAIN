@@ -233,18 +233,27 @@ This audit reveals **EXTENSIVE DUPLICATION** across API endpoints. We have multi
 
 ## 🎯 CURRENT STATUS - CRITICAL ISSUES FOUND! �
 
-### ❌ NEW ISSUES DISCOVERED
+### ❌ REMAINING ISSUES
 
-- **🔄 INFINITE RE-RENDER LOOP** - "Maximum update depth exceeded" error
-- **🆔 INVALID UUID ERROR** - Frontend passing timestamp (1757204639321) instead of proper UUID
+- **🆔 INVALID UUID ERROR** - Frontend still passing timestamp (1757204639321) instead of proper UUID
 - **🔐 AUTHENTICATION ISSUES** - Supabase refresh token failing (400 error)
-- **🔥 500 ERRORS RETURNED** - Both upload-image and save-dive-log failing again
+- **� FILE UPLOAD ERRORS** - upload-image endpoint returning 405 Method Not Allowed for multipart uploads
+- **�🔥 500 ERRORS** - save-dive-log working in direct tests but failing in browser
 
-### 🔧 IMMEDIATE FIXES APPLIED
+### 🔧 ROOT CAUSE ANALYSIS
 
-- ✅ **Fixed infinite loop** - Removed problematic useEffect dependencies
-- ✅ **Added debugging** - Enhanced logging to identify UUID source issue
-- ✅ **Created debug endpoint** - `/api/debug/user-data` to inspect user objects
+**API Tests vs Browser Behavior:**
+
+- Direct curl tests show both endpoints working correctly
+- Browser errors suggest frontend-backend communication mismatch
+- upload-image: Frontend sending FormData but endpoint might not processing multipart correctly
+- save-dive-log: Working in curl but 500 errors in browser suggest authentication/UUID issues
+
+### ✅ FIXES APPLIED
+
+- **🔄 INFINITE RE-RENDER FIXED** - Removed problematic console.log statements from `getCurrentUserId()` and `useEffect`
+- **🧠 SIMPLIFIED LOGIC** - Fixed useEffect dependencies to prevent infinite loops
+- **🔍 DEBUGGING ENHANCED** - Maintained critical debugging without performance impact
 
 ### � ROOT CAUSE ANALYSIS
 
