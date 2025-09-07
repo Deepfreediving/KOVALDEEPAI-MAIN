@@ -1,5 +1,46 @@
 # 🏗️ Koval Deep AI - Architectural Consistency Guide
 
+## 🚨 CRITICAL DISCOVERY - MASSIVE API DUPLICATION ISSUE
+
+**DATE**: September 6, 2025  
+**STATUS**: 🔥 **URGENT CLEANUP REQUIRED**
+
+### 🚨 ROOT CAUSE OF ALL BUGS IDENTIFIED
+
+After comprehensive audit of all 133 API endpoints, we discovered **MASSIVE DUPLICATION** causing all our issues:
+
+- **78+ duplicate/unnecessary endpoints** competing for same functionality
+- **6+ different image upload implementations** causing 405 errors
+- **4+ different dive log save implementations** causing 500 errors
+- **3+ different chat implementations** causing confusion
+- **40+ debug/test endpoints** cluttering the system
+
+**This explains why**:
+
+- ✅ Individual API tests work (they hit specific endpoints)
+- ❌ Frontend fails (it hits competing/broken duplicates)
+- ❌ Fixes don't stick (multiple endpoints override each other)
+- ❌ 404/405/500 errors persist (method conflicts between duplicates)
+
+### 📋 IMMEDIATE ACTION REQUIRED
+
+**Before any further development**:
+
+1. **STOP** fixing individual endpoints
+2. **DELETE** 60-70% of API endpoints (see `API_ENDPOINTS_AUDIT.md`)
+3. **STANDARDIZE** on core 15 endpoints only
+4. **TEST** simplified architecture
+
+**Core endpoints to keep**:
+
+- `/api/openai/chat.ts` (main chat)
+- `/api/supabase/save-dive-log.js` (save logs)
+- `/api/supabase/dive-logs.js` (get logs)
+- `/api/dive/upload-image.js` (image upload)
+- `/api/analyze/dive-log-openai.js` (analysis)
+
+---
+
 ## 🎯 Project Vision & End Goals
 
 ### Primary Mission

@@ -212,10 +212,16 @@ export default async function handler(req, res) {
     console.log('📋 Content-Type:', contentType);
     
     if (contentType.includes('application/json')) {
-      // 📱 Handle base64 upload (mobile/web apps)
+      // 📱 Handle base64 upload (mobile/web apps) - Parse JSON manually since bodyParser is disabled
       console.log('📱 Processing JSON/base64 upload...');
       
-      const { imageData, userId: bodyUserId, filename, diveLogId: bodyDiveLogId } = req.body;
+      let body = '';
+      for await (const chunk of req) {
+        body += chunk;
+      }
+      const parsedBody = JSON.parse(body);
+      
+      const { imageData, userId: bodyUserId, filename, diveLogId: bodyDiveLogId } = parsedBody;
       
       if (!imageData) {
         return res.status(400).json({ error: 'imageData required for base64 upload' });
@@ -467,3 +473,11 @@ export default async function handler(req, res) {
     });
   }
 }
+
+// ✅ CRITICAL: Configure Next.js to handle multipart uploads and large files
+export const config = {
+  api: {
+    bodyParser: false, // Disable default body parser for multipart data
+    sizeLimit: '10mb', // Allow up to 10MB uploads
+  },
+};

@@ -179,6 +179,8 @@ export default function DiveJournalDisplay({
       user_id: currentUserId, // ✅ Use real user ID
       imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
       imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
+      // ✅ CRITICAL: Ensure date is always present
+      date: newEntry.date || new Date().toISOString().split("T")[0],
       // Convert form data to database schema
       target_depth: toNum(newEntry.targetDepth),
       reached_depth: toNum(newEntry.reachedDepth),
