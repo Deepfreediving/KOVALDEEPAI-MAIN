@@ -231,37 +231,42 @@ This audit reveals **EXTENSIVE DUPLICATION** across API endpoints. We have multi
 3. ✅ **COMPLETED** - All core endpoints tested and working
 4. ✅ **COMPLETED** - Fixed frontend 404 errors and updated API calls
 
-## 🎯 CURRENT STATUS - READY FOR PRODUCTION! 🚀
+## 🎯 CURRENT STATUS - CRITICAL ISSUES FOUND! �
 
-### ✅ WORKING ENDPOINTS
+### ❌ NEW ISSUES DISCOVERED
 
-- `/api/supabase/save-dive-log.js` - Saves dive logs with decimal depth support
-- `/api/dive/upload-image.js` - Handles image upload and OpenAI Vision analysis
-- `/api/openai/chat.ts` - Main chat endpoint with coaching feedback
-- `/api/analyze/dive-log-openai.js` - Dive log analysis
-- `/api/supabase/delete-dive-log.js` - Delete dive logs
+- **🔄 INFINITE RE-RENDER LOOP** - "Maximum update depth exceeded" error
+- **🆔 INVALID UUID ERROR** - Frontend passing timestamp (1757204639321) instead of proper UUID
+- **🔐 AUTHENTICATION ISSUES** - Supabase refresh token failing (400 error)
+- **🔥 500 ERRORS RETURNED** - Both upload-image and save-dive-log failing again
 
-### 🔧 FRONTEND FIXES COMPLETED
+### 🔧 IMMEDIATE FIXES APPLIED
 
-- ✅ Fixed SavedDiveLogsViewer.jsx to use correct endpoints
-- ✅ Updated API calls to use working endpoints
-- ✅ Eliminated major 404 errors from deleted endpoints
+- ✅ **Fixed infinite loop** - Removed problematic useEffect dependencies
+- ✅ **Added debugging** - Enhanced logging to identify UUID source issue
+- ✅ **Created debug endpoint** - `/api/debug/user-data` to inspect user objects
 
-### 🧪 TESTING COMPLETE
+### � ROOT CAUSE ANALYSIS
 
-✅ **All core APIs tested and working**
-✅ **Database supports decimal depths (9.5m)**  
-✅ **Frontend updated to use correct endpoints**
-✅ **No more 404/405/500 errors on core functionality**
+The app is passing a **timestamp instead of UUID** as userId:
 
-### 🎮 READY FOR USER TESTING
+- Error: `"invalid input syntax for type uuid: \"1757204639321\""`
+- This suggests `currentUser.id` or `userProfile.userId` contains a timestamp
+- Need to investigate authentication flow and user object structure
 
-**The complete dive journal workflow now works:**
+### 🧪 DEBUGGING IN PROGRESS
 
-1. **Save dive log** → Supabase with decimal depths ✅
-2. **Upload image** → OpenAI Vision analysis ✅
-3. **Get coaching** → AI feedback and recommendations ✅
+- Enhanced `getCurrentUserId()` function with detailed logging
+- Added debug endpoint to inspect user data structure
+- Fixed React re-render loop that was masking other issues
 
-**🌐 Test at: http://localhost:3000**
+### 🎮 NEXT STEPS
+
+1. **Check browser console** for getCurrentUserId debug output
+2. **Verify user authentication** - ensure proper UUID format
+3. **Test debug endpoint** with real user data
+4. **Fix UUID generation** in authentication flow if needed
+
+**🌐 Test at: http://localhost:3000** (should now load without infinite loop)
 
 This explains why your dive log saves work in tests but fail in the app - **multiple competing endpoints were causing conflicts!** ✅ **SOLVED**

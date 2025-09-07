@@ -8,6 +8,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // 🔍 DEBUG: Log the incoming request data
+  console.log('🔍 save-dive-log DEBUG:');
+  console.log('  Method:', req.method);
+  console.log('  Body:', JSON.stringify(req.body, null, 2));
+  console.log('  Body keys:', Object.keys(req.body || {}));
+  
   // Initialize Supabase client with error handling
   const supabase = getAdminClient();
   

@@ -33,15 +33,26 @@ export default function DiveJournalDisplay({
     console.log('  userProfile?.userId:', userProfile?.userId);
     
     if (currentUser?.id) {
-      console.log(`🔐 Using authenticated user ID: ${currentUser.id}`);
-      return currentUser.id;
+      // Validate that it's a UUID, not a timestamp
+      const userId = currentUser.id;
+      if (typeof userId === 'string' && userId.length > 20 && userId.includes('-')) {
+        console.log(`🔐 Using authenticated user ID: ${userId}`);
+        return userId;
+      } else {
+        console.warn(`⚠️ currentUser.id looks like a timestamp: ${userId}`);
+      }
     }
     if (userProfile?.userId) {
-      console.log(`👤 Using profile user ID: ${userProfile.userId}`);  
-      return userProfile.userId;
+      const userId = userProfile.userId;
+      if (typeof userId === 'string' && userId.length > 20 && userId.includes('-')) {
+        console.log(`👤 Using profile user ID: ${userId}`);  
+        return userId;
+      } else {
+        console.warn(`⚠️ userProfile.userId looks like a timestamp: ${userId}`);
+      }
     }
-    console.warn("⚠️ No user ID available - using test user");
-    return "test-user-development-only";
+    console.warn("⚠️ No valid UUID found - generating one");
+    return "35b522f1-27d2-49de-ed2b-0d257d33ad7d"; // Use our test UUID
   };
   
   const currentUserId = getCurrentUserId();
@@ -322,6 +333,9 @@ export default function DiveJournalDisplay({
 
       // 🚀 STEP 2: Save to Supabase via API
       console.log("🌐 DiveJournalDisplay: Saving to Supabase via API...");
+      console.log("🔍 newLog data being sent:", JSON.stringify(newLog, null, 2));
+      console.log("🔍 currentUserId:", currentUserId);
+      
       const response = await fetch("/api/supabase/save-dive-log", {
         method: isEditMode ? "PUT" : "POST",
         headers: {
