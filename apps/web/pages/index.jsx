@@ -42,7 +42,7 @@ export default function Index() {
       console.log("❌ No authenticated user, redirecting to login");
       router.push('/auth/login');
     }
-  }, [authLoading, user, isClient, router]);
+  }, [authLoading, user, isClient, router?.isReady]);
 
   // ✅ INITIAL DATA: Use authenticated user data
   const initialData = useMemo(() => {
@@ -619,18 +619,22 @@ export default function Index() {
         messageCount: messages.length,
         autoSaved: true,
       };
-      const updated = [
-        newSession,
-        ...sessionsList.filter((s) => s.sessionName !== sessionName),
-      ];
-      setSessionsList(updated);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
-        localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
-      }
+      
+      setSessionsList(prevSessions => {
+        const updated = [
+          newSession,
+          ...prevSessions.filter((s) => s.sessionName !== sessionName),
+        ];
+        if (typeof window !== "undefined") {
+          localStorage.setItem("kovalSessionsList", JSON.stringify(updated));
+          localStorage.setItem(`kovalSessions_${userId}`, JSON.stringify(updated));
+        }
+        return updated;
+      });
+      
       console.log("🔄 Auto-saved session with", messages.length, "messages");
     }
-  }, [messages, sessionName, sessionsList, userId]);
+  }, [messages, sessionName, userId]);
 
   // Load user-specific sessions on mount
   useEffect(() => {

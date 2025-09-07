@@ -26,6 +26,12 @@ export default function DiveJournalDisplay({
   // 🚀 Get authenticated user data  
   // Get current user ID - prefer authenticated user, fallback to profile
   const getCurrentUserId = () => {
+    console.log('🔍 Debug getCurrentUserId:');
+    console.log('  currentUser:', currentUser);
+    console.log('  currentUser?.id:', currentUser?.id);
+    console.log('  userProfile:', userProfile);
+    console.log('  userProfile?.userId:', userProfile?.userId);
+    
     if (currentUser?.id) {
       console.log(`🔐 Using authenticated user ID: ${currentUser.id}`);
       return currentUser.id;
