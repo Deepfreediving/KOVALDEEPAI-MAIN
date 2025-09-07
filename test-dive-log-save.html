@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dive Log Save</title>
+</head>
+<body>
+    <h1>Test Dive Log Save</h1>
+    <button onclick="testSave()">Test Save Dive Log</button>
+    <div id="result"></div>
+
+    <script>
+    async function testSave() {
+        try {
+            // Get the current user from the main app's context
+            let currentUser = null;
+            let authToken = null;
+
+            // Try to get user data from the main app
+            if (window.opener && window.opener.getCurrentUser) {
+                currentUser = window.opener.getCurrentUser();
+            } else if (parent && parent.getCurrentUser) {
+                currentUser = parent.getCurrentUser();
+            }
+
+            // Try to get auth token from localStorage (Supabase stores it there)
+            const supabaseSession = localStorage.getItem('sb-kovaldeepai-auth-token');
+            if (supabaseSession) {
+                try {
+                    const session = JSON.parse(supabaseSession);
+                    authToken = session?.access_token;
+                    if (!currentUser && session?.user) {
+                        currentUser = session.user;
+                    }
+                } catch (e) {
+                    console.warn('Could not parse Supabase session:', e);
+                }
+            }
+
+            // Show current user info
+            document.getElementById('result').innerHTML = `
+                <h3>Current User Info:</h3>
+                <pre>User ID: ${currentUser?.id || 'Not found'}
+Email: ${currentUser?.email || 'Not found'}
+Auth Token: ${authToken ? 'Found' : 'Not found'}</pre>
+                <p>Testing save...</p>
+            `;
+
+            const testData = {
+                date: "2025-09-07",
+                discipline: "FIM",
+                location: "Test Pool",
+                targetDepth: 30,
+                reachedDepth: 28,
+                totalDiveTime: "2:15",
+                notes: "Direct frontend test with real user",
+                user_id: currentUser?.id || "test-fallback-user"
+            };
+
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add auth header if we have a token
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const response = await fetch('/api/supabase/save-dive-log', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(testData)
+            });
+
+            const result = await response.json();
+            
+            document.getElementById('result').innerHTML = `
+                <h3>User Info:</h3>
+                <pre>User ID: ${currentUser?.id || 'Not found'}
+Email: ${currentUser?.email || 'Not found'}
+Auth Token: ${authToken ? 'Found' : 'Not found'}</pre>
+                <h3>API Response Status: ${response.status}</h3>
+                <pre>${JSON.stringify(result, null, 2)}</pre>
+            `;
+        } catch (error) {
+            document.getElementById('result').innerHTML = `
+                <h3>Error:</h3>
+                <pre>${error.message}</pre>
+            `;
+        }
+    }
+    </script>
+</body>
+</html>

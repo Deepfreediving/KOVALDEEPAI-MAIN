@@ -192,21 +192,40 @@ export default async function handler(req, res) {
           processed_at: new Date().toISOString()
         }
       };
-      console.log('💾 Inserting dive log into Supabase:', supabaseDiveLog)
+      console.log('💾 Inserting dive log into Supabase:', JSON.stringify(supabaseDiveLog, null, 2))
 
-      // Insert new record (simplified - always insert for now)
-      const { data: savedLog, error } = await supabase
-        .from('dive_logs')
-        .insert([supabaseDiveLog])
-        .select()
-        .single()
+      // Insert new record with enhanced error handling
+      let savedLog;
+      try {
+        const { data, error } = await supabase
+          .from('dive_logs')
+          .insert([supabaseDiveLog])
+          .select()
+          .single()
 
-      if (error) {
-        console.error('❌ Supabase insert error:', error)
+        if (error) {
+          console.error('❌ Supabase insert error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          return res.status(500).json({ 
+            error: 'Failed to save dive log to database',
+            details: error.message,
+            code: error.code,
+            hint: error.hint
+          });
+        }
+        
+        savedLog = data;
+        console.log('✅ Dive log saved successfully to Supabase:', savedLog.id);
+      } catch (insertError) {
+        console.error('❌ Insert operation failed:', insertError);
         return res.status(500).json({ 
-          error: 'Failed to save dive log to database',
-          details: error.message 
-        })
+          error: 'Database insert operation failed',
+          details: insertError.message
+        });
       }
 
       console.log('✅ Dive log saved successfully to Supabase:', savedLog.id)
@@ -328,8 +347,24 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    // ✅ ENHANCED ERROR LOGGING for debugging
+    console.error('❌ FATAL save-dive-log error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    });
+    console.error('❌ Request method:', req.method);
+    console.error('❌ Request body keys:', Object.keys(req.body || {}));
+    console.error('❌ Request headers:', Object.keys(req.headers || {}));
+    
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Database operation failed',
+      timestamp: new Date().toISOString(),
+      requestId: Math.random().toString(36).substr(2, 9)
+    });
   }
 }
 
