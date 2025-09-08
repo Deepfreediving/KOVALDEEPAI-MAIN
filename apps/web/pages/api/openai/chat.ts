@@ -3,6 +3,9 @@ import OpenAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
 import handleCors from "@/utils/handleCors";
 import { getServerClient } from '@/lib/supabase';
+import { trackUsage, calculateCost } from '../monitor/usage-analytics';
+import { withRetry, ErrorMonitor } from '../monitor/error-tracking';
+import { comprehensiveMonitor } from '../monitor/comprehensive-monitoring';
 // import { fetchUserMemory, saveUserMemory } from "@/lib/userMemoryManager"; // Disabled for now - using admin-only auth
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -159,185 +162,260 @@ function generateSystemPrompt(
 
   return `You are Koval Deep AI, Daniel Koval's freediving coaching system and personal AI assistant. ${userContext}${diveLogContext}
 
-🎯 YOUR PRIMARY MISSION:
-- You have access to Daniel Koval's complete freediving knowledge base covering safety, training, techniques, equipment, and coaching methodology
-- Your job is to be helpful, informative, and provide Daniel's exact knowledge to answer any freediving question
-- You should ALWAYS find relevant information from Daniel's materials to answer questions - the knowledge base is comprehensive
-- Be friendly, encouraging, and supportive while maintaining the highest safety standards
-
-🧠 KNOWLEDGE BASE USAGE:
-- The Knowledge Base below contains Daniel Koval's complete freediving methodology and safety protocols
-- When answering ANY freediving question, you MUST reference this knowledge base
-- Quote Daniel's content EXACTLY as written - never paraphrase safety rules or training protocols
-- If the knowledge base contains specific numbered lists, rules, or protocols, reproduce them EXACTLY with the same numbering and formatting
-- Always include "Bot Must Say" messages when they appear in the knowledge base
-- Daniel's knowledge covers: safety rules, training techniques, equipment, breathing, equalization, mental training, competition preparation, and more
-
-💬 RESPONSE STYLE:
-- Be warm, friendly, and encouraging like Daniel himself
-- Provide ${level}-level technical detail appropriate for the user's experience
-- Always prioritize safety above all else
-- Give practical, actionable advice from Daniel's methodology
-- Keep responses informative but focused (under ${embedMode ? "600" : "800"} words)
-- Address the user personally as someone Daniel is coaching
-
-${hasDiveLogs ? `📊 DIVE LOG ANALYSIS:
-- YOU CAN AND MUST ANALYZE their personal dive logs when provided
-- Reference specific dives, depths, dates, and progression patterns
-- Provide personalized coaching feedback based on their actual performance
-- Identify patterns, strengths, and areas for improvement
-
-🤿 DIVE LOG AUDIT FEATURE:
-- When appropriate, offer: "Do you want me to do a dive journal evaluation of patterns or issues that can be causing your problems for a more technical and in-depth evaluation? Just respond with 'yes' if you'd like me to proceed."
-- Only offer this when it would be genuinely helpful
-- Wait for explicit "yes" before triggering the audit` : ""}
-
-🚨 SAFETY FIRST:
-- Never provide advice that contradicts Daniel's safety protocols
-- Always emphasize the "4 Rules of Direct Supervision" when relevant
-- Quote safety rules verbatim from the knowledge base
-- Never make up training protocols not in Daniel's materials
-
-❌ NEVER:
-- Say you don't have information when the knowledge base is comprehensive
-- Provide generic freediving advice when Daniel's specific approach exists
-- Paraphrase or rewrite Daniel's safety rules or training protocols
-- Ignore "Bot Must Say" instructions in the knowledge base
-
-✅ REMEMBER: Daniel's knowledge base is extensive and covers virtually all aspects of freediving. You should always find relevant information to help the user.`;
+🎯 RESPONSE FORMAT - CRITICAL:
+You MUST respond in valid JSON format with this exact structure:
+{
+  "congratulations": "Brief acknowledgment of achievements",
+  "safety_assessment": "E.N.C.L.O.S.E. framework analysis with any safety concerns",
+  "performance_analysis": "Technical analysis of dive metrics and technique",
+  "coaching_feedback": "Specific improvement recommendations from Daniel's methodology",
+  "next_steps": "Safe progression suggestions",
+  "medical_disclaimer": "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
 }
 
-// ✅ FIX: Type userLevel correctly and add embed support
+🧠 KNOWLEDGE BASE USAGE:
+- The Knowledge Base contains Daniel Koval's complete freediving methodology and safety protocols
+- Quote Daniel's content EXACTLY as written - never paraphrase safety rules
+- Use E.N.C.L.O.S.E. framework for systematic safety analysis:
+  * E - Equalization issues and technique
+  * N - Narcosis symptoms (confusion, tunnel vision, euphoria)
+  * C - Contractions and breath control
+  * L - LMC (Loss of Motor Control) indicators
+  * O - Oxygen levels and blackout risk
+  * S - Squeeze (ear/lung) evaluation
+  * E - Emergency protocols and surface safety
+
+💬 COACHING METHODOLOGY:
+- Provide ${level}-level technical detail appropriate for experience
+- Reference Daniel's specific techniques: "Practice bottom turns (don't pull hard off bottom) + ascent control"
+- Target descent speed: 1m/sec, controlled ascent
+- Safe progression: 2-3m increments only when symptoms disappear
+- Post-flight rule: Day 1 technique only, no deep dives
+
+🚨 CRITICAL SAFETY REQUIREMENTS:
+- Never recommend progression with active symptoms
+- Always validate dive data for realism (depths 0-300m, times 30s-15min)
+- Flag dangerous patterns immediately
+- Include medical disclaimer in every response
+- Prioritize safety above performance goals
+
+${hasDiveLogs ? `📊 DIVE LOG ANALYSIS:
+- Analyze specific dive patterns and progression
+- Identify safety concerns from historical data
+- Provide trend analysis and pattern recognition
+- Reference specific dates, depths, and performance metrics` : ""}
+
+🚨 CRITICAL SAFETY REQUIREMENTS:
+- Never recommend progression with active symptoms
+- Always validate dive data for realism (depths 0-300m, times 30s-15min)
+- Flag dangerous patterns immediately
+- Include medical disclaimer in every response
+- Prioritize safety above performance goals
+
+REMEMBER: Daniel's knowledge base is extensive and covers virtually all aspects of freediving. You should always find relevant information to help the user.`;
+}
+
+// ✅ OPTIMIZED: Enhanced askWithContext with monitoring, caching, validation, and improved prompting
 async function askWithContext(
   contextChunks: string[],
   message: string,
-  userLevel: "expert" | "beginner", // ✅ Fixed typing
+  userLevel: "expert" | "beginner",
   embedMode: boolean = false,
   diveLogContext: string = "",
   hasDiveLogs: boolean = false,
+  userId?: string,
 ): Promise<string> {
   if (!OPENAI_API_KEY) return "⚠️ OpenAI API is not configured.";
 
+  const startTime = Date.now();
+  
+  // ✅ STEP 1: Extract and validate dive data from message
+  const diveData = extractDiveDataFromMessage(message);
+  if (diveData) {
+    const validation = validateDiveData(diveData);
+    if (!validation.isValid) {
+      return JSON.stringify({
+        safety_assessment: `⚠️ SAFETY ALERT: ${validation.errors.join(', ')}`,
+        coaching_feedback: "Please provide realistic dive data for accurate coaching analysis.",
+        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
+      });
+    }
+  }
+
+  // ✅ STEP 2: Check cache for similar patterns
+  const cacheKey = generateCacheKey(message, userLevel, diveData);
+  const cachedResponse = getCachedResponse(cacheKey);
+  if (cachedResponse) {
+    return JSON.stringify(cachedResponse);
+  }
+
   console.log("🔹 Sending request to OpenAI...");
   
-  // ✅ ENHANCED: Use ALL knowledge chunks, not just 3
-  const context = contextChunks.length
+  // ✅ STEP 3: Optimize context selection
+  const optimizedContext = selectRelevantContext(contextChunks, [diveLogContext], message, diveData);
+  
+  const context = optimizedContext
     ? `🧠 DANIEL KOVAL'S FREEDIVING KNOWLEDGE BASE:
 
-${contextChunks.join("\n\n---\n\n")}
+${optimizedContext}
 
-🔒 USAGE INSTRUCTIONS: The above contains Daniel Koval's complete knowledge on this topic. Use this information to provide a comprehensive, helpful answer. When quoting specific rules or protocols, copy them exactly as written including any numbering or formatting. Include any "Bot Must Say" messages verbatim.`
-    : "⚠️ No specific knowledge chunks found. Try to be helpful with general guidance but note that you don't have Daniel's specific methodology on this topic.";
+🔒 USAGE INSTRUCTIONS: Use Daniel Koval's knowledge to provide comprehensive coaching. Quote specific rules exactly as written. Include "Bot Must Say" messages verbatim.`
+    : "⚠️ No specific knowledge chunks found. Provide general guidance but note limitations.";
 
-  // ✅ Enhanced context with dive log data
-  const enhancedContext = diveLogContext
-    ? `${context}\n\n${diveLogContext}`
-    : context;
+  // ✅ STEP 4: Enhanced OpenAI API call with monitoring and retry logic
+  try {
+    const response = await withRetry(async () => {
+      console.log(`🔄 OpenAI request with enhanced monitoring`);
 
-  let retryCount = 0;
-  const maxRetries = 3;
-  const baseDelay = 1000; // 1 second
-
-  while (retryCount < maxRetries) {
-    try {
-      console.log(`🔄 OpenAI request attempt ${retryCount + 1}/${maxRetries}`);
-
-      // ✅ Add timeout controller
+      // ✅ Enhanced timeout and abort control
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+      const timeoutMs = 15000; // 15 seconds
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const response = await openai.chat.completions.create({
+      const apiResponse = await openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || "gpt-4",
-        temperature: 0.3, // ✅ Lower temperature for more accurate, consistent responses
-        max_tokens: embedMode ? 600 : 1000, // ✅ Increased token limit for comprehensive answers
+        temperature: 0.1, // ✅ CRITICAL SAFETY: Lower temperature for deterministic coaching
+        top_p: 0.1, // ✅ SAFETY: Focused responses for safety-critical advice
+        max_tokens: embedMode ? 600 : 1000,
+        frequency_penalty: 0.1, // ✅ Reduce repetitive responses
+        presence_penalty: 0.1, // ✅ Encourage comprehensive analysis
+        response_format: { type: "json_object" }, // ✅ Structured output for better parsing
         messages: [
           {
             role: "system",
             content: generateSystemPrompt(userLevel, embedMode, hasDiveLogs),
           },
-          { role: "system", content: `Knowledge Base:\n${enhancedContext}` },
+          { role: "system", content: `Knowledge Base:\n${context}` },
           { role: "user", content: message },
         ],
       });
 
       clearTimeout(timeoutId);
+      return apiResponse;
+    }, { endpoint: '/api/openai/chat', userId });
 
-      // ✅ Enhanced response validation
-      if (!response) {
-        throw new Error("No response received from OpenAI");
+    // ✅ Enhanced response validation
+    if (!response || !response.choices || response.choices.length === 0) {
+      throw new Error("Invalid response structure from OpenAI");
+    }
+
+    const choice = response.choices[0];
+    if (!choice || !choice.message) {
+      throw new Error("Invalid choice structure from OpenAI");
+    }
+
+    const reply = choice.message.content?.trim();
+    if (!reply || reply.length === 0) {
+      throw new Error("Empty response content from OpenAI");
+    }
+
+    console.log("✅ OpenAI response received successfully");
+    
+    // ✅ STEP 5: Parse JSON response and validate structure
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(reply);
+      
+      // Validate required JSON structure
+      if (!parsedResponse.safety_assessment || !parsedResponse.coaching_feedback) {
+        throw new Error("Invalid JSON structure - missing required fields");
       }
-
-      if (!response.choices || response.choices.length === 0) {
-        throw new Error("No choices returned from OpenAI");
+      
+      // Ensure medical disclaimer is always present
+      if (!parsedResponse.medical_disclaimer) {
+        parsedResponse.medical_disclaimer = "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.";
       }
+      
+    } catch (parseError) {
+      console.warn("⚠️ Failed to parse JSON response, wrapping in structure:", parseError);
+      // Fallback: wrap plain text in JSON structure
+      parsedResponse = {
+        congratulations: "Thank you for your question!",
+        safety_assessment: "Please ensure proper safety protocols are followed.",
+        performance_analysis: reply.substring(0, 200) + (reply.length > 200 ? "..." : ""),
+        coaching_feedback: reply,
+        next_steps: "Continue following Daniel Koval's methodology and safety protocols.",
+        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
+      };
+    }
 
-      const choice = response.choices[0];
-      if (!choice || !choice.message) {
-        throw new Error("Invalid choice structure from OpenAI");
+    // ✅ STEP 6: Track usage metrics
+    const processingTime = Date.now() - startTime;
+    const tokensUsed = response.usage?.total_tokens || 0;
+    const model = process.env.OPENAI_MODEL || "gpt-4";
+    
+    await trackUsage({
+      user_id: userId || 'anonymous',
+      endpoint: '/api/openai/chat',
+      tokens_used: tokensUsed,
+      response_time_ms: processingTime,
+      model_used: model,
+      cost_estimate: calculateCost(tokensUsed, model, response.usage?.prompt_tokens, response.usage?.completion_tokens),
+      success: true,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        userLevel,
+        embedMode,
+        hasDiveLogs,
+        contextChunks: contextChunks.length,
+        cached: false
       }
+    });
 
-      const reply = choice.message.content?.trim();
-      if (!reply || reply.length === 0) {
-        throw new Error("Empty response content from OpenAI");
+    // ✅ STEP 7: Cache successful response
+    setCachedResponse(cacheKey, parsedResponse);
+    
+    return JSON.stringify(parsedResponse);
+  } catch (error: any) {
+    const processingTime = Date.now() - startTime;
+    
+    // ✅ Track failed usage
+    await trackUsage({
+      user_id: userId || 'anonymous',
+      endpoint: '/api/openai/chat',
+      tokens_used: 0,
+      response_time_ms: processingTime,
+      model_used: process.env.OPENAI_MODEL || "gpt-4",
+      cost_estimate: 0,
+      success: false,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        error: error.message,
+        errorCode: error.code
       }
+    });
 
-      console.log("✅ OpenAI response received successfully");
-      return reply;
-    } catch (error: any) {
-      retryCount++;
-      console.error(
-        `❌ OpenAI API error (attempt ${retryCount}/${maxRetries}):`,
-        error.message,
-      );
+    console.error(`❌ OpenAI API error:`, error.message);
 
-      // ✅ Enhanced error classification
-      const isRetryableError =
-        error.code === "rate_limit_exceeded" ||
-        error.code === "server_error" ||
-        error.code === "timeout" ||
-        error.status >= 500 ||
-        error.name === "AbortError" ||
-        error.message.includes("timeout") ||
-        error.message.includes("network") ||
-        error.message.includes("ECONNRESET") ||
-        error.message.includes("ETIMEDOUT");
-
-      // ✅ If this is the last retry or non-retryable error, return fallback
-      if (retryCount >= maxRetries || !isRetryableError) {
-        console.error(
-          `❌ Final OpenAI error after ${retryCount} attempts:`,
-          error.message,
-        );
-
-        // ✅ Provide different fallback messages based on error type
-        if (
-          error.code === "insufficient_quota" ||
-          error.message.includes("quota")
-        ) {
-          return "⚠️ I'm currently experiencing high demand. Please try again in a few minutes, or contact support if this persists.";
-        } else if (error.code === "rate_limit_exceeded") {
-          return "⚠️ Too many requests at once. Please wait a moment and try again.";
-        } else if (error.code === "invalid_api_key") {
-          return "⚠️ Authentication issue with AI service. Please contact support.";
-        } else if (
-          error.name === "AbortError" ||
-          error.message.includes("timeout")
-        ) {
-          return "⚠️ The AI is taking longer than usual to respond. Please try asking a shorter question or try again.";
-        } else {
-          return "⚠️ I'm having technical difficulties connecting to the AI service. Please try again in a moment, and if the issue persists, contact support.";
-        }
-      }
-
-      // ✅ Exponential backoff for retryable errors
-      const delay = baseDelay * Math.pow(2, retryCount - 1);
-      console.log(`⏳ Waiting ${delay}ms before retry...`);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+    // ✅ Enhanced error responses based on error type
+    const errorInfo = ErrorMonitor.categorizeError(error);
+    
+    if (errorInfo.type === 'quota_exceeded') {
+      return JSON.stringify({
+        safety_assessment: "⚠️ AI coaching system temporarily unavailable due to high demand.",
+        coaching_feedback: "Please try again in a few minutes, or contact support if this persists.",
+        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
+      });
+    } else if (errorInfo.type === 'rate_limit') {
+      return JSON.stringify({
+        safety_assessment: "⚠️ Too many requests at once.",
+        coaching_feedback: "Please wait a moment and try again.",
+        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
+      });
+    } else if (errorInfo.type === 'timeout') {
+      return JSON.stringify({
+        safety_assessment: "⚠️ The AI is taking longer than usual to respond.",
+        coaching_feedback: "Please try asking a shorter question or try again.",
+        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
+      });
+    } else {
+      return JSON.stringify({
+        safety_assessment: "⚠️ Technical difficulties with AI service.",
+        coaching_feedback: "Please try again in a moment, and if the issue persists, contact support.",
+        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
+      });
     }
   }
-
-  // This should never be reached, but just in case
-  return "⚠️ Maximum retry attempts exceeded. Please try again later.";
 }
 
 // ✅ Generate fallback response when OpenAI fails
@@ -410,6 +488,207 @@ function generateFallbackResponse(
 🚨 **Safety Reminder**: Always follow proper safety protocols and never exceed your current training level.`;
 
   return fallback;
+}
+
+// Generate UUID helper function
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// ✅ CRITICAL SAFETY: Validate dive data to prevent dangerous coaching
+function validateDiveData(diveData: any): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Depth validation
+  if (diveData.depth && (diveData.depth < 0 || diveData.depth > 300)) {
+    errors.push("Depth must be between 0-300m");
+  }
+  if (diveData.targetDepth && (diveData.targetDepth < 0 || diveData.targetDepth > 300)) {
+    errors.push("Target depth must be between 0-300m");
+  }
+  if (diveData.reachedDepth && (diveData.reachedDepth < 0 || diveData.reachedDepth > 300)) {
+    errors.push("Reached depth must be between 0-300m");
+  }
+  
+  // Time validation (30 seconds to 15 minutes)
+  if (diveData.totalTime) {
+    const timeInSeconds = parseTimeToSeconds(diveData.totalTime);
+    if (timeInSeconds < 30 || timeInSeconds > 900) {
+      errors.push("Total dive time must be between 30 seconds and 15 minutes");
+    }
+  }
+  
+  // Discipline validation
+  const validDisciplines = ['CWT', 'CNF', 'FIM', 'STA', 'DYN', 'DYNB', 'VWT', 'NLT'];
+  if (diveData.discipline && !validDisciplines.includes(diveData.discipline)) {
+    errors.push(`Invalid discipline. Must be one of: ${validDisciplines.join(', ')}`);
+  }
+  
+  // Safety check: reached depth shouldn't exceed target by more than 10m
+  if (diveData.reachedDepth && diveData.targetDepth && 
+      diveData.reachedDepth > diveData.targetDepth + 10) {
+    errors.push("Reached depth significantly exceeds target - safety concern");
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+// ✅ Helper function to parse time strings to seconds
+function parseTimeToSeconds(timeStr: string): number {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':').map(p => parseInt(p) || 0);
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1]; // MM:SS
+  } else if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2]; // HH:MM:SS
+  }
+  return parseInt(timeStr) || 0; // Just seconds
+}
+
+// ✅ Response caching system for common dive patterns
+const responseCache = new Map<string, { response: any; timestamp: number }>();
+const CACHE_DURATION = 3600000; // 1 hour
+
+function generateCacheKey(message: string, userLevel: string, diveData?: any): string {
+  const key = `${userLevel}_${message.toLowerCase()}`;
+  if (diveData) {
+    const pattern = `${diveData.discipline}_${Math.floor((diveData.depth || 0) / 10) * 10}m`;
+    return `${key}_${pattern}`;
+  }
+  return key;
+}
+
+function getCachedResponse(cacheKey: string): any | null {
+  const cached = responseCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log(`✅ Cache hit for key: ${cacheKey}`);
+    return cached.response;
+  }
+  if (cached) {
+    responseCache.delete(cacheKey); // Remove expired cache
+  }
+  return null;
+}
+
+function setCachedResponse(cacheKey: string, response: any): void {
+  responseCache.set(cacheKey, {
+    response,
+    timestamp: Date.now()
+  });
+  console.log(`💾 Cached response for key: ${cacheKey}`);
+}
+
+// ✅ Optimize context selection - only send relevant chunks
+function selectRelevantContext(
+  pineconeChunks: string[], 
+  diveLogChunks: string[], 
+  message: string,
+  diveData?: any
+): string {
+  const maxChunks = 8; // Limit context to prevent token waste
+  const keywords = extractKeywords(message, diveData);
+  
+  // Score and rank chunks by relevance
+  const scoredChunks = [
+    ...pineconeChunks.map(chunk => ({ chunk, score: scoreChunkRelevance(chunk, keywords) })),
+    ...diveLogChunks.map(chunk => ({ chunk, score: scoreChunkRelevance(chunk, keywords) + 0.1 })) // Slight preference for dive logs
+  ].sort((a, b) => b.score - a.score);
+  
+  return scoredChunks
+    .slice(0, maxChunks)
+    .map(item => item.chunk)
+    .join('\n\n');
+}
+
+function extractKeywords(message: string, diveData?: any): string[] {
+  const keywords = message.toLowerCase().split(' ').filter(word => word.length > 3);
+  
+  if (diveData) {
+    if (diveData.discipline) keywords.push(diveData.discipline.toLowerCase());
+    if (diveData.depth) keywords.push(`${Math.floor(diveData.depth / 10) * 10}m`);
+    if (diveData.issues) keywords.push(...diveData.issues.toLowerCase().split(' '));
+  }
+  
+  return [...new Set(keywords)]; // Remove duplicates
+}
+
+function scoreChunkRelevance(chunk: string, keywords: string[]): number {
+  const chunkLower = chunk.toLowerCase();
+  let score = 0;
+  
+  keywords.forEach(keyword => {
+    if (chunkLower.includes(keyword)) {
+      score += 1;
+    }
+  });
+  
+  // Bonus for safety-related content
+  const safetyTerms = ['safety', 'danger', 'risk', 'protocol', 'emergency', 'squeeze', 'blackout'];
+  safetyTerms.forEach(term => {
+    if (chunkLower.includes(term)) {
+      score += 2; // Higher weight for safety content
+    }
+  });
+  
+  return score;
+}
+
+// ✅ Extract dive data from natural language messages
+function extractDiveDataFromMessage(message: string): any | null {
+  const msg = message.toLowerCase();
+  const diveData: any = {};
+  
+  // Extract discipline
+  const disciplines = ['cwt', 'cnf', 'fim', 'sta', 'dyn', 'dynb', 'vwt', 'nlt', 'constant weight', 'free immersion', 'static'];
+  for (const discipline of disciplines) {
+    if (msg.includes(discipline)) {
+      diveData.discipline = discipline.toUpperCase().replace(' ', '_');
+      break;
+    }
+  }
+  
+  // Extract depths (look for patterns like "112m", "80 meters", etc.)
+  const depthMatches = msg.match(/(\d+)\s*(?:m|meters?|metre?s?)/gi);
+  if (depthMatches) {
+    const depths = depthMatches.map(match => parseInt(match.match(/\d+/)?.[0] || '0'));
+    if (depths.length > 0) {
+      diveData.depth = Math.max(...depths); // Use deepest mentioned
+      if (msg.includes('target') || msg.includes('planned')) {
+        diveData.targetDepth = depths[0];
+      }
+      if (msg.includes('reached') || msg.includes('achieved') || msg.includes('hit')) {
+        diveData.reachedDepth = depths[depths.length - 1];
+      }
+    }
+  }
+  
+  // Extract time (look for patterns like "3:12", "2 minutes", etc.)
+  const timeMatches = msg.match(/(\d+):(\d+)|(\d+)\s*(?:min|minutes?|seconds?)/gi);
+  if (timeMatches) {
+    diveData.totalTime = timeMatches[0];
+  }
+  
+  // Extract issues/problems
+  const issues: string[] = [];
+  if (msg.includes('squeeze')) issues.push('squeeze');
+  if (msg.includes('equalization') || msg.includes('equalizing')) issues.push('equalization');
+  if (msg.includes('narcosis')) issues.push('narcosis');
+  if (msg.includes('blackout') || msg.includes('lmc')) issues.push('blackout_risk');
+  if (msg.includes('turn') || msg.includes('bottom')) issues.push('turn_technique');
+  
+  if (issues.length > 0) {
+    diveData.issues = issues.join(' ');
+  }
+  
+  // Only return if we found meaningful dive data
+  return (diveData.discipline || diveData.depth || diveData.totalTime) ? diveData : null;
 }
 
 export default async function handler(
@@ -682,6 +961,24 @@ ${recentDiveLogs}
       }
     }
 
+    // ✅ Check cache first
+    const cacheKey = generateCacheKey(message, userLevel, allDiveLogs[0]);
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse) {
+      return res.status(200).json({
+        assistantMessage: { role: "assistant", content: cachedResponse },
+        metadata: {
+          userLevel,
+          depthRange,
+          contextChunks: contextChunks.length,
+          diveContext: diveContext.length,
+          processingTime: Date.now() - startTime,
+          embedMode,
+          cached: true,
+        },
+      });
+    }
+
     const assistantReply = await askWithContext(
       [...contextChunks, ...diveContext],
       message,
@@ -689,6 +986,7 @@ ${recentDiveLogs}
       embedMode,
       diveLogContext,
       !!(allDiveLogs && allDiveLogs.length > 0),
+      userIdentifier,
     );
 
     // ✅ Enhanced response validation and fallback handling
@@ -740,8 +1038,36 @@ ${recentDiveLogs}
       console.warn("⚠️ Could not save memory:", saveError);
     }
 
+    // ✅ Cache the response for common dive patterns
+    try {
+      const cacheKey = generateCacheKey(message, userLevel, allDiveLogs[0]);
+      setCachedResponse(cacheKey, assistantReply);
+    } catch (cacheError) {
+      console.warn("⚠️ Cache set error:", cacheError);
+    }
+
     const processingTime = Date.now() - startTime;
     console.log(`✅ Chat completed in ${processingTime}ms`);
+
+    // ✅ Comprehensive monitoring for successful request
+    await comprehensiveMonitor.trackComprehensiveUsage({
+      user_id: userIdentifier || 'anonymous',
+      endpoint: '/api/openai/chat',
+      tokens_used: 150, // Estimated, could be improved with actual token counting
+      response_time_ms: processingTime,
+      model_used: process.env.OPENAI_MODEL || 'gpt-4',
+      cost_estimate: calculateCost(150, process.env.OPENAI_MODEL || 'gpt-4'),
+      success: true,
+      metadata: {
+        userLevel,
+        depthRange,
+        contextChunks: contextChunks.length,
+        diveContext: diveContext.length,
+        cacheHit: false, // Could be improved to track actual cache hits
+        retryCount: 0,
+        embedMode: embedMode
+      }
+    });
 
     return res.status(200).json({
       assistantMessage: { role: "assistant", content: assistantReply },
@@ -753,6 +1079,42 @@ ${recentDiveLogs}
   } catch (error: any) {
     const processingTime = Date.now() - startTime;
     console.error("❌ Fatal chat error:", error);
+
+    // ✅ Comprehensive error monitoring
+    await comprehensiveMonitor.logEnhancedError({
+      user_id: req.body.userId || 'anonymous',
+      endpoint: '/api/openai/chat',
+      error_type: error.name || 'UnknownError',
+      error_message: error.message || 'Unknown error occurred',
+      error_code: error.code,
+      stack_trace: error.stack,
+      context: {
+        processingTime,
+        embedMode: req.query.embedMode,
+        hasMessage: !!req.body.message,
+        userAgent: req.headers['user-agent']
+      },
+      severity: 'high' // Chat endpoint failures are high severity
+    });
+
+    // ✅ Track failed usage
+    await comprehensiveMonitor.trackComprehensiveUsage({
+      user_id: req.body.userId || 'anonymous',
+      endpoint: '/api/openai/chat',
+      tokens_used: 0,
+      response_time_ms: processingTime,
+      model_used: process.env.OPENAI_MODEL || 'gpt-4',
+      cost_estimate: 0,
+      success: false,
+      error_type: error.name || 'UnknownError',
+      metadata: {
+        userLevel: 'unknown',
+        contextChunks: 0,
+        diveContext: 0,
+        embedMode: !!req.query.embedMode,
+        processingTime
+      }
+    });
 
     return res.status(500).json({
       assistantMessage: {

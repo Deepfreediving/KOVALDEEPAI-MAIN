@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Test - Local</title>
+</head>
+<body>
+    <h1>Local Dive Log Save Test</h1>
+    <button onclick="testLocalSave()">Test Local Save</button>
+    <div id="result"></div>
+
+    <script>
+    async function testLocalSave() {
+        try {
+            console.log('🧪 Testing local save...');
+            
+            const testData = {
+                date: "2025-09-07",
+                discipline: "FIM",
+                location: "Local Test Pool",
+                targetDepth: 25,
+                reachedDepth: 23,
+                totalDiveTime: "2:00",
+                notes: "Direct frontend test locally"
+            };
+
+            console.log('📤 Sending to local API:', testData);
+
+            const response = await fetch('/api/supabase/save-dive-log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testData)
+            });
+
+            console.log('📥 Response status:', response.status);
+            const result = await response.json();
+            console.log('📋 Response data:', result);
+            
+            document.getElementById('result').innerHTML = \`
+                <h3>Status: \${response.status}</h3>
+                <pre>\${JSON.stringify(result, null, 2)}</pre>
+            \`;
+        } catch (error) {
+            console.error('❌ Error:', error);
+            document.getElementById('result').innerHTML = \`
+                <h3>Error:</h3>
+                <pre>\${error.message}</pre>
+            \`;
+        }
+    }
+    </script>
+</body>
+</html>

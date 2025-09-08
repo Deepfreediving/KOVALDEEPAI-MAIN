@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
+// Generate UUID helper function
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export default function DiveJournalDisplay({
   darkMode,
   isOpen,
@@ -164,16 +173,52 @@ export default function DiveJournalDisplay({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 🚨 IMMEDIATE DEBUG: Alert to confirm function is called
+    alert("🚀 Form submission started! Check console for details.");
+    
     console.log("🚀 DiveJournalDisplay: Starting dive log submit process...");
+    console.log("🔍 Event:", e);
+    console.log("🔍 newEntry state:", newEntry);
+    console.log("🔍 currentUserId:", currentUserId);
+    console.log("🔍 isSaving before:", isSaving);
 
     // Set saving state
     setIsSaving(true);
+    console.log("✅ DiveJournalDisplay: Set isSaving to true");
+
+    // Add a visible indicator that save was triggered
+    if (setMessages) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "🚀 **Starting Save Process**\n\nProcessing your dive log submission...",
+        },
+      ]);
+    }
+
+    // ✅ VALIDATION: Check required fields
+    if (!newEntry.date) {
+      console.error("❌ Validation failed: Date is required");
+      if (setMessages) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "❌ **Validation Error**\n\nDate field is required. Please fill in all required fields.",
+          },
+        ]);
+      }
+      setIsSaving(false);
+      return;
+    }
 
     const toNum = (v) => v === '' || v == null ? null : Number(v);
 
     const newLog = {
       ...newEntry,
-      id: isEditMode ? editingLog.id : Date.now().toString(),
+      id: isEditMode ? editingLog.id : generateUUID(), // ✅ Generate proper UUID instead of timestamp
       timestamp: new Date().toISOString(),
       nickname: userProfile?.nickname || currentUser?.email?.split('@')[0] || "User",
       user_id: currentUserId, // ✅ Use real user ID
@@ -542,9 +587,35 @@ Please provide specific coaching feedback using Daniel Koval's methodology and s
 
               if (analysisResponse.ok) {
                 const analysisResult = await analysisResponse.json();
-                const coachingFeedback = analysisResult.assistantMessage?.content;
+                let coachingFeedback = analysisResult.assistantMessage?.content;
                 
+                // ✅ Handle new JSON response format
                 if (coachingFeedback) {
+                  try {
+                    const parsedFeedback = JSON.parse(coachingFeedback);
+                    if (parsedFeedback.congratulations) {
+                      // Format structured JSON response
+                      coachingFeedback = `${parsedFeedback.congratulations}
+
+**🛡️ Safety Assessment:**
+${parsedFeedback.safety_assessment}
+
+**📊 Performance Analysis:**
+${parsedFeedback.performance_analysis}
+
+**🎯 Coaching Feedback:**
+${parsedFeedback.coaching_feedback}
+
+**➡️ Next Steps:**
+${parsedFeedback.next_steps}
+
+${parsedFeedback.medical_disclaimer}`;
+                    }
+                  } catch (parseError) {
+                    // Keep original response if JSON parsing fails
+                    console.log("Using original response format");
+                  }
+                  
                   setMessages((prev) => [
                     ...prev,
                     {
