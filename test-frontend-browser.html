@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KovalDeepAI Frontend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { border-color: #4CAF50; background: #f8fff8; }
+        .error { border-color: #f44336; background: #fff8f8; }
+        .warning { border-color: #ff9800; background: #fff8f0; }
+        .result {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #005a8b; }
+        .status { font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏊‍♂️ KovalDeepAI Frontend Browser Test</h1>
+        <p>Testing frontend integration and API connectivity for dive log batch processing.</p>
+
+        <div class="test-section">
+            <h3>📡 API Connectivity Test</h3>
+            <button onclick="testAPIHealth()">Test API Health</button>
+            <button onclick="testBatchLogsAPI()">Test Batch Logs API</button>
+            <button onclick="testBatchAnalysisAPI()">Test Batch Analysis API</button>
+            <div id="api-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Authentication Test</h3>
+            <button onclick="testAuthentication()">Test Auth State</button>
+            <div id="auth-results" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Frontend Navigation Test</h3>
+            <p>Manual Test: Open KovalDeepAI app and navigate to dive journal:</p>
+            <ul>
+                <li><a href="http://localhost:3000" target="_blank">Local Dev (localhost:3000)</a></li>
+                <li><a href="https://kovaldeepai-main.vercel.app/" target="_blank">Production (Vercel)</a></li>
+            </ul>
+            <p><strong>Steps to Test:</strong></p>
+            <ol>
+                <li>Click "Dive Journal" button</li>
+                <li>Check if "Batch Analysis" tab is visible</li>
+                <li>Try switching between tabs (Saved Logs, Add New, Batch Analysis)</li>
+                <li>In Batch Analysis tab, try different analysis types</li>
+                <li>Check browser console for errors (F12)</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Direct Component Test</h3>
+            <button onclick="testDiveJournalComponent()">Test Component State</button>
+            <div id="component-results" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testAPIHealth() {
+            const result = document.getElementById('api-results');
+            result.textContent = 'Testing API endpoints...\n';
+            
+            try {
+                // Test if Next.js is responding
+                const response = await fetch('/api/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    result.textContent += '✅ API Health: OK\n';
+                } else {
+                    result.textContent += `❌ API Health: ${response.status} ${response.statusText}\n`;
+                }
+            } catch (error) {
+                result.textContent += `❌ API Health Error: ${error.message}\n`;
+            }
+        }
+
+        async function testBatchLogsAPI() {
+            const result = document.getElementById('api-results');
+            
+            try {
+                // Test batch logs endpoint with a fake UUID
+                const testUUID = '123e4567-e89b-12d3-a456-426614174000';
+                const response = await fetch(`/api/dive/batch-logs?userId=${testUUID}&limit=5`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.textContent += `✅ Batch Logs API: OK (${data.logs?.length || 0} logs)\n`;
+                } else {
+                    const errorData = await response.json();
+                    result.textContent += `⚠️ Batch Logs API: ${response.status} - ${errorData.error}\n`;
+                }
+            } catch (error) {
+                result.textContent += `❌ Batch Logs API Error: ${error.message}\n`;
+            }
+        }
+
+        async function testBatchAnalysisAPI() {
+            const result = document.getElementById('api-results');
+            
+            try {
+                // Test batch analysis endpoint
+                const testUUID = '123e4567-e89b-12d3-a456-426614174000';
+                const response = await fetch('/api/dive/batch-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: testUUID,
+                        analysisType: 'pattern',
+                        timeRange: 'all'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.textContent += `✅ Batch Analysis API: OK\n`;
+                } else {
+                    const errorData = await response.json();
+                    result.textContent += `⚠️ Batch Analysis API: ${response.status} - ${errorData.error}\n`;
+                }
+            } catch (error) {
+                result.textContent += `❌ Batch Analysis API Error: ${error.message}\n`;
+            }
+        }
+
+        async function testAuthentication() {
+            const result = document.getElementById('auth-results');
+            result.textContent = 'Checking authentication state...\n';
+            
+            try {
+                // Check if there's user data in localStorage
+                const userKeys = Object.keys(localStorage).filter(key => 
+                    key.includes('user') || key.includes('auth') || key.includes('supabase')
+                );
+                
+                if (userKeys.length > 0) {
+                    result.textContent += `🔑 Found auth keys: ${userKeys.join(', ')}\n`;
+                } else {
+                    result.textContent += '❌ No authentication data found in localStorage\n';
+                }
+                
+                // Check if Supabase is available
+                if (window.supabase) {
+                    result.textContent += '✅ Supabase client detected\n';
+                } else {
+                    result.textContent += '❌ Supabase client not found\n';
+                }
+                
+            } catch (error) {
+                result.textContent += `❌ Auth Test Error: ${error.message}\n`;
+            }
+        }
+
+        async function testDiveJournalComponent() {
+            const result = document.getElementById('component-results');
+            result.textContent = 'Testing component state...\n';
+            
+            try {
+                // Test if React components are loaded
+                if (window.React) {
+                    result.textContent += '✅ React detected\n';
+                } else {
+                    result.textContent += '❌ React not found\n';
+                }
+                
+                // Check if Next.js is running
+                if (window.next || window.__NEXT_DATA__) {
+                    result.textContent += '✅ Next.js detected\n';
+                } else {
+                    result.textContent += '❌ Next.js not found\n';
+                }
+                
+                // Check console for errors
+                result.textContent += '\n💡 Check browser console (F12) for React/Next.js errors\n';
+                result.textContent += '💡 Navigate to dive journal to test component rendering\n';
+                
+            } catch (error) {
+                result.textContent += `❌ Component Test Error: ${error.message}\n`;
+            }
+        }
+
+        // Auto-run initial tests
+        window.onload = function() {
+            testAPIHealth();
+        };
+    </script>
+</body>
+</html>

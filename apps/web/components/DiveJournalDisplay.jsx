@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 
 // Generate UUID helper function
@@ -62,7 +62,7 @@ export default function DiveJournalDisplay({
         return userId;
       }
     }
-    return "35b522f1-27d2-49de-ed2b-0d257d33ad7d"; // Use our test UUID
+    return "123e4567-e89b-12d3-a456-426614174000"; // Use our test UUID with real dive data
   };
   
   const currentUserId = getCurrentUserId();
@@ -852,7 +852,7 @@ ${parsedFeedback.medical_disclaimer}`;
       const queryParams = new URLSearchParams({
         userId: currentUserId,
         limit: 100,
-        sortBy: sortBy === 'date' ? 'dive_date' : sortBy,
+        sortBy: sortBy === 'date' ? 'date' : sortBy,
         sortOrder: 'desc',
         includeAnalysis: 'true',
         ...filters,
@@ -871,29 +871,29 @@ ${parsedFeedback.medical_disclaimer}`;
         // Transform data to match component format
         const transformedLogs = result.diveLogs.map(log => ({
           id: log.id,
-          date: log.dive_date,
+          date: log.date,
           disciplineType: log.discipline?.toLowerCase().includes('dnf') ? 'static' : 'depth',
           discipline: log.discipline,
           location: log.location,
-          targetDepth: log.target_depth_m,
-          reachedDepth: log.reached_depth_m,
-          mouthfillDepth: log.mouthfill_depth_m,
-          issueDepth: log.issue_depth_m,
+          targetDepth: log.target_depth,
+          reachedDepth: log.reached_depth,
+          mouthfillDepth: log.mouthfill_depth,
+          issueDepth: log.issue_depth,
           issueComment: log.issue_comment,
           squeeze: log.squeeze,
           exit: log.exit_protocol,
-          durationOrDistance: log.duration_or_distance,
-          totalDiveTime: log.total_dive_time_s,
+          durationOrDistance: log.total_dive_time,
+          totalDiveTime: log.total_dive_time,
           attemptType: log.attempt_type,
           surfaceProtocol: log.surface_protocol,
           notes: log.notes,
-          imageAnalysis: log.image_analysis_result,
-          analyzed: !!log.image_analysis_result,
-          bottomTime: log.bottom_time_s,
-          earSqueeze: log.ear_squeeze,
-          lungSqueeze: log.lung_squeeze,
-          narcosisLevel: log.narcosis_level,
-          recoveryQuality: log.recovery_quality
+          imageAnalysis: log.ai_analysis,
+          analyzed: !!log.ai_analysis,
+          bottomTime: log.bottom_time,
+          earSqueeze: log.squeeze,
+          lungSqueeze: log.squeeze,
+          narcosisLevel: 1,
+          recoveryQuality: log.feeling_rating || 5
         }));
 
         setLogs(transformedLogs);
