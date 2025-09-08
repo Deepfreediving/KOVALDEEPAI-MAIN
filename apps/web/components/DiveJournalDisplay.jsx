@@ -27,8 +27,24 @@ export default function DiveJournalDisplay({
 }) {
   const [logs, setLogs] = useState([]);
   const [sortBy, setSortBy] = useState("date");
-  const [activeTab, setActiveTab] = useState("saved-logs"); // Tab navigation: saved-logs, add-new
+  const [activeTab, setActiveTab] = useState("saved-logs"); // Tab navigation: saved-logs, add-new, batch-analysis
   const [isSaving, setIsSaving] = useState(false); // Loading state for save operation
+  
+  // Batch analysis state
+  const [batchAnalysis, setBatchAnalysis] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisType, setAnalysisType] = useState("pattern");
+  const [timeRange, setTimeRange] = useState("all");
+  const [analysisHistory, setAnalysisHistory] = useState([]);
+  
+  // Advanced filtering state
+  const [filters, setFilters] = useState({
+    discipline: "",
+    location: "",
+    dateFrom: "",
+    dateTo: "",
+    hasIssues: ""
+  });
   
   // 🚀 Get authenticated user data  
   // Get current user ID - prefer authenticated user, fallback to profile
@@ -53,7 +69,7 @@ export default function DiveJournalDisplay({
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
     disciplineType: "depth",
-    discipline: "",
+    discipline: "CWT", // ✅ Default to valid enum value
     location: "",
     targetDepth: "",
     reachedDepth: "",
@@ -61,11 +77,11 @@ export default function DiveJournalDisplay({
     issueDepth: "",
     issueComment: "",
     squeeze: false,
-    exit: "",
+    exit: "clean", // ✅ Default to valid enum value
     durationOrDistance: "",
     totalDiveTime: "",
-    attemptType: "",
-    surfaceProtocol: "",
+    attemptType: "", // ✅ Empty = NULL (valid)
+    surfaceProtocol: "", // ✅ Empty = NULL (valid)
     notes: "",
     imageFile: null,
     imagePreview: null,
@@ -216,6 +232,20 @@ export default function DiveJournalDisplay({
 
     const toNum = (v) => v === '' || v == null ? null : Number(v);
 
+    // ✅ CRITICAL: Ensure date is always present and valid
+    const ensureValidDate = (date) => {
+      if (!date || date === '' || date === null || date === undefined) {
+        return new Date().toISOString().split("T")[0];
+      }
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        console.warn('⚠️ Invalid date format, using today:', date);
+        return new Date().toISOString().split("T")[0];
+      }
+      return date;
+    };
+
     const newLog = {
       ...newEntry,
       id: isEditMode ? editingLog.id : generateUUID(), // ✅ Generate proper UUID instead of timestamp
@@ -224,8 +254,8 @@ export default function DiveJournalDisplay({
       user_id: currentUserId, // ✅ Use real user ID
       imageFile: newEntry.imageFile, // ✅ Preserve image file for processing
       imagePreview: newEntry.imagePreview, // ✅ Preserve image preview
-      // ✅ CRITICAL: Ensure date is always present
-      date: newEntry.date || new Date().toISOString().split("T")[0],
+      // ✅ CRITICAL: Ensure date is always present and properly formatted
+      date: ensureValidDate(newEntry.date),
       // Convert form data to database schema
       target_depth: toNum(newEntry.targetDepth),
       reached_depth: toNum(newEntry.reachedDepth),
@@ -257,7 +287,50 @@ export default function DiveJournalDisplay({
     });
 
     try {
-      // 🚀 STEP 1: Handle image upload if present
+      // 🚀 STEP 1: Save dive log to Supabase FIRST to get valid database ID
+      console.log("🌐 DiveJournalDisplay: Saving dive log to Supabase first...");
+      console.log("🔍 newLog data being sent:", JSON.stringify(newLog, null, 2));
+      console.log("🔍 currentUserId:", currentUserId);
+      
+      const response = await fetch("/api/supabase/save-dive-log", {
+        method: isEditMode ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newLog),
+      });
+
+      console.log("📥 DiveJournalDisplay: Save API response status:", response.status);
+      const responseText = await response.text();
+      console.log("📥 DiveJournalDisplay: Save API response body:", responseText);
+
+      if (!response.ok) {
+        const errorData = responseText ? JSON.parse(responseText) : { error: "Unknown error" };
+        console.error("❌ DiveJournalDisplay: Save API error:", errorData);
+        
+        // Show error message in chat instead of setError
+        if (setMessages) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `❌ **Save Failed** \n\nFailed to save dive log: ${errorData.error || `HTTP ${response.status}: Failed to save dive log`}. Please try again.`,
+            },
+          ]);
+        }
+        
+        setIsSaving(false);
+        return;
+      }
+
+      const saveResult = JSON.parse(responseText);
+      console.log("✅ DiveJournalDisplay: Dive log saved successfully:", saveResult);
+      
+      // Get the saved dive log ID for image linking
+      const savedDiveLogId = saveResult.data?.id || newLog.id;
+      console.log("🆔 Using dive log ID for image linking:", savedDiveLogId);
+
+      // 🚀 STEP 2: Handle image upload AFTER dive log is saved
       let imageAnalysis = null;
       if (newEntry.imageFile) {
         console.log("📸 DiveJournalDisplay: Uploading and analyzing image...");
@@ -276,14 +349,14 @@ export default function DiveJournalDisplay({
         try {
           const formData = new FormData();
           formData.append('image', newEntry.imageFile);
-          formData.append('diveLogId', newLog.id);
+          formData.append('diveLogId', savedDiveLogId); // ✅ Use saved dive log ID
           formData.append('userId', currentUserId); // ✅ Use real user ID
           
           console.log("📤 Uploading image file:", {
             name: newEntry.imageFile.name,
             size: newEntry.imageFile.size,
             type: newEntry.imageFile.type,
-            diveLogId: newLog.id,
+            diveLogId: savedDiveLogId,
             userId: currentUserId,
           });
           
@@ -300,28 +373,13 @@ export default function DiveJournalDisplay({
           console.log("📡 Image upload response status:", imageResponse.status);
           console.log("📡 Image upload response headers:", Object.fromEntries(imageResponse.headers.entries()));
           
-          const responseText = await imageResponse.text();
-          console.log("📥 Image upload response body:", responseText);
+          const imageResponseText = await imageResponse.text();
+          console.log("📥 Image upload response body:", imageResponseText);
           
           if (imageResponse.ok) {
-            const imageResult = JSON.parse(responseText);
+            const imageResult = JSON.parse(imageResponseText);
             console.log("✅ DiveJournalDisplay: Image analyzed successfully:", imageResult);
             imageAnalysis = imageResult.data;
-            
-            // 🚀 CRITICAL: Add all image data to newLog for API
-            newLog.imageId = imageResult.data?.imageId;
-            newLog.imageUrl = imageResult.data?.imageUrl;
-            newLog.imageAnalysis = imageResult.data?.imageAnalysis || imageResult.data?.extractedText;
-            newLog.extractedText = imageResult.data?.extractedText;
-            newLog.extractedMetrics = imageResult.data?.extractedMetrics;
-            
-            console.log("📊 DiveJournalDisplay: Image data added to newLog:", {
-              imageId: newLog.imageId,
-              hasImageUrl: !!newLog.imageUrl,
-              hasAnalysis: !!newLog.imageAnalysis,
-              hasMetrics: !!newLog.extractedMetrics,
-              metricsKeys: newLog.extractedMetrics ? Object.keys(newLog.extractedMetrics) : []
-            });
             
             // Show image analysis in chat
             if (setMessages && imageAnalysis) {
@@ -334,13 +392,13 @@ export default function DiveJournalDisplay({
               ]);
             }
           } else {
-            console.warn("⚠️ DiveJournalDisplay: Image upload failed:", imageResponse.status, responseText);
+            console.warn("⚠️ DiveJournalDisplay: Image upload failed:", imageResponse.status, imageResponseText);
             if (setMessages) {
               setMessages((prev) => [
                 ...prev,
                 {
                   role: "assistant",
-                  content: "⚠️ Image analysis failed, but your dive log will still be saved without the image.",
+                  content: "⚠️ Image analysis failed, but your dive log has been saved successfully.",
                 },
               ]);
             }
@@ -352,50 +410,31 @@ export default function DiveJournalDisplay({
               ...prev,
               {
                 role: "assistant",
-                content: "❌ Image processing error occurred. Your dive log will be saved without the image.",
+                content: "❌ Image processing error occurred. Your dive log has been saved successfully without the image.",
               },
             ]);
           }
         }
       }
 
-      // 🚀 STEP 2: Save to Supabase via API
-      console.log("🌐 DiveJournalDisplay: Saving to Supabase via API...");
-      console.log("🔍 newLog data being sent:", JSON.stringify(newLog, null, 2));
-      console.log("🔍 currentUserId:", currentUserId);
-      
-      const response = await fetch("/api/supabase/save-dive-log", {
-        method: isEditMode ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newLog),
-      });
+      // 🚀 STEP 3: Process saved dive log data and update UI
+      console.log("✅ DiveJournalDisplay: Save successful:", saveResult);
 
-      console.log(
-        "📥 DiveJournalDisplay: Save API response status:",
-        response.status,
-      );
+      // 🎉 Show success message immediately
+      if (setMessages) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `✅ **Dive Log Saved Successfully!**\n\nYour ${saveResult.diveLog?.discipline || 'dive'} to ${saveResult.diveLog?.reached_depth || saveResult.diveLog?.target_depth}m at ${saveResult.diveLog?.location || 'unknown location'} has been saved.\n\n🧠 Analyzing your dive for coaching insights...`,
+          },
+        ]);
+      }
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ DiveJournalDisplay: Save successful:", result);
-
-        // 🎉 Show success message immediately
-        if (setMessages) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `✅ **Dive Log Saved Successfully!**\n\nYour ${result.diveLog?.discipline || 'dive'} to ${result.diveLog?.reached_depth || result.diveLog?.target_depth}m at ${result.diveLog?.location || 'unknown location'} has been saved.\n\n🧠 Analyzing your dive for coaching insights...`,
-            },
-          ]);
-        }
-
-        // Update dive log with server response data
-        const savedDiveLog = result.diveLog || result;
-        newLog.id = savedDiveLog.id || newLog.id;
-        newLog.created_at = savedDiveLog.created_at || new Date().toISOString();
+      // Update dive log with server response data
+      const savedDiveLog = saveResult.diveLog || saveResult.data || saveResult;
+      newLog.id = savedDiveLog.id || newLog.id;
+      newLog.created_at = savedDiveLog.created_at || new Date().toISOString();
 
         // 🚀 STEP 2: Update local state with proper deduplication
         let updatedLogs;
@@ -514,7 +553,7 @@ export default function DiveJournalDisplay({
           console.log(
             "📢 DiveJournalDisplay: Notifying parent of successful save...",
           );
-          onDiveLogSaved(newLog, result);
+          onDiveLogSaved(newLog, saveResult);
         }
 
         if (onRefreshDiveLogs) {
@@ -661,11 +700,6 @@ ${parsedFeedback.medical_disclaimer}`;
         console.log(
           "✅ DiveJournalDisplay: Dive log submit process completed successfully",
         );
-      } else {
-        throw new Error(
-          `API save failed: ${response.status} ${response.statusText}`,
-        );
-      }
     } catch (error) {
       console.error(
         "❌ DiveJournalDisplay: Failed to save dive log via API:",
@@ -713,6 +747,251 @@ ${parsedFeedback.medical_disclaimer}`;
     });
     setIsEditMode(false);
   };
+
+  // 🚀 NEW: Batch Analysis Functions
+  const handleBatchAnalysis = async () => {
+    if (!currentUserId) {
+      console.error("❌ No user ID for batch analysis");
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: "❌ **Analysis Failed**\n\nUser authentication required for batch analysis." }
+        ]);
+      }
+      return;
+    }
+
+    if (logs.length === 0) {
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: "📊 **No Logs to Analyze**\n\nYou need to have at least one dive log before running batch analysis." }
+        ]);
+      }
+      return;
+    }
+
+    setIsAnalyzing(true);
+    console.log(`🔍 Starting batch analysis - Type: ${analysisType}, Range: ${timeRange}`);
+
+    if (setMessages) {
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "assistant", 
+          content: `🔍 **Starting Batch Analysis**\n\nAnalyzing your dive logs for ${analysisType} insights over ${timeRange === 'all' ? 'all time' : timeRange}...\n\nThis may take 30-60 seconds.` 
+        }
+      ]);
+    }
+
+    try {
+      const response = await fetch('/api/dive/batch-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUserId,
+          analysisType: analysisType,
+          timeRange: timeRange
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Analysis API failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.analysis) {
+        setBatchAnalysis(result.analysis);
+        
+        // Add to analysis history
+        setAnalysisHistory(prev => [result.analysis, ...prev.slice(0, 4)]); // Keep last 5
+
+        if (setMessages) {
+          setMessages(prev => [
+            ...prev,
+            { 
+              role: "assistant", 
+              content: `📊 **Batch Analysis Complete**\n\n${result.analysis.result}`
+            }
+          ]);
+        }
+
+        console.log(`✅ Batch analysis completed - Analyzed ${result.analysis.logsAnalyzed} logs`);
+      } else {
+        throw new Error(result.error || 'Unknown analysis error');
+      }
+    } catch (error) {
+      console.error('❌ Batch analysis error:', error);
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { 
+            role: "assistant", 
+            content: `❌ **Batch Analysis Failed**\n\n${error.message}\n\nPlease try again or contact support if the issue persists.` 
+          }
+        ]);
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // 🚀 NEW: Enhanced batch retrieval with filtering
+  const handleBatchRetrieval = async (newFilters = {}) => {
+    if (!currentUserId) {
+      console.error("❌ No user ID for batch retrieval");
+      return;
+    }
+
+    console.log('🔍 Starting batch retrieval with filters:', newFilters);
+
+    try {
+      const queryParams = new URLSearchParams({
+        userId: currentUserId,
+        limit: 100,
+        sortBy: sortBy === 'date' ? 'dive_date' : sortBy,
+        sortOrder: 'desc',
+        includeAnalysis: 'true',
+        ...filters,
+        ...newFilters
+      });
+
+      const response = await fetch(`/api/dive/batch-logs?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`Batch retrieval failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Transform data to match component format
+        const transformedLogs = result.diveLogs.map(log => ({
+          id: log.id,
+          date: log.dive_date,
+          disciplineType: log.discipline?.toLowerCase().includes('dnf') ? 'static' : 'depth',
+          discipline: log.discipline,
+          location: log.location,
+          targetDepth: log.target_depth_m,
+          reachedDepth: log.reached_depth_m,
+          mouthfillDepth: log.mouthfill_depth_m,
+          issueDepth: log.issue_depth_m,
+          issueComment: log.issue_comment,
+          squeeze: log.squeeze,
+          exit: log.exit_protocol,
+          durationOrDistance: log.duration_or_distance,
+          totalDiveTime: log.total_dive_time_s,
+          attemptType: log.attempt_type,
+          surfaceProtocol: log.surface_protocol,
+          notes: log.notes,
+          imageAnalysis: log.image_analysis_result,
+          analyzed: !!log.image_analysis_result,
+          bottomTime: log.bottom_time_s,
+          earSqueeze: log.ear_squeeze,
+          lungSqueeze: log.lung_squeeze,
+          narcosisLevel: log.narcosis_level,
+          recoveryQuality: log.recovery_quality
+        }));
+
+        setLogs(transformedLogs);
+        
+        // Update analysis history if available
+        if (result.recentAnalyses) {
+          setAnalysisHistory(result.recentAnalyses);
+        }
+
+        console.log(`✅ Batch retrieval completed - Found ${transformedLogs.length} logs`);
+
+        if (setMessages) {
+          setMessages(prev => [
+            ...prev,
+            { 
+              role: "assistant", 
+              content: `📊 **Logs Retrieved**\n\nFound ${transformedLogs.length} dive logs.\n\n**Stats:**\n• Average depth: ${result.stats.averageDepth}m\n• Deepest dive: ${result.stats.deepestDive}m\n• Issues found: ${result.stats.issueCount}`
+            }
+          ]);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Batch retrieval error:', error);
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: `❌ Failed to retrieve dive logs: ${error.message}` }
+        ]);
+      }
+    }
+  };
+
+  // 🚀 NEW: Export logs as CSV
+  const handleExportLogs = async () => {
+    if (!currentUserId) {
+      console.error("❌ No user ID for export");
+      return;
+    }
+
+    try {
+      const queryParams = new URLSearchParams({
+        userId: currentUserId,
+        format: 'csv',
+        ...filters
+      });
+
+      const response = await fetch(`/api/dive/batch-logs?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+
+      // Download the CSV file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `dive-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: "📁 **Export Complete**\n\nYour dive logs have been downloaded as a CSV file." }
+        ]);
+      }
+    } catch (error) {
+      console.error('❌ Export error:', error);
+      if (setMessages) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: `❌ Export failed: ${error.message}` }
+        ]);
+      }
+    }
+  };
+
+  // Load logs on component mount
+  useEffect(() => {
+    if (currentUserId && activeTab === 'saved-logs') {
+      handleBatchRetrieval();
+    }
+  }, [currentUserId, activeTab]);
+
+  // Load logs when filters change
+  useEffect(() => {
+    if (currentUserId && activeTab === 'saved-logs') {
+      const timeoutId = setTimeout(() => {
+        handleBatchRetrieval();
+      }, 500); // Debounce filter changes
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [filters]);
 
   // ✅ Reworked analyze handler - fire-and-forget pattern
   const handleAnalyzeDiveLog = async (log) => {
@@ -964,7 +1243,21 @@ ${parsedFeedback.medical_disclaimer}`;
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               }`}
             >
-              💾 Saved Dive Logs
+              💾 Saved Logs
+            </button>
+            <button
+              onClick={() => setActiveTab("batch-analysis")}
+              className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                activeTab === "batch-analysis"
+                  ? darkMode
+                    ? "bg-blue-600 text-white border-b-2 border-blue-400"
+                    : "bg-blue-500 text-white border-b-2 border-blue-400"
+                  : darkMode
+                    ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+            >
+              📊 Analysis
             </button>
             <button
               onClick={() => setActiveTab("add-new")}
@@ -978,7 +1271,7 @@ ${parsedFeedback.medical_disclaimer}`;
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               }`}
             >
-              ✍️ {isEditMode ? "Edit Dive Log" : "Create New Dive Log"}
+              ✍️ {isEditMode ? "Edit" : "New"}
             </button>
           </div>
         </div>
@@ -1133,6 +1426,234 @@ ${parsedFeedback.medical_disclaimer}`;
             </div>
           )}
 
+          {/* Batch Analysis Tab */}
+          {activeTab === "batch-analysis" && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                  📊 Batch Analysis & Pattern Detection
+                </h3>
+                <button
+                  onClick={handleExportLogs}
+                  className={`text-sm px-3 py-1 rounded transition-colors ${
+                    darkMode
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "bg-green-500 hover:bg-green-600 text-white"
+                  }`}
+                >
+                  📁 Export CSV
+                </button>
+              </div>
+
+              {/* Analysis Controls */}
+              <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                  Analysis Settings
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      Analysis Type
+                    </label>
+                    <select
+                      value={analysisType}
+                      onChange={(e) => setAnalysisType(e.target.value)}
+                      className={`w-full px-3 py-2 text-sm rounded border ${
+                        darkMode
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    >
+                      <option value="pattern">🔍 Pattern Detection</option>
+                      <option value="safety">🛡️ Safety Analysis</option>
+                      <option value="performance">📈 Performance Review</option>
+                      <option value="coaching">🎯 Coaching Insights</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      Time Range
+                    </label>
+                    <select
+                      value={timeRange}
+                      onChange={(e) => setTimeRange(e.target.value)}
+                      className={`w-full px-3 py-2 text-sm rounded border ${
+                        darkMode
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    >
+                      <option value="week">📅 Last Week</option>
+                      <option value="month">📅 Last Month</option>
+                      <option value="quarter">📅 Last 3 Months</option>
+                      <option value="year">📅 Last Year</option>
+                      <option value="all">📅 All Time</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={handleBatchAnalysis}
+                  disabled={isAnalyzing || logs.length === 0}
+                  className={`mt-4 w-full px-4 py-2 rounded transition-colors ${
+                    isAnalyzing || logs.length === 0
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : darkMode
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-blue-500 hover:bg-blue-600 text-white"
+                  }`}
+                >
+                  {isAnalyzing 
+                    ? "🔄 Analyzing..." 
+                    : logs.length === 0 
+                      ? "❌ No Logs to Analyze" 
+                      : `🚀 Analyze ${logs.length} Dive${logs.length !== 1 ? 's' : ''}`
+                  }
+                </button>
+              </div>
+
+              {/* Advanced Filters */}
+              <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                  📋 Filter Logs
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      Discipline
+                    </label>
+                    <select
+                      value={filters.discipline}
+                      onChange={(e) => setFilters(prev => ({...prev, discipline: e.target.value}))}
+                      className={`w-full px-2 py-1 text-xs rounded border ${
+                        darkMode
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    >
+                      <option value="">All Disciplines</option>
+                      <option value="CWT">Constant Weight</option>
+                      <option value="CNF">Constant No Fins</option>
+                      <option value="FIM">Free Immersion</option>
+                      <option value="STA">Static Apnea</option>
+                      <option value="DNF">Dynamic No Fins</option>
+                      <option value="DYN">Dynamic with Fins</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      value={filters.location}
+                      onChange={(e) => setFilters(prev => ({...prev, location: e.target.value}))}
+                      placeholder="e.g. Blue Hole"
+                      className={`w-full px-2 py-1 text-xs rounded border ${
+                        darkMode
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      From Date
+                    </label>
+                    <input
+                      type="date"
+                      value={filters.dateFrom}
+                      onChange={(e) => setFilters(prev => ({...prev, dateFrom: e.target.value}))}
+                      className={`w-full px-2 py-1 text-xs rounded border ${
+                        darkMode
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      To Date
+                    </label>
+                    <input
+                      type="date"
+                      value={filters.dateTo}
+                      onChange={(e) => setFilters(prev => ({...prev, dateTo: e.target.value}))}
+                      className={`w-full px-2 py-1 text-xs rounded border ${
+                        darkMode
+                          ? "bg-gray-700 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                    Issues Filter
+                  </label>
+                  <select
+                    value={filters.hasIssues}
+                    onChange={(e) => setFilters(prev => ({...prev, hasIssues: e.target.value}))}
+                    className={`w-full px-2 py-1 text-xs rounded border ${
+                      darkMode
+                        ? "bg-gray-700 border-gray-600 text-white"
+                        : "bg-white border-gray-300 text-gray-900"
+                    }`}
+                  >
+                    <option value="">All Dives</option>
+                    <option value="true">❌ Only Dives with Issues</option>
+                    <option value="false">✅ Only Clean Dives</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Current Analysis Result */}
+              {batchAnalysis && (
+                <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    🧠 Latest Analysis Results
+                  </h4>
+                  <div className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                    <div className="mb-2">
+                      <span className="font-medium">Type:</span> {batchAnalysis.type} | 
+                      <span className="font-medium"> Range:</span> {batchAnalysis.timeRange} | 
+                      <span className="font-medium"> Logs:</span> {batchAnalysis.logsAnalyzed}
+                    </div>
+                    <div className={`p-3 rounded bg-gray-100 ${darkMode ? "bg-gray-700" : ""} whitespace-pre-wrap`}>
+                      {batchAnalysis.result}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Analysis History */}
+              {analysisHistory.length > 0 && (
+                <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    📚 Recent Analysis History
+                  </h4>
+                  <div className="space-y-2">
+                    {analysisHistory.slice(0, 3).map((analysis, index) => (
+                      <div
+                        key={index}
+                        className={`p-2 rounded border cursor-pointer ${
+                          darkMode ? "bg-gray-700 border-gray-600 hover:bg-gray-600" : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setBatchAnalysis(analysis)}
+                      >
+                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                          {analysis.type} • {analysis.timeRange} • {analysis.logsAnalyzed} logs • {new Date(analysis.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"} truncate`}>
+                          {analysis.result.substring(0, 100)}...
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Add New / Edit Dive Log Tab */}
           {activeTab === "add-new" && (
             <div className="space-y-4">
@@ -1210,14 +1731,18 @@ ${parsedFeedback.medical_disclaimer}`;
                       >
                         Discipline
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="discipline"
                         value={newEntry.discipline}
                         onChange={handleInputChange}
-                        placeholder="e.g., CWT, CNF, FIM"
                         className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600"
-                      />
+                      >
+                        <option value="CWT">CWT (Constant Weight)</option>
+                        <option value="CNF">CNF (Constant No Fins)</option>
+                        <option value="FIM">FIM (Free Immersion)</option>
+                        <option value="DNF">DNF (Dynamic No Fins)</option>
+                        <option value="STA">STA (Static Apnea)</option>
+                      </select>
                     </div>
                     <div>
                       <label
@@ -1430,14 +1955,18 @@ ${parsedFeedback.medical_disclaimer}`;
                       >
                         Surface Protocol
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="surfaceProtocol"
                         value={newEntry.surfaceProtocol}
                         onChange={handleInputChange}
-                        placeholder="OK sign, breathing pattern, etc."
                         className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600"
-                      />
+                      >
+                        <option value="">Not specified</option>
+                        <option value="ok">OK - Clean surface</option>
+                        <option value="samba">Samba (minor)</option>
+                        <option value="lmc">LMC (Loss of Motor Control)</option>
+                        <option value="bo">BO (Blackout)</option>
+                      </select>
                     </div>
 
                     <div>
@@ -1563,7 +2092,21 @@ ${parsedFeedback.medical_disclaimer}`;
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   }`}
                 >
-                  💾 Saved Dive Logs
+                  💾 Saved Logs
+                </button>
+                <button
+                  onClick={() => setActiveTab("batch-analysis")}
+                  className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === "batch-analysis"
+                      ? darkMode
+                        ? "bg-blue-600 text-white border-b-2 border-blue-400"
+                        : "bg-blue-500 text-white border-b-2 border-blue-400"
+                      : darkMode
+                        ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  📊 Analysis
                 </button>
                 <button
                   onClick={() => setActiveTab("add-new")}
@@ -1577,7 +2120,7 @@ ${parsedFeedback.medical_disclaimer}`;
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   }`}
                 >
-                  ✍️ {isEditMode ? "Edit Dive Log" : "Create New Dive Log"}
+                  ✍️ {isEditMode ? "Edit" : "New"}
                 </button>
               </div>
             </div>
@@ -1722,6 +2265,139 @@ ${parsedFeedback.medical_disclaimer}`;
                                   🗑️ Delete
                                 </button>
                               </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Batch Analysis Tab Content - Same as embedded */}
+              {activeTab === "batch-analysis" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                      📊 Batch Analysis & Pattern Detection
+                    </h3>
+                    <button
+                      onClick={handleExportLogs}
+                      className={`text-sm px-3 py-1 rounded transition-colors ${
+                        darkMode
+                          ? "bg-green-600 hover:bg-green-700 text-white"
+                          : "bg-green-500 hover:bg-green-600 text-white"
+                      }`}
+                    >
+                      📁 Export CSV
+                    </button>
+                  </div>
+
+                  {/* Analysis Controls */}
+                  <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-200"}`}>
+                    <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                      Analysis Settings
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                          Analysis Type
+                        </label>
+                        <select
+                          value={analysisType}
+                          onChange={(e) => setAnalysisType(e.target.value)}
+                          className={`w-full px-3 py-2 text-sm rounded border ${
+                            darkMode
+                              ? "bg-gray-600 border-gray-500 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                          }`}
+                        >
+                          <option value="pattern">🔍 Pattern Detection</option>
+                          <option value="safety">🛡️ Safety Analysis</option>
+                          <option value="performance">📈 Performance Review</option>
+                          <option value="coaching">🎯 Coaching Insights</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                          Time Range
+                        </label>
+                        <select
+                          value={timeRange}
+                          onChange={(e) => setTimeRange(e.target.value)}
+                          className={`w-full px-3 py-2 text-sm rounded border ${
+                            darkMode
+                              ? "bg-gray-600 border-gray-500 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                          }`}
+                        >
+                          <option value="week">📅 Last Week</option>
+                          <option value="month">📅 Last Month</option>
+                          <option value="quarter">📅 Last 3 Months</option>
+                          <option value="year">📅 Last Year</option>
+                          <option value="all">📅 All Time</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleBatchAnalysis}
+                      disabled={isAnalyzing || logs.length === 0}
+                      className={`mt-4 w-full px-4 py-2 rounded transition-colors ${
+                        isAnalyzing || logs.length === 0
+                          ? "bg-gray-400 cursor-not-allowed text-white"
+                          : darkMode
+                            ? "bg-blue-600 hover:bg-blue-700 text-white"
+                            : "bg-blue-500 hover:bg-blue-600 text-white"
+                      }`}
+                    >
+                      {isAnalyzing 
+                        ? "🔄 Analyzing..." 
+                        : logs.length === 0 
+                          ? "❌ No Logs to Analyze" 
+                          : `🚀 Analyze ${logs.length} Dive${logs.length !== 1 ? 's' : ''}`
+                      }
+                    </button>
+                  </div>
+
+                  {/* Current Analysis Result */}
+                  {batchAnalysis && (
+                    <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-200"}`}>
+                      <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        🧠 Latest Analysis Results
+                      </h4>
+                      <div className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                        <div className="mb-2">
+                          <span className="font-medium">Type:</span> {batchAnalysis.type} | 
+                          <span className="font-medium"> Range:</span> {batchAnalysis.timeRange} | 
+                          <span className="font-medium"> Logs:</span> {batchAnalysis.logsAnalyzed}
+                        </div>
+                        <div className={`p-3 rounded bg-gray-100 ${darkMode ? "bg-gray-600" : ""} whitespace-pre-wrap`}>
+                          {batchAnalysis.result}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Analysis History */}
+                  {analysisHistory.length > 0 && (
+                    <div className={`p-4 rounded-lg border ${darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-200"}`}>
+                      <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        📚 Recent Analysis History
+                      </h4>
+                      <div className="space-y-2">
+                        {analysisHistory.slice(0, 3).map((analysis, index) => (
+                          <div
+                            key={index}
+                            className={`p-2 rounded border cursor-pointer ${
+                              darkMode ? "bg-gray-600 border-gray-500 hover:bg-gray-500" : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                            }`}
+                            onClick={() => setBatchAnalysis(analysis)}
+                          >
+                            <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                              {analysis.type} • {analysis.timeRange} • {analysis.logsAnalyzed} logs • {new Date(analysis.createdAt).toLocaleDateString()}
+                            </div>
+                            <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"} truncate`}>
+                              {analysis.result.substring(0, 100)}...
                             </div>
                           </div>
                         ))}

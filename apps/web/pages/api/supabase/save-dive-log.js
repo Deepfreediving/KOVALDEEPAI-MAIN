@@ -3,6 +3,14 @@ import { getAdminClient } from '@/lib/supabase'
 import AssistantTrainingService from '@/lib/ai/assistantTrainingService'
 
 export default async function handler(req, res) {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, PUT, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(200).end();
+  }
+
   // Check method first - before any other processing
   if (req.method !== 'POST' && req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -35,6 +43,9 @@ export default async function handler(req, res) {
       return v.toString(16);
     });
   }
+
+  // 🚀 NO MORE ENUM RESTRICTIONS - Let users express themselves naturally!
+  // OpenAI can process any text input and extract structured data
 
   try {
     const { method } = req
@@ -138,9 +149,9 @@ export default async function handler(req, res) {
       // Helper function to map frontend field names to database field names
       const mapFields = (data) => {
         return {
-          // Map frontend camelCase to database snake_case
+          // Map frontend camelCase to database snake_case - ALL FREE TEXT!
           date: data.date,
-          discipline: data.discipline,
+          discipline: toStr(data.discipline), // Free text: "CWT", "Constant Weight with bifins", "Modified CNF technique"
           location: toStr(data.location),
           target_depth: toNum(data.targetDepth || data.target_depth),
           reached_depth: toNum(data.reachedDepth || data.reached_depth),
@@ -149,9 +160,9 @@ export default async function handler(req, res) {
           total_dive_time: timeToSeconds(data.totalDiveTime || data.total_dive_time),
           squeeze: toBool(data.squeeze),
           issue_comment: toStr(data.issueComment || data.issue_comment),
-          exit_protocol: toStr(data.exit || data.exitProtocol || data.exit_protocol),
+          exit_protocol: toStr(data.exit || data.exitProtocol || data.exit_protocol), // Free text: "Clean exit", "Rushed but safe"
           attempt_type: toStr(data.attemptType || data.attempt_type),
-          surface_protocol: toStr(data.surfaceProtocol || data.surface_protocol),
+          surface_protocol: toStr(data.surfaceProtocol || data.surface_protocol), // Free text: "Good recovery", "Slight samba"
           notes: toStr(data.notes),
           user_id: userId, // Always use the validated userId
         };
@@ -391,10 +402,10 @@ async function handleUpdateDiveLog(req, res, supabase) {
     const toBool = (v) => Boolean(v);
     const toStr = (v) => v === '' || v == null ? null : String(v);
 
-    // Prepare update data
+    // Prepare update data - ALL FREE TEXT!
     const updateData = {
       date: diveLogData.date,
-      discipline: diveLogData.discipline,
+      discipline: toStr(diveLogData.discipline), // Free text: any discipline description
       location: toStr(diveLogData.location),
       target_depth: toNum(diveLogData.targetDepth || diveLogData.target_depth),
       reached_depth: toNum(diveLogData.reachedDepth || diveLogData.reached_depth),
@@ -403,9 +414,9 @@ async function handleUpdateDiveLog(req, res, supabase) {
       total_dive_time: toStr(diveLogData.totalDiveTime || diveLogData.total_dive_time),
       squeeze: toBool(diveLogData.squeeze),
       issue_comment: toStr(diveLogData.issueComment || diveLogData.issue_comment),
-      exit_protocol: toStr(diveLogData.exit || diveLogData.exitProtocol),
+      exit_protocol: toStr(diveLogData.exit || diveLogData.exitProtocol || diveLogData.exit_protocol), // Free text
       attempt_type: toStr(diveLogData.attemptType || diveLogData.attempt_type),
-      surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol),
+      surface_protocol: toStr(diveLogData.surfaceProtocol || diveLogData.surface_protocol), // Free text
       notes: toStr(diveLogData.notes),
       updated_at: new Date().toISOString(),
       ai_analysis: {

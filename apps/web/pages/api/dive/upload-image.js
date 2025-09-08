@@ -12,10 +12,23 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 // 🧠 Enhanced Vision Analysis with Coaching Insights
-async function analyzeWithEnhancedVision(base64Image, mimeType = 'image/jpeg') {
-  const analysisPrompt = `You are an expert freediving computer analyst and coach. Analyze this dive computer display image and extract ALL visible data with professional coaching insights.
+async function analyzeWithEnhancedVision(base64Image, mimeType = 'image/jpeg', useShortPrompt = false) {
+  const startTime = Date.now();
+  console.log('🧠 Starting OpenAI Vision API call...');
+  
+  // Short prompt for testing performance
+  const shortPrompt = `Analyze this dive computer image. Extract:
+1. Max depth (meters)
+2. Dive time (MM:SS)
+3. Temperature 
+4. Any other visible numbers
 
-EXTRACT THE FOLLOWING DATA:
+Return JSON: {"maxDepth": number, "diveTime": "MM:SS", "temperature": number}`;
+
+  // Full detailed prompt
+  const longPrompt = `You are an expert freediving coach and dive computer analyst. Analyze this dive computer display image and extract ALL visible data with advanced dive profile analysis.
+
+EXTRACT BASIC DATA:
 1. Max Depth (in meters)
 2. Dive Time (in minutes:seconds format)
 3. Temperature (at max depth)
@@ -26,20 +39,41 @@ EXTRACT THE FOLLOWING DATA:
 8. Battery status if visible
 9. Any other numeric readings
 
-ANALYZE THE DIVE PROFILE:
-- Describe the descent/ascent pattern
-- Note any safety concerns from the profile
-- Identify if there are any rapid ascents
-- Comment on bottom time if visible
+ADVANCED DIVE PROFILE ANALYSIS:
+Carefully examine the depth profile graph and identify:
 
-PROVIDE COACHING INSIGHTS:
-- Assess dive safety based on visible data
-- Comment on depth progression appropriateness
-- Note any concerning patterns
-- Suggest improvements if applicable
-- Rate the dive performance (1-10)
+DESCENT PHASE:
+- Average descent rate (m/s)
+- Slowdowns or pauses (especially around 15-30m mouthfill zones)
+- Equalization stops (visible as horizontal plateaus)
+- Descent consistency (smooth vs erratic)
+- Any depth where descent rate changes significantly
 
-Return your response as valid JSON with this structure:
+BOTTOM PHASE:
+- Time spent at maximum depth
+- Bottom time duration
+- Depth consistency at bottom (steady vs fluctuating)
+
+ASCENT PHASE:
+- Average ascent rate (m/s)
+- Ascent consistency (smooth vs rushed)
+- Any rapid ascent periods (dangerous)
+- Safety stops or decompression pauses
+- Final approach to surface (controlled vs fast)
+
+TECHNIQUE ANALYSIS:
+- Mouthfill technique indicators (slowdown around 20-35m)
+- Freefall utilization (constant descent rate in mid-water)
+- Equalization efficiency (minimal pauses)
+- Overall dive curve quality
+
+SAFETY ASSESSMENT:
+- Ascent rate safety (should be <1m/s)
+- Any concerning rapid movements
+- Depth progression appropriateness
+- Risk factors identified
+
+Return your response as valid JSON with this detailed structure:
 {
   "extractedData": {
     "maxDepth": number,
@@ -54,23 +88,108 @@ Return your response as valid JSON with this structure:
     "additionalReadings": {}
   },
   "profileAnalysis": {
-    "descentPattern": "string",
-    "ascentPattern": "string",
-    "bottomTime": "string",
-    "safetyConcerns": ["string"],
-    "profileQuality": "string"
+    "descentPhase": {
+      "averageDescentRate": number,
+      "descentRateUnit": "m/s",
+      "mouthfillSlowdown": {
+        "detected": boolean,
+        "depthRange": "string",
+        "slowdownPercentage": number
+      },
+      "equalizationStops": [
+        {
+          "depth": number,
+          "duration": "seconds"
+        }
+      ],
+      "descentConsistency": "smooth|erratic|good",
+      "freefall": {
+        "startDepth": number,
+        "endDepth": number,
+        "utilized": boolean
+      }
+    },
+    "bottomPhase": {
+      "bottomTime": number,
+      "bottomTimeUnit": "seconds",
+      "depthConsistency": "steady|fluctuating",
+      "maxDepthHeld": boolean
+    },
+    "ascentPhase": {
+      "averageAscentRate": number,
+      "ascentRateUnit": "m/s",
+      "ascentConsistency": "smooth|rushed|controlled",
+      "rapidAscentPeriods": [
+        {
+          "depthFrom": number,
+          "depthTo": number,
+          "rate": number,
+          "dangerous": boolean
+        }
+      ],
+      "safetyStops": [
+        {
+          "depth": number,
+          "duration": "seconds"
+        }
+      ]
+    },
+    "overallProfile": {
+      "curveQuality": "excellent|good|poor",
+      "symmetry": "symmetric|asymmetric",
+      "efficiency": "high|medium|low"
+    }
+  },
+  "techniqueAnalysis": {
+    "mouthfillTechnique": {
+      "detected": boolean,
+      "depth": number,
+      "execution": "excellent|good|needs_work",
+      "notes": "string"
+    },
+    "equalizationEfficiency": {
+      "rating": "excellent|good|poor",
+      "pauseCount": number,
+      "totalPauseTime": number
+    },
+    "overallTechnique": {
+      "rating": number,
+      "strengths": ["string"],
+      "areasForImprovement": ["string"]
+    }
+  },
+  "safetyAssessment": {
+    "ascentRateSafety": {
+      "safe": boolean,
+      "maxRate": number,
+      "dangerousPeriods": ["string"]
+    },
+    "depthProgression": {
+      "appropriate": boolean,
+      "notes": "string"
+    },
+    "riskFactors": ["string"],
+    "overallSafetyRating": "excellent|good|concerning|dangerous"
   },
   "coachingInsights": {
-    "safetyAssessment": "string",
-    "depthProgression": "string",
-    "recommendations": ["string"],
-    "overallPerformance": "string",
-    "performanceRating": number
+    "positives": ["string"],
+    "improvements": ["string"],
+    "nextSessionFocus": ["string"],
+    "depthProgressionAdvice": "string",
+    "performanceRating": number,
+    "readinessForDeeper": boolean
   },
-  "confidence": "high|medium|low"
+  "confidence": "high|medium|low",
+  "analysisNotes": "string"
 }`;
 
+  const analysisPrompt = useShortPrompt ? shortPrompt : longPrompt;
+  console.log(`📝 Using ${useShortPrompt ? 'SHORT' : 'LONG'} prompt (${analysisPrompt.length} chars)`);
+
   try {
+    console.log('📤 Sending request to OpenAI Vision API...');
+    const openaiStartTime = Date.now();
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -82,29 +201,62 @@ Return your response as valid JSON with this structure:
               type: "image_url",
               image_url: {
                 url: `data:${mimeType};base64,${base64Image}`,
-                detail: "high"
+                detail: useShortPrompt ? "low" : "high" // Use low detail for short prompt
               }
             }
           ]
         }
       ],
-      max_tokens: 1500,
+      max_tokens: useShortPrompt ? 200 : 1500,
       temperature: 0.1
     });
 
-    const analysisText = response.choices[0].message.content;
+    const openaiEndTime = Date.now();
+    const openaiDuration = openaiEndTime - openaiStartTime;
+    console.log(`⚡ OpenAI API Response Time: ${openaiDuration}ms (${(openaiDuration/1000).toFixed(2)}s)`);
+    console.log(`🔢 Tokens Used: ${response.usage?.total_tokens || 'Unknown'}`);
+
+    let analysisText = response.choices[0].message.content;
+    
+    // Clean up response - remove markdown code blocks if present
+    if (analysisText.includes('```json')) {
+      analysisText = analysisText.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+    } else if (analysisText.includes('```')) {
+      analysisText = analysisText.replace(/```[a-zA-Z]*\s*/g, '').replace(/```\s*$/g, '');
+    }
     
     // Try to parse as JSON
+    console.log('🔍 Parsing OpenAI response...');
+    const parseStartTime = Date.now();
+    
     try {
       const structuredAnalysis = JSON.parse(analysisText);
+      const parseEndTime = Date.now();
+      console.log(`✅ JSON Parse Time: ${parseEndTime - parseStartTime}ms`);
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`🎯 Total Vision Analysis Time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
+      
       return {
         success: true,
         analysis: structuredAnalysis,
         rawText: analysisText,
-        tokens: response.usage?.total_tokens || 0
+        tokens: response.usage?.total_tokens || 0,
+        timing: {
+          total: totalTime,
+          openai: openaiDuration,
+          parse: parseEndTime - parseStartTime
+        }
       };
     } catch (parseError) {
+      console.log('⚠️ JSON parse failed, raw AI response was:');
+      console.log(analysisText);
+      console.log('Parse error:', parseError.message);
+      
       // Fallback structure if JSON parsing fails
+      const fallbackTime = Date.now() - startTime;
+      console.log(`🔄 Fallback Response Time: ${fallbackTime}ms (${(fallbackTime/1000).toFixed(2)}s)`);
+      
       return {
         success: true,
         analysis: {
@@ -115,11 +267,18 @@ Return your response as valid JSON with this structure:
           confidence: "medium"
         },
         rawText: analysisText,
-        tokens: response.usage?.total_tokens || 0
+        tokens: response.usage?.total_tokens || 0,
+        timing: {
+          total: fallbackTime,
+          openai: openaiDuration,
+          parse: 'failed'
+        }
       };
     }
   } catch (error) {
+    const errorTime = Date.now() - startTime;
     console.error('❌ Vision analysis failed:', error);
+    console.log(`💥 Error Time: ${errorTime}ms (${(errorTime/1000).toFixed(2)}s)`);
     throw new Error(`Vision analysis failed: ${error.message}`);
   }
 }
@@ -194,6 +353,17 @@ async function ensureStorageBucket(supabase) {
 }
 
 export default async function handler(req, res) {
+  const requestStartTime = Date.now();
+  console.log(`🚀 UNIFIED Dive Image Upload & Analysis starting at ${new Date().toISOString()}`);
+  
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -329,15 +499,24 @@ export default async function handler(req, res) {
       // 🧠 Analyze with Enhanced Vision API
       const base64Image = optimizedBuffer.toString('base64');
       console.log('🤖 Starting Enhanced Vision Analysis...');
+      const visionStartTime = Date.now();
       
-      const visionResult = await analyzeWithEnhancedVision(base64Image, mimeType);
+      // Fix: safely access shortPrompt with fallback
+      const useShortPrompt = req.body?.shortPrompt || false;
+      const visionResult = await analyzeWithEnhancedVision(base64Image, mimeType, useShortPrompt);
+      const visionEndTime = Date.now();
+      const visionDuration = visionEndTime - visionStartTime;
+      
+      console.log(`🧠 Vision Analysis Complete: ${visionDuration}ms (${(visionDuration/1000).toFixed(2)}s)`);
+      
       const structuredAnalysis = visionResult.analysis;
       const extractedMetrics = extractMetrics(structuredAnalysis);
       
       console.log('✅ Enhanced Vision Analysis completed:', {
         confidence: structuredAnalysis.confidence,
         metricsExtracted: Object.keys(extractedMetrics).length,
-        tokensUsed: visionResult.tokens
+        tokensUsed: visionResult.tokens,
+        timing: visionResult.timing
       });
 
       // ☁️ Upload to Supabase Storage
@@ -417,6 +596,9 @@ export default async function handler(req, res) {
       }
 
       console.log('✅ Image record saved to database:', dbData.id);
+      
+      const totalRequestTime = Date.now() - requestStartTime;
+      console.log(`🎯 TOTAL REQUEST TIME: ${totalRequestTime}ms (${(totalRequestTime/1000).toFixed(2)}s)`);
 
       // 🎯 Return comprehensive response
       const response = {
