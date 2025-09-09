@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dive Log UI Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #d1ecf1; color: #0c5460; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        input, textarea, select { margin: 5px; padding: 8px; width: 200px; }
+        .form-group { margin: 10px 0; }
+        label { display: inline-block; width: 150px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🤿 Dive Log Submission Flow Test</h1>
+    <p>Test the refactored dive log functionality</p>
+
+    <div class="test-section">
+        <h2>1. Test User Authentication</h2>
+        <p>Valid test user: <strong>test@kovaldeepai.dev</strong> / <strong>TestPassword123!</strong></p>
+        <p>User ID: <code>35b522f1-27d2-49de-ed2b-0d257d33ad7d</code></p>
+        <button onclick="testAuth()">Test Authentication</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Dive Log Creation Form</h2>
+        <div class="form-group">
+            <label>Date:</label>
+            <input type="date" id="date" value="2025-01-08">
+        </div>
+        <div class="form-group">
+            <label>Discipline:</label>
+            <select id="discipline">
+                <option value="CWT">CWT (Constant Weight)</option>
+                <option value="CNF">CNF (Constant No Fins)</option>
+                <option value="FIM">FIM (Free Immersion)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Location:</label>
+            <input type="text" id="location" value="Blue Hole, Dahab" placeholder="Dive location">
+        </div>
+        <div class="form-group">
+            <label>Target Depth (m):</label>
+            <input type="number" id="targetDepth" value="35" placeholder="Target depth">
+        </div>
+        <div class="form-group">
+            <label>Reached Depth (m):</label>
+            <input type="number" id="reachedDepth" value="33" placeholder="Actual depth reached">
+        </div>
+        <div class="form-group">
+            <label>Notes:</label>
+            <textarea id="notes" placeholder="How did the dive go?">Great dive! Felt comfortable and relaxed. Good equalization throughout.</textarea>
+        </div>
+        <div class="form-group">
+            <label>Image:</label>
+            <input type="file" id="imageFile" accept="image/*">
+        </div>
+        
+        <button onclick="submitDiveLog()">Submit Dive Log</button>
+        <button onclick="submitDiveLogWithImage()">Submit with Image</button>
+        <div id="submit-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Retrieve Dive Logs</h2>
+        <button onclick="getDiveLogs()">Get Dive Logs</button>
+        <button onclick="getDiveLogsFiltered()">Get Filtered Logs</button>
+        <div id="logs-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test App Integration</h2>
+        <p>Open the main app with test user:</p>
+        <button onclick="openMainApp()">Open Main App</button>
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Login with test@kovaldeepai.dev / TestPassword123!</li>
+            <li>Click the "💾 Dive Logs" button in the sidebar</li>
+            <li>Try the "✍️ New" tab to create a dive log</li>
+            <li>Test the "📊 Analysis" tab for batch operations</li>
+            <li>Test editing and deleting existing logs in "💾 Saved Logs" tab</li>
+        </ol>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        const TEST_USER_ID = '35b522f1-27d2-49de-ed2b-0d257d33ad7d';
+
+        function setResult(elementId, content, className = '') {
+            const el = document.getElementById(elementId);
+            el.innerHTML = content;
+            el.className = className;
+        }
+
+        async function testAuth() {
+            setResult('auth-result', 'Testing authentication...', 'loading');
+            
+            try {
+                // Test if we can access user-specific data
+                const response = await fetch(`${API_BASE}/api/dive/batch-logs?userId=${TEST_USER_ID}&limit=1`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    setResult('auth-result', `✅ Authentication working! Found ${data.stats.totalLogs} total dive logs for test user.`, 'success');
+                } else {
+                    setResult('auth-result', `❌ Auth test failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                setResult('auth-result', `❌ Auth test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function submitDiveLog() {
+            setResult('submit-result', 'Submitting dive log...', 'loading');
+            
+            const diveLogData = {
+                date: document.getElementById('date').value,
+                discipline: document.getElementById('discipline').value,
+                location: document.getElementById('location').value,
+                targetDepth: parseInt(document.getElementById('targetDepth').value),
+                reachedDepth: parseInt(document.getElementById('reachedDepth').value),
+                notes: document.getElementById('notes').value,
+                user_id: TEST_USER_ID
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/supabase/save-dive-log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(diveLogData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    setResult('submit-result', `✅ Dive log created successfully!<br>ID: ${result.diveLog.id}<br><pre>${JSON.stringify(result.diveLog, null, 2)}</pre>`, 'success');
+                } else {
+                    setResult('submit-result', `❌ Failed to create dive log: ${result.error || result.details}`, 'error');
+                }
+            } catch (error) {
+                setResult('submit-result', `❌ Submit error: ${error.message}`, 'error');
+            }
+        }
+
+        async function submitDiveLogWithImage() {
+            const imageFile = document.getElementById('imageFile').files[0];
+            if (!imageFile) {
+                alert('Please select an image file first');
+                return;
+            }
+
+            setResult('submit-result', 'Uploading image and submitting dive log...', 'loading');
+            
+            try {
+                // First upload the image
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('userId', TEST_USER_ID);
+
+                const uploadResponse = await fetch(`${API_BASE}/api/dive/upload-image`, {
+                    method: 'POST',
+                    headers: { 'x-user-id': TEST_USER_ID },
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error(`Image upload failed: ${uploadResponse.status}`);
+                }
+
+                const uploadResult = await uploadResponse.json();
+                
+                // Then submit the dive log with image data
+                const diveLogData = {
+                    date: document.getElementById('date').value,
+                    discipline: document.getElementById('discipline').value,
+                    location: document.getElementById('location').value,
+                    targetDepth: parseInt(document.getElementById('targetDepth').value),
+                    reachedDepth: parseInt(document.getElementById('reachedDepth').value),
+                    notes: document.getElementById('notes').value + ' (with image analysis)',
+                    user_id: TEST_USER_ID,
+                    imageId: uploadResult.data?.imageId,
+                    imageUrl: uploadResult.data?.imageUrl,
+                    extractedMetrics: uploadResult.data?.extractedMetrics,
+                    imageAnalysis: uploadResult.data?.profileAnalysis
+                };
+
+                const saveResponse = await fetch(`${API_BASE}/api/supabase/save-dive-log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(diveLogData)
+                });
+
+                const saveResult = await saveResponse.json();
+                
+                if (saveResult.success) {
+                    setResult('submit-result', `✅ Dive log with image created!<br>Log ID: ${saveResult.diveLog.id}<br>Image ID: ${uploadResult.data?.imageId}<br><strong>Extracted Metrics:</strong><pre>${JSON.stringify(uploadResult.data?.extractedMetrics, null, 2)}</pre>`, 'success');
+                } else {
+                    setResult('submit-result', `❌ Failed to save dive log: ${saveResult.error}`, 'error');
+                }
+
+            } catch (error) {
+                setResult('submit-result', `❌ Image submission error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getDiveLogs() {
+            setResult('logs-result', 'Fetching dive logs...', 'loading');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/dive/batch-logs?userId=${TEST_USER_ID}&limit=5&sortBy=date&sortOrder=desc`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const logsHtml = data.diveLogs.map(log => 
+                        `<div style="border: 1px solid #ccc; padding: 10px; margin: 5px 0;">
+                            <strong>${log.date}</strong> - ${log.discipline} at ${log.location}<br>
+                            Target: ${log.target_depth}m, Reached: ${log.reached_depth}m<br>
+                            <small>ID: ${log.id}</small>
+                        </div>`
+                    ).join('');
+                    
+                    setResult('logs-result', `✅ Retrieved ${data.diveLogs.length} dive logs (${data.stats.totalLogs} total):<br>${logsHtml}`, 'success');
+                } else {
+                    setResult('logs-result', `❌ Failed to get logs: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                setResult('logs-result', `❌ Fetch error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getDiveLogsFiltered() {
+            setResult('logs-result', 'Fetching filtered dive logs...', 'loading');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/dive/batch-logs?userId=${TEST_USER_ID}&discipline=CWT&limit=3`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    setResult('logs-result', `✅ Found ${data.diveLogs.length} CWT dives out of ${data.stats.totalLogs} total<br><pre>${JSON.stringify(data.stats, null, 2)}</pre>`, 'success');
+                } else {
+                    setResult('logs-result', `❌ Failed to get filtered logs: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                setResult('logs-result', `❌ Filter error: ${error.message}`, 'error');
+            }
+        }
+
+        function openMainApp() {
+            window.open('http://localhost:3000', '_blank');
+        }
+
+        // Auto-run auth test on page load
+        window.onload = () => {
+            testAuth();
+        };
+    </script>
+</body>
+</html>

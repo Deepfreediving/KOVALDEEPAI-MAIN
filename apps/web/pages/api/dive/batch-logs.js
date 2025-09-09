@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     query = query.range(offsetNum, offsetNum + limitNum - 1);
 
     // Execute query
-    const { data: diveLogs, error, count } = await query;
+    const { data: diveLogs, error } = await query;
 
     if (error) {
       console.error('❌ Error fetching dive logs:', error);
@@ -131,15 +131,16 @@ export default async function handler(req, res) {
     const stats = {
       totalLogs: totalCount || 0,
       averageDepth: diveLogs?.length ? 
-        Math.round(diveLogs.reduce((sum, log) => sum + (log.reached_depth_m || 0), 0) / diveLogs.length * 10) / 10 : 0,
+        Math.round(diveLogs.reduce((sum, log) => sum + (log.reached_depth || 0), 0) / diveLogs.length * 10) / 10 : 0,
       deepestDive: diveLogs?.length ? 
-        Math.max(...diveLogs.map(log => log.reached_depth_m || 0)) : 0,
+        Math.max(...diveLogs.map(log => log.reached_depth || 0)) : 0,
       disciplineBreakdown: diveLogs?.reduce((acc, log) => {
         acc[log.discipline] = (acc[log.discipline] || 0) + 1;
         return acc;
       }, {}) || {},
       issueCount: diveLogs?.filter(log => 
-        log.squeeze || log.ear_squeeze || log.lung_squeeze || log.issue_comment
+        log.squeeze || log.ear_squeeze || log.lung_squeeze || log.issue_comment ||
+        log.ai_analysis?.earSqueeze || log.ai_analysis?.lungSqueeze
       ).length || 0
     };
 

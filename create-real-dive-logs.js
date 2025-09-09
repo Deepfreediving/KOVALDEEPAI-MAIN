@@ -121,7 +121,7 @@ async function cleanAndCreateRealDiveLogs() {
       if (error) {
         console.error(`❌ Error creating log for ${log.date}:`, error);
       } else {
-        console.log(`✅ Created log for ${log.date}`);
+        console.log(`✅ Created log for ${log.date} (ID: ${data[0]?.id})`);
       }
     }
     

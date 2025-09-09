@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Login() {
@@ -116,9 +117,11 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <img 
+            <Image 
               src="/koval-logo.png" 
               alt="KovalAI Logo" 
+              width={96}
+              height={96}
               className="h-24 w-auto"
             />
           </div>

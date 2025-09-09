@@ -36,15 +36,19 @@ export default function Index() {
     setIsClient(true);
   }, []);
 
-  // ✅ PRODUCTION AUTH: Redirect to login if not authenticated
+  // ✅ DEVELOPMENT MODE: Skip auth redirect for local testing
   useEffect(() => {
     if (!authLoading && !user && isClient && router?.isReady) {
-      console.log("❌ No authenticated user, redirecting to login");
-      router.push('/auth/login');
+      console.log("⚠️ No authenticated user - continuing in development mode");
+      // Only redirect to login in production
+      if (process.env.NODE_ENV === 'production') {
+        console.log("❌ No authenticated user, redirecting to login");
+        router.push('/auth/login');
+      }
     }
   }, [authLoading, user, isClient, router]);
 
-  // ✅ INITIAL DATA: Use authenticated user data
+  // ✅ INITIAL DATA: Use authenticated user data or fallback for development
   const initialData = useMemo(() => {
     if (user) {
       return {
@@ -56,6 +60,20 @@ export default function Index() {
           nickname: user.user_metadata?.full_name || user.email?.split('@')[0],
           email: user.email,
           source: 'supabase'
+        }
+      };
+    }
+    // Development fallback when no auth
+    if (process.env.NODE_ENV === 'development') {
+      return {
+        userId: '35b522f1-27d2-49de-ed2b-0d257d33ad7d', // Test user ID
+        profile: {
+          userId: '35b522f1-27d2-49de-ed2b-0d257d33ad7d',
+          firstName: 'Test',
+          lastName: 'User',
+          nickname: 'Test User',
+          email: 'test@kovaldeepai.dev',
+          source: 'development'
         }
       };
     }
@@ -100,8 +118,6 @@ export default function Index() {
     }
   }, []);
 
-  const storageKey = useCallback((userIdentifier) => `diveLogs_${userIdentifier}`, []);
-
   const getDisplayName = useCallback(() => {
     // ✅ Use actual user data if available
     if (user) {
@@ -111,22 +127,6 @@ export default function Index() {
     // ✅ Fallback to profile data
     return profile?.firstName || profile?.nickname || "User";
   }, [profile, user]);
-
-  const getUserIdentifier = useCallback(() => {
-    // ✅ Use authenticated user ID
-    if (user?.id) {
-      console.log(`🆔 Using authenticated user ID: ${user.id}`);
-      return user.id;
-    }
-    // Fallback to profile userId if available
-    if (profile?.userId) {
-      console.log(`🆔 Using profile user ID: ${profile.userId}`);
-      return profile.userId;
-    }
-    // No fallback - return empty string
-    console.warn(`🆔 No user ID available`);
-    return "";
-  }, [user, profile]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -139,7 +139,7 @@ export default function Index() {
     }
   }, [router, isClient]);
 
-  // ✅ Update user data when authenticated user changes
+  // ✅ Update user data when authenticated user changes or use development fallback
   useEffect(() => {
     if (user) {
       const userData = {
@@ -153,6 +153,19 @@ export default function Index() {
       console.log("✅ Setting authenticated user data:", userData);
       setUserId(user.id);
       setProfile(userData);
+    } else if (process.env.NODE_ENV === 'development' && !user) {
+      // Development fallback
+      const devUserData = {
+        userId: '35b522f1-27d2-49de-ed2b-0d257d33ad7d',
+        firstName: 'Test',
+        lastName: 'User', 
+        nickname: 'Test User',
+        email: 'test@kovaldeepai.dev',
+        source: 'development'
+      };
+      console.log("🧪 Setting development user data:", devUserData);
+      setUserId('35b522f1-27d2-49de-ed2b-0d257d33ad7d');
+      setProfile(devUserData);
     }
   }, [user]);
 
@@ -219,6 +232,54 @@ export default function Index() {
   const toggleDiveJournal = useCallback(() => {
     setDiveJournalOpen(!diveJournalOpen);
   }, [diveJournalOpen]);
+
+  // 🚀 Load dive logs from API
+  const loadDiveLogs = useCallback(async () => {
+    if (!userId) {
+      console.warn("⚠️ No user ID for loading dive logs");
+      return;
+    }
+
+    setLoadingDiveLogs(true);
+    try {
+      const response = await fetch(`/api/dive/batch-logs?userId=${userId}&limit=100&sortBy=date&sortOrder=desc`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          console.log(`✅ Loaded ${result.diveLogs.length} dive logs`);
+          setDiveLogs(result.diveLogs);
+        } else {
+          console.error("❌ Failed to load dive logs:", result.error);
+          setDiveLogs([]);
+        }
+      } else {
+        console.error("❌ API error loading dive logs:", response.status);
+        setDiveLogs([]);
+      }
+    } catch (error) {
+      console.error("❌ Error loading dive logs:", error);
+      setDiveLogs([]);
+    } finally {
+      setLoadingDiveLogs(false);
+    }
+  }, [userId]);
+
+  // 🚀 Handle dive log deleted
+  const handleDiveLogDeleted = useCallback(() => {
+    console.log("🗑️ Dive log deleted, refreshing list");
+    loadDiveLogs(); // Refresh the list
+    setMessages(prev => [
+      ...prev,
+      { role: "assistant", content: "🗑️ **Dive Log Deleted**\n\nThe dive log has been removed." }
+    ]);
+  }, [loadDiveLogs, setMessages]);
+
+  // 🚀 Load dive logs when user changes
+  useEffect(() => {
+    if (userId && user) {
+      loadDiveLogs();
+    }
+  }, [userId, user, loadDiveLogs]);
 
   // ✅ PRODUCTION CHAT SUBMISSION 
   const handleSubmit = useCallback(
@@ -344,235 +405,338 @@ export default function Index() {
         setMessages((prev) => [...prev, assistantMessage]);
       } catch (error) {
         console.error("❌ Chat error:", error);
-
-        const errorMessage = {
-          role: "assistant",
-          content:
-            "I'm having trouble responding right now. Please try again in a moment.",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [input, loading, userId, user, profile, diveLogs, files],
-  );
-
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit(e);
-      }
-    },
-    [handleSubmit],
-  );
-
-  const handleFileChange = useCallback((e) => {
-    const selectedFiles = Array.from(e.target.files);
-    setFiles(selectedFiles);
-  }, []);
-
-  // ✅ LOAD DIVE LOGS (Enhanced with session-like reliability)
-  const loadDiveLogs = useCallback(async () => {
-    // ✅ IMMEDIATE LOCAL LOADING using nickname-based storage
-    const currentUserId = getUserIdentifier();
-    const key = storageKey(currentUserId);
-    const localLogs = safeParse(key, []);
-    console.log(`🗄️ Local storage logs found: ${localLogs.length} for user: ${currentUserId}`);
-    console.log(`🔑 Storage key: ${key}`);
-    setDiveLogs(localLogs);
-
-    // ✅ SKIP API ONLY IF NO USER IDENTIFIER AT ALL
-    if (!currentUserId || currentUserId === 'anonymous') {
-      console.log("📱 Using localStorage-only mode (no user identifier)");
-      setLoadingDiveLogs(false);
-      return;
-    }
-
-    // ✅ API SYNC - Always try to get remote logs when we have a user ID
-    console.log(`🌐 Loading dive logs for user: ${currentUserId}`);
-    setLoadingDiveLogs(true);
-    try {
-      // Build query parameters including email for admin detection
-      const queryParams = new URLSearchParams({ userId: currentUserId });
-      if (user?.email) {
-        queryParams.append('email', user.email);
-      }
-      
-      const apiUrl = `${API_ROUTES.GET_DIVE_LOGS}?${queryParams.toString()}`;
-      console.log(`🌐 Fetching logs from API: ${apiUrl}`);
-      
-      const response = await fetch(apiUrl);
-      if (response.ok) {
-        const data = await response.json();
-        const remoteLogs = data.diveLogs || data.logs || [];
-        console.log(`🌐 Remote logs found: ${remoteLogs.length}`);
-
-        // Merge local and remote logs (remove duplicates)
-        const merged = [...localLogs, ...remoteLogs].reduce((map, log) => {
-          const key =
-            log.localId ||
-            log._id ||
-            log.id ||
-            `${log.date}-${log.reachedDepth}`;
-          return { ...map, [key]: log };
-        }, {});
-
-        const combined = Object.values(merged).sort(
-          (a, b) => new Date(b.date) - new Date(a.date),
-        );
-
-        console.log(`✅ Combined total logs: ${combined.length}`);
-        console.log(`🔄 Setting diveLogs state with ${combined.length} logs:`, combined.slice(0, 2));
-        setDiveLogs(combined);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(storageKey(getUserIdentifier()), JSON.stringify(combined));
-        }
-
-        console.log(`✅ Loaded ${combined.length} dive logs`);
-      } else {
-        console.warn(
-          `⚠️ API request failed: ${response.status} ${response.statusText}, using localStorage only`,
-        );
-      }
-    } catch (error) {
-      console.error("❌ Failed to load dive logs from API, using localStorage:", error);
-    } finally {
-      setLoadingDiveLogs(false);
-    }
-  }, [getUserIdentifier, user?.email, safeParse, storageKey]);
-
-  // ✅ INITIAL DIVE LOGS LOADING - Runs after loadDiveLogs is defined
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      loadDiveLogs();
-    }
-  }, [loadDiveLogs]);
-
-  // ✅ DIVE LOG CALLBACKS - Defined after loadDiveLogs
-  const handleDiveLogSaved = useCallback((newLog) => {
-    console.log("🚀 Dive log saved:", newLog);
-    // Refresh dive logs
-    loadDiveLogs();
-  }, [loadDiveLogs]);
-
-  const handleDiveLogDeleted = useCallback((deletedLogId) => {
-    console.log("🗑️ Dive log deleted:", deletedLogId);
-    // Refresh dive logs
-    loadDiveLogs();
-  }, [loadDiveLogs]);
-
-  // ✅ DIVE JOURNAL SUBMIT (Session-like: Immediate localStorage, optional API sync)
-  const handleJournalSubmit = useCallback(
-    async (diveData) => {
-      try {
-        // ✅ STEP 1: IMMEDIATE LOCALSTORAGE SAVE (like sessions)
-        // Generate unique diveLogId immediately
-        const diveLogId = `dive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Create dive log with all required fields
-        const completeDiveLog = {
-          ...diveData,
-          id: diveLogId,
-          diveLogId: diveLogId, // Required by DiveLogs collection
-          user_id: getUserIdentifier(), // Add user_id for API
-          timestamp: new Date().toISOString(),
-          source: 'dive-journal-main-app',
-          // User identification fields for localStorage
-          userIdentifier: getUserIdentifier(), // For localStorage key consistency
-          // Admin user profile fields
-          nickname: profile?.nickname || profile?.displayName || 'Unknown User',
-          firstName: profile?.firstName || '',
-          lastName: profile?.lastName || '',
-        };
-
-        // ✅ IMMEDIATE SAVE TO LOCALSTORAGE using nickname-based storage
-        const currentUserId = getUserIdentifier();
-        const key = storageKey(currentUserId);
-        const existingLogs = safeParse(key, []);
-        const updatedLogs = [completeDiveLog, ...existingLogs];
-        
-        if (typeof window !== "undefined") {
-          localStorage.setItem(key, JSON.stringify(updatedLogs));
-          console.log("✅ Dive log saved to localStorage immediately");
-        }
-
-        // ✅ UPDATE UI IMMEDIATELY (like sessions)
-        setDiveLogs(updatedLogs);
-
-        // ✅ IMMEDIATE USER FEEDBACK
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `📝 Dive log saved! ${completeDiveLog.reachedDepth}m dive at ${completeDiveLog.location || "your location"}.`,
+            content: "Sorry, I'm having trouble responding right now. Please try again.",
           },
         ]);
-
-        // ✅ STEP 2: OPTIONAL API SYNC (don't block UI)
-        // Only try API if we have real user data (not guest)
-        if (profile?.nickname || profile?.firstName) {
-          try {
-            console.log("🌐 Attempting background sync to API...");
-            const response = await fetch(API_ROUTES.SAVE_DIVE_LOG, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(completeDiveLog),
-            });
-
-            if (response.ok) {
-              console.log("✅ Background API sync successful");
-            } else {
-              console.warn("⚠️ Background API sync failed, but localStorage save succeeded");
-            }
-          } catch (apiError) {
-            console.warn("⚠️ Background API sync error, but localStorage save succeeded:", apiError);
-          }
-        } else {
-          console.log("📱 Skipping API sync - using localStorage-only mode");
-        }
-
-      } catch (error) {
-        console.error("❌ Error saving dive log:", error);
-        // Even if everything fails, try basic localStorage save
-        try {
-          const basicLog = { ...diveData, id: Date.now(), timestamp: new Date().toISOString() };
-          const key = storageKey(getUserIdentifier());
-          const existing = safeParse(key, []);
-          localStorage.setItem(key, JSON.stringify([basicLog, ...existing]));
-          setDiveLogs([basicLog, ...diveLogs]);
-          console.log("✅ Emergency localStorage save successful");
-        } catch (emergencyError) {
-          console.error("❌ Even emergency save failed:", emergencyError);
-        }
+      } finally {
+        setLoading(false);
       }
     },
-    [profile, diveLogs, getUserIdentifier, safeParse, storageKey],
+    [input, loading, userId, user, profile, diveLogs, files, setMessages, setInput, setFiles],
   );
 
-  // ✅ DELETE DIVE LOG (for future use)
-  // eslint-disable-next-line no-unused-vars
-  const handleDelete = useCallback(
-    async (logId) => {
+  // ✅ Handle key down events
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  }, [handleSubmit]);
+
+  // ✅ Handle file changes
+  const handleFileChange = useCallback((e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
+  }, [setFiles]);
+
+  // 🚀 Handle dive log form submission
+  const handleDiveLogSubmit = useCallback(async (diveLogData, isEditMode = false, editingLog = null) => {
+    // Allow in development mode even without auth
+    if (!userId || (!user && process.env.NODE_ENV !== 'development')) {
+      console.warn("⚠️ No authenticated user found for dive log submission");
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: "❌ **Authentication Required**\n\nPlease log in to save dive logs." }
+      ]);
+      return { success: false, error: "Authentication required" };
+    }
+
+    console.log("🚀 Index: Processing dive log submission", { isEditMode, userId });
+
+    try {
+      // 🔐 Build auth headers with Supabase session token if available
+      let authHeaders = { "Content-Type": "application/json" };
       try {
-        const response = await fetch(
-          `${API_ROUTES.DELETE_DIVE_LOG}?id=${logId}`,
-          {
-            method: "DELETE",
-          },
-        );
-
-        if (response.ok) {
-          console.log("✅ Dive log deleted");
-          await loadDiveLogs(); // Refresh the list
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          authHeaders.Authorization = `Bearer ${session.access_token}`;
+          console.log("🔐 Including auth token in save request");
         }
-      } catch (error) {
-        console.error("❌ Error deleting dive log:", error);
+      } catch (tokenErr) {
+        console.warn("⚠️ Could not get session token for save:", tokenErr);
       }
-    },
-    [loadDiveLogs],
-  );
+
+      // 📸 If image selected, upload first to get imageId/metrics
+      let imagePayload = {};
+      if (diveLogData.imageFile) {
+        try {
+          console.log("📤 Uploading dive image before save...");
+          const formData = new FormData();
+          formData.append("image", diveLogData.imageFile);
+          formData.append("userId", userId);
+          // Do NOT set Content-Type for FormData; browser will set proper boundary
+          const uploadResp = await fetch("/api/dive/upload-image", {
+            method: "POST",
+            headers: { "x-user-id": userId },
+            body: formData,
+          });
+          if (!uploadResp.ok) {
+            const errData = await uploadResp.json().catch(() => ({}));
+            throw new Error(errData.error || `Image upload failed (${uploadResp.status})`);
+          }
+          const uploadJson = await uploadResp.json();
+          imagePayload = {
+            imageId: uploadJson?.data?.imageId,
+            imageUrl: uploadJson?.data?.imageUrl,
+            extractedMetrics: uploadJson?.data?.extractedMetrics,
+            imageAnalysis: uploadJson?.data?.profileAnalysis,
+          };
+          console.log("✅ Image uploaded:", imagePayload);
+        } catch (imgErr) {
+          console.error("❌ Image upload error:", imgErr);
+          setMessages(prev => [
+            ...prev,
+            { role: "assistant", content: `⚠️ Image upload skipped: ${imgErr.message}` }
+          ]);
+        }
+      }
+
+      // 📝 Prepare payload
+      const payload = {
+        ...diveLogData,
+        ...imagePayload,
+        user_id: userId,
+      };
+
+      // 🔄 Choose method: update or create
+      const method = isEditMode && (editingLog?.id || diveLogData.id) ? "PUT" : "POST";
+      if (method === "PUT") {
+        payload.id = editingLog?.id || diveLogData.id;
+      }
+
+      const saveResp = await fetch("/api/supabase/save-dive-log", {
+        method,
+        headers: authHeaders,
+        body: JSON.stringify(payload),
+      });
+
+      const saveJson = await saveResp.json().catch(() => ({}));
+      if (!saveResp.ok || saveJson.success === false) {
+        throw new Error(saveJson.error || saveJson.details || `Save failed (${saveResp.status})`);
+      }
+
+      // ✅ Refresh list and notify
+      await loadDiveLogs();
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: isEditMode ? "✅ **Dive Log Updated**\n\nYour changes have been saved." : "✅ **Dive Log Saved**\n\nYour dive log has been saved successfully!" }
+      ]);
+
+      return { success: true, diveLog: saveJson.diveLog };
+    } catch (error) {
+      console.error("❌ Dive log submission error:", error);
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: `❌ **Save Failed**\n\n${error.message}` }
+      ]);
+      return { success: false, error: error.message };
+    }
+  }, [userId, user, setMessages, loadDiveLogs]);
+
+  // 🚀 BATCH ANALYSIS STATE AND FUNCTIONS
+  const [batchAnalysis, setBatchAnalysis] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisType, setAnalysisType] = useState("pattern");
+  const [timeRange, setTimeRange] = useState("all");
+  const [analysisHistory, setAnalysisHistory] = useState([]);
+  const [analyzingLogId, setAnalyzingLogId] = useState(null);
+  
+  // Advanced filtering state
+  const [filters, setFilters] = useState({
+    discipline: "",
+    location: "",
+    dateFrom: "",
+    dateTo: "",
+    hasIssues: ""
+  });
+
+  // 🚀 Handle batch analysis
+  const handleBatchAnalysis = useCallback(async () => {
+    if (!userId || diveLogs.length === 0) return;
+    
+    setIsAnalyzing(true);
+    try {
+      console.log("🧠 Starting batch analysis...");
+      const response = await fetch('/api/dive/batch-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          analysisType,
+          timeRange,
+          diveLogs: diveLogs.slice(0, 20) // Limit for API payload
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const newAnalysis = {
+            type: analysisType,
+            timeRange,
+            logsAnalyzed: result.logsAnalyzed || diveLogs.length,
+            result: result.analysis,
+            createdAt: new Date().toISOString()
+          };
+          
+          setBatchAnalysis(newAnalysis);
+          setAnalysisHistory(prev => [newAnalysis, ...prev.slice(0, 9)]); // Keep last 10
+          
+          setMessages(prev => [
+            ...prev,
+            { 
+              role: "assistant", 
+              content: `🧠 **Batch Analysis Complete**\n\n${result.analysis}` 
+            }
+          ]);
+        } else {
+          throw new Error(result.error || 'Analysis failed');
+        }
+      } else {
+        throw new Error(`API error: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("❌ Batch analysis error:", error);
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "assistant", 
+          content: "❌ Batch analysis failed. Please try again." 
+        }
+      ]);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [userId, diveLogs, analysisType, timeRange, setMessages]);
+
+  // 🚀 Handle individual dive log analysis
+  const handleAnalyzeDiveLog = useCallback(async (log) => {
+    if (!userId) return;
+    
+    setAnalyzingLogId(log.id);
+    try {
+      const analysisResponse = await fetch("/api/openai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Analyze this dive log and provide coaching insights: ${JSON.stringify(log)}`,
+          userId,
+          profile,
+          embedMode: false,
+        }),
+      });
+
+      if (analysisResponse.ok) {
+        const analysisData = await analysisResponse.json();
+        const analysis = analysisData.assistantMessage?.content || analysisData.answer || "Analysis completed.";
+        
+        setMessages(prev => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `🤖 **Dive Analysis Results**\n\n${analysis}`,
+          },
+        ]);
+      } else {
+        throw new Error(`Analysis failed: ${analysisResponse.status}`);
+      }
+    } catch (error) {
+      console.error("❌ Dive analysis error:", error);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "❌ Analysis failed. Please try again.",
+        },
+      ]);
+    } finally {
+      setAnalyzingLogId(null);
+    }
+  }, [userId, profile, setMessages]);
+
+  // 🚀 Handle dive log deletion
+  const handleDeleteDiveLog = useCallback(async (logToDelete) => {
+    if (!userId) return;
+    
+    try {
+      const response = await fetch("/api/supabase/delete-dive-log", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          logId: logToDelete.id,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("✅ Dive log deleted successfully");
+        // Call the callback to refresh logs
+        handleDiveLogDeleted(logToDelete.id);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Delete failed');
+      }
+    } catch (error) {
+      console.error("❌ Delete error:", error);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "❌ Failed to delete dive log. Please try again.",
+        },
+      ]);
+    }
+  }, [userId, handleDiveLogDeleted, setMessages]);
+
+  // 🚀 Handle export logs
+  const handleExportLogs = useCallback(async () => {
+    if (!userId || diveLogs.length === 0) return;
+    
+    try {
+      const queryParams = new URLSearchParams({
+        userId,
+        format: 'csv',
+        limit: '1000'
+      });
+      
+      const response = await fetch(`/api/dive/batch-logs?${queryParams}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dive-logs-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        setMessages(prev => [
+          ...prev,
+          { 
+            role: "assistant", 
+            content: "📁 **Export Complete**\n\nYour dive logs have been downloaded as a CSV file." 
+          }
+        ]);
+      } else {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("❌ Export error:", error);
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "assistant", 
+          content: "❌ Export failed. Please try again." 
+        }
+      ]);
+    }
+  }, [userId, diveLogs, setMessages]);
 
   // ✅ SESSION MANAGEMENT - Enhanced with auto-save and better feedback
   const handleSaveSession = useCallback(() => {
@@ -702,6 +866,8 @@ export default function Index() {
     console.log("🗑️ Session deleted");
   }, [sessionsList, userId]);
 
+
+
   // ✅ MEMOIZED PROPS FOR PERFORMANCE
   const sidebarProps = useMemo(
     () => ({
@@ -722,7 +888,6 @@ export default function Index() {
       handleSaveSession,
       handleSelectSession,
       handleDeleteSession,
-      handleJournalSubmit,
       toggleDiveJournal,
       refreshDiveLogs: loadDiveLogs,
       loadingDiveLogs,
@@ -742,7 +907,6 @@ export default function Index() {
       handleSaveSession,
       handleSelectSession,
       handleDeleteSession,
-      handleJournalSubmit,
       toggleDiveJournal,
       loadDiveLogs,
       loadingDiveLogs,
@@ -968,14 +1132,26 @@ export default function Index() {
           onClose={() => setDiveJournalOpen(false)}
           isEmbedded={isEmbedded}
           setMessages={setMessages}
-          refreshKey={Date.now()}
-          onDiveLogSaved={handleDiveLogSaved}
-          onDiveLogDeleted={handleDiveLogDeleted}
-          onRefreshDiveLogs={loadDiveLogs}
           diveLogs={diveLogs}
           loadingDiveLogs={loadingDiveLogs}
-          currentUser={user}
-          userProfile={profile}
+          // Batch analysis props
+          batchAnalysis={batchAnalysis}
+          setBatchAnalysis={setBatchAnalysis}
+          isAnalyzing={isAnalyzing}
+          analysisType={analysisType}
+          setAnalysisType={setAnalysisType}
+          timeRange={timeRange}
+          setTimeRange={setTimeRange}
+          analysisHistory={analysisHistory}
+          analyzingLogId={analyzingLogId}
+          filters={filters}
+          setFilters={setFilters}
+          // Data management functions
+          onBatchAnalysis={handleBatchAnalysis}
+          onAnalyzeDiveLog={handleAnalyzeDiveLog}
+          onDeleteDiveLog={handleDeleteDiveLog}
+          onExportLogs={handleExportLogs}
+          onDiveLogSubmit={handleDiveLogSubmit}
         />
       )}
       {/* Debug: Log diveLogs state when passing to component */}
