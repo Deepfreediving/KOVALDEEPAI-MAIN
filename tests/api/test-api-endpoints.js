@@ -20,7 +20,7 @@ async function testAPIEndpoints() {
       userId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
     };
 
-    const uploadResponse = await fetch(`${baseUrl}/api/openai/upload-dive-image-simple`, {
+    const uploadResponse = await fetch(`${baseUrl}/api/dive/upload-image`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

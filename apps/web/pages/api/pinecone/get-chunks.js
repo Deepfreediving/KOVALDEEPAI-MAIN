@@ -1,7 +1,19 @@
 require("dotenv").config();
 const { OpenAI } = require("openai");
 const { Pinecone } = require("@pinecone-database/pinecone");
-import handleCors from "@/utils/handleCors";
+
+// Simple CORS handler function
+function handleCors(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return true;
+  }
+  return false;
+}
 
 // Initialize OpenAI and Pinecone clients
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -54,7 +66,7 @@ async function getKnowledgeChunks(query, topK = 5) {
 }
 
 // API handler - returns raw knowledge chunks
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -82,4 +94,4 @@ module.exports = async function handler(req, res) {
     console.error("❌ Get chunks handler error:", err.message || err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
-};
+}

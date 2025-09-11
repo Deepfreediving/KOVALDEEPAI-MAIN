@@ -321,8 +321,19 @@ export default function Index() {
           userId,
           profile,
           embedMode: false,
-          diveLogs: diveLogs.slice(0, 10), // Include recent dive logs for context
+          // Do NOT include dive logs by default; only send when explicitly requested
         };
+
+        // ✅ Only request dive analysis when the user explicitly asks
+        try {
+          const analysisRequested = /\b(analyz\w*|audit|journal|dive\s*log|dive\s*journal|evaluate|evaluation)\b/i.test(input);
+          if (analysisRequested) {
+            messageData.analysisRequested = true;
+            console.log("📊 User explicitly requested dive analysis – flag set");
+          }
+        } catch (e) {
+          // no-op
+        }
 
         // ✅ Handle file uploads if present
         if (files && files.length > 0) {
@@ -460,9 +471,32 @@ export default function Index() {
         console.warn("⚠️ Could not get session token for save:", tokenErr);
       }
 
-      // 📸 If image selected, upload first to get imageId/metrics
+      // 📸 Handle image upload logic - check for temporary data first
       let imagePayload = {};
-      if (diveLogData.imageFile) {
+      
+      // If we have temporary image data from the analysis, use it instead of re-uploading
+      if (diveLogData._tempImageData) {
+        console.log("📸 Using previously analyzed image data");
+        imagePayload = diveLogData._tempImageData;
+        
+        // Update the image record to associate with the real user
+        try {
+          const updateResp = await fetch("/api/dive/update-image-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageId: imagePayload.imageId,
+              userId: userId
+            }),
+          });
+          if (!updateResp.ok) {
+            console.warn("⚠️ Could not update image user association, proceeding anyway");
+          }
+        } catch (updateErr) {
+          console.warn("⚠️ Image user update failed:", updateErr);
+        }
+      } else if (diveLogData.imageFile) {
+        // Only upload if no temporary data exists
         try {
           console.log("📤 Uploading dive image before save...");
           const formData = new FormData();
@@ -526,6 +560,55 @@ export default function Index() {
         { role: "assistant", content: isEditMode ? "✅ **Dive Log Updated**\n\nYour changes have been saved." : "✅ **Dive Log Saved**\n\nYour dive log has been saved successfully!" }
       ]);
 
+      // ✅ NEW: Auto-trigger AI analysis after save and close the journal UI
+      if (method === "POST") {
+        try {
+          // Close the journal UI for confirmation
+          setDiveJournalOpen(false);
+
+          // Non-blocking status message
+          setMessages(prev => [
+            ...prev,
+            { role: "assistant", content: "🧠 Analyzing your new dive log... I'll post insights shortly." }
+          ]);
+
+          // Fire-and-forget analysis call (await for feedback but isolate errors)
+          const analysisResp = await fetch("/api/analyze/dive-log-openai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              adminUserId: userId,
+              diveLogData: payload,
+            }),
+          });
+
+          if (analysisResp.ok) {
+            const analysisJson = await analysisResp.json();
+            setMessages(prev => [
+              ...prev,
+              {
+                role: "assistant",
+                content: analysisJson?.analysis
+                  ? `🤖 **AI Analysis Complete**\n\n${analysisJson.analysis}`
+                  : "🤖 AI analysis complete. Review has been saved to your log.",
+              },
+            ]);
+          } else {
+            const err = await analysisResp.json().catch(() => ({}));
+            setMessages(prev => [
+              ...prev,
+              { role: "assistant", content: `⚠️ AI analysis failed to run: ${err.error || analysisResp.status}` }
+            ]);
+          }
+        } catch (analysisErr) {
+          console.warn("⚠️ Auto-analysis error:", analysisErr);
+          setMessages(prev => [
+            ...prev,
+            { role: "assistant", content: "⚠️ Couldn't run AI analysis automatically. You can analyze this log later from the journal." }
+          ]);
+        }
+      }
+
       return { success: true, diveLog: saveJson.diveLog };
     } catch (error) {
       console.error("❌ Dive log submission error:", error);
@@ -561,7 +644,7 @@ export default function Index() {
     setIsAnalyzing(true);
     try {
       console.log("🧠 Starting batch analysis...");
-      const response = await fetch('/api/dive/batch-analysis', {
+      const response = await fetch('/api/dive/analyze-images', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -916,17 +999,34 @@ export default function Index() {
 
   // ✅ MESSAGE LISTENER FOR USER AUTH FROM PARENT PAGE
   useEffect(() => {
+    // Build trusted origins set from env vars (NEXT_PUBLIC_APP_URL + NEXT_PUBLIC_TRUSTED_ORIGINS)
+    const rawTrusted = process.env.NEXT_PUBLIC_TRUSTED_ORIGINS || "";
+    const baseTrusted = [process.env.NEXT_PUBLIC_APP_URL].filter(Boolean);
+    const envTrusted = rawTrusted.split(',').map(s => s.trim()).filter(Boolean);
+    const trustedOrigins = new Set([...baseTrusted, ...envTrusted]);
+
+    // Keep a set of origins we've already warned about to avoid console flooding
+    const ignoredOriginsLogged = new Set();
+
+    function isTrustedOrigin(origin) {
+      if (!origin) return false;
+      try {
+        const u = new URL(origin);
+        // During development, accept any localhost origin (all ports)
+        if (process.env.NODE_ENV !== 'production' && u.hostname === 'localhost') return true;
+      } catch (e) {
+        // If origin is not a valid URL, fall back to whitelist check below
+      }
+      return trustedOrigins.has(origin);
+    }
+
     const handleMessage = (event) => {
-      // Security check for trusted origins
-      if (
-        !(
-          event.origin === "https://www.deepfreediving.com" ||
-          event.origin === "https://deepfreediving.com" ||
-          event.origin === "https://kovaldeepai-main.vercel.app" ||
-          event.origin === "http://localhost:3000"
-        )
-      ) {
-        console.log("🚫 Ignoring message from untrusted origin:", event.origin);
+      if (!isTrustedOrigin(event.origin)) {
+        // Warn only once per origin to reduce spam
+        if (!ignoredOriginsLogged.has(event.origin)) {
+          console.warn('🚫 Ignoring message from untrusted origin:', event.origin);
+          ignoredOriginsLogged.add(event.origin);
+        }
         return;
       }
 
@@ -1130,7 +1230,7 @@ export default function Index() {
           darkMode={darkMode}
           isOpen={diveJournalOpen}
           onClose={() => setDiveJournalOpen(false)}
-          isEmbedded={isEmbedded}
+          isEmbedded={true}
           setMessages={setMessages}
           diveLogs={diveLogs}
           loadingDiveLogs={loadingDiveLogs}
@@ -1154,8 +1254,6 @@ export default function Index() {
           onDiveLogSubmit={handleDiveLogSubmit}
         />
       )}
-      {/* Debug: Log diveLogs state when passing to component */}
-      {diveJournalOpen && console.log(`🔍 Passing ${diveLogs.length} dive logs to DiveJournalDisplay`)}
 
     </main>
   );

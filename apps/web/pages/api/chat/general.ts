@@ -2,27 +2,10 @@
  * 🎯 PRIMARY CHAT ENDPOINT - /api/chat/general.ts
  * 
  * PURPOSE: Main chat system for all authenticated users
- * FEATURES: 
- * - Full RAG in  try async function queryDiveLogs(userId: string): Promise<string[]> {
-  if (!userId || userId.startsWith("guest")) return [];
-  try {
-    // ✅ VERCEL PRODUCTION FIX: Use the actual VERCEL_URL to avoid 401 errors
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://kovaldeepai-main.vercel.app';
-
-    console.log(
-      `🗃️ Querying dive logs via: ${baseUrl}/api/analyze/get-dive-logs?userId=${userId}`,
-    );✅ VERCEL PRODUCTION FIX: Use the actual VERCEL_URL to avoid 401 errors
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://kovaldeepai-main.vercel.app';
-
-    console.log(
-      `🔍 Querying Pinecone via: ${baseUrl}/api/pinecone/pineconequery-gpt`,
-    ); with Pinecone knowledge base
+ * FEATURES:
+ * - Full RAG with Pinecone knowledge base
  * - Personal dive log context from Supabase
- * - User level detection (expert/beginner) 
+ * - User level detection (expert/beginner)
  * - Comprehensive error handling & retry logic
  * - Context-aware responses with user's actual dive data
  * 
@@ -37,7 +20,7 @@ import OpenAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
 import handleCors from "@/utils/handleCors";
 import { getServerClient, queries } from '@/lib/supabase';
-// import { fetchUserMemory, saveUserMemory } from "@/lib/userMemoryManager"; // Disabled for now - using admin-only auth
+import { createClient as createSupabaseAuthClient } from '@supabase/supabase-js';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
@@ -120,7 +103,7 @@ async function queryPinecone(query: string): Promise<string[]> {
     
     // Create embedding for the query
     const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
+      model: "text-embedding-3-small",
       input: query,
     });
     
@@ -188,7 +171,17 @@ function generateSystemPrompt(
 
   return `You are Koval Deep AI, Daniel Koval's freediving coaching system. ${userContext}${diveLogContext}Provide personalized coaching based on their progress and training history.
 
-🎯 CRITICAL REQUIREMENTS:
+🎯 RESPONSE FORMAT REQUIREMENTS:
+- Use clean, modern formatting with emojis and visual separators
+- Structure responses with clear sections using emojis as headers
+- Replace markdown headers (#) with emoji-based section headers
+- Use bullet points (•) instead of traditional markdown lists  
+- Use visual separators like "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" between major sections
+- Keep formatting clean and scannable with plenty of white space
+- Use emojis consistently: 🏊‍♂️ for technique, 📊 for analysis, ⚠️ for safety, 🎯 for goals, 💡 for tips
+- End responses with a clean visual footer using "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+🧠 CONTENT REQUIREMENTS:
 - ${hasDiveLogs ? "YOU CAN AND MUST ANALYZE their personal dive logs - the data is provided in the Knowledge Base section below. Reference specific dives, depths, dates, and progression patterns." : "ONLY use information from the provided knowledge base below"}
 - When you see dive log data, provide specific analysis of their performance, progression, and areas for improvement
 - NEVER provide generic freediving advice - only use Daniel Koval's specific methodologies and content
@@ -453,6 +446,30 @@ export default async function handler(
     if (req.method !== "POST")
       return res.status(405).json({ error: "Method Not Allowed" });
 
+    // ✅ Optional Authorization header validation
+    let authUserId: string | null = null;
+    try {
+      const authHeader = (req.headers?.authorization as string) || '';
+      const match = /^Bearer\s+(.+)$/i.exec(authHeader);
+      if (match) {
+        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+          console.warn('⚠️ Supabase auth not configured for token verification; proceeding unauthenticated');
+        } else {
+          const supabaseAuth = createSupabaseAuthClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          const { data, error } = await supabaseAuth.auth.getUser(match[1]);
+          if (error || !data?.user) {
+            return res.status(401).json({ error: 'Invalid auth token' });
+          }
+          authUserId = data.user.id;
+        }
+      }
+    } catch (authErr: any) {
+      console.error('❌ Authorization validation error:', authErr?.message || authErr);
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
     const {
       message,
       userId,
@@ -460,12 +477,25 @@ export default async function handler(
       profile = {},
       embedMode = false,
       diveLogs = [],
+      analysisRequested = false,
     } = req.body;
+
+    // Intent detection for dive-log analysis
+    const lowerMsg = (message || '').toLowerCase().trim();
+    const keywordIntent = /\b(analyz\w*|audit|journal|dive\s*log|dive\s*journal|evaluate|evaluation|pattern|patterns)\b/i.test(lowerMsg);
+    const yesIntent = /^(yes|yes\!+|yes\.+)$/i.test(lowerMsg);
+    const wantsDiveAnalysis = Boolean(analysisRequested || keywordIntent || yesIntent);
+
+    if (wantsDiveAnalysis) {
+      console.log('📊 Dive analysis intent detected. Dive logs will be loaded for this request.');
+    } else {
+      console.log('🧠 No analysis intent detected. Skipping dive log retrieval for this chat message.');
+    }
 
     // ✅ UPDATED: Support anonymous users with Supabase migration
     // Allow guests and anonymous users
-    if (!userId && !nickname) {
-      console.warn("🚫 REJECTED: No userId or nickname provided:", { origin: req.headers.origin });
+    if (!userId && !nickname && !authUserId) {
+      console.warn("🚫 REJECTED: No userId, nickname, or auth token provided:", { origin: req.headers.origin });
       return res.status(401).json({
         error: "User identifier required",
         code: "USER_IDENTIFIER_REQUIRED", 
@@ -476,11 +506,11 @@ export default async function handler(
       });
     }
 
-    // ✅ Use nickname or userId for user identification
-    const userIdentifier = nickname || userId;
+    // ✅ Prefer verified auth user id if available
+    const userIdentifier = authUserId || nickname || userId;
 
     console.log(
-      `🚀 Chat request: ✅ AUTHENTICATED | userId=${userId} | embedMode=${embedMode}`,
+      `🚀 Chat request: ✅ AUTHENTICATED | userId=${userIdentifier} | embedMode=${embedMode}`,
     );
 
     // ✅ Extract consistent user display name using member ID for fast recognition
@@ -548,39 +578,41 @@ export default async function handler(
     });
 
     const contextChunks = await queryPinecone(message);
-    const diveContext = await queryDiveLogs(userId);
+    const diveContext = wantsDiveAnalysis ? await queryDiveLogs(userId) : [];
 
-    // ✅ Load dive logs directly from Supabase
+    // ✅ Load dive logs directly from Supabase only when analysis is requested
     let allDiveLogs: any[] = [];
     try {
-      const supabase = getServerClient();
-      const { data: logs, error } = await supabase
-        .from('dive_logs')
-        .select('*')
-        .eq('user_id', userIdentifier)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      if (wantsDiveAnalysis) {
+        const supabase = getServerClient();
+        const { data: logs, error } = await supabase
+          .from('dive_logs')
+          .select('*')
+          .eq('user_id', userIdentifier)
+          .order('created_at', { ascending: false })
+          .limit(10);
 
-      if (!error && logs) {
-        allDiveLogs = logs;
-        console.log(`� Loaded ${allDiveLogs.length} dive logs from Supabase`);
+        if (!error && logs) {
+          allDiveLogs = logs;
+          console.log(`🗃️ Loaded ${allDiveLogs.length} dive logs from Supabase`);
+        }
       }
     } catch (err) {
-      console.warn("⚠️ Could not load dive logs from Supabase:", err);
-      // Fallback to request dive logs
-      allDiveLogs = diveLogs || [];
+      console.warn('⚠️ Could not load dive logs from Supabase:', err);
+      // Fallback to request dive logs when analysis is requested
+      allDiveLogs = wantsDiveAnalysis ? (diveLogs || []) : [];
     }
 
-    // ✅ Process dive logs for context (using both local and request dive logs)
+    // ✅ Process dive logs for context only when requested
     let diveLogContext = "";
-    if (allDiveLogs && allDiveLogs.length > 0) {
+    if (wantsDiveAnalysis && allDiveLogs && allDiveLogs.length > 0) {
       console.log(
         `📊 Processing ${allDiveLogs.length} dive logs for enhanced coaching context`,
       );
-      console.log("📊 Sample dive log data:", allDiveLogs[0]); // Debug first dive log
+      console.log("📊 Sample dive log data:", allDiveLogs[0]);
 
       const recentDiveLogs = allDiveLogs
-        .slice(0, 5) // Last 5 dive logs
+        .slice(0, 5)
         .map((log: any) => {
           const details = [
             `📅 ${log.date || log.timestamp?.split("T")[0] || "Unknown date"}`,
@@ -589,7 +621,7 @@ export default async function handler(
             `🎯 Target: ${log.targetDepth}m → Reached: ${log.reachedDepth}m`,
             log.mouthfillDepth ? `💨 Mouthfill: ${log.mouthfillDepth}m` : "",
             log.issueDepth ? `⚠️ Issue at: ${log.issueDepth}m` : "",
-            log.issueComment ? `💭 Issue: ${log.issueComment}` : "",
+            log.issueComment ? `💬 Issue: ${log.issueComment}` : "",
             log.notes ? `📝 ${log.notes}` : "",
           ]
             .filter(Boolean)
@@ -622,19 +654,16 @@ ${recentDiveLogs}
       `📊 Dive log context length: ${diveLogContext.length} characters`,
     );
     console.log(
-      `📊 Has dive logs flag: ${!!(allDiveLogs && allDiveLogs.length > 0)}`,
+      `📊 Has dive logs flag: ${wantsDiveAnalysis && !!(allDiveLogs && allDiveLogs.length > 0)}`,
     );
 
-    // ✅ Skip audit for now to prevent API call loops
-    // Audit functionality can be re-enabled later with direct logic
-
     const assistantReply = await askWithContext(
-      [...contextChunks, ...diveContext],
+      wantsDiveAnalysis ? [...contextChunks, ...diveContext] : contextChunks,
       message,
       userLevel,
       embedMode,
-      diveLogContext,
-      !!(allDiveLogs && allDiveLogs.length > 0),
+      wantsDiveAnalysis ? diveLogContext : "",
+      wantsDiveAnalysis && !!(allDiveLogs && allDiveLogs.length > 0),
     );
 
     // ✅ Enhanced response validation and fallback handling

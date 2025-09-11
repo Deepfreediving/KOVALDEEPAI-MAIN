@@ -40,13 +40,13 @@ const SUPABASE_CONFIG = {
 // Environment variables - with fallbacks for development
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SERVICE_KEY || process.env.KOVALAISERVICEROLEKEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_KEY || process.env.KOVALAISERVICEROLEKEY || ''
 
 // Debug environment variables
 console.log('🔧 Supabase Environment Variables:', {
   SUPABASE_URL: SUPABASE_URL ? `${SUPABASE_URL.substring(0, 30)}...` : 'MISSING',
   SUPABASE_ANON_KEY: SUPABASE_ANON_KEY ? `${SUPABASE_ANON_KEY.substring(0, 30)}...` : 'MISSING',
-  SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? `${SUPABASE_SERVICE_ROLE_KEY.substring(0, 30)}...` : 'MISSING'
+  SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? '✅ CONFIGURED' : '❌ MISSING'
 })
 
 // Validate environment variables - only warn instead of throwing

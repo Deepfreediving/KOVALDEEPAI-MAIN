@@ -2,10 +2,14 @@
 import OpenAI from 'openai';
 import handleCors from '@/utils/handleCors';
 import { getServerClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // ✅ Enhanced function to compute or extract descent/ascent speeds
 function computeOrExtractSpeeds(maxDepthM, totalSeconds, bottomSeconds = 0, timeToMaxDepthSeconds, analysis = '') {
@@ -228,8 +232,31 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    // ✅ Optional Authorization header validation (non-blocking)
+    let authUserId = null;
+    try {
+      const authHeader = req.headers?.authorization || '';
+      const match = /^Bearer\s+(.+)$/i.exec(authHeader);
+      if (match && SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          const { data, error } = await supabaseAuth.auth.getUser(match[1]);
+          if (!error && data?.user) {
+            authUserId = data.user.id;
+            console.log('✅ Valid auth token, using verified user ID');
+          } else {
+            console.warn('⚠️ Invalid auth token provided, proceeding without verification');
+          }
+        } catch (authErr) {
+          console.warn('⚠️ Auth token validation failed, proceeding without verification:', authErr.message);
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Auth header parsing failed, proceeding without verification:', err.message);
+    }
+
     const { adminUserId, nickname, diveLogData } = req.body;
-    const userId = adminUserId || nickname; // migrate away from `nickname`
+    const userId = adminUserId || authUserId || nickname; // prefer verified auth user
 
     console.log('🤖 Starting OpenAI dive analysis for:', userId);
 
@@ -242,47 +269,76 @@ export default async function handler(req, res) {
     
     console.log('📝 Formatted dive data:', diveText);
 
+    // Enhanced prompt that includes structured image analysis data
+    let imageDataPrompt = '';
+    if (diveLogData.extractedText) {
+      imageDataPrompt = `\nDive Computer Data: ${diveLogData.extractedText}`;
+    } else if (diveLogData.imageAnalysis) {
+      // Handle structured image analysis data
+      if (typeof diveLogData.imageAnalysis === 'object') {
+        const analysis = diveLogData.imageAnalysis;
+        if (analysis.extractedData) {
+          const data = analysis.extractedData;
+          imageDataPrompt = `\nDive Computer Data Extracted:
+- Max Depth: ${data.maxDepth || 'N/A'}m
+- Dive Time: ${data.diveTime || data.diveTimeSeconds + 's' || 'N/A'}
+- Temperature: ${data.temperature || 'N/A'}°C
+- Date: ${data.date || 'N/A'}
+- Mode: ${data.diveMode || 'N/A'}`;
+          
+          if (analysis.profileAnalysis) {
+            const profile = analysis.profileAnalysis;
+            imageDataPrompt += `\nProfile Analysis:
+- Descent Rate: ${profile.descentPhase?.averageDescentRate || 'N/A'} m/s
+- Ascent Rate: ${profile.ascentPhase?.averageAscentRate || 'N/A'} m/s
+- Bottom Time: ${profile.bottomPhase?.bottomTime || 'N/A'} seconds`;
+          }
+          
+          if (analysis.coachingInsights) {
+            const insights = analysis.coachingInsights;
+            imageDataPrompt += `\nCoaching Notes: ${insights.performanceRating || 'N/A'}/10 rating`;
+          }
+        }
+      } else {
+        imageDataPrompt = `\nDive Computer Analysis: ${diveLogData.imageAnalysis}`;
+      }
+    }
+
     // Create enhanced OpenAI analysis prompt with specific depth/time extraction
     const prompt = `You are Daniel Koval, a world-renowned freediving instructor and coach. Analyze this dive log and provide detailed coaching feedback:
 
-${diveText}
+${diveText}${imageDataPrompt}
 
-${diveLogData.extractedText ? `\nDive Computer Data: ${diveLogData.extractedText}` : ''}
-
-🎯 CRITICAL: If there's a dive profile graph or computer readout, please extract these specific metrics:
-- Time to maximum depth (descent time in seconds)
-- Time from maximum depth to surface (ascent time in seconds)  
-- Bottom time at maximum depth (if any pause at bottom)
-- Descent speed (m/s) = max depth ÷ descent time
-- Ascent speed (m/s) = max depth ÷ ascent time
-- Total dive time (should match ascent + descent + bottom time)
+🎯 CRITICAL: If dive computer data is provided above, use those EXACT VALUES in your analysis instead of hypothetical ones.
 
 For dive profiles showing depth vs time graphs:
-- Look for the steepest descent slope to calculate descent speed
-- Look for the ascent slope to calculate ascent speed
-- Note if there's a flat section at maximum depth (bottom time)
-- Check if the profile is a sharp V-shape (no bottom time) or U-shape (with bottom time)
+- Use the actual extracted descent/ascent rates if provided
+- Reference the real maximum depth from the computer readout
+- Use the actual dive time from the device
+- Only mention data that was actually extracted from the dive computer
+- If no specific computer data is available, base analysis on the manual log entries only
+
+⚠️ IMPORTANT: Do not invent or estimate dive computer metrics. Only reference actual extracted values.
 
 Please provide:
-1. Performance Assessment - How did the dive go overall?
+1. Performance Assessment - How did the dive go based on ACTUAL data?
 2. Technical Analysis - What went well and what needs improvement?
-3. Safety Evaluation - Any safety concerns or recommendations?
+3. Safety Evaluation - Any safety concerns based on real metrics?
 4. Training Recommendations - What should the diver focus on next?
 5. Progression Advice - How can they improve for future dives?
-6. 📊 EXTRACTED METRICS (if available from image/data):
-   - Descent time: X seconds
-   - Ascent time: X seconds  
-   - Descent speed: X.X m/s
-   - Ascent speed: X.X m/s
-   - Bottom time: X seconds
-   - VDI (total time ÷ max depth): X.X sec/m
+6. 📊 REAL METRICS ANALYSIS (only if computer data was extracted):
+   - Descent time: [from actual data or "not available"]
+   - Ascent time: [from actual data or "not available"]  
+   - Descent speed: [calculated from real data or "not available"]
+   - Ascent speed: [calculated from real data or "not available"]
+   - Bottom time: [from actual data or "not available"]
 
-Use your expertise in freediving physiology, technique, and safety. Be encouraging but also provide specific, actionable feedback.`;
+Use your expertise in freediving physiology, technique, and safety. Be encouraging but also provide specific, actionable feedback based on the available data.`;
 
     console.log('📤 Sending to OpenAI...');
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
       messages: [
         {
           role: 'system',

@@ -1,0 +1,71 @@
+FREEDIVING PROGRESSION PROTOCOLS
+Author: Daniel Koval
+
+==========================================================
+DEPTH PROGRESSION (CWT/FIM)
+==========================================================
+- 0–25m: +5–6m per clean dive
+- 25–45m: +3–5m per clean dive
+- 45–90m: +2–3m per clean dive
+- 90m+: +1–2m per clean dive
+
+Progression Rule:
+Always require EN.C.L.O.S.E. criteria to be clean before progression.
+
+==========================================================
+DYNAMIC APNEA (DYN/DNF)
+==========================================================
+- Progression: +5m when exit and recovery are clean
+
+==========================================================
+STATIC APNEA (STA)
+==========================================================
+- Progression: +15s when hold and recovery are clean
+
+==========================================================
+E.N.C.L.O.S.E. CRITERIA
+==========================================================
+Clean Criteria:
+- No equalization stress
+- No hypoxia or narcosis symptoms
+- Contractions under control
+- Full recovery <30s
+- Perfect surface protocol
+
+Diagnostic Routing Guide:
+E – Equalization Issues → EQ drills, Frenzel, Mouthfill, Reverse Packing
+N – Nitrogen Narcosis (>35m) → Safety halt, narcosis protocol, interval revision
+C – CO₂ Tolerance → CO₂ tables, streamlining, warm-up adjustment
+L – Leg Fatigue → Technique drills, strength training, kick adjustment
+O – Oxygen Management → Recovery protocols, O₂ training, reduced effort
+S – Squeeze Risk → Squeeze prevention drills, flexibility, recovery time
+E – Equipment Issues → Gear check, weights, mask/clip adjustment
+
+==========================================================
+SURFACE INTERVALS (Depth Only)
+==========================================================
+- 0-25m double divers dive time for surface interval 2x elapsed dive time
+- 25m+ minimum 8 minutes 
+- 40–60m dives 12 minutes with 5m of O2 if available
+- >60m dives 16 minutes with 5m of O2 if available
+- Max amount of target dives per session depending on depth
+    0-40m allow 3-4 target dives
+    40-60m allow 2-3 target dives
+    60-80m allow 1-2 target dives
+    80m+ allow only 1 target dive
+	
+==========================================================
+SAFETY PRINCIPLES
+==========================================================
+- One Up / One Down rule
+- Be within and arms reach distance meeting safety at depth or on surface
+- Observe diver for 30 seconds
+- hand and verbal ok signs
+- Never progress if EN.C.L.O.S.E. is not clean
+- Always confirm certification level before prescribing more advanced drills
+- Dry drills can be more intense due less risk using reverse packing (exhaling more air than what is physically possible on a full exhale) for level 2+ divers (except for anything related to packing- which is inhaling more air then what physically possible on full inhale)- all packing drills must be followed exactly with extreme caution and very slow progression
+
+==========================================================
+CONSOLIDATION RULE
+==========================================================
+- After a new PB, if ENCLOSE criteria is perfectly manageable its time to progress.

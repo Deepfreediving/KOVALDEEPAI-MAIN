@@ -45,7 +45,7 @@ export default function ChatInput({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          handleSubmit();
+          handleSubmit(e);
         }}
         className="relative"
       >

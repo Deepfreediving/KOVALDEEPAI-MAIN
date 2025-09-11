@@ -73,18 +73,93 @@ export default function DiveJournalDisplay({
   });
   const [isEditMode, setIsEditMode] = useState(false); // Track if we're editing
 
+  // Safe preview helper to avoid substring on non-string values
+  const safePreview = (value, maxLen = 100) => {
+    try {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "string") {
+        return value.length > maxLen ? value.substring(0, maxLen) + "..." : value;
+      }
+      if (typeof value === "object") {
+        const s = JSON.stringify(value);
+        return s.length > maxLen ? s.substring(0, maxLen) + "..." : s;
+      }
+      const s = String(value);
+      return s.length > maxLen ? s.substring(0, maxLen) + "..." : s;
+    } catch (e) {
+      return "";
+    }
+  };
+
+  // ✅ Helper function to map database fields to form fields
+  const mapLogToFormEntry = (log) => {
+    return {
+      // Basic fields (support both formats)
+      date: log.date,
+      disciplineType: log.disciplineType || log.discipline_type || "depth",
+      discipline: log.discipline || "CWT",
+      location: log.location || "",
+      
+      // Depth fields (handle both snake_case and camelCase)
+      targetDepth: log.targetDepth || log.target_depth || "",
+      reachedDepth: log.reachedDepth || log.reached_depth || "",
+      mouthfillDepth: log.mouthfillDepth || log.mouthfill_depth || "",
+      issueDepth: log.issueDepth || log.issue_depth || "",
+      
+      // Time fields
+      totalDiveTime: log.totalDiveTime || log.total_dive_time || "",
+      durationOrDistance: log.durationOrDistance || log.duration_or_distance || "",
+      bottomTime: log.bottomTime || log.bottom_time || "",
+      
+      // Issue fields
+      issueComment: log.issueComment || log.issue_comment || "",
+      squeeze: log.squeeze || false,
+      
+      // Performance fields
+      exit: log.exit || "clean",
+      attemptType: log.attemptType || log.attempt_type || "",
+      surfaceProtocol: log.surfaceProtocol || log.surface_protocol || "",
+      
+      // Advanced fields
+      earSqueeze: log.earSqueeze || log.ear_squeeze || false,
+      lungSqueeze: log.lungSqueeze || log.lung_squeeze || false,
+      narcosisLevel: log.narcosisLevel || log.narcosis_level || "",
+      recoveryQuality: log.recoveryQuality || log.recovery_quality || "",
+      
+      // Notes
+      notes: log.notes || "",
+      
+      // Image handling
+      imageFile: null,
+      imagePreview: log.imageUrl || log.image_url || null,
+      diveComputerFile: null,
+      diveComputerFileName: "",
+      
+      // Gear (handle nested object or flat fields)
+      gear: {
+        wetsuit: log.gear?.wetsuit || log.wetsuit || "",
+        fins: log.gear?.fins || log.fins || "",
+        mask: log.gear?.mask || log.mask || "",
+        weights_kg: log.gear?.weights_kg || log.weights_kg || "",
+        nose_clip: log.gear?.nose_clip || log.nose_clip || false,
+        lanyard: log.gear?.lanyard || log.lanyard || false,
+        computer: log.gear?.computer || log.computer || ""
+      }
+    };
+  };
+
   // ✅ Handle editing mode - pre-fill form when editingLog is provided
   useEffect(() => {
     if (editingLog) {
       console.log(
         "📝 DiveJournalDisplay: Entering edit mode for log:",
         editingLog.id,
+        editingLog
       );
-      setNewEntry({
-        ...editingLog,
-        imageFile: null, // Reset file input
-        imagePreview: editingLog.imageUrl || null, // Use existing image URL if available
-      });
+      
+      const mappedEntry = mapLogToFormEntry(editingLog);
+      console.log("📝 Mapped form entry:", mappedEntry);
+      setNewEntry(mappedEntry);
       setIsEditMode(true);
       setActiveTab("add-new"); // Switch to form tab
     } else {
@@ -118,7 +193,7 @@ export default function DiveJournalDisplay({
     }
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       console.log("📸 Image file selected:", {
@@ -149,6 +224,83 @@ export default function DiveJournalDisplay({
       }));
 
       console.log("✅ Image file ready for upload");
+
+      // ✅ NEW: Auto-analyze image and populate form fields
+      try {
+        console.log("🔍 Starting immediate image analysis...");
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("userId", "temp-analysis"); // Temporary ID for analysis
+
+        const uploadResp = await fetch("/api/dive/upload-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (uploadResp.ok) {
+          const uploadJson = await uploadResp.json();
+          console.log("📊 Image analysis complete:", uploadJson);
+
+          // Store the analyzed image data for later association with the dive log
+          setNewEntry((prev) => ({
+            ...prev,
+            // Store the temporary image analysis data for later proper upload
+            _tempImageData: {
+              imageId: uploadJson?.data?.imageId,
+              imageUrl: uploadJson?.data?.imageUrl,
+              extractedMetrics: uploadJson?.data?.extractedMetrics,
+              imageAnalysis: uploadJson?.data?.profileAnalysis,
+            },
+          }));
+
+          // Populate form fields with extracted metrics
+          if (uploadJson?.data?.extractedMetrics) {
+            const metrics = uploadJson.data.extractedMetrics;
+            console.log("🎯 Populating form with extracted metrics:", metrics);
+
+            setNewEntry((prev) => ({
+              ...prev,
+              // Map extracted metrics to form fields
+              ...(metrics.max_depth && { targetDepth: metrics.max_depth, reachedDepth: metrics.max_depth }),
+              ...(metrics.dive_time_formatted && { totalDiveTime: metrics.dive_time_formatted }),
+              ...(metrics.temperature && { waterTemperature: metrics.temperature }),
+              ...(metrics.dive_date && { date: metrics.dive_date }),
+              // Store extracted metrics for reference
+              _extractedMetrics: metrics,
+              _imageAnalysis: uploadJson.data.imageAnalysis,
+            }));
+
+            // Show success message
+            setMessages?.((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `🎯 **Image Analysis Complete**\n\nExtracted dive data:\n- **Depth**: ${metrics.max_depth || 'N/A'}m\n- **Time**: ${metrics.dive_time_formatted || 'N/A'}\n- **Temperature**: ${metrics.temperature || 'N/A'}°C\n- **Date**: ${metrics.dive_date || 'N/A'}\n\nForm fields have been automatically populated. Please review and adjust as needed.`,
+              },
+            ]);
+          } else {
+            console.warn("⚠️ No metrics extracted from image");
+            setMessages?.((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: "📸 **Image Uploaded**\n\nImage analysis complete, but no dive metrics could be extracted automatically. Please fill in the form manually.",
+              },
+            ]);
+          }
+        } else {
+          throw new Error(`Analysis failed: ${uploadResp.status}`);
+        }
+      } catch (error) {
+        console.error("❌ Image analysis error:", error);
+        setMessages?.((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `⚠️ **Analysis Warning**\n\nImage uploaded but automatic analysis failed: ${error.message}\n\nYou can still fill in the form manually and save the dive log.`,
+          },
+        ]);
+      }
     } else {
       console.log("❌ No file selected");
     }
@@ -424,9 +576,14 @@ export default function DiveJournalDisplay({
                             <div
                               className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
                             >
-                              🎯 Target: {log.targetDepth || 0}m | Reached:{" "}
-                              {log.reachedDepth || 0}m
+                              🎯 Target: {log.targetDepth || 0}m | Reached: {log.reachedDepth || 0}m
                             </div>
+                            {/* DEBUG: show any extractedMetrics present on the log */}
+                            {log.extractedMetrics && (
+                              <div className={`text-xs mt-2 ${darkMode ? "text-gray-500" : "text-gray-600"}`}>
+                                <strong>Extracted:</strong> {safePreview(log.extractedMetrics, 120)}
+                              </div>
+                            )}
                             {log.notes && (
                               <div
                                 className={`text-sm mt-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
@@ -456,12 +613,9 @@ export default function DiveJournalDisplay({
                             </button>
                             <button
                               onClick={() => {
-                                // Set editing mode and switch to form tab
-                                setNewEntry({
-                                  ...log,
-                                  imageFile: null,
-                                  imagePreview: log.imageUrl || null,
-                                });
+                                const mappedEntry = mapLogToFormEntry(log);
+                                console.log("📝 Edit button - mapped entry:", mappedEntry);
+                                setNewEntry(mappedEntry);
                                 setIsEditMode(true);
                                 setActiveTab("add-new");
                               }}
@@ -699,22 +853,25 @@ export default function DiveJournalDisplay({
                     📚 Recent Analysis History
                   </h4>
                   <div className="space-y-2">
-                    {analysisHistory.slice(0, 3).map((analysis, index) => (
-                      <div
-                        key={index}
-                        className={`p-2 rounded border cursor-pointer ${
-                          darkMode ? "bg-gray-700 border-gray-600 hover:bg-gray-600" : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                        }`}
-                        onClick={() => setBatchAnalysis(analysis)}
-                      >
-                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                          {analysis.type} • {analysis.timeRange} • {analysis.logsAnalyzed} logs • {new Date(analysis.createdAt).toLocaleDateString()}
+                    {analysisHistory.slice(0, 3).map((analysis, index) => {
+                      const preview = safePreview(analysis?.result, 100);
+                      return (
+                        <div
+                          key={index}
+                          className={`p-2 rounded border cursor-pointer ${
+                            darkMode ? "bg-gray-700 border-gray-600 hover:bg-gray-600" : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                          }`}
+                          onClick={() => setBatchAnalysis(analysis)}
+                        >
+                          <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                            {analysis.type} • {analysis.timeRange} • {analysis.logsAnalyzed} logs • {new Date(analysis.createdAt).toLocaleDateString()}
+                          </div>
+                          <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"} truncate`}>
+                            {preview}
+                          </div>
                         </div>
-                        <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"} truncate`}>
-                          {analysis.result.substring(0, 100)}...
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1057,37 +1214,6 @@ export default function DiveJournalDisplay({
                           className="mt-2 max-w-full h-32 object-cover rounded"
                         />
                       )}
-                    </div>
-
-                    <div>
-                      <label
-                        className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
-                      >
-                        📊 Upload Dive Computer Log
-                      </label>
-                      <input
-                        type="file"
-                        accept=".log,.csv,.txt,.xls,.xlsx,.xml,.json"
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            setNewEntry(prev => ({
-                              ...prev,
-                              diveComputerFile: file,
-                              diveComputerFileName: file.name
-                            }));
-                          }
-                        }}
-                        className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
-                      />
-                      {newEntry.diveComputerFileName && (
-                        <div className="mt-2 p-2 bg-green-900 rounded text-green-200 text-sm">
-                          📄 {newEntry.diveComputerFileName}
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-400 mt-1">
-                        Supported: .log, .csv, .txt, .xls, .xlsx, .xml, .json
-                      </p>
                     </div>
 
                     <div>

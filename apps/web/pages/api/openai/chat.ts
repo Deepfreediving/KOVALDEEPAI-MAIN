@@ -12,7 +12,10 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX = process.env.PINECONE_INDEX;
 
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY || "" });
+const openai = new OpenAI({ 
+  apiKey: OPENAI_API_KEY || "",
+  baseURL: process.env.OPENAI_API_URL || process.env.OPENAI_BASE_URL || undefined,
+});
 const pinecone = PINECONE_API_KEY
   ? new Pinecone({ apiKey: PINECONE_API_KEY })
   : null;
@@ -79,6 +82,27 @@ async function getLatestAnalyzedDive(userId: string) {
 async function queryPinecone(query: string): Promise<string[]> {
   if (!query?.trim()) return [];
   try {
+    // ✅ ENHANCE: Expand query with freediving context for better knowledge retrieval
+    let enhancedQuery = query;
+    
+    // Add freediving context to common terms that might be ambiguous
+    const commonTerms = [
+      { term: /\brule of nin?e?s?\b/i, context: "freediving blackout statistics" },
+      { term: /\bbo\b/i, context: "freediving blackout" },
+      { term: /\blmc\b/i, context: "freediving loss motor control" },
+      { term: /\bsqueeze\b/i, context: "freediving pressure" },
+      { term: /\bequalization\b/i, context: "freediving technique" },
+      { term: /\bnarcosis\b/i, context: "freediving depth" }
+    ];
+    
+    for (const { term, context } of commonTerms) {
+      if (term.test(query) && !query.toLowerCase().includes('freediving')) {
+        enhancedQuery = `${query} ${context}`;
+        console.log(`🔍 Enhanced query: "${query}" → "${enhancedQuery}"`);
+        break;
+      }
+    }
+
     // ✅ FIX: Use production URL for Vercel deployment
     const baseUrl = process.env.NODE_ENV === 'production' 
       ? 'https://kovaldeepai-main.vercel.app'
@@ -93,7 +117,7 @@ async function queryPinecone(query: string): Promise<string[]> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query,
+        query: enhancedQuery,
         returnChunks: true,
       }),
     });
@@ -163,19 +187,43 @@ function generateSystemPrompt(
   return `You are Koval Deep AI, Daniel Koval's freediving coaching system and personal AI assistant. ${userContext}${diveLogContext}
 
 🎯 RESPONSE FORMAT - CRITICAL:
-You MUST respond in valid JSON format with this exact structure:
-{
-  "congratulations": "Brief acknowledgment of achievements",
-  "safety_assessment": "E.N.C.L.O.S.E. framework analysis with any safety concerns",
-  "performance_analysis": "Technical analysis of dive metrics and technique",
-  "coaching_feedback": "Specific improvement recommendations from Daniel's methodology",
-  "next_steps": "Safe progression suggestions",
-  "medical_disclaimer": "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-}
+You MUST respond in natural, conversational language as a professional freediving coach. 
+
+ABSOLUTELY FORBIDDEN FORMATTING:
+- NO markdown headers (# ## ###)
+- NO markdown bold (**text**)
+- NO markdown bullets (- * +)
+- NO markdown formatting whatsoever
+
+REQUIRED FORMATTING:
+- Use clean, modern formatting with emojis and visual separators ONLY
+- Structure responses with clear sections using emojis as headers: 🏊‍♂️ TECHNIQUE ANALYSIS
+- Use simple bullet points with emojis: 🔹 Point one
+- Use visual separators: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Keep formatting clean and scannable with plenty of white space
+- Use emojis consistently: 🏊‍♂️ for technique, 📊 for analysis, ⚠️ for safety, 🎯 for goals, 💡 for tips
+- Always include the medical disclaimer at the end with a visual separator
+- Sound like Daniel Koval coaching a student personally
+- End responses with a clean visual footer
+
+EXAMPLE GOOD FORMAT:
+🏊‍♂️ TECHNIQUE ANALYSIS
+Looking at your dive, I can see some excellent progress...
+
+📊 REAL METRICS ANALYSIS
+🔹 Descent time: 45 seconds
+🔹 Ascent time: 1 minute 10 seconds
+🔹 Descent speed: 1.1m/sec (slightly fast)
+🔹 Ascent speed: 0.9m/sec (good control)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ SAFETY DISCLAIMER: This is coaching advice only.
 
 🧠 KNOWLEDGE BASE USAGE:
 - The Knowledge Base contains Daniel Koval's complete freediving methodology and safety protocols
 - Quote Daniel's content EXACTLY as written - never paraphrase safety rules
+- CRITICAL: You are ONLY a freediving coach - never discuss medical burn assessment or other non-freediving topics
+- If someone asks about "Rule of Nines" or "Rule of 9s" - they mean the FREEDIVING blackout location statistics (90% surface, 9% shallow, 0.9% mid, <0.1% deep)
 - Use E.N.C.L.O.S.E. framework for systematic safety analysis:
   * E - Equalization issues and technique
   * N - Narcosis symptoms (confusion, tunnel vision, euphoria)
@@ -234,11 +282,7 @@ async function askWithContext(
   if (diveData) {
     const validation = validateDiveData(diveData);
     if (!validation.isValid) {
-      return JSON.stringify({
-        safety_assessment: `⚠️ SAFETY ALERT: ${validation.errors.join(', ')}`,
-        coaching_feedback: "Please provide realistic dive data for accurate coaching analysis.",
-        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-      });
+      return `⚠️ **SAFETY ALERT**: ${validation.errors.join(', ')}\n\nPlease provide realistic dive data for accurate coaching analysis.\n\n⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.`;
     }
   }
 
@@ -246,7 +290,7 @@ async function askWithContext(
   const cacheKey = generateCacheKey(message, userLevel, diveData);
   const cachedResponse = getCachedResponse(cacheKey);
   if (cachedResponse) {
-    return JSON.stringify(cachedResponse);
+    return cachedResponse; // Return cached text directly
   }
 
   console.log("🔹 Sending request to OpenAI...");
@@ -279,7 +323,7 @@ ${optimizedContext}
         max_tokens: embedMode ? 600 : 1000,
         frequency_penalty: 0.1, // ✅ Reduce repetitive responses
         presence_penalty: 0.1, // ✅ Encourage comprehensive analysis
-        response_format: { type: "json_object" }, // ✅ Structured output for better parsing
+        // ✅ FIXED: Remove JSON format requirement to get natural conversational responses
         messages: [
           {
             role: "system",
@@ -311,35 +355,7 @@ ${optimizedContext}
 
     console.log("✅ OpenAI response received successfully");
     
-    // ✅ STEP 5: Parse JSON response and validate structure
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(reply);
-      
-      // Validate required JSON structure
-      if (!parsedResponse.safety_assessment || !parsedResponse.coaching_feedback) {
-        throw new Error("Invalid JSON structure - missing required fields");
-      }
-      
-      // Ensure medical disclaimer is always present
-      if (!parsedResponse.medical_disclaimer) {
-        parsedResponse.medical_disclaimer = "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.";
-      }
-      
-    } catch (parseError) {
-      console.warn("⚠️ Failed to parse JSON response, wrapping in structure:", parseError);
-      // Fallback: wrap plain text in JSON structure
-      parsedResponse = {
-        congratulations: "Thank you for your question!",
-        safety_assessment: "Please ensure proper safety protocols are followed.",
-        performance_analysis: reply.substring(0, 200) + (reply.length > 200 ? "..." : ""),
-        coaching_feedback: reply,
-        next_steps: "Continue following Daniel Koval's methodology and safety protocols.",
-        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-      };
-    }
-
-    // ✅ STEP 6: Track usage metrics
+    // ✅ FIXED: Return natural conversational text instead of parsing JSON
     const processingTime = Date.now() - startTime;
     const tokensUsed = response.usage?.total_tokens || 0;
     const model = process.env.OPENAI_MODEL || "gpt-4";
@@ -362,10 +378,7 @@ ${optimizedContext}
       }
     });
 
-    // ✅ STEP 7: Cache successful response
-    setCachedResponse(cacheKey, parsedResponse);
-    
-    return JSON.stringify(parsedResponse);
+    return reply; // Return natural text response
   } catch (error: any) {
     const processingTime = Date.now() - startTime;
     
@@ -387,33 +400,17 @@ ${optimizedContext}
 
     console.error(`❌ OpenAI API error:`, error.message);
 
-    // ✅ Enhanced error responses based on error type
+    // ✅ FIXED: Return natural text error responses instead of JSON
     const errorInfo = ErrorMonitor.categorizeError(error);
     
     if (errorInfo.type === 'quota_exceeded') {
-      return JSON.stringify({
-        safety_assessment: "⚠️ AI coaching system temporarily unavailable due to high demand.",
-        coaching_feedback: "Please try again in a few minutes, or contact support if this persists.",
-        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-      });
+      return "⚠️ **AI System Temporarily Unavailable**\n\nThe coaching system is experiencing high demand. Please try again in a few minutes, or contact support if this persists.\n\n⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.";
     } else if (errorInfo.type === 'rate_limit') {
-      return JSON.stringify({
-        safety_assessment: "⚠️ Too many requests at once.",
-        coaching_feedback: "Please wait a moment and try again.",
-        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-      });
+      return "⚠️ **Too Many Requests**\n\nPlease wait a moment and try again.\n\n⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.";
     } else if (errorInfo.type === 'timeout') {
-      return JSON.stringify({
-        safety_assessment: "⚠️ The AI is taking longer than usual to respond.",
-        coaching_feedback: "Please try asking a shorter question or try again.",
-        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-      });
+      return "⚠️ **Response Timeout**\n\nThe AI is taking longer than usual to respond. Please try asking a shorter question or try again.\n\n⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.";
     } else {
-      return JSON.stringify({
-        safety_assessment: "⚠️ Technical difficulties with AI service.",
-        coaching_feedback: "Please try again in a moment, and if the issue persists, contact support.",
-        medical_disclaimer: "⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone."
-      });
+      return "⚠️ **Technical Difficulties**\n\nI'm experiencing technical difficulties. Please try again in a moment, and if the issue persists, contact support.\n\n⚠️ SAFETY DISCLAIMER: This is coaching advice only. Always dive with proper supervision and consult medical professionals for health concerns. Never dive alone.";
     }
   }
 }
@@ -710,7 +707,20 @@ export default async function handler(
       profile = {},
       embedMode = false,
       diveLogs = [],
+      analysisRequested = false,
     } = req.body;
+
+    // Intent detection for dive-log analysis
+    const lowerMsg = (message || '').toLowerCase().trim();
+    const keywordIntent = /\b(analyz\w*|audit|journal|dive\s*log|dive\s*journal|evaluate|evaluation|pattern|patterns)\b/i.test(lowerMsg);
+    const yesIntent = /^(yes|yes\!+|yes\.+)$/i.test(lowerMsg);
+    const wantsDiveAnalysis = Boolean(analysisRequested || keywordIntent || yesIntent);
+
+    if (wantsDiveAnalysis) {
+      console.log('📊 Dive analysis intent detected. Dive logs will be loaded for this request.');
+    } else {
+      console.log('🧹 No analysis intent detected. Skipping dive log retrieval for this chat message.');
+    }
 
     // ✅ REAL USER AUTH: Get user from Supabase session
     const supabase = getServerClient();
@@ -816,47 +826,51 @@ export default async function handler(
     });
 
     const contextChunks = await queryPinecone(message);
-    const diveContext = await queryDiveLogs(userId);
+    const diveContext = wantsDiveAnalysis ? await queryDiveLogs(userId) : [];
 
     // ✅ Load analyzed dive logs from Supabase first
     let analyzedDiveLogs: any[] = [];
-    try {
-      analyzedDiveLogs = await getLatestAnalyzedDive(userIdentifier);
-      console.log(`📊 Found ${analyzedDiveLogs.length} analyzed dives in Supabase`);
-    } catch (err) {
-      console.warn("⚠️ Could not load analyzed dive logs from Supabase:", err);
-    }
+     try {
+      if (wantsDiveAnalysis) {
+        analyzedDiveLogs = await getLatestAnalyzedDive(userIdentifier);
+        console.log(`📊 Found ${analyzedDiveLogs.length} analyzed dives in Supabase`);
+      }
+     } catch (err) {
+       console.warn("⚠️ Could not load analyzed dive logs from Supabase:", err);
+     }
 
     // ✅ Load actual dive logs for detailed analysis  
     let localDiveLogs: any[] = [];
-    try {
-      // ✅ Query user's dive logs from Supabase directly
-      const supabase = getServerClient();
-      const { data: userDiveLogs, error } = await supabase
-        .from('dive_logs')
-        .select('*')
-        .eq('user_id', userIdentifier)
-        .order('date', { ascending: false })
-        .limit(10);
+     try {
+       if (wantsDiveAnalysis) {
+        // ✅ Query user's dive logs from Supabase directly
+        const supabase = getServerClient();
+        const { data: userDiveLogs, error } = await supabase
+          .from('dive_logs')
+          .select('*')
+          .eq('user_id', userIdentifier)
+          .order('date', { ascending: false })
+          .limit(10);
 
-      if (userDiveLogs && !error) {
-        localDiveLogs = userDiveLogs;
-        console.log(`🗃️ Loaded ${localDiveLogs.length} dive logs from Supabase for user: ${userIdentifier}`);
-      } else if (error) {
-        console.warn("⚠️ Error loading dive logs from Supabase:", error);
-      }
-    } catch (err) {
-      console.warn("⚠️ Could not load detailed dive logs:", err);
-    }
+        if (userDiveLogs && !error) {
+          localDiveLogs = userDiveLogs;
+          console.log(`🗃️ Loaded ${localDiveLogs.length} dive logs from Supabase for user: ${userIdentifier}`);
+        } else if (error) {
+          console.warn("⚠️ Error loading dive logs from Supabase:", error);
+        }
+       }
+     } catch (err) {
+       console.warn("⚠️ Could not load detailed dive logs:", err);
+     }
 
-    // ✅ Prioritize analyzed dive logs from Supabase, fallback to local/request
-    const allDiveLogs = analyzedDiveLogs.length > 0 ? analyzedDiveLogs : 
-                       localDiveLogs.length > 0 ? localDiveLogs : 
-                       diveLogs || [];
+    // ✅ Prioritize analyzed dive logs from Supabase, fallback to local/request (only when analysis is requested)
+    const allDiveLogs = wantsDiveAnalysis
+      ? (analyzedDiveLogs.length > 0 ? analyzedDiveLogs : (localDiveLogs.length > 0 ? localDiveLogs : diveLogs || []))
+      : [];
 
     // ✅ Process dive logs for context (using both local and request dive logs)
     let diveLogContext = "";
-    if (allDiveLogs && allDiveLogs.length > 0) {
+    if (wantsDiveAnalysis && allDiveLogs && allDiveLogs.length > 0) {
       console.log(
         `📊 Processing ${allDiveLogs.length} dive logs for enhanced coaching context`,
       );
@@ -905,10 +919,10 @@ ${recentDiveLogs}
       `📊 Dive log context length: ${diveLogContext.length} characters`,
     );
     console.log(
-      `📊 Has dive logs flag: ${!!(allDiveLogs && allDiveLogs.length > 0)}`,
+      `📊 Has dive logs flag: ${wantsDiveAnalysis && !!(allDiveLogs && allDiveLogs.length > 0)}`,
     );
 
-    // ✅ NEW: Check if user is responding "yes" to audit offer
+    // ✅ NEW: Check if user is responding "yes" to audit offer; if so, ensure we have logs
     const lowerMessage = message.toLowerCase().trim();
     const isAuditResponse = (lowerMessage === 'yes' || 
                            (lowerMessage.includes('yes') && (
@@ -918,7 +932,7 @@ ${recentDiveLogs}
                              lowerMessage.includes('analyze') ||
                              lowerMessage.includes('technical')
                            ))) && 
-                           (allDiveLogs && allDiveLogs.length > 0);
+                           (wantsDiveAnalysis && allDiveLogs && allDiveLogs.length > 0);
 
     if (isAuditResponse) {
       console.log('🔍 User requesting dive log audit - processing...');
@@ -962,7 +976,7 @@ ${recentDiveLogs}
     }
 
     // ✅ Check cache first
-    const cacheKey = generateCacheKey(message, userLevel, allDiveLogs[0]);
+    const cacheKey = generateCacheKey(message, userLevel, wantsDiveAnalysis ? allDiveLogs[0] : undefined);
     const cachedResponse = getCachedResponse(cacheKey);
     if (cachedResponse) {
       return res.status(200).json({
@@ -980,12 +994,12 @@ ${recentDiveLogs}
     }
 
     const assistantReply = await askWithContext(
-      [...contextChunks, ...diveContext],
+      wantsDiveAnalysis ? [...contextChunks, ...diveContext] : contextChunks,
       message,
       userLevel,
       embedMode,
-      diveLogContext,
-      !!(allDiveLogs && allDiveLogs.length > 0),
+      wantsDiveAnalysis ? diveLogContext : "",
+      wantsDiveAnalysis && !!(allDiveLogs && allDiveLogs.length > 0),
       userIdentifier,
     );
 
@@ -1040,7 +1054,7 @@ ${recentDiveLogs}
 
     // ✅ Cache the response for common dive patterns
     try {
-      const cacheKey = generateCacheKey(message, userLevel, allDiveLogs[0]);
+      const cacheKey = generateCacheKey(message, userLevel, wantsDiveAnalysis ? allDiveLogs[0] : undefined);
       setCachedResponse(cacheKey, assistantReply);
     } catch (cacheError) {
       console.warn("⚠️ Cache set error:", cacheError);

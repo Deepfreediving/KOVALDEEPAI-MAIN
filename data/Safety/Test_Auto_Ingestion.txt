@@ -1,0 +1,14 @@
+TEST AUTOMATIC KNOWLEDGE INGESTION
+
+This is a test file to verify that the automatic knowledge ingestion system is working properly.
+
+Key Test Points:
+1. New files should be automatically detected
+2. Content should be chunked and embedded
+3. Knowledge should be immediately available for AI queries
+4. File changes should trigger re-ingestion
+
+Test Question: What is the purpose of this test file?
+Expected Answer: This file tests the automatic knowledge ingestion system.
+
+SAFETY NOTE: This is just a test file for system validation.

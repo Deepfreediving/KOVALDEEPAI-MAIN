@@ -265,15 +265,19 @@ export default async function handler(req, res) {
         const metricsUpdate = {};
         
         if (diveLogData.extractedMetrics.max_depth && !savedLog.reached_depth) {
-          metricsUpdate.reached_depth = diveLogData.extractedMetrics.max_depth;
+          metricsUpdate.reached_depth = Number(diveLogData.extractedMetrics.max_depth);
           console.log(`📏 Setting reached_depth from image: ${diveLogData.extractedMetrics.max_depth}m`);
         }
         
         if (diveLogData.extractedMetrics.dive_time_seconds && !savedLog.total_dive_time) {
-          const minutes = Math.floor(diveLogData.extractedMetrics.dive_time_seconds / 60);
-          const seconds = diveLogData.extractedMetrics.dive_time_seconds % 60;
-          metricsUpdate.total_dive_time = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          console.log(`⏱️ Setting total_dive_time from image: ${metricsUpdate.total_dive_time}`);
+          // Save total_dive_time as seconds (number) to match DB schema
+          const seconds = Number(diveLogData.extractedMetrics.dive_time_seconds);
+          if (!isNaN(seconds)) {
+            metricsUpdate.total_dive_time = seconds;
+            console.log(`⏱️ Setting total_dive_time (seconds) from image: ${seconds}s`);
+          } else {
+            console.warn('⚠️ extracted dive_time_seconds is not a number:', diveLogData.extractedMetrics.dive_time_seconds);
+          }
         }
         
         // Update ai_analysis with full extracted metrics

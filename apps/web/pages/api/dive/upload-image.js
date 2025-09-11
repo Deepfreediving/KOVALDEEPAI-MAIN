@@ -6,6 +6,7 @@ import { getAdminClient } from '@/lib/supabase';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.OPENAI_API_URL || process.env.OPENAI_BASE_URL || undefined,
 });
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -16,8 +17,9 @@ async function analyzeWithEnhancedVision(base64Image, mimeType = 'image/jpeg', u
   const startTime = Date.now();
   console.log('🧠 Starting OpenAI Vision API call...');
   
-  // Short prompt for testing performance
-  const shortPrompt = `Analyze this dive computer image. Extract:
+  try {
+    // Short prompt for testing performance
+    const shortPrompt = `Analyze this dive computer image. Extract:
 1. Max depth (meters)
 2. Dive time (MM:SS)
 3. Temperature 
@@ -25,265 +27,177 @@ async function analyzeWithEnhancedVision(base64Image, mimeType = 'image/jpeg', u
 
 Return JSON: {"maxDepth": number, "diveTime": "MM:SS", "temperature": number}`;
 
-  // Full detailed prompt
-  const longPrompt = `You are an expert freediving coach and dive computer analyst. Analyze this dive computer display image and extract ALL visible data with advanced dive profile analysis.
+    // Full detailed prompt for comprehensive analysis
+    const longPrompt = `You are an expert dive computer analyst. Your task is to READ the actual data displayed on this dive computer screen.
 
-EXTRACT BASIC DATA:
-1. Max Depth (in meters)
-2. Dive Time (in minutes:seconds format)
-3. Temperature (at max depth)
-4. Date and Time of dive
-5. Dive Mode (Free, Apnea, etc.)
-6. Surface interval time
-7. Any safety warnings or alerts
-8. Battery status if visible
-9. Any other numeric readings
+CRITICAL INSTRUCTIONS:
+- ONLY extract data that is CLEARLY VISIBLE on the screen
+- DO NOT make up, estimate, or generate hypothetical values
+- If a value is not clearly readable, return null or "not_visible"
+- Focus on ACTUAL NUMBERS and TEXT displayed on the device
 
-ADVANCED DIVE PROFILE ANALYSIS:
-Carefully examine the depth profile graph and identify:
-
-DESCENT PHASE:
-- Average descent rate (m/s)
-- Slowdowns or pauses (especially around 15-30m mouthfill zones)
-- Equalization stops (visible as horizontal plateaus)
-- Descent consistency (smooth vs erratic)
-- Any depth where descent rate changes significantly
-
-BOTTOM PHASE:
-- Time spent at maximum depth
-- Bottom time duration
-- Depth consistency at bottom (steady vs fluctuating)
-
-ASCENT PHASE:
-- Average ascent rate (m/s)
-- Ascent consistency (smooth vs rushed)
-- Any rapid ascent periods (dangerous)
-- Safety stops or decompression pauses
-- Final approach to surface (controlled vs fast)
-
-TECHNIQUE ANALYSIS:
-- Mouthfill technique indicators (slowdown around 20-35m)
-- Freefall utilization (constant descent rate in mid-water)
-- Equalization efficiency (minimal pauses)
-- Overall dive curve quality
-
-SAFETY ASSESSMENT:
-- Ascent rate safety (should be <1m/s)
-- Any concerning rapid movements
-- Depth progression appropriateness
-- Risk factors identified
-
-Return your response as valid JSON with this detailed structure:
+Return valid JSON with this structure:
 {
   "extractedData": {
-    "maxDepth": number,
-    "diveTime": "MM:SS",
-    "diveTimeSeconds": number,
-    "temperature": number,
-    "date": "YYYY-MM-DD",
-    "time": "HH:MM:SS",
-    "diveMode": "string",
-    "surfaceInterval": "HH:MM",
-    "batteryStatus": "string",
-    "additionalReadings": {}
+    "maxDepth": number_or_null,
+    "diveTime": "MM:SS_or_null", 
+    "temperature": number_or_null,
+    "visibility": "clear|blurry|dark|unreadable"
   },
-  "profileAnalysis": {
-    "descentPhase": {
-      "averageDescentRate": number,
-      "descentRateUnit": "m/s",
-      "mouthfillSlowdown": {
-        "detected": boolean,
-        "depthRange": "string",
-        "slowdownPercentage": number
-      },
-      "equalizationStops": [
-        {
-          "depth": number,
-          "duration": "seconds"
-        }
-      ],
-      "descentConsistency": "smooth|erratic|good",
-      "freefall": {
-        "startDepth": number,
-        "endDepth": number,
-        "utilized": boolean
-      }
-    },
-    "bottomPhase": {
-      "bottomTime": number,
-      "bottomTimeUnit": "seconds",
-      "depthConsistency": "steady|fluctuating",
-      "maxDepthHeld": boolean
-    },
-    "ascentPhase": {
-      "averageAscentRate": number,
-      "ascentRateUnit": "m/s",
-      "ascentConsistency": "smooth|rushed|controlled",
-      "rapidAscentPeriods": [
-        {
-          "depthFrom": number,
-          "depthTo": number,
-          "rate": number,
-          "dangerous": boolean
-        }
-      ],
-      "safetyStops": [
-        {
-          "depth": number,
-          "duration": "seconds"
-        }
-      ]
-    },
-    "overallProfile": {
-      "curveQuality": "excellent|good|poor",
-      "symmetry": "symmetric|asymmetric",
-      "efficiency": "high|medium|low"
-    }
-  },
-  "techniqueAnalysis": {
-    "mouthfillTechnique": {
-      "detected": boolean,
-      "depth": number,
-      "execution": "excellent|good|needs_work",
-      "notes": "string"
-    },
-    "equalizationEfficiency": {
-      "rating": "excellent|good|poor",
-      "pauseCount": number,
-      "totalPauseTime": number
-    },
-    "overallTechnique": {
-      "rating": number,
-      "strengths": ["string"],
-      "areasForImprovement": ["string"]
-    }
-  },
-  "safetyAssessment": {
-    "ascentRateSafety": {
-      "safe": boolean,
-      "maxRate": number,
-      "dangerousPeriods": ["string"]
-    },
-    "depthProgression": {
-      "appropriate": boolean,
-      "notes": "string"
-    },
-    "riskFactors": ["string"],
-    "overallSafetyRating": "excellent|good|concerning|dangerous"
-  },
-  "coachingInsights": {
-    "positives": ["string"],
-    "improvements": ["string"],
-    "nextSessionFocus": ["string"],
-    "depthProgressionAdvice": "string",
-    "performanceRating": number,
-    "readinessForDeeper": boolean
-  },
-  "confidence": "high|medium|low",
-  "analysisNotes": "string"
+  "confidence": 0.0_to_1.0
 }`;
+    
+    const messages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: useShortPrompt ? shortPrompt : longPrompt },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64Image}`,
+              detail: "high"
+            }
+          }
+        ]
+      }
+    ];
 
-  const analysisPrompt = useShortPrompt ? shortPrompt : longPrompt;
-  console.log(`📝 Using ${useShortPrompt ? 'SHORT' : 'LONG'} prompt (${analysisPrompt.length} chars)`);
-
-  try {
-    console.log('📤 Sending request to OpenAI Vision API...');
-    const openaiStartTime = Date.now();
+    console.log('📡 Sending request to OpenAI Vision API...');
     
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: analysisPrompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType};base64,${base64Image}`,
-                detail: useShortPrompt ? "low" : "high" // Use low detail for short prompt
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: useShortPrompt ? 200 : 1500,
+      messages: messages,
+      max_tokens: 1000,
       temperature: 0.1
     });
 
-    const openaiEndTime = Date.now();
-    const openaiDuration = openaiEndTime - openaiStartTime;
-    console.log(`⚡ OpenAI API Response Time: ${openaiDuration}ms (${(openaiDuration/1000).toFixed(2)}s)`);
-    console.log(`🔢 Tokens Used: ${response.usage?.total_tokens || 'Unknown'}`);
+    if (!response.choices?.[0]?.message?.content) {
+      throw new Error('No content in OpenAI response');
+    }
 
-    let analysisText = response.choices[0].message.content;
+    const content = response.choices[0].message.content;
+    console.log('✅ OpenAI Vision API response received');
     
-    // Clean up response - remove markdown code blocks if present
-    if (analysisText.includes('```json')) {
-      analysisText = analysisText.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-    } else if (analysisText.includes('```')) {
-      analysisText = analysisText.replace(/```[a-zA-Z]*\s*/g, '').replace(/```\s*$/g, '');
-    }
-    
-    // Try to parse as JSON
-    console.log('🔍 Parsing OpenAI response...');
-    const parseStartTime = Date.now();
-    
+    // Try to parse as JSON, fallback to text analysis
+    let analysis;
     try {
-      const structuredAnalysis = JSON.parse(analysisText);
-      const parseEndTime = Date.now();
-      console.log(`✅ JSON Parse Time: ${parseEndTime - parseStartTime}ms`);
-      
-      const totalTime = Date.now() - startTime;
-      console.log(`🎯 Total Vision Analysis Time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
-      
-      return {
-        success: true,
-        analysis: structuredAnalysis,
-        rawText: analysisText,
-        tokens: response.usage?.total_tokens || 0,
-        timing: {
-          total: totalTime,
-          openai: openaiDuration,
-          parse: parseEndTime - parseStartTime
-        }
-      };
+      analysis = JSON.parse(content);
     } catch (parseError) {
-      console.log('⚠️ JSON parse failed, raw AI response was:');
-      console.log(analysisText);
-      console.log('Parse error:', parseError.message);
-      
-      // Fallback structure if JSON parsing fails
-      const fallbackTime = Date.now() - startTime;
-      console.log(`🔄 Fallback Response Time: ${fallbackTime}ms (${(fallbackTime/1000).toFixed(2)}s)`);
-      
-      return {
-        success: true,
-        analysis: {
-          extractedData: {},
-          profileAnalysis: { safetyConcerns: [] },
-          coachingInsights: { recommendations: [], performanceRating: 5 },
-          rawAnalysis: analysisText,
-          confidence: "medium"
+      console.warn('⚠️ Failed to parse JSON response, creating structured analysis');
+      analysis = {
+        extractedData: {
+          maxDepth: null,
+          diveTime: null,
+          temperature: null,
+          visibility: "unreadable"
         },
-        rawText: analysisText,
-        tokens: response.usage?.total_tokens || 0,
-        timing: {
-          total: fallbackTime,
-          openai: openaiDuration,
-          parse: 'failed'
-        }
+        confidence: 0.3,
+        rawResponse: content
       };
     }
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    return {
+      analysis: analysis,
+      tokens: response.usage?.total_tokens || 0,
+      timing: {
+        duration: duration,
+        started: new Date(startTime).toISOString(),
+        completed: new Date(endTime).toISOString()
+      }
+    };
+    
   } catch (error) {
-    const errorTime = Date.now() - startTime;
-    console.error('❌ Vision analysis failed:', error);
-    console.log(`💥 Error Time: ${errorTime}ms (${(errorTime/1000).toFixed(2)}s)`);
-    throw new Error(`Vision analysis failed: ${error.message}`);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.error('❌ OpenAI Vision API error:', error.message);
+    
+    // Return fallback analysis instead of throwing
+    return {
+      analysis: {
+        extractedData: {
+          maxDepth: null,
+          diveTime: null,
+          temperature: null,
+          visibility: "error"
+        },
+        confidence: 0,
+        error: error.message,
+        fallback: true
+      },
+      tokens: 0,
+      timing: {
+        duration: duration,
+        started: new Date(startTime).toISOString(),
+        completed: new Date(endTime).toISOString(),
+        error: true
+      }
+    };
   }
 }
 
-// 📊 Extract metrics from structured analysis
+// Create legacy extractedText for backward compatibility
+function createLegacyExtractedText(structuredAnalysis) {
+  if (!structuredAnalysis) return 'No analysis available';
+  
+  let text = '';
+  
+  // Basic extracted data
+  if (structuredAnalysis.extractedData) {
+    const data = structuredAnalysis.extractedData;
+    text += `DIVE COMPUTER READOUT:\n`;
+    if (data.maxDepth) text += `Max Depth: ${data.maxDepth}m\n`;
+    if (data.diveTime) text += `Dive Time: ${data.diveTime}\n`;
+    if (data.temperature) text += `Temperature: ${data.temperature}°C\n`;
+    if (data.date) text += `Date: ${data.date}\n`;
+    if (data.diveMode) text += `Mode: ${data.diveMode}\n`;
+  }
+  
+  // Profile analysis
+  if (structuredAnalysis.profileAnalysis) {
+    text += `\nPROFILE ANALYSIS:\n`;
+    const profile = structuredAnalysis.profileAnalysis;
+    
+    if (profile.descentPhase?.averageDescentRate) {
+      text += `Descent Rate: ${profile.descentPhase.averageDescentRate} m/s\n`;
+    }
+    if (profile.ascentPhase?.averageAscentRate) {
+      text += `Ascent Rate: ${profile.ascentPhase.averageAscentRate} m/s\n`;
+    }
+    if (profile.bottomPhase?.bottomTime) {
+      text += `Bottom Time: ${profile.bottomPhase.bottomTime} seconds\n`;
+    }
+  }
+  
+  // Coaching insights
+  if (structuredAnalysis.coachingInsights) {
+    text += `\nCOACHING INSIGHTS:\n`;
+    const insights = structuredAnalysis.coachingInsights;
+    
+    if (insights.performanceRating) {
+      text += `Performance Rating: ${insights.performanceRating}/10\n`;
+    }
+    if (insights.positives?.length) {
+      text += `Strengths: ${insights.positives.join(', ')}\n`;
+    }
+    if (insights.improvements?.length) {
+      text += `Areas for Improvement: ${insights.improvements.join(', ')}\n`;
+    }
+  }
+  
+  // Fallback to raw analysis
+  if (!text && structuredAnalysis.rawAnalysis) {
+    text = structuredAnalysis.rawAnalysis;
+  }
+  
+  return text || 'Dive computer image analyzed but specific metrics could not be extracted';
+}
+
+// �📊 Extract metrics from structured analysis
 function extractMetrics(structuredAnalysis) {
   const metrics = {};
   
@@ -311,18 +225,42 @@ function extractMetrics(structuredAnalysis) {
 
 // 🗜️ Optimize image for storage and analysis
 async function optimizeImage(imageBuffer) {
-  const optimized = await sharp(imageBuffer)
-    .resize(1920, 1080, { 
-      fit: 'inside', 
-      withoutEnlargement: true 
-    })
-    .jpeg({ 
-      quality: 80, 
-      progressive: true 
-    })
-    .toBuffer();
+  try {
+    console.log('🖼️ Starting image optimization with Sharp...');
     
-  return optimized;
+    // First validate the image
+    const metadata = await sharp(imageBuffer).metadata();
+    console.log('📊 Image metadata:', {
+      format: metadata.format,
+      width: metadata.width,
+      height: metadata.height,
+      size: imageBuffer.length
+    });
+    
+    // Skip optimization for very small images or invalid formats
+    if (imageBuffer.length < 1000) {
+      console.warn('⚠️ Image too small, skipping optimization');
+      return imageBuffer;
+    }
+    
+    const optimized = await sharp(imageBuffer)
+      .resize(1920, 1080, { 
+        fit: 'inside', 
+        withoutEnlargement: true 
+      })
+      .jpeg({ 
+        quality: 80, 
+        progressive: true 
+      })
+      .toBuffer();
+      
+    console.log('✅ Image optimization complete');
+    return optimized;
+  } catch (error) {
+    console.error('❌ Image optimization failed:', error.message);
+    console.warn('⚠️ Using original image buffer due to optimization failure');
+    return imageBuffer; // Return original if optimization fails
+  }
 }
 
 // 📁 Ensure storage bucket exists
@@ -386,32 +324,58 @@ export default async function handler(req, res) {
       console.log('📱 Processing JSON/base64 upload...');
       
       let body = '';
-      for await (const chunk of req) {
-        body += chunk;
-      }
-      const parsedBody = JSON.parse(body);
-      
-      const { imageData, userId: bodyUserId, filename, diveLogId: bodyDiveLogId } = parsedBody;
-      
-      if (!imageData) {
-        return res.status(400).json({ error: 'imageData required for base64 upload' });
-      }
+      try {
+        for await (const chunk of req) {
+          body += chunk.toString();
+        }
+        console.log('📝 Raw body length:', body.length);
+        
+        if (!body.trim()) {
+          return res.status(400).json({ error: 'Empty request body' });
+        }
+        
+        const parsedBody = JSON.parse(body);
+        console.log('📋 Parsed body keys:', Object.keys(parsedBody));
+        
+        const { imageData, userId: bodyUserId, filename, diveLogId: bodyDiveLogId } = parsedBody;
+        
+        if (!imageData) {
+          return res.status(400).json({ error: 'imageData required for base64 upload' });
+        }
 
-      if (!bodyUserId) {
-        return res.status(400).json({ error: 'userId is required' });
-      }
+        if (!bodyUserId) {
+          console.warn('⚠️ No userId provided, using temp-analysis');
+          userId = 'temp-analysis';
+        } else {
+          userId = bodyUserId;
+        }
 
-      // Parse base64 data
-      const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
-      imageBuffer = Buffer.from(base64Data, 'base64');
-      originalFilename = filename || 'dive-computer-image';
-      userId = bodyUserId;
-      diveLogId = bodyDiveLogId;
-      
-      // Detect mime type from base64 prefix
-      const mimeMatch = imageData.match(/^data:(image\/[a-z]+);base64,/);
-      if (mimeMatch) {
-        mimeType = mimeMatch[1];
+        // Parse base64 data
+        const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
+        imageBuffer = Buffer.from(base64Data, 'base64');
+        originalFilename = filename || 'dive-computer-image';
+        diveLogId = bodyDiveLogId;
+        
+        // Detect mime type from base64 prefix
+        const mimeMatch = imageData.match(/^data:(image\/[a-z]+);base64,/);
+        if (mimeMatch) {
+          mimeType = mimeMatch[1];
+        }
+        
+        console.log('✅ JSON parsing successful:', {
+          imageBufferSize: imageBuffer.length,
+          mimeType,
+          userId: userId.substring(0, 8) + '...',
+          filename: originalFilename
+        });
+        
+      } catch (parseError) {
+        console.error('❌ JSON parsing failed:', parseError);
+        console.error('❌ Raw body preview:', body.substring(0, 200) + '...');
+        return res.status(400).json({ 
+          error: 'Invalid JSON format', 
+          details: parseError.message 
+        });
       }
       
     } else if (contentType.includes('multipart/form-data')) {
@@ -478,9 +442,9 @@ export default async function handler(req, res) {
     return await processImage();
 
     async function processImage() {
-      // Validate required fields
-      if (!userId) {
-        return res.status(400).json({ error: 'userId is required' });
+      // Validate required fields - allow temp-analysis for testing
+      if (!userId || (userId !== 'temp-analysis' && userId.length < 8)) {
+        return res.status(400).json({ error: 'userId is required and must be valid' });
       }
 
       console.log('📝 Processing image:', {
@@ -519,6 +483,41 @@ export default async function handler(req, res) {
         timing: visionResult.timing
       });
 
+      // 🔄 For temp-analysis, skip database save and return analysis only
+      if (userId === 'temp-analysis') {
+        console.log('📊 Temp analysis mode - returning analysis without database save');
+        
+        const totalRequestTime = Date.now() - requestStartTime;
+        console.log(`🎯 TEMP ANALYSIS TIME: ${totalRequestTime}ms (${(totalRequestTime/1000).toFixed(2)}s)`);
+
+        // Return comprehensive response for temp analysis
+        const response = {
+          success: true,
+          data: {
+            // Analysis results
+            extractedData: structuredAnalysis.extractedData || {},
+            extractedMetrics: extractedMetrics,
+            profileAnalysis: structuredAnalysis.profileAnalysis || {},
+            coachingInsights: structuredAnalysis.coachingInsights || {},
+            safetyAssessment: structuredAnalysis.coachingInsights?.safetyAssessment,
+            recommendations: structuredAnalysis.coachingInsights?.recommendations || [],
+            performanceRating: structuredAnalysis.coachingInsights?.performanceRating,
+            
+            // ✅ BACKWARD COMPATIBILITY: Provide extractedText field for legacy code
+            extractedText: createLegacyExtractedText(structuredAnalysis),
+            
+            // Metadata
+            confidence: structuredAnalysis.confidence,
+            tokensUsed: visionResult.tokens,
+            processedAt: new Date().toISOString(),
+            processingMethod: 'temp-analysis-enhanced-vision-api'
+          },
+          message: 'Dive computer image analyzed (temporary analysis mode)'
+        };
+
+        return res.status(200).json(response);
+      }
+
       // ☁️ Upload to Supabase Storage
       const supabase = getAdminClient();
       await ensureStorageBucket(supabase);
@@ -553,8 +552,15 @@ export default async function handler(req, res) {
       console.log('✅ Image uploaded to:', publicImageUrl);
 
       // 💾 Save comprehensive data to database
+      // Handle temp-analysis by using a special temp user UUID
+      let finalUserId = userId;
+      if (userId === 'temp-analysis') {
+        // Use a special UUID for temporary analysis
+        finalUserId = 'ffffffff-ffff-ffff-ffff-ffffffffffff'; // Max UUID for temp analysis
+      }
+      
       const imageRecord = {
-        user_id: userId,
+        user_id: finalUserId,
         dive_log_id: diveLogId || null,
         bucket: 'dive-images',
         path_original: uploadData.path,
@@ -626,6 +632,9 @@ export default async function handler(req, res) {
           recommendations: structuredAnalysis.coachingInsights?.recommendations || [],
           performanceRating: structuredAnalysis.coachingInsights?.performanceRating,
           
+          // ✅ BACKWARD COMPATIBILITY: Provide extractedText field for legacy code
+          extractedText: createLegacyExtractedText(structuredAnalysis),
+          
           // Metadata
           confidence: structuredAnalysis.confidence,
           tokensUsed: visionResult.tokens,
@@ -648,9 +657,16 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ UNIFIED upload error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code
+    });
     return res.status(500).json({
       error: 'Failed to process dive computer image',
       details: error.message,
+      errorName: error.name,
       timestamp: new Date().toISOString()
     });
   }

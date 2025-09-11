@@ -182,11 +182,33 @@ export default function ChatBox({
           const fallbackData = await fallbackRes.json();
           console.log("✅ OpenAI fallback response received:", fallbackData);
 
+          // ✅ Handle structured JSON response from /api/openai/chat
+          let responseText = fallbackData.response || fallbackData.answer || "I received your message!";
+          
+          // ✅ If it's a structured coaching response, format it nicely
+          if (typeof fallbackData === 'string') {
+            try {
+              const parsed = JSON.parse(fallbackData);
+              if (parsed.coaching_feedback || parsed.safety_assessment) {
+                responseText = [
+                  parsed.congratulations && `🎉 ${parsed.congratulations}`,
+                  parsed.safety_assessment && `🛡️ **Safety Assessment:** ${parsed.safety_assessment}`,
+                  parsed.performance_analysis && `📊 **Performance Analysis:** ${parsed.performance_analysis}`,
+                  parsed.coaching_feedback && `🎯 **Coaching Feedback:** ${parsed.coaching_feedback}`,
+                  parsed.next_steps && `📋 **Next Steps:** ${parsed.next_steps}`,
+                  parsed.medical_disclaimer && `⚠️ ${parsed.medical_disclaimer}`
+                ].filter(Boolean).join('\n\n');
+              }
+            } catch (e) {
+              // Not JSON, use as-is
+            }
+          }
+
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
-              content: fallbackData.response || fallbackData.answer || "I received your message!",
+              content: responseText,
             },
           ]);
           return;
