@@ -270,12 +270,37 @@ export default function DiveJournalDisplay({
               _imageAnalysis: uploadJson.data.imageAnalysis,
             }));
 
-            // Show success message
+            // Show comprehensive success message with all extracted metrics
+            let analysisMessage = `🎯 **Image Analysis Complete**\n\n**BASIC METRICS:**\n- **Depth**: ${metrics.max_depth || 'N/A'}m\n- **Time**: ${metrics.dive_time_formatted || 'N/A'}\n- **Temperature**: ${metrics.temperature || 'N/A'}\n- **Date**: ${metrics.dive_date || 'N/A'}`;
+            
+            // Add advanced metrics if available
+            if (metrics.descent_time || metrics.ascent_time || metrics.descent_rate || metrics.ascent_rate || metrics.hang_time) {
+              analysisMessage += `\n\n**ADVANCED METRICS:**`;
+              if (metrics.descent_time) analysisMessage += `\n- **Descent Time**: ${metrics.descent_time}`;
+              if (metrics.ascent_time) analysisMessage += `\n- **Ascent Time**: ${metrics.ascent_time}`;
+              if (metrics.descent_rate) analysisMessage += `\n- **Descent Rate**: ${metrics.descent_rate} m/min`;
+              if (metrics.ascent_rate) analysisMessage += `\n- **Ascent Rate**: ${metrics.ascent_rate} m/min`;
+              if (metrics.hang_time) analysisMessage += `\n- **Hang Time**: ${metrics.hang_time}s`;
+            }
+            
+            // Add profile observations if available
+            if (metrics.observations) {
+              analysisMessage += `\n\n**PROFILE ANALYSIS:**\n${metrics.observations}`;
+            }
+            
+            // Add confidence score if available
+            if (metrics.confidence) {
+              const confidencePercent = Math.round(metrics.confidence * 100);
+              analysisMessage += `\n\n**Confidence**: ${confidencePercent}%`;
+            }
+            
+            analysisMessage += `\n\nForm fields have been automatically populated. Please review and adjust as needed.`;
+
             setMessages?.((prev) => [
               ...prev,
               {
                 role: "assistant",
-                content: `🎯 **Image Analysis Complete**\n\nExtracted dive data:\n- **Depth**: ${metrics.max_depth || 'N/A'}m\n- **Time**: ${metrics.dive_time_formatted || 'N/A'}\n- **Temperature**: ${metrics.temperature || 'N/A'}°C\n- **Date**: ${metrics.dive_date || 'N/A'}\n\nForm fields have been automatically populated. Please review and adjust as needed.`,
+                content: analysisMessage,
               },
             ]);
           } else {

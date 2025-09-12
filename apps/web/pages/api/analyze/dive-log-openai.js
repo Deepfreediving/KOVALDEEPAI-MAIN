@@ -277,7 +277,40 @@ export default async function handler(req, res) {
       // Handle structured image analysis data
       if (typeof diveLogData.imageAnalysis === 'object') {
         const analysis = diveLogData.imageAnalysis;
-        if (analysis.extractedData) {
+        
+        // Handle new comprehensive structure (direct fields)
+        if (analysis.max_depth !== undefined || analysis.dive_time || analysis.max_depth_temp) {
+          imageDataPrompt = `\n📊 DIVE COMPUTER DATA EXTRACTED:
+- **Max Depth**: ${analysis.max_depth || 'N/A'}${analysis.depth_unit || 'm'}
+- **Dive Time**: ${analysis.dive_time || 'N/A'}
+- **Temperature**: ${analysis.max_depth_temp || 'N/A'}${analysis.temp_unit === 'F' ? '°F' : '°C'}
+- **Entry Time**: ${analysis.entry_time || 'N/A'}
+- **Surface Interval**: ${analysis.surface_interval || 'N/A'}
+- **Dive Mode**: ${analysis.dive_mode || 'N/A'}`;
+
+          // Add advanced metrics from graph analysis
+          if (analysis.descent_time || analysis.ascent_time) {
+            imageDataPrompt += `\n\n📈 PROFILE METRICS:
+- **Descent Time**: ${analysis.descent_time || 'N/A'}
+- **Ascent Time**: ${analysis.ascent_time || 'N/A'}
+- **Descent Rate**: ${analysis.descent_rate || 'N/A'} m/min
+- **Ascent Rate**: ${analysis.ascent_rate || 'N/A'} m/min
+- **Hang Time**: ${analysis.hang_time || 'N/A'} seconds`;
+          }
+
+          // Add profile observations
+          if (analysis.observations) {
+            imageDataPrompt += `\n\n🔍 PROFILE OBSERVATIONS: ${analysis.observations}`;
+          }
+
+          // Add confidence score
+          if (analysis.confidence) {
+            const confidencePercent = Math.round(analysis.confidence * 100);
+            imageDataPrompt += `\n\n✅ EXTRACTION CONFIDENCE: ${confidencePercent}%`;
+          }
+        }
+        // Fallback to legacy structure
+        else if (analysis.extractedData) {
           const data = analysis.extractedData;
           imageDataPrompt = `\nDive Computer Data Extracted:
 - Max Depth: ${data.maxDepth || 'N/A'}m
@@ -326,12 +359,17 @@ Please provide:
 3. Safety Evaluation - Any safety concerns based on real metrics?
 4. Training Recommendations - What should the diver focus on next?
 5. Progression Advice - How can they improve for future dives?
-6. 📊 REAL METRICS ANALYSIS (only if computer data was extracted):
-   - Descent time: [from actual data or "not available"]
-   - Ascent time: [from actual data or "not available"]  
-   - Descent speed: [calculated from real data or "not available"]
-   - Ascent speed: [calculated from real data or "not available"]
-   - Bottom time: [from actual data or "not available"]
+6. 📊 REAL METRICS ANALYSIS:
+   ⚠️ CRITICAL: If dive computer data was extracted above, you MUST analyze it and provide specific metrics.
+   - **Descent time**: ${imageDataPrompt.includes('Descent Time:') ? '[Use the extracted descent time from dive computer data above]' : '"Not available from dive computer"'}
+   - **Ascent time**: ${imageDataPrompt.includes('Ascent Time:') ? '[Use the extracted ascent time from dive computer data above]' : '"Not available from dive computer"'}  
+   - **Descent speed**: ${imageDataPrompt.includes('Descent Rate:') ? '[Convert extracted descent rate to user-friendly format]' : '"Not available from dive computer"'}
+   - **Ascent speed**: ${imageDataPrompt.includes('Ascent Rate:') ? '[Convert extracted ascent rate to user-friendly format]' : '"Not available from dive computer"'}
+   - **Bottom time**: ${imageDataPrompt.includes('Hang Time:') ? '[Use the extracted hang time from dive computer data above]' : '"Not available from dive computer"'}
+
+${imageDataPrompt ? '🎯 **IMPORTANT**: The dive computer data above contains REAL extracted metrics. Reference these specific values in your analysis instead of saying "without specific computer data".' : ''}
+
+Remember: Convert all time values to user-friendly format (3:12 instead of 192 seconds) in your analysis.
 
 Use your expertise in freediving physiology, technique, and safety. Be encouraging but also provide specific, actionable feedback based on the available data.`;
 
