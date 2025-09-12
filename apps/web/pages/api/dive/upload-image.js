@@ -299,16 +299,64 @@ function createLegacyExtractedText(structuredAnalysis) {
 function extractMetrics(structuredAnalysis) {
   const metrics = {};
   
+  // Handle new comprehensive structure (direct fields)
+  if (structuredAnalysis?.max_depth !== undefined) {
+    metrics.max_depth = structuredAnalysis.max_depth;
+  }
+  if (structuredAnalysis?.dive_time) {
+    metrics.dive_time_formatted = structuredAnalysis.dive_time;
+    // Convert MM:SS to seconds for compatibility
+    const [minutes, seconds] = structuredAnalysis.dive_time.split(':').map(Number);
+    metrics.dive_time_seconds = minutes * 60 + seconds;
+  }
+  if (structuredAnalysis?.max_depth_temp !== undefined) {
+    const unit = structuredAnalysis.temp_unit === 'F' ? '°F' : '°C';
+    metrics.temperature = `${structuredAnalysis.max_depth_temp}${unit}`;
+  }
+  if (structuredAnalysis?.entry_time) {
+    metrics.dive_date = structuredAnalysis.entry_time;
+  }
+  if (structuredAnalysis?.dive_mode) {
+    metrics.dive_mode = structuredAnalysis.dive_mode;
+  }
+  if (structuredAnalysis?.surface_interval) {
+    metrics.surface_interval = structuredAnalysis.surface_interval;
+  }
+  
+  // Advanced metrics from enhanced Vision AI
+  if (structuredAnalysis?.descent_time) {
+    metrics.descent_time = structuredAnalysis.descent_time;
+  }
+  if (structuredAnalysis?.ascent_time) {
+    metrics.ascent_time = structuredAnalysis.ascent_time;
+  }
+  if (structuredAnalysis?.descent_rate) {
+    metrics.descent_rate = structuredAnalysis.descent_rate;
+  }
+  if (structuredAnalysis?.ascent_rate) {
+    metrics.ascent_rate = structuredAnalysis.ascent_rate;
+  }
+  if (structuredAnalysis?.hang_time) {
+    metrics.hang_time = structuredAnalysis.hang_time;
+  }
+  if (structuredAnalysis?.confidence) {
+    metrics.confidence = structuredAnalysis.confidence;
+  }
+  if (structuredAnalysis?.observations) {
+    metrics.observations = structuredAnalysis.observations;
+  }
+  
+  // Fallback to legacy structure for backward compatibility
   if (structuredAnalysis?.extractedData) {
     const data = structuredAnalysis.extractedData;
     
-    if (data.maxDepth) metrics.max_depth = data.maxDepth;
-    if (data.diveTimeSeconds) metrics.dive_time_seconds = data.diveTimeSeconds;
-    if (data.temperature) metrics.temperature = data.temperature;
-    if (data.diveTime) metrics.dive_time_formatted = data.diveTime;
-    if (data.date) metrics.dive_date = data.date;
-    if (data.diveMode) metrics.dive_mode = data.diveMode;
-    if (data.surfaceInterval) metrics.surface_interval = data.surfaceInterval;
+    if (data.maxDepth && !metrics.max_depth) metrics.max_depth = data.maxDepth;
+    if (data.diveTimeSeconds && !metrics.dive_time_seconds) metrics.dive_time_seconds = data.diveTimeSeconds;
+    if (data.temperature && !metrics.temperature) metrics.temperature = data.temperature;
+    if (data.diveTime && !metrics.dive_time_formatted) metrics.dive_time_formatted = data.diveTime;
+    if (data.date && !metrics.dive_date) metrics.dive_date = data.date;
+    if (data.diveMode && !metrics.dive_mode) metrics.dive_mode = data.diveMode;
+    if (data.surfaceInterval && !metrics.surface_interval) metrics.surface_interval = data.surfaceInterval;
     if (data.batteryStatus) metrics.battery_status = data.batteryStatus;
   }
   
