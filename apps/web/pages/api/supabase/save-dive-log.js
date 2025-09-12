@@ -259,27 +259,69 @@ export default async function handler(req, res) {
 
       // 🚀 CRITICAL: Merge extracted metrics into dive log if available
       if (diveLogData.extractedMetrics && Object.keys(diveLogData.extractedMetrics).length > 0) {
-        console.log('📊 Updating dive log with extracted metrics:', diveLogData.extractedMetrics)
+        console.log('📊 Updating dive log with extracted metrics:', JSON.stringify(diveLogData.extractedMetrics, null, 2))
         
         // Prepare fields to update based on extracted metrics
         const metricsUpdate = {};
         
-        if (diveLogData.extractedMetrics.max_depth && !savedLog.reached_depth) {
-          metricsUpdate.reached_depth = Number(diveLogData.extractedMetrics.max_depth);
-          console.log(`📏 Setting reached_depth from image: ${diveLogData.extractedMetrics.max_depth}m`);
+        // Handle max_depth from new comprehensive structure
+        const depth = diveLogData.extractedMetrics.max_depth;
+        if (depth && !savedLog.reached_depth) {
+          metricsUpdate.reached_depth = Number(depth);
+          console.log(`📏 Setting reached_depth from image: ${depth}m`);
         }
         
-        if (diveLogData.extractedMetrics.dive_time_seconds && !savedLog.total_dive_time) {
-          // Save total_dive_time as seconds (number) to match DB schema
-          const seconds = Number(diveLogData.extractedMetrics.dive_time_seconds);
+        // Handle dive time - check multiple possible field names
+        const timeSeconds = diveLogData.extractedMetrics.dive_time_seconds;
+        if (timeSeconds && !savedLog.total_dive_time) {
+          const seconds = Number(timeSeconds);
           if (!isNaN(seconds)) {
             metricsUpdate.total_dive_time = seconds;
-            console.log(`⏱️ Setting total_dive_time (seconds) from image: ${seconds}s`);
-          } else {
-            console.warn('⚠️ extracted dive_time_seconds is not a number:', diveLogData.extractedMetrics.dive_time_seconds);
+            console.log(`⏱️ Setting total_dive_time from image: ${seconds}s`);
           }
         }
         
+        // Handle target_depth if not already set
+        if (depth && !savedLog.target_depth) {
+          metricsUpdate.target_depth = Number(depth);
+          console.log(`🎯 Setting target_depth from reached depth: ${depth}m`);
+        }
+        
+        // Add advanced metrics as JSON if available
+        const advancedMetrics = {};
+        if (diveLogData.extractedMetrics.descent_time) advancedMetrics.descent_time = diveLogData.extractedMetrics.descent_time;
+        if (diveLogData.extractedMetrics.ascent_time) advancedMetrics.ascent_time = diveLogData.extractedMetrics.ascent_time;
+        if (diveLogData.extractedMetrics.descent_rate) advancedMetrics.descent_rate = diveLogData.extractedMetrics.descent_rate;
+        if (diveLogData.extractedMetrics.ascent_rate) advancedMetrics.ascent_rate = diveLogData.extractedMetrics.ascent_rate;
+        if (diveLogData.extractedMetrics.hang_time) advancedMetrics.hang_time = diveLogData.extractedMetrics.hang_time;
+        if (diveLogData.extractedMetrics.confidence) advancedMetrics.confidence = diveLogData.extractedMetrics.confidence;
+        if (diveLogData.extractedMetrics.observations) advancedMetrics.observations = diveLogData.extractedMetrics.observations;
+        
+        if (Object.keys(advancedMetrics).length > 0) {
+          // Store advanced metrics in the notes field or a JSON field
+          const existingNotes = savedLog.notes || '';
+          const metricsJson = JSON.stringify(advancedMetrics, null, 2);
+          metricsUpdate.notes = existingNotes + (existingNotes ? '\n\n' : '') + `DIVE COMPUTER METRICS:\n${metricsJson}`;
+          console.log(`📈 Adding advanced metrics to notes field`);
+        }
+        
+        // Store image association in ai_analysis JSON field (since dedicated image fields may not exist)
+        const currentAnalysis = savedLog.ai_analysis || {};
+        if (diveLogData.imageUrl || diveLogData.imageId) {
+          metricsUpdate.ai_analysis = {
+            ...currentAnalysis,
+            imageUrl: diveLogData.imageUrl,
+            imageId: diveLogData.imageId,
+            imageAssociation: {
+              url: diveLogData.imageUrl,
+              id: diveLogData.imageId,
+              associatedAt: new Date().toISOString(),
+              source: 'dive_computer_upload'
+            }
+          };
+          console.log(`🖼️ Permanently associating image with dive log: ${diveLogData.imageId}`);
+        }
+
         // Update ai_analysis with full extracted metrics
         const updatedMetadata = {
           ...savedLog.ai_analysis,
