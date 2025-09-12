@@ -28,23 +28,31 @@ async function analyzeWithEnhancedVision(base64Image, mimeType = 'image/jpeg', u
 Return JSON: {"maxDepth": number, "diveTime": "MM:SS", "temperature": number}`;
 
     // Full detailed prompt for comprehensive analysis
-    const longPrompt = `You are an expert dive computer analyst. Your task is to READ the actual data displayed on this dive computer screen.
+    const longPrompt = `You are an expert dive computer analyst. Carefully examine this dive computer display and extract the ACTUAL visible data.
 
-CRITICAL INSTRUCTIONS:
-- ONLY extract data that is CLEARLY VISIBLE on the screen
-- DO NOT make up, estimate, or generate hypothetical values
-- If a value is not clearly readable, return null or "not_visible"
-- Focus on ACTUAL NUMBERS and TEXT displayed on the device
+CRITICAL RULES:
+- READ ONLY what is CLEARLY VISIBLE on the screen
+- Look for common dive computer displays: depth (m/ft), time (MM:SS), temperature (°C/°F)
+- Check for labels like "MAX", "DEPTH", "TIME", "TEMP", numbers with units
+- If text is blurry or unreadable, state "not_visible"
+- NEVER guess or make up values
 
-Return valid JSON with this structure:
+Common dive computer layouts:
+- Large numbers usually show current/max depth
+- Time formats: MM:SS, M:SS, or just seconds
+- Temperature often shown with °C or °F
+- Look for dive profile graphs or charts
+
+Return valid JSON:
 {
   "extractedData": {
-    "maxDepth": number_or_null,
-    "diveTime": "MM:SS_or_null", 
-    "temperature": number_or_null,
+    "maxDepth": actual_number_or_null,
+    "diveTime": "MM:SS_format_or_null", 
+    "temperature": actual_number_or_null,
     "visibility": "clear|blurry|dark|unreadable"
   },
-  "confidence": 0.0_to_1.0
+  "confidence": 0.0_to_1.0,
+  "notes": "brief_description_of_what_you_see"
 }`;
     
     const messages = [

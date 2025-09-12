@@ -392,7 +392,21 @@ function formatDiveLogForOpenAI(diveLog) {
   if (diveLog.location) parts.push(`Location: ${diveLog.location}`);
   if (diveLog.targetDepth || diveLog.target_depth) parts.push(`Target Depth: ${diveLog.targetDepth || diveLog.target_depth}m`);
   if (diveLog.reachedDepth || diveLog.reached_depth) parts.push(`Reached Depth: ${diveLog.reachedDepth || diveLog.reached_depth}m`);
-  if (diveLog.totalDiveTime || diveLog.total_dive_time) parts.push(`Total Dive Time: ${diveLog.totalDiveTime || diveLog.total_dive_time}`);
+  
+  // ✅ FIX: Convert seconds back to MM:SS for user-friendly AI analysis
+  const totalTime = diveLog.totalDiveTime || diveLog.total_dive_time;
+  if (totalTime) {
+    let formattedTime = totalTime;
+    // If it's a pure number (seconds), convert to MM:SS
+    if (/^\d+$/.test(String(totalTime))) {
+      const seconds = parseInt(totalTime);
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      formattedTime = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    parts.push(`Total Dive Time: ${formattedTime}`);
+  }
+  
   if (diveLog.mouthfillDepth || diveLog.mouthfill_depth) parts.push(`Mouthfill Depth: ${diveLog.mouthfillDepth || diveLog.mouthfill_depth}m`);
   if (diveLog.issueDepth || diveLog.issue_depth) parts.push(`Issue Depth: ${diveLog.issueDepth || diveLog.issue_depth}m`);
   if (diveLog.issueComment || diveLog.issue_comment) parts.push(`Issue: ${diveLog.issueComment || diveLog.issue_comment}`);
