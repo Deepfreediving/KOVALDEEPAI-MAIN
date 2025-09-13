@@ -73,11 +73,85 @@ export default async function handler(
         }
       }
 
-      // 2️⃣ Memory storage migrated to Supabase
-      console.log("📋 Using Supabase storage for memory");
+      // 2️⃣ Load from Supabase user_memory and dive_logs tables
+      console.log("📋 Loading comprehensive memory from Supabase...");
 
-      // 3️⃣ Merge & Deduplicate logs (local memory and dive logs only)
-      const mergedLogs = [...localMemory, ...diveLogsMemory];
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      let supabaseMemory: any[] = [];
+
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const { createClient } = require("@supabase/supabase-js");
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          // Load user memory
+          const { data: memoryData, error: memoryError } = await supabase
+            .from("user_memory")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(100);
+
+          if (memoryError) {
+            console.warn("⚠️ Error loading user memory:", memoryError);
+          } else if (memoryData) {
+            supabaseMemory = memoryData.map((record: any) => ({
+              id: record.id,
+              timestamp: record.created_at,
+              type: record.memory_type,
+              source: "supabase-user-memory",
+              content: record.content,
+              ...record,
+            }));
+            console.log(
+              `📊 Loaded ${supabaseMemory.length} memory entries from Supabase`,
+            );
+          }
+
+          // Load dive logs with image analysis
+          const { data: diveLogs, error: diveError } = await supabase
+            .from("dive_logs")
+            .select(`
+              *,
+              dive_log_image (
+                extracted_metrics,
+                ai_analysis,
+                original_filename
+              )
+            `)
+            .eq("user_id", userId)
+            .order("date", { ascending: false })
+            .limit(50);
+
+          if (diveError) {
+            console.warn("⚠️ Error loading dive logs:", diveError);
+          } else if (diveLogs) {
+            const diveMemory = diveLogs.map((log: any) => ({
+              id: `dive-${log.id}`,
+              timestamp: log.created_at || log.date,
+              type: "dive-log",
+              source: "supabase-dive-logs",
+              content: {
+                dive_data: log,
+                image_analysis: log.dive_log_image,
+                coaching_ready: !!(
+                  log.ai_analysis || log.dive_log_image?.ai_analysis
+                ),
+              },
+              ...log,
+            }));
+            supabaseMemory = [...supabaseMemory, ...diveMemory];
+            console.log(`📊 Loaded ${diveLogs.length} dive logs from Supabase`);
+          }
+        } catch (supabaseError) {
+          console.warn("⚠️ Supabase memory loading failed:", supabaseError);
+        }
+      }
+
+      // 3️⃣ Merge & Deduplicate logs (all sources)
+      const mergedLogs = [...localMemory, ...diveLogsMemory, ...supabaseMemory];
       const seen = new Set<string>();
       const finalMemory = mergedLogs.filter((log: any) => {
         if (!log.id) {

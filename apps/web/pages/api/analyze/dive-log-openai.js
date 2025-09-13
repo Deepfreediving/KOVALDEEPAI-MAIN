@@ -224,6 +224,63 @@ async function saveAnalysisToSupabase(userId, diveLogData, analysis) {
   }
 }
 
+// ✅ ENHANCED: Create comprehensive super analysis combining image + log data
+function createSuperAnalysisPrompt(diveLogData, imageAnalysis = null) {
+  let basePrompt = formatDiveLogForOpenAI(diveLogData);
+  
+  // ✅ SUPER ANALYSIS: Combine image analysis with dive log for comprehensive coaching
+  if (imageAnalysis && imageAnalysis.extractedMetrics) {
+    const metrics = imageAnalysis.extractedMetrics;
+    
+    basePrompt += `\n\n🎯 DIVE COMPUTER DATA (REAL EXTRACTED METRICS):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Max Depth: ${metrics.max_depth || 'N/A'}m
+• Dive Time: ${metrics.dive_time || 'N/A'} (${metrics.dive_time_seconds || 'N/A'} seconds)
+• Temperature: ${metrics.temperature || 'N/A'}°C
+• Descent Time: ${metrics.descent_time || 'N/A'} seconds
+• Ascent Time: ${metrics.ascent_time || 'N/A'} seconds
+• Descent Speed: ${metrics.descent_speed_mps ? (metrics.descent_speed_mps * 60).toFixed(1) : 'N/A'} m/min
+• Ascent Speed: ${metrics.ascent_speed_mps ? (metrics.ascent_speed_mps * 60).toFixed(1) : 'N/A'} m/min
+• Surface Interval: ${metrics.surface_interval || 'N/A'}
+• Hang Time: ${metrics.hang_time || 'N/A'} seconds`;
+
+    if (imageAnalysis.coachingInsights) {
+      basePrompt += `\n\n🧠 TECHNICAL ANALYSIS FROM DIVE COMPUTER:
+• Performance Rating: ${imageAnalysis.coachingInsights.performanceRating || 'N/A'}/10
+• Safety Assessment: ${imageAnalysis.coachingInsights.safetyAssessment || 'N/A'}`;
+      
+      if (imageAnalysis.coachingInsights.recommendations?.length > 0) {
+        basePrompt += `\n• Vision Recommendations: ${imageAnalysis.coachingInsights.recommendations.join(', ')}`;
+      }
+    }
+    
+    basePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+  }
+  
+  return basePrompt;
+}
+
+// ✅ ENHANCED: Cross-validate dive computer data with manual log entry
+function validateDataConsistency(diveLogData, extractedMetrics) {
+  const inconsistencies = [];
+  const manualDepth = parseFloat(diveLogData.reachedDepth || diveLogData.reached_depth || 0);
+  const computerDepth = parseFloat(extractedMetrics.max_depth || 0);
+  
+  // Check depth consistency (allow 2m variance)
+  if (manualDepth > 0 && computerDepth > 0 && Math.abs(manualDepth - computerDepth) > 2) {
+    inconsistencies.push(`Depth mismatch: Manual ${manualDepth}m vs Computer ${computerDepth}m`);
+  }
+  
+  // Check time format consistency
+  const manualTime = diveLogData.totalDiveTime || diveLogData.total_dive_time;
+  const computerTime = extractedMetrics.dive_time;
+  if (manualTime && computerTime && manualTime !== computerTime) {
+    inconsistencies.push(`Time mismatch: Manual ${manualTime} vs Computer ${computerTime}`);
+  }
+  
+  return inconsistencies;
+}
+
 export default async function handler(req, res) {
   try {
     if (handleCors(req, res)) return;

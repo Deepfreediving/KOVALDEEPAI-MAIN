@@ -314,7 +314,13 @@ function extractMetrics(structuredAnalysis) {
     metrics.temperature = `${structuredAnalysis.max_depth_temp}${unit}`;
   }
   if (structuredAnalysis?.entry_time) {
-    metrics.dive_date = structuredAnalysis.entry_time;
+    // Extract date in YYYY-MM-DD format for HTML date input
+    let dateValue = structuredAnalysis.entry_time;
+    if (dateValue.includes('T')) {
+      // ISO timestamp - extract just the date part
+      dateValue = dateValue.split('T')[0];
+    }
+    metrics.dive_date = dateValue;
   }
   if (structuredAnalysis?.dive_mode) {
     metrics.dive_mode = structuredAnalysis.dive_mode;

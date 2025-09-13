@@ -21,6 +21,22 @@ export default async function handler(req, res) {
 
     const supabase = getAdminClient();
 
+    // Check if the record exists first
+    const { data: existingRecord } = await supabase
+      .from('dive_log_image')
+      .select('id')
+      .eq('id', imageId)
+      .single();
+
+    if (!existingRecord) {
+      console.log(`⚠️ Image ${imageId} not found in dive_log_image table - may already be associated`);
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Image already associated or not found',
+        imageId 
+      });
+    }
+
     // Update the image record
     const { data, error } = await supabase
       .from('dive_log_image')
