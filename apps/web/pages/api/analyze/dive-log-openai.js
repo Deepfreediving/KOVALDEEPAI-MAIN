@@ -232,29 +232,109 @@ function createSuperAnalysisPrompt(diveLogData, imageAnalysis = null) {
   if (imageAnalysis && imageAnalysis.extractedMetrics) {
     const metrics = imageAnalysis.extractedMetrics;
     
-    basePrompt += `\n\n🎯 DIVE COMPUTER DATA (REAL EXTRACTED METRICS):
+    // Calculate derived metrics for comprehensive analysis
+    const maxDepth = parseFloat(metrics.max_depth || 0);
+    const descentTime = parseFloat(metrics.descent_time || 0);
+    const ascentTime = parseFloat(metrics.ascent_time || 0);
+    const totalTime = parseFloat(metrics.dive_time_seconds || 0);
+    const hangTime = parseFloat(metrics.hang_time || 0);
+    
+    // Advanced performance calculations
+    const effectiveBottomTime = totalTime - descentTime - ascentTime;
+    const descentRate = descentTime > 0 ? (maxDepth / descentTime * 60).toFixed(1) : 'N/A'; // m/min
+    const ascentRate = ascentTime > 0 ? (maxDepth / ascentTime * 60).toFixed(1) : 'N/A'; // m/min
+    const avgSpeed = totalTime > 0 ? ((maxDepth * 2) / totalTime * 60).toFixed(1) : 'N/A'; // m/min total
+    const depthTimeRatio = totalTime > 0 ? (maxDepth / totalTime).toFixed(2) : 'N/A';
+    const efficiencyIndex = descentTime && ascentTime ? ((descentTime + ascentTime) / totalTime * 100).toFixed(1) : 'N/A';
+    
+    basePrompt += `\n\n🎯 DIVE COMPUTER DATA (COMPREHENSIVE METRICS):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 BASIC METRICS:
 • Max Depth: ${metrics.max_depth || 'N/A'}m
-• Dive Time: ${metrics.dive_time || 'N/A'} (${metrics.dive_time_seconds || 'N/A'} seconds)
-• Temperature: ${metrics.temperature || 'N/A'}°C
-• Descent Time: ${metrics.descent_time || 'N/A'} seconds
-• Ascent Time: ${metrics.ascent_time || 'N/A'} seconds
-• Descent Speed: ${metrics.descent_speed_mps ? (metrics.descent_speed_mps * 60).toFixed(1) : 'N/A'} m/min
-• Ascent Speed: ${metrics.ascent_speed_mps ? (metrics.ascent_speed_mps * 60).toFixed(1) : 'N/A'} m/min
+• Total Dive Time: ${metrics.dive_time || 'N/A'} (${metrics.dive_time_seconds || 'N/A'} seconds)
+• Water Temperature: ${metrics.temperature || 'N/A'}°C
 • Surface Interval: ${metrics.surface_interval || 'N/A'}
-• Hang Time: ${metrics.hang_time || 'N/A'} seconds`;
+
+⏱️ TIMING ANALYSIS:
+• Descent Time: ${descentTime || 'N/A'} seconds (${descentTime ? ((descentTime/totalTime)*100).toFixed(1) : 'N/A'}% of dive)
+• Ascent Time: ${ascentTime || 'N/A'} seconds (${ascentTime ? ((ascentTime/totalTime)*100).toFixed(1) : 'N/A'}% of dive)
+• Bottom Phase: ${effectiveBottomTime > 0 ? effectiveBottomTime : hangTime || 'N/A'} seconds
+• Hang Time at Max: ${metrics.hang_time || 'N/A'} seconds
+
+🚀 SPEED & EFFICIENCY:
+• Descent Rate: ${descentRate} m/min
+• Ascent Rate: ${ascentRate} m/min
+• Average Speed: ${avgSpeed} m/min (total distance/time)
+• Depth/Time Ratio: ${depthTimeRatio} m/s
+• Movement Efficiency: ${efficiencyIndex}% (time in motion vs total)
+
+🧠 PERFORMANCE INDICATORS:
+• Depth Target Achievement: ${metrics.max_depth && diveLogData.targetDepth ? ((parseFloat(metrics.max_depth)/parseFloat(diveLogData.targetDepth || diveLogData.target_depth))*100).toFixed(1) : 'N/A'}%
+• Equalization Zone (30-60m): ${maxDepth > 30 ? 'Crossed' : 'Not reached'}
+• Deep Zone (>60m): ${maxDepth > 60 ? 'Entered' : 'Not reached'}
+• Extreme Zone (>80m): ${maxDepth > 80 ? 'EXTREME DEPTH' : 'Standard depth'}`;
+
+    // Add physiological stress indicators
+    if (maxDepth > 40) {
+      const narcosisRisk = maxDepth > 30 ? 'MODERATE' : 'LOW';
+      const equalizationStress = maxDepth > 60 ? 'HIGH' : maxDepth > 40 ? 'MODERATE' : 'LOW';
+      const thermalExposure = metrics.temperature && parseFloat(metrics.temperature) < 25 ? 'SIGNIFICANT' : 'MINIMAL';
+      
+      basePrompt += `\n\n🩺 PHYSIOLOGICAL STRESS ANALYSIS:
+• Narcosis Risk: ${narcosisRisk} (depth ${maxDepth}m)
+• Equalization Demand: ${equalizationStress}
+• Thermal Stress: ${thermalExposure} (${metrics.temperature || 'N/A'}°C)
+• Pressure at Max: ${(1 + maxDepth/10).toFixed(1)} ATA
+• Lung Volume at Max: ~${(1/(1 + maxDepth/10)*100).toFixed(0)}% of surface volume`;
+    }
+
+    // Add technical analysis
+    if (descentTime && ascentTime) {
+      const descentAscentRatio = (descentTime / ascentTime).toFixed(2);
+      const isBalanced = Math.abs(descentTime - ascentTime) / Math.max(descentTime, ascentTime) < 0.2;
+      
+      basePrompt += `\n\n🔧 TECHNICAL PROFILE ANALYSIS:
+• Descent/Ascent Balance: ${descentAscentRatio} ratio (${isBalanced ? 'BALANCED' : 'IMBALANCED'})
+• Profile Symmetry: ${isBalanced ? 'Good symmetrical profile' : 'Asymmetrical - review technique'}
+• Speed Consistency: ${Math.abs(parseFloat(descentRate) - parseFloat(ascentRate)) < 10 ? 'Consistent speeds' : 'Variable speeds'}`;
+    }
 
     if (imageAnalysis.coachingInsights) {
-      basePrompt += `\n\n🧠 TECHNICAL ANALYSIS FROM DIVE COMPUTER:
-• Performance Rating: ${imageAnalysis.coachingInsights.performanceRating || 'N/A'}/10
-• Safety Assessment: ${imageAnalysis.coachingInsights.safetyAssessment || 'N/A'}`;
+      const insights = imageAnalysis.coachingInsights;
+      basePrompt += `\n\n🧠 AI COACHING INSIGHTS FROM DIVE COMPUTER:
+• Overall Performance: ${insights.performanceRating || 'N/A'}/10
+• Safety Assessment: ${insights.safetyAssessment || 'N/A'}
+• Data Quality: ${insights.dataQuality || 'High'} confidence extraction`;
       
-      if (imageAnalysis.coachingInsights.recommendations?.length > 0) {
-        basePrompt += `\n• Vision Recommendations: ${imageAnalysis.coachingInsights.recommendations.join(', ')}`;
+      if (insights.recommendations?.length > 0) {
+        basePrompt += `\n• Computer-Based Recommendations: ${insights.recommendations.join(', ')}`;
       }
     }
+
+    // Add safety warnings for extreme dives
+    if (maxDepth > 80 || (descentTime && descentRate && parseFloat(descentRate) > 80)) {
+      basePrompt += `\n\n⚠️ SAFETY ALERTS:`;
+      if (maxDepth > 80) basePrompt += `\n• EXTREME DEPTH WARNING: ${maxDepth}m exceeds 80m safety threshold`;
+      if (descentRate && parseFloat(descentRate) > 80) basePrompt += `\n• HIGH DESCENT RATE: ${descentRate} m/min may indicate insufficient equalization time`;
+      if (ascentRate && parseFloat(ascentRate) > 90) basePrompt += `\n• RAPID ASCENT: ${ascentRate} m/min increases DCS and shallow water blackout risk`;
+      if (effectiveBottomTime < 5 && maxDepth > 60) basePrompt += `\n• MINIMAL BOTTOM TIME: Only ${effectiveBottomTime}s at depth - consider longer hang time`;
+    }
     
-    basePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    basePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    
+🚨 IMPORTANT: All the metrics above are REAL data extracted from the actual dive computer.
+Use these specific values in your coaching analysis instead of saying data is unavailable.`;
+  } else if (imageAnalysis && typeof imageAnalysis === 'object') {
+    // Handle legacy or different image analysis formats
+    basePrompt += `\n\n📊 IMAGE ANALYSIS DATA:
+${JSON.stringify(imageAnalysis, null, 2)}
+
+🚨 IMPORTANT: Use the specific metrics from this image analysis in your coaching feedback.`;
+  } else if (imageAnalysis) {
+    basePrompt += `\n\n📊 DIVE COMPUTER ANALYSIS:
+${imageAnalysis}
+
+🚨 IMPORTANT: Reference the specific metrics mentioned above in your coaching analysis.`;
   }
   
   return basePrompt;
@@ -329,6 +409,13 @@ export default async function handler(req, res) {
     // ✅ ENHANCED: Create super analysis prompt
     const superAnalysisPrompt = createSuperAnalysisPrompt(diveLogData, diveLogData.imageAnalysis);
     
+    // ✅ DEBUG: Log the image analysis data structure
+    if (diveLogData.imageAnalysis) {
+      console.log('📊 Image analysis data structure:', JSON.stringify(diveLogData.imageAnalysis, null, 2));
+    } else {
+      console.log('⚠️ No imageAnalysis data found in diveLogData');
+    }
+    
     // ✅ ENHANCED: Validate data consistency if we have both sources
     let consistencyNotes = '';
     if (diveLogData.imageAnalysis?.extractedMetrics) {
@@ -339,21 +426,59 @@ export default async function handler(req, res) {
     }
 
     // Create enhanced OpenAI analysis prompt with super analysis
-    const prompt = `You are Daniel Koval, a world-renowned freediving instructor and coach. Provide comprehensive coaching analysis combining dive computer data with manual dive log entry:
+    const prompt = `You are Daniel Koval, a world-renowned freediving instructor and coach. Provide comprehensive coaching analysis using the complete dive computer data provided below:
 
 ${superAnalysisPrompt}${consistencyNotes}
 
-🎯 COACHING ANALYSIS REQUIREMENTS:
-1. **Performance Assessment**: Analyze actual vs target performance using REAL computer data
-2. **Technical Analysis**: Evaluate descent/ascent speeds, hang time, thermal effects
-3. **Safety Review**: Check for any concerning patterns in the dive profile
-4. **Progression Coaching**: Compare to previous dives and suggest next steps
-5. **Data Quality**: Comment on consistency between manual log and computer data
+🎯 COMPREHENSIVE COACHING ANALYSIS REQUIREMENTS:
 
-🚨 CRITICAL: Use the EXACT extracted metrics above, not hypothetical values.
-Focus on actionable coaching based on the precise dive computer readings.
+1. **PERFORMANCE ASSESSMENT** (Use EXACT metrics above):
+   - Analyze target vs achieved depth using real computer data
+   - Evaluate descent/ascent rates and technique efficiency
+   - Comment on timing breakdown (descent/ascent/bottom time ratios)
+   - Assess overall dive performance rating
 
-Provide detailed analysis in conversational coaching style with specific recommendations.`;
+2. **TECHNICAL ANALYSIS** (Reference specific values):
+   - Descent rate: ${diveLogData.imageAnalysis?.extractedMetrics ? 'Use the calculated descent rate above' : 'Calculate from available data'}
+   - Ascent rate: ${diveLogData.imageAnalysis?.extractedMetrics ? 'Use the calculated ascent rate above' : 'Calculate from available data'}
+   - Profile balance and symmetry analysis
+   - Equalization technique evaluation (especially in 30-60m zone)
+   - Turn technique and bottom time optimization
+
+3. **PHYSIOLOGICAL EVALUATION**:
+   - Pressure exposure effects at max depth
+   - Thermal stress analysis from water temperature
+   - Narcosis risk assessment for depth achieved
+   - Lung compression effects and mouthfill requirements
+
+4. **SAFETY REVIEW** (Critical analysis):
+   - Descent/ascent speed safety margins
+   - Depth progression appropriateness
+   - Bottom time vs depth ratio evaluation  
+   - Emergency ascent capability assessment
+
+5. **TRAINING RECOMMENDATIONS** (Specific to metrics):
+   - Areas needing improvement based on actual performance data
+   - Progressive training targets for next sessions
+   - Technique refinements for efficiency gains
+   - Safety protocol enhancements if needed
+
+🚨 CRITICAL INSTRUCTIONS:
+- The comprehensive metrics above contain REAL extracted data from the actual dive computer
+- You MUST reference these specific calculated values in your analysis
+- DO NOT ignore descent/ascent rates, efficiency ratios, or timing breakdowns if provided
+- Use exact depth, temperature, pressure, and timing values shown above
+- Reference physiological stress indicators and safety thresholds provided
+- Base all recommendations on the detailed performance analysis shown
+
+📊 VITAL METRICS TO ANALYZE:
+- Movement efficiency percentage and what it indicates
+- Descent/ascent balance ratio and technique implications  
+- Physiological stress levels at recorded depth and temperature
+- Safety margins based on actual speeds and timing
+- Performance optimization opportunities from the data
+
+Provide detailed analysis as Daniel Koval would - technically precise, safety-focused, and with specific actionable recommendations based on the comprehensive dive computer metrics provided above.`;
 
     console.log('📤 Sending to OpenAI...');
 

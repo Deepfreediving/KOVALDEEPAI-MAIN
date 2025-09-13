@@ -1,0 +1,636 @@
+{
+  "test_date": "2025-09-13T01:03:57.587Z",
+  "summary": {
+    "total_tests": 8,
+    "successful": 8,
+    "accurate": 8,
+    "high_confidence": 8,
+    "avg_analysis_time": 16060,
+    "avg_tokens": 2689,
+    "avg_confidence": 0.9500000000000001
+  },
+  "detailed_results": [
+    {
+      "filename": "110m pb phillipines 060719.JPG",
+      "category": "deep_technical",
+      "status": "success",
+      "extracted_depth": 108.7,
+      "expected_depth": 110,
+      "depth_accuracy": 1.2999999999999972,
+      "is_accurate": true,
+      "dive_time": "02:53",
+      "temperature": 29,
+      "confidence": 0.95,
+      "profile_score": 8,
+      "analysis_time": 17062,
+      "tokens": 2691,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 108.7,
+          "depth_unit": "m",
+          "dive_time": "02:53",
+          "dive_time_seconds": 173,
+          "surface_interval": "00:18",
+          "temperature": 29,
+          "temp_unit": "C",
+          "date": "2019-06-06",
+          "time": "10:11:44",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:25",
+          "descent_time_seconds": 85,
+          "ascent_time": "01:28",
+          "ascent_time_seconds": 88,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 1.28,
+          "avg_ascent_rate_mps": 1.24,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 173,
+          "total_pressure_time_50m": 173,
+          "total_pressure_time_70m": 173
+        },
+        "technical_analysis": {
+          "profile_symmetry": "good",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 8
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth descent",
+            "smooth ascent"
+          ],
+          "areas_for_improvement": [
+            "increase bottom time"
+          ],
+          "safety_recommendations": [
+            "maintain current ascent rate"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 8,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "Graph and metrics are consistent; no bottom time detected."
+      }
+    },
+    {
+      "filename": "Deepest dive on new mooring BO on surface and squeeze from bottom turn  121320 112m.JPG",
+      "category": "safety_incident",
+      "status": "success",
+      "extracted_depth": 112,
+      "expected_depth": 112,
+      "depth_accuracy": 0,
+      "is_accurate": true,
+      "dive_time": "03:12",
+      "temperature": 31,
+      "confidence": 0.95,
+      "profile_score": 9,
+      "analysis_time": 16986,
+      "tokens": 2696,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 112,
+          "depth_unit": "m",
+          "dive_time": "03:12",
+          "dive_time_seconds": 192,
+          "surface_interval": "00:14",
+          "temperature": 31,
+          "temp_unit": "C",
+          "date": "2020-12-13",
+          "time": "10:19:29",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:36",
+          "descent_time_seconds": 96,
+          "ascent_time": "01:36",
+          "ascent_time_seconds": 96,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 1.17,
+          "avg_ascent_rate_mps": 1.17,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 96,
+          "total_pressure_time_50m": 96,
+          "total_pressure_time_70m": 96
+        },
+        "technical_analysis": {
+          "profile_symmetry": "excellent",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 9
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth profile",
+            "excellent symmetry"
+          ],
+          "areas_for_improvement": [
+            "increase bottom time"
+          ],
+          "safety_recommendations": [
+            "maintain current ascent rate"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 8,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "Graph indicates a smooth and symmetrical dive profile with no irregularities."
+      }
+    },
+    {
+      "filename": "New PB 106m 06022019 philipines.JPG",
+      "category": "personal_best",
+      "status": "success",
+      "extracted_depth": 105.9,
+      "expected_depth": 106,
+      "depth_accuracy": 0.09999999999999432,
+      "is_accurate": true,
+      "dive_time": "02:47",
+      "temperature": 30,
+      "confidence": 0.95,
+      "profile_score": 9,
+      "analysis_time": 16529,
+      "tokens": 2685,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 105.9,
+          "depth_unit": "m",
+          "dive_time": "02:47",
+          "dive_time_seconds": 167,
+          "surface_interval": "00:16",
+          "temperature": 30,
+          "temp_unit": "C",
+          "date": "2019-06-01",
+          "time": "10:12:40",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:25",
+          "descent_time_seconds": 85,
+          "ascent_time": "01:22",
+          "ascent_time_seconds": 82,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 1.25,
+          "avg_ascent_rate_mps": 1.29,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 167,
+          "total_pressure_time_50m": 167,
+          "total_pressure_time_70m": 167
+        },
+        "technical_analysis": {
+          "profile_symmetry": "excellent",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 9
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "aggressive",
+          "primary_strengths": [
+            "smooth descent",
+            "smooth ascent"
+          ],
+          "areas_for_improvement": [
+            "turn technique"
+          ],
+          "safety_recommendations": [
+            "monitor ascent speed"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 9,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "All metrics extracted accurately from the image."
+      }
+    },
+    {
+      "filename": "062321 VB 105m CWT had contractions all the way down bing and strong lots of edema possible squeeze over packing.JPG",
+      "category": "technique_issues",
+      "status": "success",
+      "extracted_depth": 103.6,
+      "expected_depth": 105,
+      "depth_accuracy": 1.4000000000000057,
+      "is_accurate": true,
+      "dive_time": "03:05",
+      "temperature": 30,
+      "confidence": 0.95,
+      "profile_score": 9,
+      "analysis_time": 19887,
+      "tokens": 2689,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 103.6,
+          "depth_unit": "m",
+          "dive_time": "03:05",
+          "dive_time_seconds": 185,
+          "surface_interval": "00:07",
+          "temperature": 30,
+          "temp_unit": "C",
+          "date": "2021-06-23",
+          "time": "03:11:26",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:30",
+          "descent_time_seconds": 90,
+          "ascent_time": "01:30",
+          "ascent_time_seconds": 90,
+          "bottom_time_seconds": 5,
+          "avg_descent_rate_mps": 1.15,
+          "avg_ascent_rate_mps": 1.15,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 180,
+          "total_pressure_time_50m": 150,
+          "total_pressure_time_70m": 90
+        },
+        "technical_analysis": {
+          "profile_symmetry": "excellent",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 9
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth descent",
+            "smooth ascent"
+          ],
+          "areas_for_improvement": [
+            "increase bottom time"
+          ],
+          "safety_recommendations": [
+            "maintain current ascent rate"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 8,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "All metrics extracted accurately from the visible data."
+      }
+    },
+    {
+      "filename": "062821 95m cwt early turn going for 108m VB.JPG",
+      "category": "early_turn",
+      "status": "success",
+      "extracted_depth": 95,
+      "expected_depth": 95,
+      "depth_accuracy": 0,
+      "is_accurate": true,
+      "dive_time": "02:42",
+      "temperature": 30,
+      "confidence": 0.95,
+      "profile_score": 8,
+      "analysis_time": 12762,
+      "tokens": 2689,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 95,
+          "depth_unit": "m",
+          "dive_time": "02:42",
+          "dive_time_seconds": 162,
+          "surface_interval": "00:20",
+          "temperature": 30,
+          "temp_unit": "C",
+          "date": "2021-06-28",
+          "time": "10:25:12",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:25",
+          "descent_time_seconds": 85,
+          "ascent_time": "01:17",
+          "ascent_time_seconds": 77,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 1.12,
+          "avg_ascent_rate_mps": 1.23,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 162,
+          "total_pressure_time_50m": 162,
+          "total_pressure_time_70m": 162
+        },
+        "technical_analysis": {
+          "profile_symmetry": "good",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 8
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth descent",
+            "smooth ascent"
+          ],
+          "areas_for_improvement": [
+            "increase bottom time"
+          ],
+          "safety_recommendations": [
+            "maintain current ascent rate"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 8,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "All metrics extracted accurately from the visible data."
+      }
+    },
+    {
+      "filename": "102m fim asia cup phillippines 61119.JPG",
+      "category": "competition",
+      "status": "success",
+      "extracted_depth": 101.6,
+      "expected_depth": 102,
+      "depth_accuracy": 0.4000000000000057,
+      "is_accurate": true,
+      "dive_time": "03:29",
+      "temperature": 31,
+      "confidence": 0.95,
+      "profile_score": 9,
+      "analysis_time": 15259,
+      "tokens": 2681,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 101.6,
+          "depth_unit": "m",
+          "dive_time": "03:29",
+          "dive_time_seconds": 209,
+          "surface_interval": "00:18",
+          "temperature": 31,
+          "temp_unit": "C",
+          "date": "2019-06-10",
+          "time": "09:12:36",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:45",
+          "descent_time_seconds": 105,
+          "ascent_time": "01:44",
+          "ascent_time_seconds": 104,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 0.97,
+          "avg_ascent_rate_mps": 0.98,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 104,
+          "total_pressure_time_50m": 104,
+          "total_pressure_time_70m": 104
+        },
+        "technical_analysis": {
+          "profile_symmetry": "excellent",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 9
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth descent",
+            "smooth ascent"
+          ],
+          "areas_for_improvement": [],
+          "safety_recommendations": [
+            "Maintain current technique"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 9,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "Data extracted accurately from visible metrics."
+      }
+    },
+    {
+      "filename": "10718 95m FIM NR cmas WC.JPG",
+      "category": "fim_record",
+      "status": "success",
+      "extracted_depth": 94.9,
+      "expected_depth": 95,
+      "depth_accuracy": 0.09999999999999432,
+      "is_accurate": true,
+      "dive_time": "03:16",
+      "temperature": 31,
+      "confidence": 0.95,
+      "profile_score": 9,
+      "analysis_time": 17111,
+      "tokens": 2691,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 94.9,
+          "depth_unit": "m",
+          "dive_time": "03:16",
+          "dive_time_seconds": 196,
+          "surface_interval": "00:17",
+          "temperature": 31,
+          "temp_unit": "C",
+          "date": "2018-07-10",
+          "time": "12:10:00",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:38",
+          "descent_time_seconds": 98,
+          "ascent_time": "01:38",
+          "ascent_time_seconds": 98,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 0.97,
+          "avg_ascent_rate_mps": 0.97,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 98,
+          "total_pressure_time_50m": 60,
+          "total_pressure_time_70m": 30
+        },
+        "technical_analysis": {
+          "profile_symmetry": "excellent",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 9
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth profile",
+            "excellent symmetry"
+          ],
+          "areas_for_improvement": [
+            "increase bottom time"
+          ],
+          "safety_recommendations": [
+            "maintain current ascent rate"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 8,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "Graph and metrics are consistent; no irregularities detected."
+      }
+    },
+    {
+      "filename": "84m FIM dbh 7618.JPG",
+      "category": "fim_training",
+      "status": "success",
+      "extracted_depth": 83.8,
+      "expected_depth": 84,
+      "depth_accuracy": 0.20000000000000284,
+      "is_accurate": true,
+      "dive_time": "02:55",
+      "temperature": 31,
+      "confidence": 0.95,
+      "profile_score": 8,
+      "analysis_time": 12887,
+      "tokens": 2689,
+      "full_analysis": {
+        "basic_metrics": {
+          "max_depth": 83.8,
+          "depth_unit": "m",
+          "dive_time": "02:55",
+          "dive_time_seconds": 175,
+          "surface_interval": "00:10",
+          "temperature": 31,
+          "temp_unit": "C",
+          "date": "2018-07-07",
+          "time": "09:52:06",
+          "dive_mode": "Free"
+        },
+        "profile_metrics": {
+          "descent_time": "01:25",
+          "descent_time_seconds": 85,
+          "ascent_time": "01:30",
+          "ascent_time_seconds": 90,
+          "bottom_time_seconds": 0,
+          "avg_descent_rate_mps": 0.985,
+          "avg_ascent_rate_mps": 0.931,
+          "max_descent_rate_mps": null,
+          "max_ascent_rate_mps": null,
+          "total_pressure_time_30m": 90,
+          "total_pressure_time_50m": 60,
+          "total_pressure_time_70m": 30
+        },
+        "technical_analysis": {
+          "profile_symmetry": "good",
+          "turn_quality": "sharp",
+          "descent_consistency": "smooth",
+          "ascent_consistency": "smooth",
+          "equalization_pauses_detected": false,
+          "depth_oscillations": 0,
+          "profile_efficiency_score": 8
+        },
+        "safety_indicators": {
+          "rapid_ascent_segments": 0,
+          "max_ascent_spike_mps": null,
+          "depth_control_quality": "excellent",
+          "overall_risk_level": "low",
+          "technique_concerns": []
+        },
+        "coaching_insights": {
+          "dive_intensity": "moderate",
+          "primary_strengths": [
+            "smooth descent",
+            "smooth ascent"
+          ],
+          "areas_for_improvement": [
+            "increase bottom time"
+          ],
+          "safety_recommendations": [
+            "maintain current ascent rate"
+          ],
+          "technique_focus": "turn",
+          "performance_rating": 8,
+          "readiness_for_deeper": true
+        },
+        "confidence_score": 0.95,
+        "data_quality": "excellent",
+        "extraction_notes": "All metrics extracted accurately from the visible data."
+      }
+    }
+  ]
+}

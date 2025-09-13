@@ -601,7 +601,7 @@ export default function DiveJournalDisplay({
                             <div
                               className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
                             >
-                              🎯 Target: {log.targetDepth || 0}m | Reached: {log.reachedDepth || 0}m
+                              🎯 Target: {log.targetDepth || log.target_depth || 0}m | Reached: {log.reachedDepth || log.reached_depth || 0}m
                             </div>
                             {/* DEBUG: show any extractedMetrics present on the log */}
                             {log.extractedMetrics && (

@@ -314,14 +314,14 @@ export default function ModernDiveJournalDisplay({
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                            {log.depth && (
+                            {(log.depth || log.reached_depth || log.reachedDepth || log.target_depth || log.targetDepth) && (
                               <div>
-                                <strong>Depth:</strong> {log.depth}m
+                                <strong>Depth:</strong> {log.depth || log.reached_depth || log.reachedDepth || log.target_depth || log.targetDepth || 0}m
                               </div>
                             )}
-                            {log.duration && (
+                            {(log.duration || log.total_dive_time || log.totalDiveTime) && (
                               <div>
-                                <strong>Duration:</strong> {log.duration}s
+                                <strong>Duration:</strong> {log.duration || log.total_dive_time || log.totalDiveTime}s
                               </div>
                             )}
                           </div>

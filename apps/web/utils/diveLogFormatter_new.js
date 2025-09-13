@@ -9,24 +9,23 @@
 export function formatDiveLogForDisplay(diveLog) {
   if (!diveLog) return "Invalid dive log";
 
-  const {
-    date,
-    disciplineType = "depth",
-    discipline,
-    location,
-    targetDepth,
-    reachedDepth,
-    mouthfillDepth,
-    issueDepth,
-    issueComment,
-    notes,
-    attemptType,
-    totalDiveTime,
-    durationOrDistance,
-    exit,
-    squeeze,
-    surfaceProtocol,
-  } = diveLog;
+  // Handle both field formats (snake_case from DB and camelCase from frontend)
+  const date = diveLog.date;
+  const disciplineType = diveLog.disciplineType || diveLog.discipline_type || "depth";
+  const discipline = diveLog.discipline;
+  const location = diveLog.location;
+  const targetDepth = diveLog.targetDepth || diveLog.target_depth;
+  const reachedDepth = diveLog.reachedDepth || diveLog.reached_depth;
+  const mouthfillDepth = diveLog.mouthfillDepth || diveLog.mouthfill_depth;
+  const issueDepth = diveLog.issueDepth || diveLog.issue_depth;
+  const issueComment = diveLog.issueComment || diveLog.issue_comment;
+  const notes = diveLog.notes;
+  const attemptType = diveLog.attemptType || diveLog.attempt_type;
+  const totalDiveTime = diveLog.totalDiveTime || diveLog.total_dive_time;
+  const durationOrDistance = diveLog.durationOrDistance || diveLog.duration_or_distance;
+  const exit = diveLog.exit;
+  const squeeze = diveLog.squeeze;
+  const surfaceProtocol = diveLog.surfaceProtocol || diveLog.surface_protocol;
 
   // Build the display format
   const formatted = [];
@@ -90,25 +89,24 @@ export function formatDiveLogForDisplay(diveLog) {
 export function formatDiveLogForAnalysis(diveLog) {
   if (!diveLog) return "Invalid dive log data";
 
-  const {
-    date,
-    disciplineType = "depth",
-    discipline,
-    location,
-    targetDepth,
-    reachedDepth,
-    mouthfillDepth,
-    issueDepth,
-    issueComment,
-    notes,
-    attemptType,
-    totalDiveTime,
-    durationOrDistance,
-    exit,
-    squeeze,
-    surfaceProtocol,
-    timestamp,
-  } = diveLog;
+  // Handle both field formats (snake_case from DB and camelCase from frontend)
+  const date = diveLog.date;
+  const disciplineType = diveLog.disciplineType || diveLog.discipline_type || "depth";
+  const discipline = diveLog.discipline;
+  const location = diveLog.location;
+  const targetDepth = diveLog.targetDepth || diveLog.target_depth;
+  const reachedDepth = diveLog.reachedDepth || diveLog.reached_depth;
+  const mouthfillDepth = diveLog.mouthfillDepth || diveLog.mouthfill_depth;
+  const issueDepth = diveLog.issueDepth || diveLog.issue_depth;
+  const issueComment = diveLog.issueComment || diveLog.issue_comment;
+  const notes = diveLog.notes;
+  const attemptType = diveLog.attemptType || diveLog.attempt_type;
+  const totalDiveTime = diveLog.totalDiveTime || diveLog.total_dive_time;
+  const durationOrDistance = diveLog.durationOrDistance || diveLog.duration_or_distance;
+  const exit = diveLog.exit;
+  const squeeze = diveLog.squeeze;
+  const surfaceProtocol = diveLog.surfaceProtocol || diveLog.surface_protocol;
+  const timestamp = diveLog.timestamp;
 
   // Structured format for AI analysis
   const analysis = [];
@@ -154,7 +152,7 @@ export function formatDiveLogForAnalysis(diveLog) {
  * @returns {string} - Short summary
  */
 export function formatDiveLogSummary(diveLog) {
-  const depth = diveLog.reachedDepth || diveLog.targetDepth || "?";
+  const depth = diveLog.reachedDepth || diveLog.reached_depth || diveLog.targetDepth || diveLog.target_depth || "?";
   const discipline = diveLog.discipline || "Freedive";
   const location = diveLog.location || "Unknown";
   const date = diveLog.date

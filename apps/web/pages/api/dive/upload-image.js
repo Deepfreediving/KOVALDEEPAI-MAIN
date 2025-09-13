@@ -27,27 +27,57 @@ async function analyzeWithEnhancedVision(base64Image, mimeType = 'image/jpeg', u
 
 Return JSON: {"maxDepth": number, "diveTime": "MM:SS", "temperature": number}`;
 
-    // Full detailed prompt for comprehensive analysis - Enhanced with GPT-5 research
-    const longPrompt = `You are analyzing a screenshot of a dive computer's freedive log. Extract all visible metrics and profile details and output them in JSON format. The image contains a depth vs. time graph and textual data labels.
+    // Full detailed prompt for comprehensive analysis - Enhanced with ALL vital freediving metrics
+    const longPrompt = `You are analyzing a screenshot of a dive computer's freedive log. Extract ALL visible metrics and perform comprehensive profile analysis. Output in JSON format.
 
-ANCHOR WORDS TO LOOK FOR:
-- "Max Depth", "Maximum Depth", "MAX", or large depth numbers with "m"/"ft"
-- "Dive Time", "Duration", "Time", time in MM:SS format  
-- "Surface time", "Surface Interval", surface duration before dive
-- "Temp", "Temperature", numbers with "°C"/"°F"
-- "Dive Mode", "Free", "Scuba", mode indicators
-- Heart rate: "bpm", "HR", heart symbols, pulse data
+🎯 CRITICAL FREEDIVING METRICS TO EXTRACT:
 
-GRAPH ANALYSIS:
-- Identify the depth-time profile curve
-- Find maximum depth point and when it occurred (descent time)
-- Look for flat segments at bottom (hang time)
-- Note ascent pattern: smooth vs choppy/stepwise
-- Calculate approximate rates if graph has clear time markers
+**BASIC METRICS:**
+- Max Depth (with unit m/ft)
+- Dive Time (MM:SS format)
+- Surface Interval Time (time before dive)
+- Water Temperature at max depth
+- Date and time of dive
+- Dive Mode (Free/Scuba/etc)
 
-EXTRACT THESE METRICS:
-1. Max Depth (deepest point, with unit m/ft)
-2. Dive Time (total underwater duration MM:SS)
+**ADVANCED PROFILE METRICS:**
+- Descent Time (time from surface to max depth)
+- Ascent Time (time from max depth to surface)
+- Bottom Time (time spent at max depth ±2m)
+- Descent Rate (average m/min or m/s)
+- Ascent Rate (average m/min or m/s)
+- Maximum Descent Rate (fastest segment)
+- Maximum Ascent Rate (fastest segment)
+
+**TECHNICAL ANALYSIS (from graph shape):**
+- Profile Symmetry (descent vs ascent curve similarity)
+- Turn Quality (sharpness of bottom turn - sharp/gradual/extended)
+- Descent Consistency (smooth/stepped/irregular)
+- Ascent Consistency (smooth/stepped/irregular)
+- Equalization Pauses (visible slowdowns indicating equalization)
+- Depth Zones (identify major depth transitions)
+
+**SAFETY & PERFORMANCE INDICATORS:**
+- Rapid Ascent Segments (>1m/s speed increases)
+- Depth Oscillations (up/down movements indicating issues)
+- Extended Bottom Phase (hang time for mouthfill/equalization)
+- Temperature Stratification Effects (depth vs temp changes)
+- Profile Efficiency Score (smoothness rating 1-10)
+
+**PHYSIOLOGICAL STRESS INDICATORS:**
+- Total Pressure Exposure Time (time >30m, >50m, >70m, >90m)
+- Rapid Depth Changes (potential squeeze/equalization stress)
+- Ascent Speed Variations (potential CO2 buildup indicators)
+- Overall Dive Intensity Rating (conservative/moderate/aggressive)
+
+🔍 GRAPH ANALYSIS INSTRUCTIONS:
+1. Analyze the depth-time curve pixel by pixel
+2. Calculate rates from graph coordinates if time markers visible
+3. Identify any irregularities or concerning patterns
+4. Note profile quality and technique indicators
+5. Compare depth achieved vs time efficiency
+
+EXTRACT THESE COMPREHENSIVE METRICS:
 3. Surface Interval (time before this dive, if shown)  
 4. Water Temperature at max depth (with °C/°F unit)
 5. Entry/Exit timestamps (date/time if visible)
@@ -66,28 +96,60 @@ CRITICAL RULES:
 
 Return valid JSON:
 {
-  "entry_time": "YYYY-MM-DDTHH:MM:SS_or_time_string_if_visible",
-  "exit_time": "calculated_or_visible_end_time", 
-  "dive_time": "MM:SS_format",
-  "surface_interval": "MM:SS_or_hours_if_shown",
-  "max_depth": numeric_value,
-  "depth_unit": "m_or_ft",
-  "max_depth_temp": numeric_temperature,
-  "temp_unit": "C_or_F",
-  "descent_time": "MM:SS_from_graph_analysis",
-  "ascent_time": "MM:SS_from_graph_analysis", 
-  "descent_rate": calculated_m_per_min_or_null,
-  "ascent_rate": calculated_m_per_min_or_null,
-  "hang_time": "seconds_at_stable_depth_or_0",
-  "heart_rate": {
-    "start_bpm": number_if_visible,
-    "min_bpm": number_if_visible,
-    "max_bpm": number_if_visible,
-    "end_bpm": number_if_visible
+  "basic_metrics": {
+    "max_depth": number,
+    "depth_unit": "m_or_ft", 
+    "dive_time": "MM:SS",
+    "dive_time_seconds": number,
+    "surface_interval": "HH:MM_or_MM:SS",
+    "temperature": number,
+    "temp_unit": "C_or_F",
+    "date": "YYYY-MM-DD",
+    "time": "HH:MM:SS",
+    "dive_mode": "Free_Scuba_etc"
   },
-  "dive_mode": "Free_or_Scuba_etc",
-  "confidence": 0.0_to_1.0,
-  "observations": "profile_shape_and_technique_notes"
+  "profile_metrics": {
+    "descent_time": "MM:SS",
+    "descent_time_seconds": number,
+    "ascent_time": "MM:SS", 
+    "ascent_time_seconds": number,
+    "bottom_time_seconds": number,
+    "avg_descent_rate_mps": number,
+    "avg_ascent_rate_mps": number,
+    "max_descent_rate_mps": number,
+    "max_ascent_rate_mps": number,
+    "total_pressure_time_30m": number,
+    "total_pressure_time_50m": number,
+    "total_pressure_time_70m": number
+  },
+  "technical_analysis": {
+    "profile_symmetry": "excellent_good_fair_poor",
+    "turn_quality": "sharp_gradual_extended",
+    "descent_consistency": "smooth_stepped_irregular",
+    "ascent_consistency": "smooth_stepped_irregular", 
+    "equalization_pauses_detected": boolean,
+    "depth_oscillations": number,
+    "profile_efficiency_score": number_1_to_10
+  },
+  "safety_indicators": {
+    "rapid_ascent_segments": number,
+    "max_ascent_spike_mps": number,
+    "depth_control_quality": "excellent_good_fair_poor",
+    "overall_risk_level": "low_moderate_high",
+    "technique_concerns": ["list_of_issues"]
+  },
+  "coaching_insights": {
+    "dive_intensity": "conservative_moderate_aggressive",
+    "primary_strengths": ["list"],
+    "areas_for_improvement": ["list"],
+    "safety_recommendations": ["list"],
+    "technique_focus": "equalization_mouthfill_turn_ascent_etc",
+    "performance_rating": number_1_to_10,
+    "readiness_for_deeper": boolean
+  },
+  "confidence_score": number_0_to_1,
+  "data_quality": "excellent_good_fair_poor",
+  "extraction_notes": "any_issues_or_observations"
 }`;
     
     const messages = [

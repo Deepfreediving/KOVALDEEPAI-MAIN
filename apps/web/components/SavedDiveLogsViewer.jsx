@@ -252,7 +252,7 @@ export default function SavedDiveLogsViewer({
                     📍 {log.location || "Unknown location"}
                   </div>
                   <div className="text-sm opacity-75">
-                    🎯 Target: {log.targetDepth}m | Reached: {log.reachedDepth}m
+                    🎯 Target: {log.targetDepth || log.target_depth || 0}m | Reached: {log.reachedDepth || log.reached_depth || 0}m
                   </div>
                   {log.notes && (
                     <div className="text-sm opacity-75 mt-1">
