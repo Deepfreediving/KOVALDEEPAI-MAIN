@@ -129,11 +129,11 @@ export default function DiveJournalDisplay({
       // Notes
       notes: log.notes || "",
       
-      // Image handling
+      // Image handling - check ai_analysis field for saved image data
       imageFile: null,
-      imagePreview: log.imageUrl || log.image_url || null,
+      imagePreview: log.imageUrl || log.image_url || log.ai_analysis?.imageUrl || null,
       diveComputerFile: null,
-      diveComputerFileName: "",
+      diveComputerFileName: log.ai_analysis?.diveComputerFileName || "",
       
       // Gear (handle nested object or flat fields)
       gear: {
