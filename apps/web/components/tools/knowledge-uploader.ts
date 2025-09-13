@@ -8,7 +8,7 @@ const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY || "" });
 const index = pinecone.index(process.env.PINECONE_INDEX || "");
 
 // === CONFIG ===
-const LESSONS_DIR = path.join(process.cwd(), "data", "koval-lessons");
+const DATA_ROOT = path.join(process.cwd(), "data");
 
 // Helper: Recursively scan directory
 function scanFiles(dirPath: string): string[] {
@@ -35,54 +35,88 @@ async function createEmbedding(content: string): Promise<number[]> {
   return embedding.data[0].embedding;
 }
 
-// Extract metadata
+// Extract metadata from file path
 function extractMetadata(filePath: string) {
-  const folder = path.basename(path.dirname(filePath));
-  const name = path.basename(filePath);
-  const depthMatch = name.match(/(\d{1,3})m/i);
+  const relativePath = path.relative(DATA_ROOT, filePath);
+  const pathParts = relativePath.split(path.sep);
+  const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : 'root';
+  const fileName = path.basename(filePath, path.extname(filePath));
+  
+  // Extract depth if mentioned in filename
+  const depthMatch = fileName.match(/(\d{1,3})m/i);
+  
+  // Determine content type based on folder or filename
+  let contentType = 'general';
+  if (folder.includes('experience') || folder.includes('level')) {
+    contentType = 'skill-assessment';
+  } else if (folder.includes('lesson') || folder.includes('training')) {
+    contentType = 'training-material';
+  } else if (folder.includes('safety')) {
+    contentType = 'safety-protocol';
+  } else if (folder.includes('technique')) {
+    contentType = 'technique-guide';
+  }
+  
   return {
-    topic: folder,
+    folder: folder,
+    fileName: fileName,
+    fullFileName: path.basename(filePath),
+    contentType: contentType,
     depth: depthMatch ? parseInt(depthMatch[1]) : null,
-    fileName: name,
+    relativePath: relativePath
   };
 }
 
-async function uploadLessons() {
-  console.log("🚀 Starting knowledge upload...");
-  const files = scanFiles(LESSONS_DIR);
+async function uploadAllDataFiles() {
+  console.log("🚀 Starting auto-ingestion of ALL data files...");
+  console.log(`📂 Scanning directory: ${DATA_ROOT}`);
+  
+  const files = scanFiles(DATA_ROOT);
+  console.log(`📋 Found ${files.length} files to process`);
 
   for (const file of files) {
     try {
       const content = fs.readFileSync(file, "utf-8");
-      if (!content.trim()) continue;
+      if (!content.trim()) {
+        console.log(`⚠️  Skipping empty file: ${path.basename(file)}`);
+        continue;
+      }
 
       const embedding = await createEmbedding(content);
       const metadata = extractMetadata(file);
 
       await index.upsert([
         {
-          id: `${metadata.fileName}-${Date.now()}`,
+          id: `${metadata.folder}-${metadata.fileName}-${Date.now()}`,
           values: embedding,
           metadata: {
             text: content,
-            topic: metadata.topic,
+            source: metadata.folder,
+            contentType: metadata.contentType,
+            fileName: metadata.fullFileName,
+            relativePath: metadata.relativePath,
             ...(metadata.depth !== null && metadata.depth !== undefined
               ? { depth: metadata.depth }
               : {}),
-            file: metadata.fileName,
+            uploadedAt: new Date().toISOString(),
+            approvedBy: "Koval"
           },
         },
       ]);
 
       console.log(
-        `✅ Uploaded: ${metadata.fileName} (${metadata.topic}, ${metadata.depth || "no depth"})`,
+        `✅ Uploaded: ${metadata.fullFileName} (${metadata.folder}/${metadata.contentType}${metadata.depth ? `, ${metadata.depth}m` : ''})`,
       );
+      
+      // Small delay to avoid rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
     } catch (err: any) {
-      console.error(`❌ Failed to upload ${file}:`, err.message);
+      console.error(`❌ Failed to upload ${path.basename(file)}:`, err.message);
     }
   }
 
-  console.log("🎉 Knowledge upload complete!");
+  console.log("🎉 Auto-ingestion complete!");
 }
 
-uploadLessons();
+uploadAllDataFiles();

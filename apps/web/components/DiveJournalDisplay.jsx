@@ -1224,20 +1224,41 @@ export default function DiveJournalDisplay({
                       >
                         Upload Dive Image
                       </label>
+                      
+                      {/* Show existing image when editing */}
+                      {newEntry.imagePreview && !newEntry.imageFile && (
+                        <div className="mb-2 p-2 bg-green-900/20 border border-green-600 rounded">
+                          <p className="text-sm text-green-400 mb-2">✅ Saved dive image found:</p>
+                          <Image
+                            src={newEntry.imagePreview}
+                            alt="Saved dive computer image"
+                            width={128}
+                            height={128}
+                            className="max-w-full h-32 object-cover rounded mb-2"
+                          />
+                          <p className="text-xs text-gray-400">Upload a new image to replace this one</p>
+                        </div>
+                      )}
+                      
                       <input
                         type="file"
                         accept="image/*"
                         onChange={handleImageChange}
                         className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                       />
-                      {newEntry.imagePreview && (
-                        <Image
-                          src={newEntry.imagePreview}
-                          alt="Preview"
-                          width={128}
-                          height={128}
-                          className="mt-2 max-w-full h-32 object-cover rounded"
-                        />
+                      
+                      {/* Show new image preview when user selects a file */}
+                      {newEntry.imagePreview && newEntry.imageFile && (
+                        <div className="mt-2">
+                          <p className="text-sm text-blue-400 mb-1">New image preview:</p>
+                          <Image
+                            src={newEntry.imagePreview}
+                            alt="New image preview"
+                            width={128}
+                            height={128}
+                            className="max-w-full h-32 object-cover rounded"
+                          />
+                        </div>
                       )}
                     </div>
 

@@ -425,11 +425,81 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create enhanced OpenAI analysis prompt with super analysis
-    const prompt = `You are Daniel Koval, a world-renowned freediving instructor and coach. Provide comprehensive coaching analysis using the complete dive computer data provided below:
+    // ✅ ELITE PERFORMANCE DETECTION: Determine coaching level based on dive metrics
+    const maxDepth = parseFloat(diveLogData.reachedDepth || diveLogData.reached_depth || 
+                               diveLogData.imageAnalysis?.extractedMetrics?.max_depth || 0);
+    const discipline = diveLogData.discipline || '';
+    const isElitePerformance = maxDepth >= 80 || 
+                              (maxDepth >= 60 && ['CWT', 'FIM', 'CNF'].includes(discipline)) ||
+                              (maxDepth >= 40 && discipline === 'Static Apnea');
+
+    console.log(`🎯 Performance level detected: ${isElitePerformance ? 'ELITE' : 'INTERMEDIATE'} (depth: ${maxDepth}m, discipline: ${discipline})`);
+
+    // ✅ DYNAMIC SYSTEM PROMPT: Adjust coaching style based on performance level
+    const systemPrompt = isElitePerformance ? 
+      `You are Daniel Koval, world-renowned freediving instructor and coach. You are analyzing the dive log of an ELITE-LEVEL athlete who has achieved exceptional depths (${maxDepth}m). This diver is operating at the highest levels of the sport and requires ADVANCED TECHNICAL ANALYSIS, not basic safety advice.
+
+🏆 ELITE COACHING MODE ACTIVATED:
+- Provide sophisticated technical analysis befitting a world-class athlete
+- Focus on performance optimization and competitive edge refinement
+- Discuss advanced physiological adaptations and techniques
+- Address elite-level training periodization and progression
+- Analyze technique with the precision expected at championship levels
+- Avoid basic safety disclaimers - this athlete knows the risks and protocols
+
+Your analysis should reflect the expertise level appropriate for someone diving to depths that only the world's best freedivers achieve. This is peer-to-peer elite coaching, not instructional safety guidance.` :
+      
+      `You are Daniel Koval, world-renowned freediving instructor and coach. Provide comprehensive coaching analysis for this intermediate-level diver (${maxDepth}m depth). Balance technical instruction with appropriate safety guidance while helping them progress toward advanced levels.`;
+
+    // Create enhanced OpenAI analysis prompt with performance-appropriate system context
+    const prompt = `${isElitePerformance ? '🏆 ELITE PERFORMANCE ANALYSIS' : '📈 PERFORMANCE DEVELOPMENT ANALYSIS'} - Analyzing ${discipline} dive to ${maxDepth}m:
 
 ${superAnalysisPrompt}${consistencyNotes}
 
+${isElitePerformance ? `
+🎯 ELITE-LEVEL COACHING ANALYSIS (World-Class Performance Standards):
+
+1. **CHAMPIONSHIP PERFORMANCE ASSESSMENT** (Technical Excellence):
+   - Competition-ready depth achievement vs target analysis
+   - Elite descent/ascent rate optimization (targeting 1.2-1.5 m/s efficiency)
+   - Advanced timing breakdown for competitive edge
+   - Performance rating against world championship standards
+   - Pre-competition readiness indicators
+
+2. **WORLD-CLASS TECHNICAL ANALYSIS** (Precision Metrics):
+   - Descent efficiency: Analyze calculated rates against elite benchmarks (65-75 m/min optimal)
+   - Ascent control: Evaluate rates for competition safety margins (70-85 m/min zone)
+   - Turn technique optimization at maximum depth
+   - Advanced equalization flow analysis through pressure zones
+   - Mouthfill timing and volume efficiency at extreme depths
+
+3. **ELITE PHYSIOLOGICAL OPTIMIZATION**:
+   - Extreme pressure adaptation analysis (${Math.round(1 + maxDepth/10)} ATA exposure)
+   - Advanced narcosis management techniques at championship depths
+   - Lung compression optimization and residual volume considerations
+   - Thermal adaptation strategies for competition conditions
+   - Heart rate variability and mammalian dive response efficiency
+
+4. **COMPETITIVE EDGE REFINEMENT**:
+   - Millisecond-level timing optimization opportunities
+   - Energy conservation techniques for maximum performance
+   - Advanced breath-hold physiology fine-tuning
+   - Competition strategy alignment with physiological data
+   - Mental performance indicators from dive profile analysis
+
+5. **ELITE PROGRESSION TARGETS** (Championship Pathway):
+   - Next-level depth targets based on current performance curve
+   - Competition preparation periodization adjustments
+   - Advanced technique refinements for marginal gains
+   - World record pathway analysis if applicable
+   - Elite mentorship and coaching refinements needed
+
+🏆 CHAMPIONSHIP-LEVEL FOCUS AREAS:
+- Technique refinements that matter at world-class levels
+- Competitive advantage opportunities from data analysis
+- Elite-level training periodization recommendations
+- Championship preparation insights from performance metrics
+- Advanced physiological optimization strategies` : `
 🎯 COMPREHENSIVE COACHING ANALYSIS REQUIREMENTS:
 
 1. **PERFORMANCE ASSESSMENT** (Use EXACT metrics above):
@@ -461,7 +531,7 @@ ${superAnalysisPrompt}${consistencyNotes}
    - Areas needing improvement based on actual performance data
    - Progressive training targets for next sessions
    - Technique refinements for efficiency gains
-   - Safety protocol enhancements if needed
+   - Safety protocol enhancements if needed`}
 
 🚨 CRITICAL INSTRUCTIONS:
 - The comprehensive metrics above contain REAL extracted data from the actual dive computer
@@ -470,6 +540,7 @@ ${superAnalysisPrompt}${consistencyNotes}
 - Use exact depth, temperature, pressure, and timing values shown above
 - Reference physiological stress indicators and safety thresholds provided
 - Base all recommendations on the detailed performance analysis shown
+${isElitePerformance ? '- This is ELITE-LEVEL coaching for a world-class athlete - provide sophisticated technical analysis' : '- Provide comprehensive coaching appropriate for skill development'}
 
 📊 VITAL METRICS TO ANALYZE:
 - Movement efficiency percentage and what it indicates
@@ -478,7 +549,9 @@ ${superAnalysisPrompt}${consistencyNotes}
 - Safety margins based on actual speeds and timing
 - Performance optimization opportunities from the data
 
-Provide detailed analysis as Daniel Koval would - technically precise, safety-focused, and with specific actionable recommendations based on the comprehensive dive computer metrics provided above.`;
+${isElitePerformance ? 
+'Provide elite-level coaching analysis as Daniel Koval would for a world-class athlete - technically sophisticated, performance-focused, with championship-level insights based on the comprehensive dive computer metrics.' :
+'Provide detailed analysis as Daniel Koval would - technically precise, safety-focused, and with specific actionable recommendations based on the comprehensive dive computer metrics provided above.'}`;
 
     console.log('📤 Sending to OpenAI...');
 
@@ -487,14 +560,14 @@ Provide detailed analysis as Daniel Koval would - technically precise, safety-fo
       messages: [
         {
           role: 'system',
-          content: 'You are Daniel Koval, a world-class freediving instructor and coach. Provide detailed, professional coaching feedback based on dive logs.'
+          content: systemPrompt
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      max_tokens: 1000,
+      max_tokens: 1200, // ✅ Increased for elite-level analysis
       temperature: 0.7,
     });
 

@@ -262,52 +262,39 @@ function createLegacyExtractedText(structuredAnalysis) {
   
   let text = '';
   
-  // Handle new comprehensive structure
-  if (structuredAnalysis.max_depth || structuredAnalysis.dive_time || structuredAnalysis.max_depth_temp) {
+  // Handle new comprehensive structure (nested in basic_metrics)
+  const basicMetrics = structuredAnalysis?.basic_metrics;
+  if (basicMetrics?.max_depth || basicMetrics?.dive_time || basicMetrics?.temperature) {
     text += `DIVE COMPUTER READOUT:\n`;
-    if (structuredAnalysis.max_depth) {
-      const unit = structuredAnalysis.depth_unit || 'm';
-      text += `Max Depth: ${structuredAnalysis.max_depth}${unit}\n`;
+    if (basicMetrics.max_depth) {
+      const unit = basicMetrics.depth_unit || 'm';
+      text += `Max Depth: ${basicMetrics.max_depth}${unit}\n`;
     }
-    if (structuredAnalysis.dive_time) text += `Dive Time: ${structuredAnalysis.dive_time}\n`;
-    if (structuredAnalysis.max_depth_temp) {
-      const unit = structuredAnalysis.temp_unit === 'F' ? '°F' : '°C';
-      text += `Temperature: ${structuredAnalysis.max_depth_temp}${unit}\n`;
+    if (basicMetrics.dive_time) text += `Dive Time: ${basicMetrics.dive_time}\n`;
+    if (basicMetrics.temperature) {
+      const unit = basicMetrics.temp_unit === 'F' ? '°F' : '°C';
+      text += `Temperature: ${basicMetrics.temperature}${unit}\n`;
     }
-    if (structuredAnalysis.entry_time) text += `Entry Time: ${structuredAnalysis.entry_time}\n`;
-    if (structuredAnalysis.dive_mode) text += `Mode: ${structuredAnalysis.dive_mode}\n`;
-    if (structuredAnalysis.surface_interval) text += `Surface Interval: ${structuredAnalysis.surface_interval}\n`;
+    if (basicMetrics.date) text += `Date: ${basicMetrics.date}\n`;
+    if (basicMetrics.dive_mode) text += `Mode: ${basicMetrics.dive_mode}\n`;
+    if (basicMetrics.surface_interval) text += `Surface Interval: ${basicMetrics.surface_interval}\n`;
     
-    // Advanced metrics from graph analysis
-    if (structuredAnalysis.descent_time || structuredAnalysis.ascent_time) {
+    // Advanced metrics from profile analysis
+    const profileMetrics = structuredAnalysis?.profile_metrics;
+    if (profileMetrics?.descent_time || profileMetrics?.ascent_time) {
       text += `\nPROFILE ANALYSIS:\n`;
-      if (structuredAnalysis.descent_time) text += `Descent Time: ${structuredAnalysis.descent_time}\n`;
-      if (structuredAnalysis.ascent_time) text += `Ascent Time: ${structuredAnalysis.ascent_time}\n`;
-      if (structuredAnalysis.descent_rate) text += `Descent Rate: ${structuredAnalysis.descent_rate} m/min\n`;
-      if (structuredAnalysis.ascent_rate) text += `Ascent Rate: ${structuredAnalysis.ascent_rate} m/min\n`;
-      if (structuredAnalysis.hang_time && structuredAnalysis.hang_time !== "0") {
-        text += `Bottom Time: ${structuredAnalysis.hang_time}\n`;
+      if (profileMetrics.descent_time) text += `Descent Time: ${profileMetrics.descent_time}\n`;
+      if (profileMetrics.ascent_time) text += `Ascent Time: ${profileMetrics.ascent_time}\n`;
+      if (profileMetrics.avg_descent_rate_mps) text += `Descent Rate: ${profileMetrics.avg_descent_rate_mps} m/s\n`;
+      if (profileMetrics.avg_ascent_rate_mps) text += `Ascent Rate: ${profileMetrics.avg_ascent_rate_mps} m/s\n`;
+      if (profileMetrics.bottom_time_seconds && profileMetrics.bottom_time_seconds > 0) {
+        text += `Bottom Time: ${profileMetrics.bottom_time_seconds} seconds\n`;
       }
-    }
-    
-    // Heart rate data
-    if (structuredAnalysis.heart_rate && Object.keys(structuredAnalysis.heart_rate).length > 0) {
-      text += `\nHEART RATE DATA:\n`;
-      const hr = structuredAnalysis.heart_rate;
-      if (hr.start_bpm) text += `Start HR: ${hr.start_bpm} bpm\n`;
-      if (hr.min_bpm) text += `Min HR: ${hr.min_bpm} bpm\n`;
-      if (hr.max_bpm) text += `Max HR: ${hr.max_bpm} bpm\n`;
-      if (hr.end_bpm) text += `End HR: ${hr.end_bpm} bpm\n`;
-    }
-    
-    // Profile observations
-    if (structuredAnalysis.observations) {
-      text += `\nPROFILE OBSERVATIONS:\n${structuredAnalysis.observations}\n`;
     }
   }
   
   // Fallback to legacy structure
-  else if (structuredAnalysis.extractedData) {
+  if (!text && structuredAnalysis.extractedData) {
     const data = structuredAnalysis.extractedData;
     text += `DIVE COMPUTER READOUT:\n`;
     if (data.maxDepth) text += `Max Depth: ${data.maxDepth}m\n`;
@@ -317,7 +304,7 @@ function createLegacyExtractedText(structuredAnalysis) {
     if (data.diveMode) text += `Mode: ${data.diveMode}\n`;
   }
   
-  // Profile analysis
+  // Profile analysis from old structure
   if (structuredAnalysis.profileAnalysis) {
     text += `\nPROFILE ANALYSIS:\n`;
     const profile = structuredAnalysis.profileAnalysis;
@@ -357,46 +344,62 @@ function createLegacyExtractedText(structuredAnalysis) {
   return text || 'Dive computer image analyzed but specific metrics could not be extracted';
 }
 
-// �📊 Extract metrics from structured analysis
+// 📊 Extract metrics from structured analysis
 function extractMetrics(structuredAnalysis) {
   const metrics = {};
   
-  // Handle new comprehensive structure (direct fields)
-  if (structuredAnalysis?.max_depth !== undefined) {
-    metrics.max_depth = structuredAnalysis.max_depth;
+  // Handle new comprehensive structure (nested in basic_metrics)
+  const basicMetrics = structuredAnalysis?.basic_metrics;
+  if (basicMetrics?.max_depth !== undefined) {
+    metrics.max_depth = basicMetrics.max_depth;
   }
-  if (structuredAnalysis?.dive_time) {
-    metrics.dive_time_formatted = structuredAnalysis.dive_time;
+  if (basicMetrics?.dive_time) {
+    metrics.dive_time_formatted = basicMetrics.dive_time;
     // Convert MM:SS to seconds for compatibility
-    const [minutes, seconds] = structuredAnalysis.dive_time.split(':').map(Number);
+    const [minutes, seconds] = basicMetrics.dive_time.split(':').map(Number);
     metrics.dive_time_seconds = minutes * 60 + seconds;
   }
-  if (structuredAnalysis?.max_depth_temp !== undefined) {
-    const unit = structuredAnalysis.temp_unit === 'F' ? '°F' : '°C';
-    metrics.temperature = `${structuredAnalysis.max_depth_temp}${unit}`;
+  if (basicMetrics?.temperature !== undefined) {
+    const unit = basicMetrics.temp_unit === 'F' ? '°F' : '°C';
+    metrics.temperature = `${basicMetrics.temperature}${unit}`;
   }
-  if (structuredAnalysis?.entry_time) {
-    // Extract date in YYYY-MM-DD format for HTML date input
-    let dateValue = structuredAnalysis.entry_time;
-    if (dateValue.includes('T')) {
-      // ISO timestamp - extract just the date part
-      dateValue = dateValue.split('T')[0];
-    }
-    metrics.dive_date = dateValue;
+  if (basicMetrics?.date) {
+    metrics.dive_date = basicMetrics.date;
   }
-  if (structuredAnalysis?.dive_mode) {
-    metrics.dive_mode = structuredAnalysis.dive_mode;
+  if (basicMetrics?.dive_mode) {
+    metrics.dive_mode = basicMetrics.dive_mode;
   }
-  if (structuredAnalysis?.surface_interval) {
-    metrics.surface_interval = structuredAnalysis.surface_interval;
+  if (basicMetrics?.surface_interval) {
+    metrics.surface_interval = basicMetrics.surface_interval;
   }
   
-  // Advanced metrics from enhanced Vision AI
-  if (structuredAnalysis?.descent_time) {
-    metrics.descent_time = structuredAnalysis.descent_time;
+  // Advanced metrics from profile_metrics section
+  const profileMetrics = structuredAnalysis?.profile_metrics;
+  if (profileMetrics?.descent_time) {
+    metrics.descent_time = profileMetrics.descent_time;
   }
-  if (structuredAnalysis?.ascent_time) {
-    metrics.ascent_time = structuredAnalysis.ascent_time;
+  if (profileMetrics?.ascent_time) {
+    metrics.ascent_time = profileMetrics.ascent_time;
+  }
+  if (profileMetrics?.avg_descent_rate_mps) {
+    metrics.descent_rate = profileMetrics.avg_descent_rate_mps;
+  }
+  if (profileMetrics?.avg_ascent_rate_mps) {
+    metrics.ascent_rate = profileMetrics.avg_ascent_rate_mps;
+  }
+  if (profileMetrics?.bottom_time_seconds) {
+    metrics.hang_time = profileMetrics.bottom_time_seconds;
+  }
+  
+  // Coaching insights
+  const coachingInsights = structuredAnalysis?.coaching_insights;
+  if (coachingInsights?.performance_rating) {
+    metrics.performance_rating = coachingInsights.performance_rating;
+  }
+  
+  // Confidence and quality scores
+  if (structuredAnalysis?.confidence_score) {
+    metrics.confidence = structuredAnalysis.confidence_score;
   }
   if (structuredAnalysis?.descent_rate) {
     metrics.descent_rate = structuredAnalysis.descent_rate;
@@ -413,9 +416,8 @@ function extractMetrics(structuredAnalysis) {
   if (structuredAnalysis?.observations) {
     metrics.observations = structuredAnalysis.observations;
   }
-  
   // Fallback to legacy structure for backward compatibility
-  if (structuredAnalysis?.extractedData) {
+  if (structuredAnalysis?.extractedData && !basicMetrics) {
     const data = structuredAnalysis.extractedData;
     
     if (data.maxDepth && !metrics.max_depth) metrics.max_depth = data.maxDepth;
