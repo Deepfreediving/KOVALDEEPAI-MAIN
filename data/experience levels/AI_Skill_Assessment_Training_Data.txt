@@ -1,0 +1,401 @@
+FREEDIVING SKILL ASSESSMENT TRAINING DATA FOR AI COACHING
+===========================================================
+This document trains AI systems to accurately assess freediver skill levels based on certifications, dive logs, and performance patterns.
+
+======================================
+SECTION 1: CERTIFICATION-BASED ASSESSMENT
+======================================
+
+Based on Freediving_Agency_Levels_Guide.txt - Most accurate agency alignment available.
+
+SKILL LEVEL: BASIC (Entry Level)
+--------------------------------
+Certifications:
+- AIDA 1
+- SSI Basic
+- snorkel course
+
+Characteristics:
+- Pool-only experience
+- Basic breath hold theory
+- No open water experience
+- Depths: 0-5m pool only
+- Safety: Requires constant supervision
+
+AI Coaching Approach:
+- Focus on fundamental safety
+- Basic breathing techniques
+- Pool-based exercises only
+- Conservative advice essential
+- Emphasize buddy system
+
+SKILL LEVEL: DISCOVER (Introduction)
+-----------------------------------
+Certifications:
+- AIDA 2 Pool
+- Apnea Academy Level 1
+- FII Basic Freedive Safety
+- Molchanovs Wave 1
+- PADI Basic
+- PFI Basic
+- RAID Basic
+- SSI Pool
+
+Characteristics:
+- Pool certification with basic theory
+- Some open water exposure (supervised)
+- Depths: 5-15m
+- Basic safety protocols understood
+- Limited rescue skills
+
+AI Coaching Approach:
+- Safety-first messaging
+- Basic equalization techniques
+- Conservative depth progression
+- Emphasize proper supervision
+- Focus on comfort and confidence
+
+SKILL LEVEL: BEGINNER (Open Water Certified)
+--------------------------------------------
+Certifications:
+- AIDA 2
+- Apnea Academy Level 2
+- FII Level 1
+- Molchanovs Wave 2
+- PADI Freediver
+- PFI Intermediate (entry)
+- RAID Freediver
+- SSI Level 1
+
+Characteristics:
+- Open water certified
+- Depths: 15-20m typical
+- All Surface and Depth rescue skills
+- Understanding of frenzel equalization
+- Can dive independently with buddy
+- Static breath hold 2:00-3:00 minutes
+
+Performance Indicators from Dive Logs:
+- 5-6m depth progression
+- Focus on repeat dives to improve comfort along with FIM hangs to simulate warm up improvement, relaxation and comfort.
+- Consistent dive times (1-2 minutes)
+- Smooth, focus on technique improvements
+- Equalization pauses visible on profile
+- slow speeds improper kicking technique 1 mps, no sink phase as neutral buoyancy is 10m max depth is 20m. We only start sink phase at double the depth of neutral buoyancy.
+- maintaining a tucked head position to improve streamlining and reduce drag.
+- good surface protocol with proper 2m under surface exhalation and recovery breathing. 6x inhales upper chest.
+
+AI Coaching Approach:
+- Technique refinement focus
+- Progressive depth training
+- Safety protocol reinforcement 4 rules of direct supervision.
+- Build confidence, comfort and consistency
+- Remove and valaslava equalization issues
+- Encourage proper warm-up routines 4 fim hangs- wating for first contraction.
+
+SKILL LEVEL: ADVANCED (Experienced Freediver)
+---------------------------------------------
+Certifications:
+- AIDA 3
+- Apnea Academy Level 3
+- FII Level 2
+- Molchanovs Wave 3
+- PADI Advanced
+- PFI Intermediate (upper)
+- RAID Advanced
+- SSI Level 2
+
+Characteristics:
+- Depths: 20-30m typical
+- Meeting at depth rescue 10m - 
+- Introduce frenzel, segmented breathing tools. 
+- Introduce Hook breathing,
+
+Performance Indicators from Dive Logs:
+- Depths >20-30m regularly
+- Efficient profiles, sink phase at double neutral buoyancy (good turn quality)
+- Advanced techniques visible reverse paking without tension
+- ok depth control and ascent rates
+
+AI Coaching Approach:
+- Structuring their dive more efficiently
+- making sure they do a proper warm up with facial immersion, 3 FIM hangs, and 1 negative pressure dive. If they ask what a negative pressure dive is alwyas respond - this has to be taught by a freediving isntructor to insure proper technique and safety.
+- Reducing tension and improving comfort with technique analysis
+- understanding core physiology and depth simulations and adaptations
+- Frenzel equalization techniques
+
+SKILL LEVEL: MASTER (Expert Level)
+----------------------------------
+Certifications:
+- AIDA 4
+- FII Level 2/3 transition
+- Molchanovs Wave 4
+- PADI Master
+- PFI Master
+- RAID Master
+- SSI Level 3
+
+- Depths: 20-40m typical
+- Meeting at depth rescue 10-15m - Fii has an advanced freediving safety course to properly train freedivers advanced safety for teaching and competition.
+- Teaching assistant capable- not Fii as just because your a good freediver doesn't mean you can assistant in teaching safe freediving practices and huge liability issues.
+- Introduce advanced frenzel, reverse packing, mouthfill, negative pressure dives- only FII, negative diaphragm stretching, segmented breathing tools. 
+- Introduce Hook breathing, purging, Mammalian dive reflex and triggers, pressure related injuries, Enclose Criteria,
+- Multiple disciplines (CWT, FIM, CNF)-
+- The agencies where this is their most advanced course will introduce packing and FRC dives.- those agencies do not teach negative pressure dives but may teach RV dives.
+Performance Indicators from Dive Logs:
+- Depths >30m-40m regularly
+- Efficient profiles, sink phase at double neutral buoyancy (good turn quality)
+- Advanced techniques visible reverse packing without tension, hopefully to 40m with improper technique and flexibility people only get to 30m usually then(mouthfill holds)
+- Fii only focuses on constant weight with bifins which is second most challenging discipline. training 1 discipline allows for most improvement before adding complications like other disciplines. There will be much less taught if agencies focus on more than one discipline and will exhaust their students.
+- ok depth control and ascent rates
+
+AI Coaching Approach:
+- Structuring their dive more efficiently
+- Reducing tension and improving comfort with technique analysis
+- understanding core physiology and depth simulations and adaptations
+- Physiological training methods
+- Advanced equalization techniques
+
+SKILL LEVEL: ELITE (Competition/Professional)
+--------------------------------------------
+Certifications:
+- FII Level 3 (unmatched depth of knowledge)
+- PFI Advanced
+- National/International competition records
+- Instructor certifications across agencies
+
+Characteristics:
+- Depths: >40m+ no max depth capability (but usually 40-70m)
+- FRC's, variable weight dives, no limits, various disciplines, packing, pack stretching, mouthfill mastery, dynamic apnea,
+- Competition training pure 02 for recovery, counterballast setups, advanced safety protocols
+- Advanced training methodology
+- Physiological expertise
+
+Performance Indicators from Dive Logs:
+- Depths >50m-60m regularly
+- Competition-level performances
+- Perfect profile efficiency
+- Advanced techniques mastery
+- Training periodization visible
+- bail out triggers, nutritional strategies, warm up/cool down protocols, strategic competition training plans and cycles.
+
+AI Coaching Approach:
+- Technical peer discussion
+- Cutting-edge technique analysis
+- Performance data optimization
+- Training methodology discussion
+- Risk assessment at elite level
+- Competition strategy development
+
+======================================
+SECTION 2: DIVE LOG PERFORMANCE INDICATORS
+======================================
+
+DEPTH PROGRESSION ANALYSIS:
+---------------------------
+Beginner Pattern:
+- Slow, steady increases (5-6m from 0-30m) follow proper progression guidelines 
+- Long plateaus for consolidation
+- Conservative approach to new depths
+- Frequent repeat depths for confidence
+
+Advanced Pattern:
+- Faster progression when safe
+- Targeted depth goals
+- Strategic plateau phases
+- Discipline-specific focus
+
+Elite Pattern:
+- Competition-cycle periodization
+- Peak performance targeting
+- Advanced training phases
+- Risk-calculated progression
+
+PROFILE QUALITY INDICATORS:
+---------------------------
+Beginner Profile:
+- Gradual descent curves
+- Extended equalization pauses
+- Careful, controlled ascent
+- Basic turn quality
+
+Advanced Profile:
+- Efficient descent rates
+- Smooth equalization integration
+- Clean bottom turns
+- Optimized ascent speeds
+
+Elite Profile:
+- Maximum efficiency curves
+- Minimal wasted motion
+- Perfect turn execution
+- Competition-level precision
+
+SAFETY MARGIN ANALYSIS:
+-----------------------
+Beginner Safety:
+- Large safety margins (>30%)
+- Conservative time limits
+- Frequent safety stops
+- Buddy-dependent protocols
+
+Advanced Safety:
+- Calculated margins (20-30%)
+- Self-reliant protocols
+- Advanced rescue skills
+- Risk assessment ability
+
+Elite Safety:
+- Performance margins (10-20%)
+- Competition risk management
+- Leadership responsibility
+- Teaching safety to others
+
+======================================
+SECTION 3: CONTEXTUAL COACHING RULES
+======================================
+
+SKILL RECOGNITION TRIGGERS:
+---------------------------
+1. Certification Level (primary indicator)
+2. Depth Achievements (performance indicator)
+3. Profile Quality (technique indicator)
+4. Consistency Metrics (experience indicator)
+5. Safety Behavior (maturity indicator)
+6. Teaching/Leadership (expertise indicator)
+
+COACHING ADAPTATION MATRIX:
+---------------------------
+Basic/Discover Levels:
+- Language: Simple, encouraging, safety-focused
+- Advice: Conservative, foundational techniques
+- Goals: Comfort, basic skills, safety habits
+- Risk: Avoid any risk encouragement
+
+Beginner Level:
+- Language: Educational, supportive, progressive
+- Advice: Technique building, guided progression
+- Goals: Skill development, confidence building
+- Risk: Very conservative, supervised advancement
+
+Advanced Level:
+- Language: Technical, challenging, performance-oriented
+- Advice: Optimization, advanced techniques
+- Goals: Performance improvement, competition prep
+- Risk: Calculated risks with proper preparation
+
+Master Level:
+- Language: Peer-level, sophisticated, strategic
+- Advice: Advanced concepts, training periodization
+- Goals: Peak performance, leadership development
+- Risk: Informed risk assessment and management
+
+Elite Level:
+- Language: Professional, cutting-edge, collaborative
+- Advice: Cutting-edge techniques, competition strategy
+- Goals: Record attempts, technique innovation
+- Risk: Elite-level risk management and calculation
+
+======================================
+SECTION 4: DIVE LOG ANALYSIS PATTERNS
+======================================
+
+BEGINNER DIVE LOG PATTERNS:
+---------------------------
+Typical Depths: 10-20m
+Typical Times: 1-2 minutes
+Static 2-3 minutes
+Profile Shape: Gradual descent, careful ascent
+Progression: Small, steady improvements
+Safety: Large margins, frequent buddy checks
+Red Flags: Rapid progression, poor technique
+
+ADVANCED DIVE LOG PATTERNS:
+---------------------------
+Typical Depths: 20-40m
+Typical Times: 2-3 minutes 
+Static 3-5 minutes
+Profile Shape: Efficient structured dive, good turns, 1mps ascent and descent rate
+Progression: Targeted improvements
+Safety: Calculated margins, self-reliance
+Red Flags: Inconsistent performance, technique regression, many equalization issues
+
+ELITE DIVE LOG PATTERNS:
+---------------------------
+Typical Depths: 40m+60m
+Typical Times: 2-2:30 minutes (discipline dependent)
+Static 4-6 minutes
+Profile Shape: Competition-level efficiency
+Progression: Periodized training cycles
+Safety: Performance margins with expertise
+Red Flags: Overtraining, competition pressure, tension, many equalization issues
+
+======================================
+SECTION 5: CONTEXTUAL RESPONSE EXAMPLES
+======================================
+
+FOR BEGINNER 25m DIVE:
+"Excellent depth achievement for your level! Your profile shows good control and safe ascent rate. Focus on refining your equalization technique and maintaining these safety margins as you progress."
+
+FOR ADVANCED 40m DIVE:
+"Strong performance with efficient descent rate. Your turn quality shows room for improvement - consider working on mouthfill preparation timing. Your ascent control is excellent for this depth."
+
+FOR ELITE 50-60m DIVE:
+"Competition-level performance with exceptional profile efficiency. Your descent rate optimization and turn execution are textbook. Consider the slight oscillation at 90m - possible equalization timing adjustment opportunity."
+Once a freediver has completed all their courses they are freed to progress on their own but the problem with each education system is that they are taught different knowledge and also taught many things in such a short period of time so peoples understand and knowledge may differ a lot which is why Kovalai can be a huge benefit to freedivers around the world.
+Then the true training begins to see if a freediver can continue to progress after learning all the knowledge has been taught and this is were people struggle because they do not understand how to properly apply the training, are inconsistent, forget information, and do not regularly train dry training techniques daily- get lazy. become weekend warriors.
+======================================
+SECTION 6: RECOGNITION CONFIDENCE FACTORS
+======================================
+
+HIGH CONFIDENCE INDICATORS:
+- Clear certification matches
+- Consistent performance patterns
+- Appropriate depth/time ratios
+- Good safety behavior
+- Progressive skill development
+
+MEDIUM CONFIDENCE INDICATORS:
+- Mixed performance signals
+- Inconsistent progression
+- Some technique concerns
+- Unclear certification level
+- Limited dive log history
+
+LOW CONFIDENCE INDICATORS:
+- Conflicting performance data
+- Dangerous behavior patterns
+- Inappropriate progression
+- No certification information
+- Insufficient data for assessment
+
+DEFAULT SAFETY PROTOCOLS:
+When in doubt, default to more conservative coaching approach and encourage proper supervision/instruction.
+
+======================================
+SECTION 7: SPECIAL CONSIDERATIONS
+======================================
+
+FII LEVEL 3 RECOGNITION:
+- Represents highest level of freediving education
+- Competition-level knowledge and training
+- Advanced physiology understanding
+- Teaching and coaching capability
+- Should trigger elite-level coaching responses
+
+INSTRUCTOR CERTIFICATIONS are more advanced and require more knowledge:
+- Teaching responsibility consideration
+- Safety leadership expectations
+- Advanced knowledge assumptions
+- Peer-level technical discussion
+- Community responsibility awareness
+
+COMPETITION EXPERIENCE after level 3 is ideal:
+- Performance pressure understanding
+- Advanced technique familiarity
+- Risk/reward calculation ability
+- Mental preparation importance
+- Recovery and training periodization
+
+======================================
+This training data should be ingested into Pinecone as chunked segments to enable contextual retrieval for OpenAI coaching responses.
