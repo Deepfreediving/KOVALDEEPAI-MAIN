@@ -326,109 +326,34 @@ export default async function handler(req, res) {
     
     console.log('📝 Formatted dive data:', diveText);
 
-    // Enhanced prompt that includes structured image analysis data
-    let imageDataPrompt = '';
-    if (diveLogData.extractedText) {
-      imageDataPrompt = `\nDive Computer Data: ${diveLogData.extractedText}`;
-    } else if (diveLogData.imageAnalysis) {
-      // Handle structured image analysis data
-      if (typeof diveLogData.imageAnalysis === 'object') {
-        const analysis = diveLogData.imageAnalysis;
-        
-        // Handle new comprehensive structure (direct fields)
-        if (analysis.max_depth !== undefined || analysis.dive_time || analysis.max_depth_temp) {
-          imageDataPrompt = `\n📊 DIVE COMPUTER DATA EXTRACTED:
-- **Max Depth**: ${analysis.max_depth || 'N/A'}${analysis.depth_unit || 'm'}
-- **Dive Time**: ${analysis.dive_time || 'N/A'}
-- **Temperature**: ${analysis.max_depth_temp || 'N/A'}${analysis.temp_unit === 'F' ? '°F' : '°C'}
-- **Entry Time**: ${analysis.entry_time || 'N/A'}
-- **Surface Interval**: ${analysis.surface_interval || 'N/A'}
-- **Dive Mode**: ${analysis.dive_mode || 'N/A'}`;
-
-          // Add advanced metrics from graph analysis
-          if (analysis.descent_time || analysis.ascent_time) {
-            imageDataPrompt += `\n\n📈 PROFILE METRICS:
-- **Descent Time**: ${analysis.descent_time || 'N/A'}
-- **Ascent Time**: ${analysis.ascent_time || 'N/A'}
-- **Descent Rate**: ${analysis.descent_rate || 'N/A'} m/min
-- **Ascent Rate**: ${analysis.ascent_rate || 'N/A'} m/min
-- **Hang Time**: ${analysis.hang_time || 'N/A'} seconds`;
-          }
-
-          // Add profile observations
-          if (analysis.observations) {
-            imageDataPrompt += `\n\n🔍 PROFILE OBSERVATIONS: ${analysis.observations}`;
-          }
-
-          // Add confidence score
-          if (analysis.confidence) {
-            const confidencePercent = Math.round(analysis.confidence * 100);
-            imageDataPrompt += `\n\n✅ EXTRACTION CONFIDENCE: ${confidencePercent}%`;
-          }
-        }
-        // Fallback to legacy structure
-        else if (analysis.extractedData) {
-          const data = analysis.extractedData;
-          imageDataPrompt = `\nDive Computer Data Extracted:
-- Max Depth: ${data.maxDepth || 'N/A'}m
-- Dive Time: ${data.diveTime || data.diveTimeSeconds + 's' || 'N/A'}
-- Temperature: ${data.temperature || 'N/A'}°C
-- Date: ${data.date || 'N/A'}
-- Mode: ${data.diveMode || 'N/A'}`;
-          
-          if (analysis.profileAnalysis) {
-            const profile = analysis.profileAnalysis;
-            imageDataPrompt += `\nProfile Analysis:
-- Descent Rate: ${profile.descentPhase?.averageDescentRate || 'N/A'} m/s
-- Ascent Rate: ${profile.ascentPhase?.averageAscentRate || 'N/A'} m/s
-- Bottom Time: ${profile.bottomPhase?.bottomTime || 'N/A'} seconds`;
-          }
-          
-          if (analysis.coachingInsights) {
-            const insights = analysis.coachingInsights;
-            imageDataPrompt += `\nCoaching Notes: ${insights.performanceRating || 'N/A'}/10 rating`;
-          }
-        }
-      } else {
-        imageDataPrompt = `\nDive Computer Analysis: ${diveLogData.imageAnalysis}`;
+    // ✅ ENHANCED: Create super analysis prompt
+    const superAnalysisPrompt = createSuperAnalysisPrompt(diveLogData, diveLogData.imageAnalysis);
+    
+    // ✅ ENHANCED: Validate data consistency if we have both sources
+    let consistencyNotes = '';
+    if (diveLogData.imageAnalysis?.extractedMetrics) {
+      const inconsistencies = validateDataConsistency(diveLogData, diveLogData.imageAnalysis.extractedMetrics);
+      if (inconsistencies.length > 0) {
+        consistencyNotes = `\n\n⚠️ DATA CONSISTENCY CHECK:\n${inconsistencies.join('\n')}`;
       }
     }
 
-    // Create enhanced OpenAI analysis prompt with specific depth/time extraction
-    const prompt = `You are Daniel Koval, a world-renowned freediving instructor and coach. Analyze this dive log and provide detailed coaching feedback:
+    // Create enhanced OpenAI analysis prompt with super analysis
+    const prompt = `You are Daniel Koval, a world-renowned freediving instructor and coach. Provide comprehensive coaching analysis combining dive computer data with manual dive log entry:
 
-${diveText}${imageDataPrompt}
+${superAnalysisPrompt}${consistencyNotes}
 
-🎯 CRITICAL: If dive computer data is provided above, use those EXACT VALUES in your analysis instead of hypothetical ones.
+🎯 COACHING ANALYSIS REQUIREMENTS:
+1. **Performance Assessment**: Analyze actual vs target performance using REAL computer data
+2. **Technical Analysis**: Evaluate descent/ascent speeds, hang time, thermal effects
+3. **Safety Review**: Check for any concerning patterns in the dive profile
+4. **Progression Coaching**: Compare to previous dives and suggest next steps
+5. **Data Quality**: Comment on consistency between manual log and computer data
 
-For dive profiles showing depth vs time graphs:
-- Use the actual extracted descent/ascent rates if provided
-- Reference the real maximum depth from the computer readout
-- Use the actual dive time from the device
-- Only mention data that was actually extracted from the dive computer
-- If no specific computer data is available, base analysis on the manual log entries only
+🚨 CRITICAL: Use the EXACT extracted metrics above, not hypothetical values.
+Focus on actionable coaching based on the precise dive computer readings.
 
-⚠️ IMPORTANT: Do not invent or estimate dive computer metrics. Only reference actual extracted values.
-
-Please provide:
-1. Performance Assessment - How did the dive go based on ACTUAL data?
-2. Technical Analysis - What went well and what needs improvement?
-3. Safety Evaluation - Any safety concerns based on real metrics?
-4. Training Recommendations - What should the diver focus on next?
-5. Progression Advice - How can they improve for future dives?
-6. 📊 REAL METRICS ANALYSIS:
-   ⚠️ CRITICAL: If dive computer data was extracted above, you MUST analyze it and provide specific metrics.
-   - **Descent time**: ${imageDataPrompt.includes('Descent Time:') ? '[Use the extracted descent time from dive computer data above]' : '"Not available from dive computer"'}
-   - **Ascent time**: ${imageDataPrompt.includes('Ascent Time:') ? '[Use the extracted ascent time from dive computer data above]' : '"Not available from dive computer"'}  
-   - **Descent speed**: ${imageDataPrompt.includes('Descent Rate:') ? '[Convert extracted descent rate to user-friendly format]' : '"Not available from dive computer"'}
-   - **Ascent speed**: ${imageDataPrompt.includes('Ascent Rate:') ? '[Convert extracted ascent rate to user-friendly format]' : '"Not available from dive computer"'}
-   - **Bottom time**: ${imageDataPrompt.includes('Hang Time:') ? '[Use the extracted hang time from dive computer data above]' : '"Not available from dive computer"'}
-
-${imageDataPrompt ? '🎯 **IMPORTANT**: The dive computer data above contains REAL extracted metrics. Reference these specific values in your analysis instead of saying "without specific computer data".' : ''}
-
-Remember: Convert all time values to user-friendly format (3:12 instead of 192 seconds) in your analysis.
-
-Use your expertise in freediving physiology, technique, and safety. Be encouraging but also provide specific, actionable feedback based on the available data.`;
+Provide detailed analysis in conversational coaching style with specific recommendations.`;
 
     console.log('📤 Sending to OpenAI...');
 

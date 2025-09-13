@@ -78,11 +78,21 @@ export default async function handler(req, res) {
       }
     });
 
+    // ✅ Enhanced analysis with advanced patterns
+    const advancedPatterns = analyzeAdvancedPatterns(diveLogs);
+    const trainingPlan = generateTrainingPlan(advancedPatterns, timeRange);
+
     // ✅ AI Analysis with structured prompt
     const prompt = `Analyze this freediver's progression over ${timeRange} days using Daniel Koval's coaching methodology.
 
 📊 DIVE DATA:
 ${JSON.stringify(analysisData, null, 2)}
+
+🧠 ADVANCED PATTERNS:
+${JSON.stringify(advancedPatterns, null, 2)}
+
+📋 RECOMMENDED TRAINING PLAN:
+${JSON.stringify(trainingPlan, null, 2)}
 
 🎯 ANALYSIS REQUIREMENTS:
 Provide a comprehensive coaching analysis in the following JSON format:
@@ -144,6 +154,8 @@ Use Daniel Koval's E.N.C.L.O.S.E. framework and coaching principles. Focus on sa
       success: true,
       analysisData,
       aiAnalysis: analysisResult,
+      advancedPatterns,
+      trainingPlan,
       metadata: {
         divesAnalyzed: diveLogs.length,
         timeRange: `${timeRange} days`,
@@ -250,8 +262,73 @@ function analyzeTechniquePatterns(diveLogs) {
   return techniqueIssues;
 }
 
+function analyzeSeasonalPatterns(diveLogs) {
+  const monthlyData = {};
+  
+  diveLogs.forEach(log => {
+    const month = new Date(log.date).getMonth();
+    const season = getSeason(month);
+    
+    if (!monthlyData[season]) {
+      monthlyData[season] = {
+        count: 0,
+        avgDepth: 0,
+        issues: 0,
+        totalDepth: 0
+      };
+    }
+    
+    monthlyData[season].count++;
+    monthlyData[season].totalDepth += log.reached_depth || log.target_depth || 0;
+    if (log.squeeze || log.issue_comment) {
+      monthlyData[season].issues++;
+    }
+  });
+  
+  // Calculate averages
+  Object.keys(monthlyData).forEach(season => {
+    const data = monthlyData[season];
+    data.avgDepth = data.totalDepth / data.count;
+    data.issueRate = data.issues / data.count;
+  });
+  
+  return monthlyData;
+}
+
+function analyzeRecoveryPatterns(diveLogs) {
+  const recoveryData = {
+    averageRecoveryQuality: 0,
+    consistentRecovery: true,
+    concerningPatterns: []
+  };
+  
+  const recoveryScores = diveLogs.map(log => {
+    const surface = (log.surface_protocol || '').toLowerCase();
+    if (surface.includes('good') || surface.includes('clean')) return 3;
+    if (surface.includes('ok') || surface.includes('fine')) return 2;
+    if (surface.includes('lmc') || surface.includes('samba')) return 1;
+    if (surface.includes('bo') || surface.includes('blackout')) return 0;
+    return 2; // neutral default
+  });
+  
+  recoveryData.averageRecoveryQuality = recoveryScores.reduce((a, b) => a + b, 0) / recoveryScores.length;
+  
+  // Check for concerning patterns
+  const recentRecoveries = recoveryScores.slice(-5);
+  const poorRecoveries = recentRecoveries.filter(score => score <= 1).length;
+  
+  if (poorRecoveries >= 2) {
+    recoveryData.concerningPatterns.push('Multiple poor recoveries in recent dives');
+    recoveryData.consistentRecovery = false;
+  }
+  
+  return recoveryData;
+}
+
 function generateTrainingPlan(patterns, timeframe = 30) {
   const plan = {
+    phase: 'progression',
+    duration: `${timeframe} days`,
     focusAreas: [],
     weeklyTargets: [],
     safetyRecommendations: [],
@@ -259,12 +336,12 @@ function generateTrainingPlan(patterns, timeframe = 30) {
   };
   
   // Analyze patterns and generate specific recommendations
-  if (patterns.safetyPatterns.squeezeFrequency > 0.2) {
+  if (patterns.safetyPatterns && patterns.safetyPatterns.squeezeFrequency > 0.2) {
     plan.focusAreas.push('Equalization technique refinement');
     plan.safetyRecommendations.push('Reduce depth targets by 15% until squeeze rate < 10%');
   }
   
-  if (patterns.depthProgression.byDiscipline) {
+  if (patterns.depthProgression && patterns.depthProgression.byDiscipline) {
     Object.keys(patterns.depthProgression.byDiscipline).forEach(discipline => {
       const progression = patterns.depthProgression.byDiscipline[discipline];
       if (progression.isProgressingTooFast) {
@@ -272,6 +349,11 @@ function generateTrainingPlan(patterns, timeframe = 30) {
         plan.progressionRate = 'reduce';
       }
     });
+  }
+  
+  // Add weekly targets based on current performance
+  for (let week = 1; week <= Math.ceil(timeframe / 7); week++) {
+    plan.weeklyTargets.push(`Week ${week}: Focus on ${plan.focusAreas[0] || 'technique maintenance'}`);
   }
   
   return plan;
@@ -357,4 +439,11 @@ function identifyRiskFactors(diveLogs) {
   }
   
   return factors;
+}
+
+function getSeason(month) {
+  if (month >= 2 && month <= 4) return 'spring';
+  if (month >= 5 && month <= 7) return 'summer';
+  if (month >= 8 && month <= 10) return 'autumn';
+  return 'winter';
 }
